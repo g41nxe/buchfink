@@ -12,7 +12,7 @@
 # nur ein Nachschlagen liefert. Steht dort "recherche" und kann der Bewerter
 # nicht nachschlagen, dann ruht sein Urteil zu diesem Abschnitt auf Ableitung.
 
-version: 2
+version: 3
 
 einleitung: >
   Das Genre entscheidet nicht — es sagt nur, wo das Folgende erfahrungsgemäß
@@ -116,7 +116,11 @@ genres:
   # Gegenanzeigen: ziehen auf null, gleichgültig wie viel sonst stimmt.
   passt_nicht:
     - Cozy-Krimi
-    - Young Adult
+    - >-
+      Young Adult, wenn das Buch auch so erzählt: Jugendliche und ihr
+      Erwachsenwerden stehen im Mittelpunkt, die Härte ist weichgezeichnet.
+      Das Etikett allein reicht nicht — Händler vergeben es auch an Dystopien,
+      die nichts davon tragen.
 
 einstieg:
   belegbar_aus: [reihe, titel, untertitel, recherche]
