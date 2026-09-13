@@ -185,6 +185,38 @@ def test_a_second_import_does_not_revive_what_was_switched_off(store: Store) -> 
     assert store.relations("t", kind=str(RelationKind.WATCHING)) == []
 
 
+def test_a_second_import_keeps_what_the_reader_paused(store: Store) -> None:
+    """Der Modulkopf verspricht es, ``put_relation`` hielt es nicht: es setzt
+    ``active`` auch an einer bestehenden Zeile. Ein Eintrag, den die Leserin in
+    der Oberfläche pausiert hatte, lief nach ``ebw seed`` wieder."""
+    args = (profile(), [WatchlistEntry(title="Providence", author="Max Barry")])
+    seed(store, *args, now=NOW)
+    book = store.books()[0]
+    store.deactivate_relation("t", book.id, str(RelationKind.WATCHING), now=NOW)
+
+    seed(store, *args, now=NOW)
+
+    assert store.relations("t", kind=str(RelationKind.WATCHING)) == []
+
+
+def test_a_second_import_keeps_a_lifted_restriction_lifted(store: Store) -> None:
+    """Dieselbe Lücke an den Angaben: ``put_relation`` überschrieb sie, und die
+    Einschränkung, die die Leserin auf der Buchseite aufgehoben hatte, war
+    wieder da."""
+    args = (
+        profile(),
+        [WatchlistEntry(title="Providence", author="Max Barry", check_shop=False)],
+    )
+    seed(store, *args, now=NOW)
+    book = store.books()[0]
+    store.set_relation_details("t", book.id, str(RelationKind.WATCHING), {}, now=NOW)
+
+    seed(store, *args, now=NOW)
+
+    relation = store.relations("t", kind=str(RelationKind.WATCHING))[0]
+    assert "restrict" not in (relation.details or "")
+
+
 # --- die Aussaat, pro Interesse --------------------------------------------
 
 
@@ -288,6 +320,49 @@ def test_owned_becomes_a_relation_and_a_machine_judgement(store: Store) -> None:
 
     row = store.rating(book_subject(book.id), OWNED_PROFILE_VERSION, origin=BY_CONVERSATION)
     assert (row.stars, row.reason) == (5, "Hunter.")
+
+
+def test_owning_a_watched_book_stops_watching_it(store: Store) -> None:
+    """Dieselben zwei Wirkungen wie "besitze ich" in der Oberfläche (Ticket 48).
+    Der Import legte ``owned`` an und liess ``watching`` laufen — das Buch wurde
+    weiter abgerufen und weiter gemeldet."""
+    watchlist = [WatchlistEntry(title="Rosewater", author="Tade Thompson")]
+    seed(store, profile(), watchlist, now=NOW)
+
+    seed(
+        store,
+        profile(),
+        watchlist,
+        owned=[OwnedBook(title="Rosewater", author="Tade Thompson")],
+        now=NOW,
+    )
+
+    assert store.relations("t", kind=str(RelationKind.WATCHING)) == []
+    book = store.books()[0]
+    assert {(row.kind, row.active) for row in store.relations_of("t", book.id)} == {
+        (str(RelationKind.OWNED), True),
+        (str(RelationKind.WATCHING), False),
+    }
+
+
+def test_a_second_import_keeps_watching_that_the_reader_resumed(store: Store) -> None:
+    """Stillgelegt wird nur, wenn der Besitz neu hinzukommt. Hat die Leserin ein
+    gekauftes Buch wieder auf die Watchlist geholt, gilt das — auch nach dem
+    nächsten Import."""
+    args = (
+        profile(),
+        [WatchlistEntry(title="Rosewater", author="Tade Thompson")],
+    )
+    owned = [OwnedBook(title="Rosewater", author="Tade Thompson")]
+    seed(store, *args, owned=owned, now=NOW)
+    book = store.books()[0]
+    store.put_relation("t", book.id, str(RelationKind.WATCHING), now=NOW)
+
+    seed(store, *args, owned=owned, now=NOW)
+
+    assert [row.book_id for row in store.relations("t", kind=str(RelationKind.WATCHING))] == [
+        book.id
+    ]
 
 
 def test_owned_stars_are_not_the_readers_own(store: Store) -> None:

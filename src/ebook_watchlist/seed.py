@@ -108,6 +108,24 @@ def _book_for_free_text(
     return book.id, note
 
 
+def _put_missing_relation(
+    store: Store, profile_slug: str, book_id: int, kind: str, *,
+    active: bool = True, now: datetime, **details: object,
+) -> bool:
+    """Eine Beziehung anlegen, wenn es sie noch nicht gibt. Wahr, wenn ja.
+
+    ``put_relation`` ist für die Oberfläche gebaut und setzt ``active`` und die
+    Angaben auch an einer bestehenden Zeile. Blind aufgerufen hätte ein zweiter
+    Import eine pausierte Beobachtung wiederbelebt und eine aufgehobene
+    Einschränkung zurückgebracht — genau das, was der Modulkopf ausschließt.
+    Dieselbe Regel wie in :mod:`ebook_watchlist.dismissals`.
+    """
+    if any(row.kind == kind for row in store.relations_of(profile_slug, book_id)):
+        return False
+    store.put_relation(profile_slug, book_id, kind, active=active, now=now, **details)
+    return True
+
+
 def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
          *, owned: list[OwnedBook] | None = None,
          now: datetime | None = None) -> SeedReport:
@@ -130,15 +148,16 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
         # genau das - und wäre bei jeder umbenannten Quelle falsch gewesen.
         if entry.check_library != entry.check_shop:
             details["restrict"] = "library" if entry.check_library else "shop"
-        store.put_relation(
+        if _put_missing_relation(
+            store,
             profile.slug,
             book.id,
             str(RelationKind.WATCHING),
             active=entry.active,
             now=at,
             **details,
-        )
-        report.relations += 1
+        ):
+            report.relations += 1
 
     # --- Gefallen und nicht gefallen: Freitext, also mit Vorbehalt ----------
     for kind, entries in (
@@ -151,8 +170,8 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
                 report.unresolved.append(f"{kind}: {entry}")
                 continue
             details = {"note": note} if note else {}
-            store.put_relation(profile.slug, book_id, str(kind), now=at, **details)
-            report.relations += 1
+            if _put_missing_relation(store, profile.slug, book_id, str(kind), now=at, **details):
+                report.relations += 1
 
     # --- Besitz: Titel und Autor:in stehen da, das Urteil auch -------------
     # Der Import ging bisher an dieser Datei vorbei; sie trug ihren eigenen
@@ -168,8 +187,19 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
         # bittet um Gegenprüfung, ob dieser Titel im Handel so heißt. Genau das
         # gehört an die Beziehung, wo die Leserin es beim Nachsehen findet.
         details = {"note": entry.hinweis} if entry.hinweis else {}
-        store.put_relation(profile.slug, book.id, str(RelationKind.OWNED), now=at, **details)
-        report.relations += 1
+        if _put_missing_relation(
+            store, profile.slug, book.id, str(RelationKind.OWNED), now=at, **details
+        ):
+            report.relations += 1
+            # Was "besitze ich" in der Oberfläche tut, tut auch der Import: ein
+            # gekauftes Buch wird nicht weiter beobachtet (Ticket 48), und die
+            # Beobachtung wird stillgelegt, nicht gelöscht (ADR 18). Nur bei
+            # neuem Besitz — hat die Leserin neben einem bekannten Besitz die
+            # Beobachtung wieder eingeschaltet, bleibt sie an. Und nur, wenn es
+            # eine gibt: sonst stünde da ein "Früher: beobachtet", das nie galt.
+            watching = str(RelationKind.WATCHING)
+            if any(row.kind == watching for row in store.relations_of(profile.slug, book.id)):
+                store.deactivate_relation(profile.slug, book.id, watching, now=at)
         if entry.stars is None:
             continue
         store.put_rating(
