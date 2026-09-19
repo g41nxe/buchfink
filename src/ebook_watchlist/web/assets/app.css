@@ -8,6 +8,12 @@
 /* Die Tokens des Projekts. Ein einziges System (ADR 20): was hier nicht steht,
    wird nicht als Custom Property danebengelegt. */
 @theme {
+  /* Zwei Ansichten, nicht drei: Telefon und Schreibtisch. Die Grenze liegt
+     bei 48rem, der Breite der Inhaltsspalte (`max-w-3xl`). Darunter kann die
+     Spalte ohnehin nicht voll werden, und jede Zwischenstufe musste eigens
+     gestaltet werden — der Buchkopf brauchte dafuer eine eigene
+     Container-Abfrage. Also: `sm` heisst hier Schreibtisch. */
+  --breakpoint-sm: 48rem;
   --color-paper: oklch(0.98 0.006 85);
   --color-card: oklch(0.995 0.004 85);
   /* Zwei Toene fuer Text, mehr nicht: `ink` ist der Inhalt — Titel, Absaetze,
