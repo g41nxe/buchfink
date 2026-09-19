@@ -178,6 +178,15 @@ stays an Observation and gets **no** Book row until the reader says something
 about it (ADR 18). It is the case every filtering rule in this tool exists for:
 a Watchlist title is always reported, a Discovery has to earn it.
 
+### Foreign Discovery
+*deutsch: Fund in fremder Sprache*
+
+A Discovery the DNB lists **explicitly** in a language the Profile does not
+name (`languages`, ISO 639-2 codes, default `ger`). It never reaches the pile
+and costs no Rating. Unknown is never foreign: without an ISBN or a DNB answer
+a Discovery stays where it is. A Watchlist Entry is never foreign, whatever its
+language (#10).
+
 ### Suggestion
 *deutsch: Vorschlag*
 

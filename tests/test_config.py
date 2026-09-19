@@ -146,3 +146,27 @@ def test_the_cadence_comes_from_the_profile(data_dir: Path) -> None:
         encoding="utf-8",
     )
     assert load_profile().run_every_hours == 6
+
+
+# --- Sprachen (#10) ----------------------------------------------------------
+
+
+def test_german_is_the_default_language(data_dir: Path) -> None:
+    assert load_profile().languages == ("ger",)
+
+
+def test_the_languages_can_be_set(data_dir: Path) -> None:
+    (data_dir / "profile.yaml").write_text(
+        "slug: t\nname: T\nlanguages: [ger, eng]\n", encoding="utf-8"
+    )
+    assert load_profile().languages == ("ger", "eng")
+
+
+def test_a_language_is_a_dnb_code(data_dir: Path) -> None:
+    """Die DNB liefert ISO 639-2 — ``ger``, nicht ``de`` und nicht "Deutsch".
+    Ein falscher Code filterte sonst still jeden Fund heraus."""
+    (data_dir / "profile.yaml").write_text(
+        "slug: t\nname: T\nlanguages: [de]\n", encoding="utf-8"
+    )
+    with pytest.raises(ConfigError, match="languages"):
+        load_profile()

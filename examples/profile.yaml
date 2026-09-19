@@ -44,6 +44,12 @@ extended_sweep_weekday: 6  # 0 = Monday
 # Shop category paths whose new arrivals are surfaced as suggestions (ticket 07).
 genre_categories: []
 
+# Sprachen, in denen Funde in Frage kommen — Codes, wie die DNB sie liefert
+# (ISO 639-2): ger, eng, fre, ... Was die DNB ausdruecklich in einer anderen
+# fuehrt, kommt nicht in den Stapel und kostet kein Urteil. Unbekannt gilt
+# nie als fremd, und Watchlist-Titel sind ausgenommen.
+languages: [ger]
+
 # Dormant in v1.
 no_gos: []
 liked_books: []

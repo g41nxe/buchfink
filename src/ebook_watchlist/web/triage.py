@@ -20,6 +20,7 @@ from ..covers import CoverStore, file_name
 from ..deals import is_strong_deal
 from ..diff import worth_announcing
 from ..junk import is_junk
+from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import MatchReason, Observation
 from ..rating import DEFAULT_THRESHOLD
@@ -121,6 +122,8 @@ class Pile:
     #: nicht im Stapel. Verschwunden ist nichts: fällt der Preis, ist das Buch
     #: wieder da (ADR 19).
     hidden_priced: int = 0
+    #: Funde, die die DNB ausdruecklich in einer anderen Sprache fuehrt (#10).
+    hidden_language: int = 0
 
     @property
     def is_empty(self) -> bool:
@@ -205,11 +208,13 @@ def pending(
     # Einmal fuer die ganze Seite: der Ordner der Titelbilder wird sonst je
     # Zeile neu aufgeloest.
     covers = CoverStore(paths.covers_dir())
+    sprache_von = language_finder(store)
 
     items: list[Suggestion] = []
     hidden_junk = 0
     hidden_priced = 0
     hidden_weak = 0
+    hidden_language = 0
     for observation in found:
         if (observation.source, observation.source_item_id) in decided_items:
             continue
@@ -217,6 +222,11 @@ def pending(
             continue
         if is_junk(observation):
             hidden_junk += 1
+            continue
+        # Vor der Preisregel und vor dem Urteil: ein Fund in fremder Sprache
+        # ist kein Kandidat, gleich was er kostet oder wie er bewertet wurde.
+        if is_foreign(observation, profile, sprache_von):
+            hidden_language += 1
             continue
         # Dieselbe Regel wie im Digest, aus einer Stelle: was dich nie
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
@@ -250,6 +260,7 @@ def pending(
         hidden_junk=hidden_junk,
         hidden_priced=hidden_priced,
         hidden_weak=hidden_weak,
+        hidden_language=hidden_language,
     )
 
 

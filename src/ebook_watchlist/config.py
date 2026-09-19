@@ -73,6 +73,11 @@ class Profile:
     #: nicht, wo seine Grenze verläuft — am wertvollsten ist hier ein Buch, das
     #: auf dem Papier gepasst hätte (ADR 17). Ebenfalls dormant.
     disliked_books: list[str] = field(default_factory=list)
+    #: In welchen Sprachen ein Fund in Frage kommt, als Code der DNB (ISO
+    #: 639-2: ``ger``, ``eng``, ``fre``). Ein Fund, den die DNB ausdruecklich
+    #: in einer anderen Sprache fuehrt, kommt nicht in den Stapel und kostet
+    #: kein Urteil (#10). Watchlist-Titel sind ausgenommen.
+    languages: tuple[str, ...] = ("ger",)
     sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     #: Appended to the outgoing User-Agent so a site operator can reach you.
     #: Opt-in — nothing personal is sent unless you put it here yourself.
@@ -146,6 +151,27 @@ def _str_list(mapping: dict[str, Any], key: str, what: str) -> list[str]:
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ConfigError(f"{what}: {key!r} must be a list of strings")
     return value
+
+
+def _languages(mapping: dict[str, Any], what: str) -> tuple[str, ...]:
+    """Sprachcodes, wie die DNB sie liefert — und nur die.
+
+    Streng, weil ein falscher Code still wirkt: ``de`` statt ``ger`` hiesse,
+    dass die DNB *jeden* deutschen Fund als fremd meldet, und der Stapel waere
+    ohne Fehlermeldung leer.
+    """
+    value = mapping.get("languages", ["ger"])
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(code, str) and len(code) == 3 and code.isalpha()
+                   and code.islower() for code in value)
+    ):
+        raise ConfigError(
+            f"{what}: 'languages' must be a non-empty list of three-letter ISO 639-2 "
+            f"codes as the DNB delivers them (ger, eng, fre …), got {value!r}"
+        )
+    return tuple(value)
 
 
 def _positive_int(mapping: dict[str, Any], key: str, default: int, what: str) -> int:
@@ -224,6 +250,7 @@ def load_profile(path: Path | None = None) -> Profile:
         no_gos=_str_list(data, "no_gos", what),
         liked_books=_str_list(data, "liked_books", what),
         disliked_books=_str_list(data, "disliked_books", what),
+        languages=_languages(data, what),
         sources=data.get("sources") or {},
         contact=str(data["contact"]) if data.get("contact") else None,
     )

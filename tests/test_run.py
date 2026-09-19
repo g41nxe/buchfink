@@ -394,3 +394,32 @@ def test_the_gap_can_be_named_and_switched_off(data_dir: Path) -> None:
 
     assert main(["--trigger", "cron", "--fruehestens-nach", "0"]) == EXIT_OK
     assert len(Store(paths.db_path()).recent_runs("test")) > vorher
+
+
+def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> None:
+    """Zwischen DNB-Abfrage und Bewertungstor: was die DNB ausdruecklich
+    englisch fuehrt, kostet kein Urteil (#10). Der Watchlist-Titel in
+    derselben Sprache bleibt."""
+    from datetime import datetime
+
+    from ebook_watchlist import paths
+    from ebook_watchlist import run as run_modul
+    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.dnb import Record
+    from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
+    from ebook_watchlist.store import Store
+
+    now = datetime(2026, 9, 19, 12, 0)
+    store = Store(paths.db_path())
+    store.save_dnb("9780000000001", Record(title="A Book", language="eng"), now)
+
+    def neu(nummer: str, grund: MatchReason) -> Delta:
+        return Delta(kind=DeltaKind.FIRST_SEEN, previous=None, current=Observation(
+            source="beam", source_item_id=nummer, title="A Book", match_reason=grund,
+            isbn="9780000000001"))
+
+    fund, gewollt = neu("1", MatchReason.GENRE_CATEGORY), neu("2", MatchReason.WATCHLIST)
+
+    bleibt = run_modul._without_foreign_languages(store, [fund, gewollt], load_profile())
+
+    assert bleibt == [gewollt]

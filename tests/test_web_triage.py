@@ -93,6 +93,23 @@ def test_junk_never_reaches_the_pile(client: TestClient, db: Store) -> None:
     assert "Gratistitel ausgeblendet" in body
 
 
+def test_a_find_in_another_language_leaves_the_pile(client: TestClient, db: Store) -> None:
+    """Die DNB fuehrt ihn ausdruecklich englisch — kein Kandidat fuer ein
+    deutschsprachiges Profil, und keine Aufgabe (#10)."""
+    from ebook_watchlist.dnb import Record
+
+    found(db, item_id="de", title="Ein deutscher Fund", isbn="9783000000001")
+    found(db, item_id="en", title="An English Find", isbn="9780000000001")
+    db.save_dnb("9783000000001", Record(title="Ein deutscher Fund", language="ger"), NOW)
+    db.save_dnb("9780000000001", Record(title="An English Find", language="eng"), NOW)
+
+    body = client.get("/vorschlaege").text
+
+    assert "Ein deutscher Fund" in body
+    assert "An English Find" not in body
+    assert "1 in anderen Sprachen" in body
+
+
 def test_the_pile_can_be_filtered_by_origin(client: TestClient, db: Store) -> None:
     found(db, item_id="a", title="Vom Autor", reason=MatchReason.PROFILE_AUTHOR)
     found(db, item_id="t", title="Vom Thema", reason=MatchReason.GENRE_CATEGORY)

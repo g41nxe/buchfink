@@ -243,6 +243,21 @@ def _series_from_dnb(store: Store) -> None:
         print(f"DNB: {reihen} Reihen übernommen")
 
 
+def _without_foreign_languages(store: Store, deltas, profile: Profile) -> list:
+    """Was die DNB ausdruecklich in einer fremden Sprache fuehrt, faellt weg (#10).
+
+    Dieselbe Regel wie im Stapel, aus einer Stelle (`language.is_foreign`):
+    unbekannt ist nie fremd, und ein Watchlist-Titel bleibt immer.
+    """
+    from .language import is_foreign, language_finder
+
+    sprache_von = language_finder(store)
+    bleibt = [d for d in deltas if not is_foreign(d.current, profile, sprache_von)]
+    if weg := len(deltas) - len(bleibt):
+        print(f"Sprache: {weg} Funde in anderen Sprachen übergangen")
+    return bleibt
+
+
 def _apply_gate(store: Store, deltas, profile: Profile, now: datetime, sources=()):
     """Entdeckungen gegen das Leseprofil pruefen (ADR 19).
 
@@ -955,6 +970,11 @@ def _run(
     _record_foreign_ratings(store, observations)
     _fetch_candidate_covers(store, profile, client)
     _ask_the_library(store, client, profile)
+
+    # Hinter der DNB-Abfrage, denn erst jetzt ist die Sprache neuer Funde
+    # bekannt — und vor dem Tor, damit ein fremdsprachiger Fund kein Urteil
+    # kostet (#10).
+    deltas = _without_foreign_languages(store, deltas, profile)
 
     # Das Tor sitzt hinter dem Snapshot: ein Ausfall kostet ein Urteil, nie
     # Geschichte. Und hinter der Preisregel: ein Buch zu bewerten, das ohnehin

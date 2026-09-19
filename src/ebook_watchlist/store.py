@@ -839,6 +839,17 @@ class Store:
                         session.add(DnbContainsRow(isbn=isbn, contained=enthalten))
             session.commit()
 
+    def dnb_languages(self) -> dict[str, str]:
+        """ISBN -> Sprache, fuer jede ISBN, zu der die DNB eine nennt (#10)."""
+        with self.session() as session:
+            return dict(
+                session.execute(
+                    select(DnbRecordRow.isbn, DnbRecordRow.language).where(
+                        DnbRecordRow.found.is_(True), DnbRecordRow.language.is_not(None)
+                    )
+                ).all()
+            )
+
     def contained_isbns(self, isbn: str) -> tuple[str, ...]:
         """Die Baende einer Sammelausgabe, aus ``770 $i Enthaelt`` (ADR 24)."""
         with self.session() as session:
