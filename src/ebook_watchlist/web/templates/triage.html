@@ -44,6 +44,16 @@
 <form method="post" action="/vorschlaege/entscheiden" id="pile"
       x-data="{
         chosen: 0,
+        {# Auf dem Telefon keine Mehrfachauswahl (#13): die Zeile ist das
+           Label des Kaestchens, und ein Tippen darauf hakte an, statt das
+           Buch zu oeffnen. Abgeschaltet reagiert das Kaestchen auf keinen
+           Klick mehr. Dieselbe Grenze wie Tailwinds `sm`, und sie folgt
+           dem Drehen des Geraets. #}
+        klein: window.matchMedia('(max-width: 639px)').matches,
+        init() {
+          const schmal = window.matchMedia('(max-width: 639px)');
+          schmal.addEventListener('change', e => { this.klein = e.matches; if (e.matches) this.mark(false) });
+        },
         boxes() { return this.$root.querySelectorAll('input[name=keys]') },
         recount() {
           this.chosen = [...this.boxes()].filter(box => box.checked).length;
@@ -87,7 +97,7 @@
        Seite eigenes hat, kommt als Steckplatz herein: das Kaestchen, die
        Sterne des Tors, der Pitch und die drei Entscheidungen. #}
     {% set auswahl %}
-    <input type="checkbox" name="keys" value="{{ item.key }}"
+    <input type="checkbox" name="keys" value="{{ item.key }}" :disabled="klein"
            class="h-5 w-5 shrink-0 accent-[var(--color-accent)]">
     {% endset %}
 
@@ -168,14 +178,18 @@
 {# Die Leiste bleibt am unteren Rand stehen: bei fünfzig Zeilen wäre ein Knopf
    ganz unten eine Reise.
 
+   Auf dem Telefon gibt es sie nicht (#13). Sie kostete 121 von 812 Pixeln,
+   dauerhaft, für einen Sonderfall — zwanzig Funde am Stück verwerfen —, der
+   am Rechner bequemer ist. Jede Zeile trägt ihre drei Entscheidungen selbst.
+
    Links, was die Auswahl betrifft, rechts, was mit ihr geschieht — und alle
    Knöpfe in derselben Größe: "alle" und "keine" waren zwei Größen kleiner als
    die Handlungen daneben und sahen dadurch wie etwas anderes aus, obwohl sie
    dasselbe sind. Der Satz, dass „Ausschließen" nichts löscht, stand daneben und
    erklärte bei jedem Besuch dasselbe; was die Entscheidung bedeutet, steht in
    der Einleitung oben und auf der Buchseite, wo sie sich zurücknehmen lässt. #}
-<div class="sticky bottom-0 mt-4 flex flex-wrap items-center gap-2 border-t border-rule
-            bg-paper/95 py-3 backdrop-blur">
+<div class="sticky bottom-0 mt-4 hidden flex-wrap items-center gap-2 border-t border-rule
+            bg-paper/95 py-3 backdrop-blur sm:flex">
   {# Zaehler und Auswahlknoepfe sind eine Gruppe und stehen mittig in dem
      Platz, der neben den Handlungen bleibt: linksbuendig sassen sie in einer
      Ecke, sobald die Leiste umbrach, und die Reihe sah aus wie zwei Leisten. #}

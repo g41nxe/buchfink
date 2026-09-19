@@ -66,7 +66,8 @@
      ihn vom Cover. `order-last` bei beiden — gleicher Rang heisst
      Dokumentreihenfolge, also Kaestchen zuerst. #}
   {% if auswahl %}
-  <span class="order-last flex shrink-0 self-center sm:order-none">{{ auswahl }}</span>
+  {# Unter `sm` verborgen: auf dem Telefon gibt es keine Mehrfachauswahl (#13). #}
+  <span class="order-last hidden shrink-0 self-center sm:order-none sm:flex">{{ auswahl }}</span>
   {% endif %}
   {{ cover(titel, cover_file, borrowable, deal, strecken=true) }}
 

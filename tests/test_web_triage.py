@@ -264,6 +264,41 @@ def test_clicking_the_title_does_not_tick_the_checkbox(client: TestClient, db: S
     assert "stopPropagation" in body[body.rindex("<a", 0, start) : body.index(">", start)]
 
 
+# --- das Telefon ohne Mehrfachauswahl (#13) ----------------------------------
+
+
+def _tag_um(body: str, merkmal: str) -> str:
+    """Das oeffnende Element, in dem ``merkmal`` steht."""
+    stelle = body.index(merkmal)
+    return body[body.rindex("<", 0, stelle) : body.index(">", stelle) + 1]
+
+
+def test_the_phone_has_no_selection_bar(client: TestClient, db: Store) -> None:
+    """Die Leiste kostete auf dem Telefon 121 von 812 Pixeln, dauerhaft — fuer
+    einen Sonderfall, der am Rechner bequemer ist. Unter ``sm`` faellt sie weg."""
+    found(db, item_id="7")
+
+    body = client.get("/vorschlaege").text
+
+    leiste = _tag_um(body, "sticky bottom-0")
+    assert "hidden" in leiste.split('"')[1].split()
+    assert "sm:flex" in leiste
+
+
+def test_on_the_phone_a_tap_on_the_row_ticks_nothing(client: TestClient, db: Store) -> None:
+    """Die ganze Zeile ist das Label des Kaestchens. Es nur zu verstecken,
+    reicht deshalb nicht: ein verborgenes Kaestchen wird beim Tippen auf die
+    Zeile trotzdem angehakt. Abgeschaltet reagiert es auf keinen Klick — und
+    ohne Alpine bleibt alles wie vorher."""
+    found(db, item_id="7")
+
+    body = client.get("/vorschlaege").text
+
+    kaestchen = _tag_um(body, 'name="keys"')
+    assert ':disabled="klein"' in kaestchen
+    assert "matchMedia" in _tag_um(body, 'id="pile"')
+
+
 # --- eine Zeile, eine Entscheidung (Issue #9) -------------------------------
 
 
