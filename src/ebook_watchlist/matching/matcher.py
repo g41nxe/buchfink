@@ -388,6 +388,17 @@ def worth_confirming(scored: Scored, query: Query) -> bool:
     return not (scored.author_conflict or scored.author_missing)
 
 
+def _distinct(title: str) -> bool:
+    """Ob ein Titel genug traegt, um ohne Autor:in angenommen zu werden (#20).
+
+    Mindestens zwei Woerter, gezaehlt **nach** der Normalisierung: die wirft
+    Artikel ab, und "Der Morgen" ist ein Wort — "Der" macht nichts
+    unverwechselbar. Einwortige Titel wie *Profit* sind genau die, bei denen
+    eine zufaellige Namensgleichheit plausibel ist; dort wird gefragt.
+    """
+    return len(normalize_title(title).split()) >= 2
+
+
 def _is_tied(best: Scored, runner_up: Scored) -> bool:
     """Two hits we cannot honestly tell apart — the case Calibre punts to its GUI."""
     return (
@@ -469,14 +480,26 @@ def _confidence(query: Query, ranked: Sequence[Scored]) -> tuple[Confidence, str
             return Confidence.PROVISIONAL, "zwei Kandidaten sind gleich gut"
         if confident:
             return Confidence.AUTO_ACCEPT, "Titel und Autor stimmen beide"
+        # Nennt der Treffer *niemanden*, ist das kein Widerspruch, sondern
+        # eine Luecke (ADR 23). Bis #20 zaehlte sie wie eine andere Person: die
+        # *Wayward Pines-Trilogie* musste bestaetigt werden, weil das Paket im
+        # Shop keine Autorin traegt — und waere ohne Autorin am Eintrag
+        # angenommen worden. Jetzt gilt dieselbe Regel wie dort.
+        if best.author_missing and best.title_exact and not tied and _distinct(query.title):
+            return (
+                Confidence.AUTO_ACCEPT,
+                "exakter Titel, dort ohne Autor:in, kein konkurrierender Treffer",
+            )
         return (
             Confidence.PROVISIONAL,
             f"Titel {best.title_fuzzy}, Autor {best.author_fuzzy} — nicht eindeutig",
         )
 
     # No author to corroborate with: an exact, unrivalled title is the only
-    # thing we will accept unattended.
-    if best.title_exact and not tied:
+    # thing we will accept unattended — and only one of at least two words
+    # (#20). A one-word title is where a stranger of the same name is
+    # plausible.
+    if best.title_exact and not tied and _distinct(query.title):
         return (
             Confidence.AUTO_ACCEPT,
             "exakter Titel, kein konkurrierender Treffer, kein Autor angegeben",

@@ -455,3 +455,50 @@ def test_a_contradicting_identifier_loses_the_place_not_only_the_confidence() ->
     resolution = match(query, [widerspricht, unauffaellig])
 
     assert resolution.ranked[0].candidate is unauffaellig
+
+
+# --- ein fehlendes Autorfeld ist kein Widerspruch (#20) ---------------------
+
+
+def test_a_find_without_an_author_is_taken_on_an_exact_title() -> None:
+    """*Wayward Pines-Trilogie* von Blake Crouch musste bestaetigt werden,
+    obwohl der Titel exakt stimmte: das Paket nennt im Shop keine Autorin, und
+    "nennt niemanden" zaehlte wie "nennt jemand anderen". Haette der Eintrag
+    keine Autorin gehabt, waere es angenommen worden."""
+    ergebnis = match(
+        Query(title="Wayward Pines-Trilogie", author="Blake Crouch"),
+        [Candidate(title="Wayward Pines-Trilogie", author=None),
+         Candidate(title="Wayward Pines", author="Blake Crouch")],
+    )
+
+    assert ergebnis.confidence is Confidence.AUTO_ACCEPT
+
+
+def test_a_different_author_is_still_a_contradiction() -> None:
+    ergebnis = match(
+        Query(title="Wayward Pines-Trilogie", author="Blake Crouch"),
+        [Candidate(title="Wayward Pines-Trilogie", author="Jemand Anderes")],
+    )
+
+    assert ergebnis.confidence is not Confidence.AUTO_ACCEPT
+
+
+@pytest.mark.parametrize("autorin", ["Richard K. Morgan", None])
+def test_a_one_word_title_is_asked_about(autorin: str | None) -> None:
+    """Einwortige Titel sind genau die, bei denen eine zufaellige
+    Namensgleichheit plausibel ist — ohne Autorin am Treffer wird dort
+    weiter gefragt. Das gilt auch fuer einen Eintrag ohne Autorin, der das
+    Risiko vorher ungeschuetzt trug. Gezaehlt wird nach der Normalisierung:
+    "Der Morgen" ist ein Wort, "Der" macht nichts unverwechselbar."""
+    for titel in ("Profit", "Der Morgen"):
+        ergebnis = match(Query(title=titel, author=autorin),
+                         [Candidate(title=titel, author=None)])
+
+        assert ergebnis.confidence is Confidence.PROVISIONAL, titel
+
+
+def test_an_entry_without_an_author_still_takes_a_distinct_title() -> None:
+    ergebnis = match(Query(title="Dark Matter"),
+                     [Candidate(title="Dark Matter", author=None)])
+
+    assert ergebnis.confidence is Confidence.AUTO_ACCEPT
