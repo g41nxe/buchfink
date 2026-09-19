@@ -35,8 +35,15 @@
 
     {% if pille %}<div class="mt-2 flex flex-wrap items-center gap-2">{{ pille }}</div>{% endif %}
 
+    {# Ein Raster statt eines Flex-Umbruchs: bricht die Reihe um, sitzt die
+       Kachel darunter in derselben Spalte und ist genauso breit wie die
+       darueber. Mit `flex-1` streckte sich eine umgebrochene Kachel ueber die
+       ganze Breite, und drei gleichrangige Quellen sahen aus wie zwei grosse
+       und eine kleine. `auto-fit` legt nur so viele Spalten an, wie Kacheln da
+       sind — zwei Quellen fuellen die Reihe weiterhin. #}
     {% if kacheln %}
-    <div class="mt-3 flex flex-wrap items-stretch gap-3">{{ kacheln }}</div>
+    <div class="mt-3 grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] items-stretch
+                gap-3">{{ kacheln }}</div>
     {% endif %}
 
     {# Warum dieses Buch ueberhaupt hereinkam. Ein Watchlist-Titel bekommt

@@ -19,16 +19,15 @@
 <{{ "a" if url else "div" }}
    {% if url %}href="{{ url }}" target="_blank" rel="noopener"
    title="{{ display }} öffnen" class="kachel-klickbar cursor-pointer {% else %}
-   {# `max-w-xs`: bei einer einzigen Kachel zog `flex-1` sie ueber die ganze
-      Breite, und ein Preis in einem 720 Pixel breiten Kasten sieht aus wie
-      ein Fehler.
+   {# `max-w-xs`: bei einer einzigen Kachel ist die Rasterspalte so breit wie
+      der ganze Kopf, und ein Preis in einem 720 Pixel breiten Kasten sieht
+      aus wie ein Fehler.
 
-      `min-w-44` statt `min-w-52`: der Kopf ist 604 Pixel breit, drei Kacheln
-      mit ihren zwei Zwischenraeumen bekommen davon je 193 — bei einer
-      Mindestbreite von 208 brach die dritte um, und `flex-1` zog die beiden
-      oberen auf die volle Breite. Drei verschieden lange Kacheln in zwei
-      Reihen, wo drei gleiche in einer stehen koennen. #}
-   class="{% endif %}{{ ton }} relative flex min-w-44 max-w-xs flex-1 flex-col
+      `min-w-44` passt zur Spaltenbreite im Kopf (`minmax(11rem, 1fr)`): der
+      Kopf ist 604 Pixel breit, drei Kacheln mit ihren zwei Zwischenraeumen
+      bekommen davon je 193 — mit 208 als Untergrenze passten nur zwei. Die
+      gleiche Breite beim Umbruch regelt der Kopf, nicht die Kachel. #}
+   class="{% endif %}{{ ton }} relative flex min-w-44 max-w-xs flex-col
           justify-between overflow-hidden rounded-lg border border-rule bg-card
           px-3 pt-2 pr-12 pb-2.5">
   <svg class="kachelbild {{ ton }}" aria-hidden="true">
