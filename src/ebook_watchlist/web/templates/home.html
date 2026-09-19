@@ -62,9 +62,15 @@
    in Bernstein mahnt. Es ist derselbe Lauf wie auf der Übersicht: das
    Fragment, das POST /run zurückgibt, landet unter der Zeile und fragt von
    selbst nach, bis der Lauf zu Ende ist; dann lädt die Seite neu (ADR 3). #}
-<div class="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border
-            border-hair bg-card px-5 py-3">
-<p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-soft">
+{# Auf dem Telefon untereinander und mittig: eine Angabe je Zeile, darunter
+   der Knopf ueber die ganze Breite. Nebeneinander brachen die drei Angaben
+   an zufaelligen Stellen um, und die Trennpunkte standen am Zeilenanfang.
+   Ab `sm` wieder ein Satz in einer Reihe. #}
+<div class="mb-6 flex flex-col items-stretch gap-3 rounded-lg border border-hair bg-card
+            px-5 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
+<p class="flex flex-col items-center gap-1 text-center text-sm text-soft
+          sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1 sm:text-left">
+  <span class="inline-flex items-center gap-2">
   <svg class="i"><use href="#ic-clock"/></svg>
   {# Zahl und Wort auf einer Zeile: ein Umbruch dazwischen macht aus
      "vor 2 Tagen" zwei Stücke, die niemand als eines liest oder findet. #}
@@ -74,7 +80,8 @@
   <a href="/uebersicht" title="Läufe, Quellen und Tagesberichte"
      class="{{ 'font-medium text-amber' if view.status.stale }} underline
             decoration-rule underline-offset-2 hover:decoration-current">zuletzt geprüft {{ view.status.when }}{% if view.status.stale %} — vor {{ view.status.age_days }} {{ 'Tag' if view.status.age_days == 1 else 'Tagen' }}{% endif %}</a>
-  <span aria-hidden="true">·</span>
+  </span>
+  <span aria-hidden="true" class="hidden sm:inline">·</span>
   {% if view.status.failed %}
   <span class="font-medium text-danger">letzter Lauf fehlgeschlagen</span>
   {% elif digest %}
@@ -84,7 +91,7 @@
   {% else %}
   <span>{{ view.status.delta_count }} {{ 'Änderung' if view.status.delta_count == 1 else 'Änderungen' }}</span>
   {% endif %}
-  <span aria-hidden="true">·</span>
+  <span aria-hidden="true" class="hidden sm:inline">·</span>
   <span>{{ view.suggestions_total }} {{ 'Vorschlag' if view.suggestions_total == 1 else 'Vorschläge' }} offen</span>
 </p>
 {% if not run_state.busy %}
@@ -98,10 +105,11 @@
    fluchten, sahen kaputter aus als gar keine Ausrichtung. Im Fluss nach
    dem Text ist der Knopf eindeutig Teil des Satzes, nicht der Spalten. #}
 <form hx-post="/run" hx-target="#lauf" hx-swap="innerHTML"
-      hx-disabled-elt="find button">
+      hx-disabled-elt="find button" class="w-full sm:w-auto">
   <button type="submit"
-          class="tun inline-flex h-7 items-center gap-1 rounded border border-accent bg-accent/10
-                 px-2 text-xs font-medium text-accent hover:bg-accent/25">
+          class="tun inline-flex h-9 w-full items-center justify-center gap-1 rounded border
+                 border-accent bg-accent/10 px-2 text-sm font-medium text-accent
+                 hover:bg-accent/25 sm:h-7 sm:w-auto sm:text-xs">
     <svg class="i"><use href="#ic-refresh"/></svg>Jetzt prüfen</button>
 </form>
 {% endif %}
