@@ -327,16 +327,21 @@ def test_taking_them_back_writes_no_zero(client: TestClient, db: Store) -> None:
     assert "Noch nicht bewertet" in client.get(f"/book/{book.id}").text
 
 
-def test_a_machine_judgement_says_who_made_it(client: TestClient, db: Store) -> None:
+def test_a_judgement_from_the_conversation_is_a_machine_judgement(
+    client: TestClient, db: Store
+) -> None:
     """Eine 4 von ihr und eine 4 vom Modell dürfen nicht gleich aussehen
-    (ADR 17)."""
+    (ADR 17). Die dreizehn Urteile aus ``owned.yaml`` sind im Gespräch
+    entstanden, aber vom Modell gefällt — sie hießen trotzdem "deine
+    Bewertung", genau wie die Sterne, die sie selbst vergibt (#13)."""
     book = db.books()[0]
     db.put_rating(book_subject(book.id), stars=4, confidence="teils", reason="Reihe und Stimme.",
                   profile_version=1, now=NOW, origin=BY_CONVERSATION)
 
     body = client.get(f"/book/{book.id}").text
 
-    assert "deine Bewertung" in body
+    assert "deine Bewertung" not in body
+    assert "Leseprofil" in body
     assert "Reihe und Stimme." in body
     assert "Noch nicht bewertet" in body  # ihre eigenen stehen weiterhin aus
 

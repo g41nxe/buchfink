@@ -63,13 +63,14 @@ LABELS: dict[str, str] = {
     # Auskunft — die groessere ist, *woran* gemessen wurde. Und ein Wort statt
     # dreien: neben den Sternen steht ohnehin, worauf das Urteil ruht.
     BY_MODEL: "Leseprofil",
-    # Dieselbe Beschriftung wie bei den eigenen Sternen: die dreizehn Urteile
-    # aus ``owned.yaml`` sind im Gespraech der Leserin ueber ihre eigenen
-    # Buecher entstanden, und fuer sie ist das ihre Bewertung. Getrennt
-    # bleiben die beiden trotzdem, denn sie verhalten sich verschieden: ein
-    # Urteil aus dem Gespraech faellt gegen eine Profilversion und veraltet
-    # mit ihr (PROFILE_BOUND), die selbst vergebenen Sterne nie.
-    BY_CONVERSATION: "deine Bewertung",
+    # Dieselbe Beschriftung wie das Tor: die dreizehn Urteile aus
+    # ``owned.yaml`` sind im Gespraech entstanden, gefaellt hat sie aber das
+    # Modell, gegen dasselbe Leseprofil. Bis #13 hiessen sie "deine
+    # Bewertung", genau wie die Sterne, die die Leserin selbst vergibt — und
+    # verhielten sich doch anders: sie veralten mit dem Profil
+    # (PROFILE_BOUND), ihre eigenen Sterne nie. Der Schluessel bleibt
+    # getrennt, damit man ihre Herkunft weiterhin findet.
+    BY_CONVERSATION: "Leseprofil",
     BY_READER: "deine Bewertung",
     BY_ONLEIHE_READERS: "Leser:innen der Onleihe",
 }
