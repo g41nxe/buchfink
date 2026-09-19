@@ -821,6 +821,9 @@ def build_rater(model: str | None = None) -> Rater | None:
     try:
         leseprofil, version = load_leseprofil()
         scheme = load_rating_scheme()
+        # Ausdruecklich mit: wer das Profil hereinreicht, bekommt sonst keine
+        # Achsen, und die Namensprobe aus #12 lief nie.
+        axes = leseprofil_axes()
     except RatingUnavailable:
         return None
 
@@ -832,11 +835,16 @@ def build_rater(model: str | None = None) -> Rater | None:
             leseprofil=leseprofil,
             scheme=scheme,
             version=version,
+            axes=axes,
         )
 
     executable = shutil.which(CLI_NAME)
     if executable:
         return ClaudeCodeRater(
-            executable=executable, leseprofil=leseprofil, scheme=scheme, version=version
+            executable=executable,
+            leseprofil=leseprofil,
+            scheme=scheme,
+            version=version,
+            axes=axes,
         )
     return None

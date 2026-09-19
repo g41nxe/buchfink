@@ -217,6 +217,14 @@ achsen: |
   Eine Achse, zu der der Klappentext nichts sagt, gehört in keine der beiden
   Listen. "fehlt" heißt: das Buch verfehlt sie, nicht: niemand weiß es.
 
+  AUSSCHLÜSSE SIND KEINE ACHSEN. Der Einstieg und die Gegenanzeigen unter
+  "genres" stehen in keiner der beiden Listen — auch nicht als "Einstieg"
+  unter "fehlt". Sie wiegen nicht mit, sie schließen aus: ein Band mitten in
+  einer Reihe, die nicht unter die Ausnahmen des Leseprofils fällt, oder ein
+  Buch mit einer Gegenanzeige bekommt null Sterne, gleichgültig wie viel sonst
+  stimmt. Die Begründung sagt, welcher Ausschluss greift und woran er zu
+  erkennen ist.
+
 pitch:
 
   laenge: ein bis zwei Sätze, höchstens 200 Zeichen

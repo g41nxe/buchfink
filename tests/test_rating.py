@@ -700,6 +700,23 @@ def test_without_a_key_the_local_installation_is_used(monkeypatch) -> None:
     assert rater.executable == "/usr/bin/claude"
 
 
+@pytest.mark.parametrize("schluessel", ["sk-test", None])
+def test_the_rater_in_use_checks_the_axis_names(monkeypatch, schluessel) -> None:
+    """Die Namensprobe aus #12 lief nie: ``build_rater`` reicht das Profil
+    herein, und dann luden die Bewerter die Achsen nicht mit. Nur Tests, die
+    das Profil selbst laden, sahen sie arbeiten."""
+    if schluessel:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", schluessel)
+    else:
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("ebook_watchlist.rating.shutil.which", lambda name: "/usr/bin/claude")
+
+    rater = build_rater()
+
+    assert rater.axes and "Tempo" in rater.axes
+    assert "Einstieg" not in rater.axes
+
+
 def test_with_neither_there_is_simply_no_gate(monkeypatch) -> None:
     """Kein Fehler, sondern der Zustand ohne Tor: alles bleibt unbewertet und
     wird gezeigt."""
