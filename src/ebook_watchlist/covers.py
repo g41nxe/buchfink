@@ -169,12 +169,18 @@ def fetch_for_books(store: Store, client: HttpClient, observations: Sequence[Obs
     bis zum nächsten Rundgang ohne Bild da.
     """
     covers = CoverStore(paths.covers_dir())
-    done: set[int] = set()
+    # Je *Adresse* einmal, nicht je Buch: jede Quelle bekommt ihre Chance.
+    # Vorher zaehlte nur die erste Beobachtung eines Buchs — bei *Dark Matter*
+    # kommt OverDrive mit einem kleinen Bild vor dem Shop mit 600x600, und das
+    # grosse wurde nie gefragt (#10).
+    done: set[tuple[int, str]] = set()
     for observation in observations:
         book_id, url = observation.book_id, observation.cover_url
-        if not book_id or not url or book_id in done:
+        if not book_id or not url or (book_id, url) in done:
             continue
-        done.add(book_id)
+        done.add((book_id, url))
+        # Frisch gelesen: ein Bild weiter oben im selben Lauf hat es vielleicht
+        # schon ersetzt, und verglichen wird gegen das, was jetzt gilt.
         book = store.book(book_id)
         # Dieselbe Adresse ist dasselbe Bild: der Name ist ihr Hash. Nur eine
         # *andere* Adresse ist die Frage wert, ob sie das bessere Bild hat.

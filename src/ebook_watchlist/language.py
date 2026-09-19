@@ -23,6 +23,12 @@ if TYPE_CHECKING:
 
 LanguageOf = Callable[[str], "str | None"]
 
+#: Die Sonderwerte von ISO 639-2: unbestimmt, mehrere Sprachen, ohne
+#: sprachlichen Inhalt, nicht erfasst. Keiner sagt, dass ein Buch *nicht*
+#: deutsch ist — eine zweisprachige Ausgabe traegt ``mul`` —, also zaehlen sie
+#: wie Schweigen.
+NOT_A_LANGUAGE = frozenset({"und", "mul", "zxx", "mis"})
+
 
 def language_finder(store: Store) -> LanguageOf:
     """Einmal gelesen, fuer den ganzen Lauf oder die ganze Seite."""
@@ -43,4 +49,6 @@ def is_foreign(observation: Observation, profile: Profile, language_of: Language
     if observation.match_reason is MatchReason.WATCHLIST or not observation.isbn:
         return False
     sprache = language_of(observation.isbn)
-    return sprache is not None and sprache not in profile.languages
+    if sprache is None or sprache in NOT_A_LANGUAGE:
+        return False
+    return sprache not in profile.languages

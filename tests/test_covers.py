@@ -485,3 +485,21 @@ def test_the_same_address_costs_nothing(buchlager) -> None:
     fetch_for_books(buchlager, client, [_gesehen(buch.id, adresse)])
 
     assert client.calls == [adresse]
+
+
+def test_every_source_gets_its_chance_not_only_the_first(buchlager) -> None:
+    """Je Lauf zaehlte nur die erste Beobachtung eines Buchs. Bei *Dark
+    Matter* kommt OverDrive mit einem kleinen Bild vor dem Shop mit 600x600 —
+    das kleine wurde verworfen, das grosse nie gefragt."""
+    from ebook_watchlist.covers import fetch_for_books
+
+    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    alt, klein, gross = ("https://example.invalid/kachel.jpg",
+                         "https://example.invalid/overdrive.jpg",
+                         "https://example.invalid/detail.jpg")
+    client = ByAddress({alt: jpeg(134, 200), klein: jpeg(100, 150), gross: jpeg(600, 600)})
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, alt)])
+
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, klein), _gesehen(buch.id, gross)])
+
+    assert buchlager.book(buch.id).cover_file == file_name(gross)

@@ -29,10 +29,12 @@ def _judgement(store: Store, observation: Observation, subject: str, profile_ver
     """Das Urteil, das für diesen Fund schon vorliegt — Mensch vor Maschine.
 
     Was die Leserin selbst gesagt hat, schlägt jedes Modellurteil und verfällt
-    auch nicht mit einer neuen Profilversion (ADR 17). Ihre Sterne und die
-    aus dem Gespräch hängen am *Buch*, nicht am Fund: sie hat sie auf der
-    Buchseite vergeben, und sie sollen gelten, egal über welche Quelle das Buch
-    das nächste Mal hereinkommt. Nur das Tor selbst schlüsselt am Fund.
+    auch nicht mit einer neuen Profilversion (ADR 17). Danach die Urteile aus
+    dem Gespräch: Maschinenurteile wie die des Tors (#13), aber über ein Buch,
+    das sie besitzt — und wie jedes Maschinenurteil nur für die Profilfassung,
+    gegen die es fiel. Beide hängen am *Buch*, nicht am Fund, damit sie gelten,
+    egal über welche Quelle das Buch das nächste Mal hereinkommt. Nur das Tor
+    selbst schlüsselt am Fund.
     """
     if observation.book_id is not None:
         of_book = book_subject(observation.book_id)

@@ -62,3 +62,13 @@ def test_a_watchlist_title_is_never_foreign(db: Store) -> None:
 
     assert not is_foreign(fund("9780000000001", MatchReason.WATCHLIST), load_profile(),
                           language_finder(db))
+
+
+@pytest.mark.parametrize("code", ["und", "mul", "zxx", "mis"])
+def test_the_codes_for_unknown_are_not_foreign(db: Store, code: str) -> None:
+    """ISO 639-2 hat Codes fuer "unbestimmt", "mehrere", "ohne Sprache" und
+    "nicht erfasst". Keiner sagt, dass das Buch *nicht* deutsch ist — eine
+    zweisprachige Ausgabe traegt ``mul``."""
+    db.save_dnb("9780000000003", Record(title="Zweisprachig", language=code), NOW)
+
+    assert not is_foreign(fund("9780000000003"), load_profile(), language_finder(db))
