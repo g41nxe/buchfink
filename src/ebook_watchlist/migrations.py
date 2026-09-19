@@ -532,6 +532,16 @@ def _library_readers_are_named_per_library(connection: Connection) -> None:
     )
 
 
+def _book_carries_its_volume(connection: Connection) -> None:
+    """Der Band innerhalb der Reihe, neben der Reihe (#10).
+
+    Die Reihe hatte ihre Spalte laengst, sie blieb nur leer; der Band hatte
+    keine. Gefuellt wird beides beim naechsten Lauf aus der DNB-Auskunft,
+    die schon in der Datenbank liegt — hier wird nichts nachgeholt.
+    """
+    add_column(connection, "book", "series_index", "TEXT")
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     _backfill_seeded_scopes,
     _add_blurb_columns,
@@ -559,6 +569,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _book_carries_its_blurb,
     _voebb_is_called_onleihe,
     _library_readers_are_named_per_library,
+    _book_carries_its_volume,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

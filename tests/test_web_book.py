@@ -791,3 +791,15 @@ def test_a_tile_asks_for_its_own_source_not_for_its_label() -> None:
 
     assert seite.latest_at("overdrive").availability == "verliehen"
     assert seite.latest_at("onleihe").availability == "unklar"
+
+
+def test_the_book_page_names_series_and_volume(client: TestClient, db: Store) -> None:
+    """Reihe und Band stehen im Kopf neben der Autor:in (#10)."""
+    from ebook_watchlist.dnb import Record
+
+    buch = db.find_or_create_book(isbn="9783426306406", title="Autorität",
+                                  author="Jeff VanderMeer", now=NOW)
+    db.save_dnb("9783426306406", Record(series="Southern Reach", series_index="2"), NOW)
+    db.series_from_dnb()
+
+    assert "Southern Reach, Band 2" in client.get(f"/book/{buch.id}").text

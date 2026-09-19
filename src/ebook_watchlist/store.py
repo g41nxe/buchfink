@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     and_,
+    case,
     create_engine,
     delete,
     event,
@@ -132,6 +133,9 @@ class BookRow(Base):
     title: Mapped[str] = mapped_column(String)
     author: Mapped[str | None] = mapped_column(String, nullable=True)
     series: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Der Band innerhalb der Reihe, wie die DNB ihn nennt — Text, nicht Zahl:
+    #: "2", aber auch "2.5" oder "Sonderband" (#10).
+    series_index: Mapped[str | None] = mapped_column(String, nullable=True)
     #: Dateiname im Cover-Ordner, nicht die Adresse beim Shop: die Seite
     #: laedt nichts von einem Dritten nach (Ticket 15).
     cover_file: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -785,9 +789,18 @@ class Store:
         ``limit`` ist die Hoeflichkeit: die DNB dokumentiert keine zulaessige
         Anfragefrequenz, also wird der Rueckstand ueber mehrere Laeufe
         abgearbeitet statt an einem Tag.
+
+        **Die ISBNs der eigenen Buecher zuerst**, dann die zuletzt gesehenen
+        Funde. Vorher galt nur "zuletzt gesehen" — und jeder Lauf sieht
+        Hunderte neuer Funde *nach* den Watchlist-Titeln. Die Buecher wurden
+        so bei jedem Lauf wieder verdraengt: 34 mit ISBN, einer davon mit
+        Datensatz (#10). Es sind wenige; der Vorrang kostet einmalig einen
+        Lauf, danach geht das Budget wieder an die Funde.
         """
         with self.session() as session:
             schon = select(DnbRecordRow.isbn)
+            eigene = select(BookRow.isbn).where(BookRow.isbn.is_not(None))
+            erst_die_buecher = case((ObservationRow.isbn.in_(eigene), 0), else_=1)
             stmt = (
                 select(ObservationRow.isbn)
                 .where(
@@ -796,7 +809,7 @@ class Store:
                     ObservationRow.isbn.not_in(schon),
                 )
                 .group_by(ObservationRow.isbn)
-                .order_by(func.max(ObservationRow.id).desc())
+                .order_by(erst_die_buecher, func.max(ObservationRow.id).desc())
                 .limit(limit)
             )
             return [isbn for (isbn,) in session.execute(stmt) if isbn]
@@ -1021,6 +1034,37 @@ class Store:
             session.refresh(row)
             session.expunge(row)
             return row
+
+    def series_from_dnb(self) -> int:
+        """Reihe und Band aus der DNB auf die Buecher schreiben — nur in Luecken.
+
+        Die DNB lieferte die Reihe fuer 33 von 101 ISBNs, auf einer Buch-Zeile
+        landete sie nie: 0 von 70 (#10). Die Buchseite hat ein Feld dafuer,
+        das deshalb immer leer blieb.
+
+        Ueberschrieben wird nichts: steht an einem Buch schon eine Reihe, gilt
+        die. Und weil nur aus der Datenbank gelesen wird, kostet der Schritt
+        keine Anfrage und darf bei jedem Lauf ueber alle Buecher gehen — so
+        erreichen auch die Auskuenfte, die vor ihm geholt wurden, ihr Buch.
+        Gibt zurueck, wie viele Buecher eine Reihe bekamen.
+        """
+        with self.session() as session:
+            gefuellt = 0
+            zeilen = session.execute(
+                select(BookRow, DnbRecordRow)
+                .join(DnbRecordRow, DnbRecordRow.isbn == BookRow.isbn)
+                .where(
+                    BookRow.series.is_(None),
+                    DnbRecordRow.found.is_(True),
+                    DnbRecordRow.series.is_not(None),
+                )
+            ).all()
+            for buch, datensatz in zeilen:
+                buch.series = datensatz.series
+                buch.series_index = datensatz.series_index
+                gefuellt += 1
+            session.commit()
+            return gefuellt
 
     def set_cover(self, book_id: int, file_name: str) -> None:
         with self.session() as session:

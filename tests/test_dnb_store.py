@@ -65,6 +65,18 @@ def test_an_observation_without_an_isbn_is_never_asked_about(db: Store) -> None:
     assert db.isbns_without_dnb(SLUG, 10) == []
 
 
+def test_the_isbn_of_a_book_is_asked_before_a_find(db: Store) -> None:
+    """Gefragt wurde, was zuletzt gesehen wurde — und jeder Lauf sieht
+    Hunderte neuer Funde nach den Watchlist-Titeln. Die ISBNs der eigenen
+    Buecher wurden so immer wieder verdraengt: 34 Buecher mit ISBN, einer
+    davon mit DNB-Datensatz (#10)."""
+    db.find_or_create_book(isbn="9783426306406", title="Autorität", now=NOW)
+    gesehen(db, "9783426306406", nummer="1")
+    gesehen(db, "9783644025028", nummer="2")  # ein Fund, spaeter gesehen
+
+    assert db.isbns_without_dnb(SLUG, 1) == ["9783426306406"]
+
+
 def test_the_budget_is_a_hard_limit(db: Store) -> None:
     """Die DNB dokumentiert keine zulässige Anfragefrequenz — deshalb wird der
     Rückstand über mehrere Läufe abgearbeitet (ADR 25)."""
@@ -248,3 +260,40 @@ def test_one_broken_answer_does_not_stop_the_others(db: Store) -> None:
     _ask_the_library(db, client, replace(load_profile(), dnb_budget=5))
 
     assert len(client.gefragt) == 3
+
+
+# --- Reihe und Band aufs Buch (#10) -----------------------------------------
+
+
+def test_the_series_reaches_the_book(db: Store) -> None:
+    """Die DNB lieferte die Reihe fuer 33 von 101 ISBNs, auf einer Buch-Zeile
+    landete sie nie — 0 von 70. Die Buchseite hat ein Feld dafuer, das
+    deshalb immer leer blieb."""
+    buch = db.find_or_create_book(isbn="9783426306406", title="Autorität", now=NOW)
+    db.save_dnb("9783426306406", Record(series="Southern Reach", series_index="2"), NOW)
+
+    assert db.series_from_dnb() == 1
+
+    gelesen = db.book(buch.id)
+    assert (gelesen.series, gelesen.series_index) == ("Southern Reach", "2")
+
+
+def test_a_series_already_on_the_book_is_kept(db: Store) -> None:
+    """Die DNB fuellt Luecken, sie ueberschreibt nichts."""
+    buch = db.find_or_create_book(isbn="9783426306406", title="Autorität",
+                                  series="Von Hand", now=NOW)
+    db.save_dnb("9783426306406", Record(series="Southern Reach", series_index="2"), NOW)
+
+    assert db.series_from_dnb() == 0
+    assert db.book(buch.id).series == "Von Hand"
+
+
+def test_silence_and_a_record_without_series_change_nothing(db: Store) -> None:
+    ohne = db.find_or_create_book(isbn="9783426306406", title="Eins", now=NOW)
+    stumm = db.find_or_create_book(isbn="9783426306413", title="Zwei", now=NOW)
+    db.save_dnb("9783426306406", Record(title="Eins"), NOW)
+    db.save_dnb("9783426306413", None, NOW)
+
+    assert db.series_from_dnb() == 0
+    assert db.book(ohne.id).series is None
+    assert db.book(stumm.id).series is None

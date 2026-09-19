@@ -193,6 +193,13 @@ class Judgement:
 HISTORY_ROWS = 5
 
 
+def _series_label(series: str | None, index: str | None) -> str | None:
+    """"Southern Reach, Band 2" — oder nur die Reihe, wenn niemand den Band kennt."""
+    if not series:
+        return None
+    return f"{series}, Band {index}" if index else series
+
+
 @dataclass(frozen=True, slots=True)
 class Page:
     book_id: int
@@ -468,7 +475,7 @@ def build(store: Store, profile: Profile, book_id: int) -> Page | None:
         book_id=book.id,
         title=book.title,
         author=book.author,
-        series=book.series,
+        series=_series_label(book.series, book.series_index),
         isbn=book.isbn,
         cover_file=book.cover_file,
         relations=relations,

@@ -209,6 +209,7 @@ def _ask_the_library(store: Store, client: HttpClient, profile: Profile) -> None
 
     offen = store.isbns_without_dnb(profile.slug, profile.dnb_budget)
     if not offen:
+        _series_from_dnb(store)
         return
 
     bibliothek = Dnb(client=client)
@@ -229,6 +230,17 @@ def _ask_the_library(store: Store, client: HttpClient, profile: Profile) -> None
         store.save_dnb(isbn, datensatz, now)
         gefunden += 1 if datensatz else 0
     print(f"DNB: {len(offen)} gefragt, {gefunden} beantwortet")
+    _series_from_dnb(store)
+
+
+def _series_from_dnb(store: Store) -> None:
+    """Reihe und Band auf die Buecher, auch wenn heute nichts gefragt wurde.
+
+    Was frueher von der DNB kam, hat vielleicht noch kein Buch erreicht — und
+    ein Lauf ohne neue ISBN kehrt vorher zurueck. Kostet keine Anfrage (#10).
+    """
+    if reihen := store.series_from_dnb():
+        print(f"DNB: {reihen} Reihen übernommen")
 
 
 def _apply_gate(store: Store, deltas, profile: Profile, now: datetime, sources=()):
