@@ -712,6 +712,33 @@ def test_the_button_fetches_a_judgement_for_this_one_book(
     assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].via == VIA_BOOK_PAGE
 
 
+def test_the_button_gathers_the_same_evidence_as_the_run(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sonst urteilte die Buchseite ohne Leseprobe und käme nie über "teils"
+    hinaus, während der Lauf dasselbe Buch belegt (#17). Dieselbe Funktion
+    wie im Lauf, im Hintergrundjob — die Seite wartet darauf nicht."""
+    from ebook_watchlist.sources.base import Item
+
+    buch = db.books()[0]
+    sighting(db, buch.id, when=NOW)
+    rater = StubRater(Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1))
+    monkeypatch.setattr(view, "build_rater", lambda model: rater)
+
+    class Quelle:
+        name = "beam"
+
+        def item(self, source_item_id: str) -> Item:
+            return Item(source_item_id=source_item_id, title="Ein Buch",
+                        keywords=("Space Opera",))
+
+    monkeypatch.setattr(view, "evidence_sources", lambda profile, store: [Quelle()])
+
+    urteil_abwarten(client, f"/book/{buch.id}")
+
+    assert rater.asked[0].keywords == ("Space Opera",)
+
+
 def test_the_page_does_not_wait_for_the_model(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:

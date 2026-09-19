@@ -15,6 +15,8 @@ from datetime import datetime
 from ..cleaning import is_truncated
 from ..config import Profile
 from ..deals import is_strong_deal
+from ..evidence import gather as gather_evidence
+from ..http import HttpClient, build_user_agent
 from ..models import Availability, MatchReason
 from ..rating import RatingUnavailable, build_rater, confidence_label, load_leseprofil
 from ..ratings import (
@@ -31,7 +33,7 @@ from ..ratings import (
 )
 from ..reasons import short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
-from ..sources import registry
+from ..sources import build_sources, registry
 from ..store import Store
 from .watchlist import SourceState
 
@@ -561,6 +563,12 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
     )
 
 
+def evidence_sources(profile: Profile, store: Store) -> list:
+    """Die eingeschalteten Quellen, mit Kontaktadresse wie im Rundgang."""
+    client = HttpClient(user_agent=build_user_agent(profile.contact))
+    return [s for s in build_sources(profile, client) if store.is_enabled(s.name)]
+
+
 def rate_observation(
     store: Store,
     profile: Profile,
@@ -586,9 +594,14 @@ def rate_observation(
             "noch eine angemeldete Claude-Code-Installation."
         )
 
-    # Der ganze Klappentext steht meist schon am Buch. Anders als der Lauf
-    # (``_with_evidence``) holt diese Seite deshalb keine Detailseite —
-    # ein Knopfdruck soll keine Quelle anfragen.
+    # Dieselben Belege wie im Lauf (#17): Detailseite, Leseprobe,
+    # Schlagwoerter. Bis dahin fragte ein Knopfdruck keine Quelle an — aber
+    # ohne Leseprobe kommt ein Urteil nie ueber "teils" hinaus, und dasselbe
+    # Buch bekaeme hier ein schwaecheres als im Lauf. Es laeuft ohnehin im
+    # Hintergrund (#15); zwei Anfragen mehr fallen in der Minute nicht auf.
+    observation = gather_evidence(
+        store, profile, [observation], evidence_sources(profile, store)
+    )[0]
     duenn = not observation.blurb or is_truncated(observation.blurb)
     if duenn and blurb:
         observation = replace(observation, blurb=blurb)

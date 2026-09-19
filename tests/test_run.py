@@ -223,8 +223,8 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
 
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
+    from ebook_watchlist.evidence import gather as _with_evidence
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.run import _with_evidence
     from ebook_watchlist.sources.fake import FakeSource
     from ebook_watchlist.store import ENTRY_TRIGGER, Store
 
@@ -438,8 +438,8 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
     from ebook_watchlist.dnb import Record
+    from ebook_watchlist.evidence import gather as _with_evidence
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.run import _with_evidence
     from ebook_watchlist.sources.base import Item
     from ebook_watchlist.store import Store
     from test_sample import KAPITEL, epub

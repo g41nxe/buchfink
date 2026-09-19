@@ -295,8 +295,8 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
     zweites Mal zu holen."""
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
+    from ebook_watchlist.evidence import gather as _with_evidence
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.run import _with_evidence
     from ebook_watchlist.sources.base import Item
     from ebook_watchlist.store import Store
 

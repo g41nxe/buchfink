@@ -186,6 +186,15 @@ def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.fixture(autouse=True)
+def keine_belege_von_draussen(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Der Knopf "neu beurteilen" holt Detailseite und Leseprobe (#17). In
+    Tests ohne Quellen — wer sie prüfen will, setzt seine eigenen ein."""
+    from ebook_watchlist.web import book
+
+    monkeypatch.setattr(book, "evidence_sources", lambda profile, store: [])
+
+
+@pytest.fixture(autouse=True)
 def kein_enger_lauf(monkeypatch: pytest.MonkeyPatch) -> None:
     """Der enge Lauf aus Ticket 51 tut in Tests nichts.
 
