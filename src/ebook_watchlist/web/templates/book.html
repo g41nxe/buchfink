@@ -59,7 +59,8 @@
      borrowable=page.borrowable,
      deal=page.deal,
      kacheln=kacheln,
-     herkunft=herkunft) }}
+     herkunft=herkunft,
+     lauf_unterwegs=lauf_unterwegs) }}
 
 {% if page.note %}
 {# Die wertvollste Zeile des Eintrags, und bis Ticket 52 unsichtbar: bei 15
@@ -184,25 +185,15 @@
 
 {# Der Knopf holt ein Urteil des Tors nach (Ticket 55). Im Lauf urteilt das Tor
    nur ueber Funde, die in den Stapel kaemen — ein Watchlist-Titel ist gewollt
-   und wird nie gefragt, hier stand deshalb fuer immer nichts.
-
-   Kein htmx wie beim engen Lauf: das ist ein Aufruf und keine Wartezeit an der
-   Dateisperre, und danach aendert sich der ganze Abschnitt, nicht eine Zeile.
-   Nur, solange kein Urteil dasteht: ein zweites zur selben Profilfassung gaebe
-   dieselbe Antwort und kostete einen Aufruf (Ticket 25). #}
+   und wird nie gefragt, hier stand deshalb fuer immer nichts. Knopf und Stand
+   kommen aus derselben Vorlage wie auf der Fundseite (#15). #}
 {% call abschnitt("Wie gut das passt", "ic-star") %}
-  {% if not page.judgements | rejectattr("is_human") | rejectattr("is_foreign") | list %}
-  <form method="post" action="/book/{{ page.book_id }}/bewerten" class="ml-auto">
-    <button type="submit" title="jetzt bewerten lassen"
-            class="flex rounded p-1 text-soft hover:bg-hair hover:text-accent">
-      <svg class="i"><use href="#ic-refresh"/></svg></button>
-  </form>
-  {% endif %}
+  {% with url="/book/" ~ page.book_id ~ "/bewerten", job=urteil_job,
+          vorhanden=page.judgements | rejectattr("is_human") | rejectattr("is_foreign")
+                    | list | length > 0 %}
+  {% include "_urteil_stand.html" %}
+  {% endwith %}
 {% endcall %}
-
-{% if trouble %}
-<p class="mb-3 text-sm text-danger">{{ trouble }}</p>
-{% endif %}
 
 {# Ohne eigene Sterne steht hier nur ein Satz. Vorher standen daneben fuenf
    leere Sterne und, kursiv dahinter, ein zweites Mal "noch nicht bewertet" —

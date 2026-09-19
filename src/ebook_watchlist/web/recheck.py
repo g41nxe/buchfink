@@ -17,6 +17,7 @@ selbst auf zu fragen. Kein Websocket (ADR 3).
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -30,9 +31,13 @@ FORGET_AFTER_SECONDS = 300
 
 @dataclass(frozen=True, slots=True)
 class Check:
-    """Wo der enge Lauf zu einem Eintrag gerade steht."""
+    """Wo ein Hintergrundjob gerade steht — ein enger Lauf oder ein Urteil.
 
-    book_id: int
+    ``key`` ist, woran der Job haengt: beim engen Lauf die Buchnummer, beim
+    Urteil das, was beurteilt wird (#15).
+    """
+
+    key: Hashable
     started_at: datetime
     #: ``None``, solange er laeuft.
     report: Report | None = None
@@ -61,44 +66,53 @@ class Check:
 
 
 class Rechecker:
-    """Haelt die laufenden engen Laeufe — einer je Buch.
+    """Haelt die laufenden Hintergrundjobs — einen je Schluessel.
+
+    Gebaut fuer den engen Lauf (Ticket 51), inzwischen auch fuer das Urteil
+    (#15): welche Arbeit getan wird, kommt herein, statt fest eingebaut zu
+    sein. Zwei Instanzen derselben Klasse statt zweier Klassen, die dasselbe
+    tun. Ohne ``work`` ist es der enge Lauf, wie bisher.
 
     Eine Instanz je Anwendung und kein Modul-Global, damit der Zustand eines
     Tests nicht in den naechsten leckt — dieselbe Ueberlegung wie bei
     :class:`~ebook_watchlist.web.runs.RunLauncher`.
     """
 
-    def __init__(self) -> None:
-        self._checks: dict[int, Check] = {}
+    def __init__(self, work: Callable[[Hashable], Report] | None = None) -> None:
+        self._checks: dict[Hashable, Check] = {}
         self._guard = threading.Lock()
+        self._arbeit = work
 
-    def start(self, book_id: int, *, now: datetime | None = None) -> Check:
-        """Anstossen, falls fuer dieses Buch nicht schon etwas laeuft."""
+    def start(self, key: Hashable, *, now: datetime | None = None) -> Check:
+        """Anstossen, falls fuer diesen Schluessel nicht schon etwas laeuft."""
         now = now or datetime.now()
         with self._guard:
             self._forget_old(now)
-            laufend = self._checks.get(book_id)
+            laufend = self._checks.get(key)
             if laufend is not None and laufend.busy:
                 return laufend
-            self._checks[book_id] = Check(book_id=book_id, started_at=now)
-        threading.Thread(target=self._work, args=(book_id,), daemon=True).start()
-        return self._checks[book_id]
+            self._checks[key] = Check(key=key, started_at=now)
+        threading.Thread(target=self._work, args=(key,), daemon=True).start()
+        return self._checks[key]
 
-    def state(self, book_id: int) -> Check | None:
-        """Wo dieser eine Lauf steht — ``None``, wenn keiner bekannt ist."""
+    def state(self, key: Hashable) -> Check | None:
+        """Wo dieser eine Job steht — ``None``, wenn keiner bekannt ist."""
         with self._guard:
-            return self._checks.get(book_id)
+            return self._checks.get(key)
 
-    def _work(self, book_id: int) -> None:
+    def _work(self, key: Hashable) -> None:
+        # Erst hier nachgeschlagen, nicht beim Bauen: Tests ersetzen
+        # ``check_one`` auf dem Modul, und das soll auch dann greifen.
+        arbeit = self._arbeit or check_one
         try:
-            report = check_one(book_id)
+            report = arbeit(key)
         except Exception as exc:  # noqa: BLE001 - ein Faden darf nichts mitreissen
             report = Report(trouble=f"{type(exc).__name__}: {exc}")
         with self._guard:
-            vorher = self._checks.get(book_id)
+            vorher = self._checks.get(key)
             if vorher is not None:
-                self._checks[book_id] = Check(
-                    book_id=book_id,
+                self._checks[key] = Check(
+                    key=key,
                     started_at=vorher.started_at,
                     report=report,
                     finished_at=datetime.now(),

@@ -246,3 +246,45 @@ def test_the_page_links_to_the_source(client: TestClient, db: Store) -> None:
     body = client.get("/discovery/beam/7").text
 
     assert 'href="https://beam.invalid/7"' in body
+
+
+# --- ein Urteil nachholen, wie auf der Buchseite (#15) ----------------------
+
+
+def test_a_find_can_be_judged_again_from_its_page(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bei einem Fund ist ein schlechtes Urteil teurer als bei einem Buch:
+    unter drei Sternen verschwindet er aus dem Stapel, und die Leserin sieht
+    ihn nie wieder. Derselbe Knopf, derselbe Hintergrundjob wie auf der
+    Buchseite — nichts davon nachgebaut."""
+    import threading
+
+    from ebook_watchlist.rating import Rating
+    from ebook_watchlist.ratings import BY_MODEL, VIA_DISCOVERY_PAGE
+    from ebook_watchlist.web import book as buchseite
+
+    beobachtung = fund(db, item_id="7")
+    gefragt: list[str] = []
+
+    class Stub:
+        def rate(self, observation: Observation) -> Rating:
+            gefragt.append(observation.source_item_id)
+            return Rating(stars=4, reason="Neu beurteilt.", confidence="teils",
+                          profile_version=1)
+
+    monkeypatch.setattr(buchseite, "build_rater", lambda model: Stub())
+
+    seite = client.get("/discovery/beam/7").text
+    assert "/discovery/beam/7/bewerten" in seite
+
+    client.post("/discovery/beam/7/bewerten")
+    for _ in range(250):
+        if client.get("/discovery/beam/7/bewerten").headers.get("HX-Refresh") == "true":
+            break
+        threading.Event().wait(0.02)
+
+    assert gefragt == ["7"]
+    zeile = db.ratings_for([subject_of(beobachtung)])[(subject_of(beobachtung), BY_MODEL)]
+    assert zeile.via == VIA_DISCOVERY_PAGE
+    assert "Neu beurteilt." in client.get("/discovery/beam/7").text

@@ -89,7 +89,7 @@ def test_a_second_start_does_not_duplicate_a_running_check(
 def test_waiting_and_searching_are_told_apart() -> None:
     """Ein enger Lauf ist nach gemessenen 2,1 s durch. Dauert es länger, hält
     ein großer Lauf die Sperre — und das ist etwas anderes als „sucht"."""
-    laeuft = recheck.Check(book_id=7, started_at=NOW)
+    laeuft = recheck.Check(key=7, started_at=NOW)
 
     assert laeuft.label(now=NOW + timedelta(seconds=1)) == "sucht …"
     assert laeuft.label(now=NOW + timedelta(minutes=2)) == "wartet …"
@@ -257,3 +257,24 @@ def test_a_narrow_run_fetches_the_cover(data_dir: Path, db: Store) -> None:
 
     assert (paths.covers_dir() / file_name(adresse)).is_file()
     assert db.book(buch_id).cover_file == file_name(adresse)
+
+
+def test_the_same_keeper_carries_other_work(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Das Urteil laeuft ueber denselben Verwalter wie der enge Lauf (#15):
+    welche Arbeit getan wird, kommt herein, und der Schluessel muss keine
+    Buchnummer sein."""
+    getan: list[object] = []
+
+    def arbeit(key: object) -> Report:
+        getan.append(key)
+        return Report(trouble="geurteilt")
+
+    urteiler = recheck.Rechecker(work=arbeit)
+    urteiler.start(("item", "beam", "7"), now=NOW)
+    for _ in range(100):
+        if not urteiler.state(("item", "beam", "7")).busy:
+            break
+        threading.Event().wait(0.02)
+
+    assert getan == [("item", "beam", "7")]
+    assert urteiler.state(("item", "beam", "7")).trouble == "geurteilt"

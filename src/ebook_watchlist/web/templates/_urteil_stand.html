@@ -1,0 +1,42 @@
+{# Knopf und Stand eines Urteils, neben „Wie gut das passt" (#15).
+
+   Eine Vorlage für Buch- und Fundseite: was sie unterscheidet, ist nur die
+   Adresse, und die kommt herein. Dieselbe Vorlage ist auch das Fragment, das
+   htmx nachlädt — Seite und Nachfrage können so nie Verschiedenes zeigen.
+
+   Solange ein Urteil entsteht, fragt die Zeile alle zwei Sekunden nach; ist
+   es fertig, lädt die Seite neu, denn dann hat sich nicht eine Zeile
+   geändert, sondern der ganze Abschnitt. Dasselbe Muster wie beim engen Lauf
+   (`_book_status.html`), kein Websocket (ADR 3).
+
+   Der Knopf steht immer. Das Modell urteilt nicht deterministisch — gemessen
+   3, 2, 2, 2 Sterne am selben Buch —, und nach einer Berichtigung will man neu
+   urteilen. Keine Rückfrage: das alte Urteil ist nur eine Momentaufnahme
+   desselben Modells, und es bleibt sichtbar, bis das neue steht.
+
+   Erwartet: `url` (wohin der Knopf schickt), `job` (der Stand, oder nichts),
+   `vorhanden` (ob schon ein Maschinenurteil dasteht). #}
+<span id="urteil-stand"
+      class="ml-auto flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs
+             font-normal text-soft"
+      {% if job and job.busy %}
+      hx-get="{{ url }}"
+      hx-trigger="every 2s"
+      hx-target="this"
+      hx-swap="outerHTML"
+      {% endif %}>
+  {% if job and job.busy %}
+  <svg class="i animate-spin text-accent"><use href="#ic-spin"/></svg>beurteilt …
+  {% else %}
+  {% if job and job.trouble %}
+  <span class="text-danger">{{ job.trouble }}</span>
+  {% endif %}
+  <button type="button" hx-post="{{ url }}" hx-target="#urteil-stand" hx-swap="outerHTML"
+          title="{{ 'neu beurteilen' if vorhanden else 'beurteilen lassen' }} — dauert etwa eine Minute"
+          class="tun flex items-center gap-1 rounded px-1.5 py-1 hover:bg-hair
+                 hover:text-accent">
+    <svg class="i"><use href="#ic-refresh"/></svg>
+    {{- 'neu beurteilen' if vorhanden else 'beurteilen lassen' }}</button>
+  <span>dauert etwa eine Minute</span>
+  {% endif %}
+</span>

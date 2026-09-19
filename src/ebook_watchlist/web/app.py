@@ -21,7 +21,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -29,6 +29,7 @@ from .. import paths
 from ..config import ConfigError, load_profile
 from ..models import LinkOutcome
 from ..relations import RelationKind
+from ..single import Report
 from ..sources import registry
 from ..store import RunRow, Store
 from . import (
@@ -234,6 +235,40 @@ def create_app() -> FastAPI:
     # (Ticket 10).
     launcher = RunLauncher()
     rechecker = Rechecker()
+
+    def _urteilen(key) -> Report:
+        """Die Arbeit des zweiten Verwalters: ein Urteil holen (#15).
+
+        Derselbe Verwalter wie beim engen Lauf, nur mit anderer Arbeit. Der
+        Schluessel sagt, was beurteilt wird: ``("book", 39)`` fuer die
+        Buchseite, ``("item", "beam", "7")`` fuer einen Fund.
+        """
+        store, profile, now = _store_for(paths.db_path()), load_profile(), datetime.now()
+        if key[0] == "book":
+            return Report(trouble=book.rate(store, profile, key[1], now=now))
+        return Report(trouble=discovery.rate(store, profile, key[1], key[2], now=now))
+
+    urteiler = Rechecker(work=_urteilen)
+
+    def _lauf_unterwegs(store: Store, profile) -> bool:
+        """Ob gerade ein grosser Lauf jedes Buch anfasst — fuer den Kopf der Seite."""
+        return launcher.state(store, profile.slug).busy
+
+    def _urteil_stand(request: Request, key, url: str) -> Response:
+        """Das Fragment neben *Wie gut das passt*, solange ein Urteil entsteht.
+
+        Ist der Job fertig, kommt keine Zeile zurueck, sondern die Bitte, die
+        Seite neu zu laden: danach hat sich nicht eine Zeile geaendert, sondern
+        der ganze Abschnitt — das neue Urteil, oder der Grund, warum es keins
+        gibt. Solange er laeuft, fragt die Seite alle zwei Sekunden nach
+        (ADR 3, kein Websocket).
+        """
+        job = urteiler.state(key)
+        if job is None or not job.busy:
+            return Response(status_code=204, headers={"HX-Refresh": "true"})
+        return TEMPLATES.TemplateResponse(
+            request, "_urteil_stand.html", {"url": url, "job": job, "vorhanden": True}
+        )
 
     @app.exception_handler(ConfigError)
     def broken_configuration(request: Request, exc: ConfigError) -> HTMLResponse:
@@ -571,7 +606,7 @@ def create_app() -> FastAPI:
     # --- Buchseite (Ticket 07) ---------------------------------------------
 
     @app.get("/book/{book_id}", response_class=HTMLResponse)
-    def book_page(request: Request, book_id: int, trouble: str = "") -> HTMLResponse:
+    def book_page(request: Request, book_id: int) -> HTMLResponse:
         try:
             profile = load_profile()
         except ConfigError as exc:
@@ -581,7 +616,8 @@ def create_app() -> FastAPI:
                 {"message": str(exc), "asset_version": asset_version()},
                 status_code=500,
             )
-        page = book.build(_store_for(paths.db_path()), profile, book_id)
+        store = _store_for(paths.db_path())
+        page = book.build(store, profile, book_id)
         if page is None:
             raise HTTPException(status_code=404, detail="kein solches Buch")
         return TEMPLATES.TemplateResponse(
@@ -595,28 +631,26 @@ def create_app() -> FastAPI:
                 "icons": symbols.RELATION_ICONS,
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
-                # Warum das Bewerten nicht ging. Kommt aus der Adresse, weil
-                # die Route davor umleitet — ein Neuladen soll kein zweites
-                # Urteil holen.
-                "trouble": trouble,
+                "urteil_job": urteiler.state(("book", book_id)),
+                "lauf_unterwegs": _lauf_unterwegs(store, profile),
             },
         )
 
     @app.post("/book/{book_id}/bewerten")
-    def book_rate(book_id: int) -> RedirectResponse:
-        """Das Tor jetzt ueber dieses Buch urteilen lassen (Ticket 55).
+    def book_rate(request: Request, book_id: int) -> Response:
+        """Das Tor jetzt ueber dieses Buch urteilen lassen (Ticket 55, #15).
 
-        Dauert Sekunden — die Seite wartet darauf, statt wie der enge Lauf
-        nachzufragen: danach hat sich nicht eine Zeile geaendert, sondern der
-        ganze Abschnitt.
+        Im Hintergrund: ein Aufruf dauert rund 43 Sekunden, und vorher wartete
+        der Browser so lange auf die Antwort. Ein zweiter Klick, waehrend einer
+        laeuft, startet keinen zweiten.
         """
-        trouble = book.rate(
-            _store_for(paths.db_path()), load_profile(), book_id, now=datetime.now()
-        )
-        ziel = f"/book/{book_id}"
-        if trouble:
-            ziel += "?" + urlencode({"trouble": trouble})
-        return RedirectResponse(ziel, status_code=303)
+        urteiler.start(("book", book_id))
+        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/bewerten")
+
+    @app.get("/book/{book_id}/bewerten")
+    def book_rate_status(request: Request, book_id: int) -> Response:
+        """Hier fragt die Seite nach, solange das Urteil entsteht."""
+        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/bewerten")
 
     @app.post("/book/{book_id}/bearbeiten")
     def book_edit(
@@ -746,8 +780,22 @@ def create_app() -> FastAPI:
                 "page": page,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
+                "urteil_job": urteiler.state(("item", source, item_id)),
+                "lauf_unterwegs": _lauf_unterwegs(store, profile),
             },
         )
+
+    @app.post("/discovery/{source}/{item_id}/bewerten")
+    def discovery_rate(request: Request, source: str, item_id: str) -> Response:
+        """Einen Fund neu beurteilen lassen — derselbe Weg wie auf der Buchseite (#15)."""
+        key = ("item", source, item_id)
+        urteiler.start(key)
+        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/bewerten")
+
+    @app.get("/discovery/{source}/{item_id}/bewerten")
+    def discovery_rate_status(request: Request, source: str, item_id: str) -> Response:
+        key = ("item", source, item_id)
+        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/bewerten")
 
     # --- Triage (Ticket 08) -------------------------------------------------
 

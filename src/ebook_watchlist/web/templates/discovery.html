@@ -50,7 +50,8 @@
      reihe=page.series,
      cover_file=page.cover_file,
      deal=page.deal,
-     kacheln=kacheln) }}
+     kacheln=kacheln,
+     lauf_unterwegs=lauf_unterwegs) }}
 
 {# Die drei Entscheidungen, dieselben wie im Stapel und auf der Startseite.
    Hier mit Wort: eine Detailseite hat Platz, und wer hier gelandet ist, ist
@@ -77,15 +78,26 @@
 
 {# Das Urteil des Tors, ausgeschrieben. Gespeichert und nie gezeigt war es für
    niemanden nachprüfbar (ADR 19) — im Stapel steht nur der Pitch. #}
+{# Der Abschnitt steht immer, denn der Knopf braucht einen Platz: auch ein Fund
+   ohne Urteil laesst sich beurteilen, und ein schlechtes Urteil ist hier
+   teurer als bei einem Buch — unter drei Sternen verschwindet er aus dem
+   Stapel. Knopf und Stand aus derselben Vorlage wie auf der Buchseite (#15). #}
 {% set machine = page.judgements | rejectattr("is_human") | rejectattr("is_foreign") | list %}
 {% set fremd = page.judgements | selectattr("is_foreign") | list %}
+{% call abschnitt("Wie gut das passt", "ic-star") %}
+  {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/bewerten", job=urteil_job,
+          vorhanden=machine | length > 0 %}
+  {% include "_urteil_stand.html" %}
+  {% endwith %}
+{% endcall %}
 {% if machine or fremd %}
-{{ abschnitt("Wie gut das passt", "ic-star") }}
 <ul class="space-y-4">
   {% for judgement in machine + fremd %}
   <li>{{ urteil(judgement) }}</li>
   {% endfor %}
 </ul>
+{% else %}
+<p class="text-sm text-soft">Noch nicht beurteilt.</p>
 {% endif %}
 
 {# Dieselbe Tabelle wie auf der Buchseite, dieselbe Grenze: ein Fund, der seit

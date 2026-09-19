@@ -47,6 +47,8 @@ BY_ONLEIHE_READERS = "onleihe_readers"
 VIA_RUN = "run"
 VIA_BACKLOG = "backlog"
 VIA_BOOK_PAGE = "book_page"
+#: Von der Seite eines Funds aus, per Knopf (#15).
+VIA_DISCOVERY_PAGE = "discovery_page"
 
 RATING_ORIGINS: frozenset[str] = frozenset(
     {BY_MODEL, BY_CONVERSATION, BY_READER, BY_ONLEIHE_READERS}

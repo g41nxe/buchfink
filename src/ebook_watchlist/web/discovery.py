@@ -20,6 +20,7 @@ from datetime import datetime
 
 from ..config import Profile
 from ..deals import is_strong_deal
+from ..ratings import VIA_DISCOVERY_PAGE
 from ..reasons import thema_name
 from ..sources import registry
 from ..store import Store
@@ -32,6 +33,7 @@ from .book import (
     _judgements,
     _origin,
     _price,
+    rate_observation,
 )
 from .triage import _cover_file
 
@@ -86,6 +88,20 @@ class Page:
     @property
     def hidden_history(self) -> int:
         return max(0, len(self.history) - HISTORY_ROWS)
+
+
+def rate(store: Store, profile: Profile, source: str, item_id: str, *, now: datetime) -> str:
+    """Einen Fund von seiner Seite aus neu beurteilen lassen (#15).
+
+    Dieselbe Funktion wie auf der Buchseite, nur der Fund ist ein anderer: hier
+    der, um den es auf der Seite geht, in seiner juengsten Fassung. Bei einem
+    Fund ist ein schlechtes Urteil teurer als bei einem Buch — unter drei
+    Sternen verschwindet er aus dem Stapel.
+    """
+    seen = store.observations_for_item(profile.slug, source, item_id)
+    if not seen:
+        return "Diesen Fund hat noch niemand gesehen — es gibt nichts zu beurteilen."
+    return rate_observation(store, profile, seen[0], now=now, via=VIA_DISCOVERY_PAGE)
 
 
 def build(store: Store, profile: Profile, source: str, item_id: str) -> Page | None:

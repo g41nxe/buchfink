@@ -537,9 +537,39 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
     nicht bewertet". Eine Auskunft wäre das Urteil trotzdem, und hier holt es
     sich die Leserin.
 
-    Kein eigener Faden wie beim engen Lauf: der wartet unter Umständen Minuten
-    auf die Dateisperre, das hier ist **ein** Aufruf. Eine ``def``-Route gibt
-    Starlette ohnehin an den Threadpool, der Server steht also nicht still.
+    Laeuft im Hintergrund (#15): ein Aufruf dauert rund 43 Sekunden, und
+    vorher wartete der Browser so lange auf die Antwort.
+
+    Zurück kommt der Grund, warum es nicht ging — leer heißt: das Urteil steht.
+    """
+    seen = store.observations_for_book(profile.slug, book_id)
+    if not seen:
+        return "Noch kein Fund zu diesem Buch — es gibt nichts zu beurteilen."
+
+    # Das Urteil hängt am Fund, nicht am Buch (ADR 18): am jüngsten, denn er
+    # trägt den aktuellen Preis und die aktuelle Verfügbarkeit.
+    book = store.book(book_id)
+    return rate_observation(
+        store, profile, seen[0], now=now, via=VIA_BOOK_PAGE,
+        blurb=book.blurb if book is not None else None,
+    )
+
+
+def rate_observation(
+    store: Store,
+    profile: Profile,
+    observation,
+    *,
+    now: datetime,
+    via: str,
+    blurb: str | None = None,
+) -> str:
+    """Einen Fund beurteilen lassen und das Urteil speichern — für Buch- und Fundseite.
+
+    Eine Stelle, damit beide Seiten dasselbe tun (#15): welcher Fund beurteilt
+    wird, entscheidet die Seite, wie beurteilt wird, entscheidet diese
+    Funktion. Gespeichert wird **erst bei Erfolg** — scheitert der Aufruf,
+    bleibt das alte Urteil stehen.
 
     Zurück kommt der Grund, warum es nicht ging — leer heißt: das Urteil steht.
     """
@@ -550,20 +580,12 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
             "noch eine angemeldete Claude-Code-Installation."
         )
 
-    seen = store.observations_for_book(profile.slug, book_id)
-    if not seen:
-        return "Noch kein Fund zu diesem Buch — es gibt nichts zu beurteilen."
-
-    # Das Urteil hängt am Fund, nicht am Buch (ADR 18): am jüngsten, denn er
-    # trägt den aktuellen Preis und die aktuelle Verfügbarkeit.
-    observation = seen[0]
-    book = store.book(book_id)
     # Der ganze Klappentext steht meist schon am Buch. Anders als der Lauf
     # (``_with_full_blurbs``) holt diese Seite deshalb keine Detailseite —
     # ein Knopfdruck soll keine Quelle anfragen.
     duenn = not observation.blurb or is_truncated(observation.blurb)
-    if duenn and book is not None and book.blurb:
-        observation = replace(observation, blurb=book.blurb)
+    if duenn and blurb:
+        observation = replace(observation, blurb=blurb)
 
     try:
         rating = rater.rate(observation)
@@ -581,7 +603,7 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
         now=now,
         origin=BY_MODEL,
         pitch=rating.pitch,
-        via=VIA_BOOK_PAGE,
+        via=via,
     )
     return ""
 

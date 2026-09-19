@@ -6,6 +6,7 @@ Angaben lagen vorher über vier Dateien verstreut, die einander nicht kannten.
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -670,6 +671,23 @@ class StubRater:
         return self.rating
 
 
+def urteil_abwarten(client: TestClient, pfad: str) -> str:
+    """Den Knopf druecken und warten, bis der Hintergrundjob fertig ist (#15).
+
+    Die Seite fragt nach, solange er laeuft, und laesst sich neu laden, sobald
+    er fertig ist — genau das tut der Test auch. Zurueck kommt die Seite.
+    """
+    client.post(f"{pfad}/bewerten")
+    for _ in range(250):
+        stand = client.get(f"{pfad}/bewerten")
+        if stand.headers.get("HX-Refresh") == "true":
+            break
+        threading.Event().wait(0.02)
+    else:
+        raise AssertionError("das Urteil wurde nicht fertig")
+    return client.get(pfad).text
+
+
 def test_the_button_fetches_a_judgement_for_this_one_book(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -681,7 +699,7 @@ def test_the_button_fetches_a_judgement_for_this_one_book(
                              profile_version=1, pitch="Eine Flucht."))
     monkeypatch.setattr(view, "build_rater", lambda model: rater)
 
-    body = client.post(f"/book/{buch.id}/bewerten").text
+    body = urteil_abwarten(client, f"/book/{buch.id}")
 
     assert [o.source_item_id for o in rater.asked] == ["1"]
     # Am Fund geschluesselt, nicht am Buch (ADR 18) — und trotzdem auf der
@@ -694,6 +712,60 @@ def test_the_button_fetches_a_judgement_for_this_one_book(
     assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].via == VIA_BOOK_PAGE
 
 
+def test_the_page_does_not_wait_for_the_model(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ein Aufruf dauert rund 43 Sekunden, und bisher wartete der Browser so
+    lange auf die Antwort. Jetzt kommt sofort der Stand zurueck, und die Seite
+    fragt nach, bis das Urteil steht (#15)."""
+    buch = db.books()[0]
+    sighting(db, buch.id, when=NOW)
+    losgelassen = threading.Event()
+
+    class Langsam(StubRater):
+        def rate(self, observation: Observation) -> Rating:
+            losgelassen.wait(5)
+            return super().rate(observation)
+
+    monkeypatch.setattr(view, "build_rater", lambda model: Langsam(
+        Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1)))
+    try:
+        stand = client.post(f"/book/{buch.id}/bewerten").text
+
+        assert "beurteilt" in stand
+        assert "every 2s" in stand
+        # Die Seite zeigt denselben Stand, solange er laeuft.
+        assert "beurteilt" in client.get(f"/book/{buch.id}").text
+    finally:
+        losgelassen.set()
+
+
+def test_the_old_judgement_stays_while_the_new_one_is_made(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ersetzt wird erst beim Speichern — eine Minute lang steht die Seite
+    nicht leer (#15)."""
+    buch = db.books()[0]
+    sighting(db, buch.id, when=NOW)
+    db.put_rating("item:beam:1", stars=3, confidence="teils", reason="Das alte Urteil.",
+                  profile_version=1, now=NOW, origin=BY_MODEL)
+    losgelassen = threading.Event()
+
+    class Langsam(StubRater):
+        def rate(self, observation: Observation) -> Rating:
+            losgelassen.wait(5)
+            return super().rate(observation)
+
+    monkeypatch.setattr(view, "build_rater", lambda model: Langsam(
+        Rating(stars=4, reason="Das neue.", confidence="teils", profile_version=1)))
+    try:
+        client.post(f"/book/{buch.id}/bewerten")
+
+        assert "Das alte Urteil." in client.get(f"/book/{buch.id}").text
+    finally:
+        losgelassen.set()
+
+
 def test_without_a_rater_the_page_says_why(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -703,24 +775,25 @@ def test_without_a_rater_the_page_says_why(
     sighting(db, buch.id, when=NOW)
     monkeypatch.setattr(view, "build_rater", lambda model: None)
 
-    body = client.post(f"/book/{buch.id}/bewerten").text
-
-    assert "Kein Bewerter eingerichtet" in body
+    assert "Kein Bewerter eingerichtet" in urteil_abwarten(client, f"/book/{buch.id}")
 
 
 def test_a_refusal_from_the_model_is_named_not_swallowed(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Und das alte Urteil bleibt ganz, wenn der Aufruf scheitert (#15)."""
     buch = db.books()[0]
     sighting(db, buch.id, when=NOW)
+    db.put_rating("item:beam:1", stars=3, confidence="teils", reason="Das alte Urteil.",
+                  profile_version=1, now=NOW, origin=BY_MODEL)
     monkeypatch.setattr(
         view, "build_rater", lambda model: StubRater(RatingUnavailable("Modell antwortete 429"))
     )
 
-    body = client.post(f"/book/{buch.id}/bewerten").text
+    body = urteil_abwarten(client, f"/book/{buch.id}")
 
     assert "Modell antwortete 429" in body
-    assert db.ratings_for(["item:beam:1"]) == {}
+    assert "Das alte Urteil." in body
 
 
 def test_a_book_nobody_has_seen_yet_cannot_be_judged(
@@ -732,22 +805,41 @@ def test_a_book_nobody_has_seen_yet_cannot_be_judged(
     rater = StubRater(Rating(stars=5, reason="Egal.", confidence="belegt", profile_version=1))
     monkeypatch.setattr(view, "build_rater", lambda model: rater)
 
-    body = client.post(f"/book/{buch.id}/bewerten").text
+    body = urteil_abwarten(client, f"/book/{buch.id}")
 
     assert rater.asked == []
     assert "Noch kein Fund" in body
 
 
-def test_the_button_is_gone_once_a_judgement_stands(client: TestClient, db: Store) -> None:
-    """Ein zweites Urteil zur selben Profilfassung gaebe dieselbe Antwort und
-    kostete einen Aufruf (Ticket 25)."""
+def test_the_button_stays_once_a_judgement_stands(client: TestClient, db: Store) -> None:
+    """Das Modell urteilt nicht deterministisch — gemessen 3, 2, 2, 2 Sterne am
+    selben Buch —, und nach einer Berichtigung will man neu urteilen. Bisher
+    verschwand der Knopf, sobald ein Urteil dastand (#15)."""
     buch = db.books()[0]
-    assert f"/book/{buch.id}/bewerten" in client.get(f"/book/{buch.id}").text
-
-    db.put_rating(book_subject(buch.id), stars=3, confidence="teils", reason="Steht.",
+    sighting(db, buch.id, when=NOW)
+    db.put_rating("item:beam:1", stars=3, confidence="teils", reason="Steht.",
                   profile_version=1, now=NOW, origin=BY_MODEL)
 
-    assert f"/book/{buch.id}/bewerten" not in client.get(f"/book/{buch.id}").text
+    body = client.get(f"/book/{buch.id}").text
+
+    assert f"/book/{buch.id}/bewerten" in body
+    assert "neu beurteilen" in body
+    assert "etwa eine Minute" in body
+
+
+def test_a_running_run_is_named_in_the_head(client: TestClient, db: Store) -> None:
+    """Der grosse Lauf fasst jedes Buch an; bisher sah man auf der Buchseite
+    nicht, dass sich die Angaben gleich aendern koennen (#15)."""
+    import os
+
+    buch = db.books()[0]
+    assert "Ein Lauf ist gerade unterwegs" not in client.get(f"/book/{buch.id}").text
+
+    # Jetzt und mit lebendem Prozess: ein Lauf von vor Tagen gilt zu Recht als
+    # abgebrochen, nicht als unterwegs.
+    db.start_run(load_profile().slug, "cli", datetime.now(), pid=os.getpid())
+
+    assert "Ein Lauf ist gerade unterwegs" in client.get(f"/book/{buch.id}").text
 
 
 # --- zwei Bibliotheken, zwei Kacheln ----------------------------------------
