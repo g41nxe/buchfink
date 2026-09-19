@@ -12,7 +12,7 @@
 # nur ein Nachschlagen liefert. Steht dort "recherche" und kann der Bewerter
 # nicht nachschlagen, dann ruht sein Urteil zu diesem Abschnitt auf Ableitung.
 
-version: 3
+version: 4
 
 einleitung: >
   Das Genre entscheidet nicht — es sagt nur, wo das Folgende erfahrungsgemäß
@@ -105,7 +105,6 @@ genres:
     - Psychothriller
     - Thriller allgemein, auch Cop-Noir und apokalyptischer Thriller
     - Krimi mit schwarzem Humor
-    - Horror und Mystery
     - Science-Fiction, besonders Space Horror und Military SF
     - Space Opera
     - Cyberpunk
@@ -116,6 +115,7 @@ genres:
   # Gegenanzeigen: ziehen auf null, gleichgültig wie viel sonst stimmt.
   passt_nicht:
     - Cozy-Krimi
+    - Erotik
     - >-
       Young Adult, wenn das Buch auch so erzählt: Jugendliche und ihr
       Erwachsenwerden stehen im Mittelpunkt, die Härte ist weichgezeichnet.
