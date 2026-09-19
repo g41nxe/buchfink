@@ -57,6 +57,8 @@ class Detail:
     votes: int | None = None
     #: Der Klappentext. Kostet wie das Titelbild keine eigene Anfrage.
     blurb: str | None = None
+    #: Die Leseprobe als EPUB, fuer den Bewerter (#17).
+    sample_url: str | None = None
 
     @property
     def availability(self) -> Availability:
@@ -119,7 +121,23 @@ def parse_detail(html: str) -> Detail:
         rating=_rating(page),
         votes=_votes(page),
         blurb=_blurb(page),
+        sample_url=_sample(page),
     )
+
+
+def _sample(page) -> str | None:
+    """Die EPUB-Datei hinter dem Knopf "Leseprobe".
+
+    Der Knopf zeigt auf den Webreader, ``reader.onleihe.de/#/read?url=…``; die
+    Datei steht im Fragment, wo ``urlsplit`` keine Abfrage sucht. Deshalb der
+    Schnitt am ``url=``.
+    """
+    link = page.select_one(sel.SAMPLE_LINK)
+    href = link.get("href") if link is not None else None
+    if not isinstance(href, str):
+        return None
+    datei = href.split("url=", 1)[1].strip()
+    return datei if datei.startswith("https://") else None
 
 
 def _rating(page) -> int | None:

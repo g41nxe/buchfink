@@ -51,6 +51,10 @@ class Item:
     #: Seite wird fuer den Klappentext ohnehin geholt; es hier fallen zu
     #: lassen hiesse, sie fuer dasselbe Bild ein zweites Mal zu holen.
     cover_url: str | None = None
+    #: Die Leseprobe als EPUB, wo die Quelle eine anbietet (#17).
+    sample_url: str | None = None
+    #: Die Schlagwoerter der Quelle, ohne Autor und Titel (#17).
+    keywords: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)

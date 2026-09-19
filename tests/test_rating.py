@@ -121,6 +121,31 @@ def test_a_whole_blurb_is_not_flagged() -> None:
     assert "abgeschnitten" not in text
 
 
+def test_the_evidence_reaches_the_prompt() -> None:
+    """Schlagwörter, Originaltitel und der Anfang des Buchs (#17). Die Probe
+    steht als solche ausgewiesen da: das Modell soll wissen, dass es den Text
+    selbst liest und nicht noch einen Werbetext."""
+    text = prompt_for(
+        discovery(
+            keywords=("Space Opera", "Dune"),
+            original_title="Old Man's War",
+            sample="An meinem fünfundsiebzigsten Geburtstag tat ich zwei Dinge.",
+        ),
+        LESEPROFIL,
+        SCHEMA,
+    )
+
+    assert "Space Opera, Dune" in text
+    assert "Old Man's War" in text
+    assert "Leseprobe" in text
+    assert "An meinem fünfundsiebzigsten Geburtstag" in text
+
+
+def test_without_a_sample_the_prompt_says_so() -> None:
+    """Sonst liest das Modell das Fehlen nicht mit und belegt aus dem Klappentext."""
+    assert "keine Leseprobe" in prompt_for(discovery(), LESEPROFIL, SCHEMA)
+
+
 # --- die Antwort ------------------------------------------------------------
 
 
@@ -218,7 +243,7 @@ def test_the_gate_judges_the_whole_blurb_not_the_teaser(store: Store) -> None:
 
     gate.apply(
         [first_seen(angeriss)], store=store, rater=rater, profile_version=1,
-        threshold=3, budget=10, now=NOW, full_blurbs=voller_text,
+        threshold=3, budget=10, now=NOW, evidence=voller_text,
     )
 
     assert geholt == [angeriss.key]
@@ -1306,6 +1331,19 @@ def test_a_judgement_that_contradicts_itself_is_refused(
     Bezug verschwaende still, und niemand pruefte mehr etwas."""
     with pytest.raises(RatingUnavailable, match=grund):
         parse_answer(antwort(stars, trifft, fehlt), 1, SCHEMA, axes=ACHSEN)
+
+
+def test_belegt_needs_the_sample() -> None:
+    """Auf Klappentext und Schlagwörtern allein ist "belegt" zu viel (#17): sie
+    versprechen, was das Buch vielleicht nicht hält. Ohne Leseprobe wird
+    herabgestuft, nicht verworfen — die Sterne tragen trotzdem."""
+    import json
+
+    belegt = json.dumps({"stars": 4, "confidence": "belegt", "reason": "Zieht.",
+                         "pitch": "Ein Duell.", "trifft": ["Tempo"], "fehlt": []})
+
+    assert parse_answer(belegt, 1, SCHEMA, had_sample=False).confidence == "teils"
+    assert parse_answer(belegt, 1, SCHEMA, had_sample=True).confidence == "belegt"
 
 
 def test_a_low_judgement_may_hit_nothing() -> None:

@@ -81,6 +81,10 @@ DETAIL_DESCRIPTION = "[itemprop=description]"
 #: beides und schreibt den Anfang doppelt in die Datenbank (Ticket 40).
 DETAIL_DESCRIPTION_FULL = ".description--full"
 DETAIL_DESCRIPTION_PREVIEW = ".description--preview"
+#: Die Leseprobe als EPUB, verlinkt unter "Downloads" (#17).
+DETAIL_SAMPLE = 'a.link--download[href$=".epub"]'
+#: Die Schlagwoerter des Shops — Motive, Vergleichstitel, dazu Autor und Titel.
+DETAIL_KEYWORDS = 'meta[name="keywords"]'
 
 # --- listing --------------------------------------------------------------
 

@@ -274,6 +274,8 @@ class BeamSource(ShopSource):
             url=detail.url or url,
             blurb=detail.blurb,
             cover_url=detail.cover_url,
+            sample_url=detail.sample_url,
+            keywords=detail.keywords,
         )
 
     def probe(self) -> None:

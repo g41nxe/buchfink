@@ -126,7 +126,7 @@ def apply(
     budget: int,
     now: datetime,
     batch_size: int = BATCH_SIZE,
-    full_blurbs: Callable[[list[Observation]], list[Observation]] | None = None,
+    evidence: Callable[[list[Observation]], list[Observation]] | None = None,
 ) -> tuple[list[Delta], GateReport]:
     """Entdeckungen unter dem Schwellwert aussortieren.
 
@@ -140,7 +140,7 @@ def apply(
     ausgehende Anfrage in diesem Projekt bindet (ADR 7). Ein gespeichertes
     Urteil kostet nichts und zählt deshalb nicht mit.
 
-    ``full_blurbs`` holt den ganzen Klappentext für genau die Bücher, die
+    ``evidence`` holt den ganzen Klappentext für genau die Bücher, die
     gleich beurteilt werden — der Lauf reicht dafür seine Quellen herein, das
     Tor kennt keine. Ohne das urteilte es auf dem Anriss der Trefferliste: im
     Median 197 Zeichen und zu 85 % abgeschnitten, während die Detailseite rund
@@ -169,8 +169,9 @@ def apply(
     # `attempted` gegen `fresh`, und das Tor zaehlte Buecher als gefragt, die
     # nie beurteilt wurden.
     attempted = {observation.key for observation in wanted}
-    if wanted and full_blurbs is not None:
-        voller = {observation.key: observation for observation in full_blurbs(wanted)}
+    if wanted and evidence is not None:
+        # Seit #17 auch Leseprobe, Schlagwoerter und Originaltitel.
+        voller = {observation.key: observation for observation in evidence(wanted)}
         wanted = [voller.get(observation.key, observation) for observation in wanted]
     fresh = rate_in_batches(rater, wanted, size=batch_size) if wanted else {}
 

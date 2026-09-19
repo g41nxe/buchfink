@@ -153,6 +153,12 @@ class BookRow(Base):
     __table_args__ = (Index("ix_book_title", "title"),)
 
 
+#: Die Fassung, in der ``dnb.parse`` einen Datensatz liest. Hochzaehlen, wenn
+#: es ein Feld mehr liest: dann werden die schon gefundenen einmal neu gefragt.
+#: 2 = Originaltitel und Schlagwoerter (#17).
+DNB_READING = 2
+
+
 class DnbRecordRow(Base):
     """Was die DNB zu einer ISBN gesagt hat — auch das Schweigen (Ticket 42).
 
@@ -178,6 +184,12 @@ class DnbRecordRow(Base):
     series: Mapped[str | None] = mapped_column(String, nullable=True)
     series_index: Mapped[str | None] = mapped_column(String, nullable=True)
     language: Mapped[str | None] = mapped_column(String, nullable=True)
+    original_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: JSON-Liste der Schlagwoerter aus ``653``.
+    keywords: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Mit welcher Fassung des Auslesens die Antwort gelesen wurde. Liest der
+    #: Parser mehr als frueher, wird ein altes Ja einmal neu gefragt (#17).
+    reading: Mapped[int] = mapped_column(Integer, default=DNB_READING)
 
 
 class DnbContainsRow(Base):
@@ -814,7 +826,11 @@ class Store:
         Lauf, danach geht das Budget wieder an die Funde.
         """
         with self.session() as session:
-            schon = select(DnbRecordRow.isbn)
+            # Ein Nein bleibt ein Nein; ein Ja, das ein aelterer Parser las,
+            # wird einmal neu gefragt (#17).
+            schon = select(DnbRecordRow.isbn).where(
+                or_(DnbRecordRow.found.is_(False), DnbRecordRow.reading >= DNB_READING)
+            )
             eigene = select(BookRow.isbn).where(BookRow.isbn.is_not(None))
             erst_die_buecher = case((ObservationRow.isbn.in_(eigene), 0), else_=1)
             stmt = (
@@ -850,10 +866,35 @@ class Store:
                 zeile.series = record.series
                 zeile.series_index = record.series_index
                 zeile.language = record.language
+                zeile.original_title = record.original_title
+                zeile.keywords = json.dumps(list(record.keywords), ensure_ascii=False)
                 for enthalten in record.contains:
                     if session.get(DnbContainsRow, (isbn, enthalten)) is None:
                         session.add(DnbContainsRow(isbn=isbn, contained=enthalten))
+            zeile.reading = DNB_READING
             session.commit()
+
+    def dnb_facts(self, isbns: Iterable[str]) -> dict[str, tuple[str | None, tuple[str, ...]]]:
+        """ISBN -> (Originaltitel, Schlagwoerter), wo die DNB eines von beiden nennt.
+
+        Fuer den Bewerter (#17): was der Verlag selbst an Motiven und
+        Vergleichstiteln angibt, steht weder im Titel noch im Klappentext.
+        """
+        gesucht = [isbn for isbn in isbns if isbn]
+        if not gesucht:
+            return {}
+        with self.session() as session:
+            zeilen = session.execute(
+                select(
+                    DnbRecordRow.isbn, DnbRecordRow.original_title, DnbRecordRow.keywords
+                ).where(DnbRecordRow.isbn.in_(gesucht), DnbRecordRow.found.is_(True))
+            )
+            fakten = {}
+            for isbn, original, schlagwoerter in zeilen:
+                woerter = tuple(json.loads(schlagwoerter)) if schlagwoerter else ()
+                if original or woerter:
+                    fakten[isbn] = (original, woerter)
+            return fakten
 
     def dnb_languages(self) -> dict[str, str]:
         """ISBN -> Sprache, fuer jede ISBN, zu der die DNB eine nennt (#10)."""

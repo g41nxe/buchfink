@@ -34,6 +34,7 @@ seriell und mit Pause abfragen.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 from .http import FetchError, HttpClient
@@ -63,6 +64,12 @@ class Record:
     language: str | None = None
     #: ISBNs der enthaltenen Bände, aus ``770 $i Enthält``.
     contains: tuple[str, ...] = ()
+    #: Der Titel des Originals, aus ``240 $a`` — bei einer Übersetzung der
+    #: Schlüssel zu allem, was nur die englische Ausgabe kennt (#17).
+    original_title: str | None = None
+    #: Die Schlagwörter des Verlags aus ``653``: Motive und Vergleichstitel.
+    #: Ohne die Codes für den Handel, die dort in Klammern vorangestellt sind.
+    keywords: tuple[str, ...] = ()
 
     @property
     def is_empty(self) -> bool:
@@ -72,7 +79,10 @@ class Record:
 
 
 def _clean(text: str) -> str:
-    return _SORT_MARKS.sub("", text).strip()
+    # Die DNB liefert Umlaute zerlegt: "a" und ein kombinierendes Trema. Das
+    # sieht gleich aus und vergleicht ungleich — "Realität" fand sich in den
+    # eigenen Schlagwörtern nicht wieder. NFC setzt sie zusammen (#17).
+    return unicodedata.normalize("NFC", _SORT_MARKS.sub("", text)).strip()
 
 
 def _fields(xml: str) -> list[tuple[str, dict[str, list[str]]]]:
@@ -95,8 +105,9 @@ def parse(xml: str) -> Record:
     if treffer and treffer.group(1) == "0":
         return Record()
 
-    titel = untertitel = autor = reihe = band = sprache = None
+    titel = untertitel = autor = reihe = band = sprache = original = None
     enthalten: list[str] = []
+    schlagwoerter: list[str] = []
 
     for tag, teile in _fields(xml):
         erste = {code: werte[0] for code, werte in teile.items() if werte}
@@ -110,6 +121,12 @@ def parse(xml: str) -> Record:
         elif tag == "490":
             reihe = reihe or erste.get("a")
             band = band or erste.get("v")
+        elif tag == "240":
+            original = original or erste.get("a")
+        elif tag == "653":
+            # "(BISAC Subject Heading)FIC050000", "(VLB-WN)9112": Codes fuer
+            # den Handel. Was ohne Klammer beginnt, hat ein Mensch geschrieben.
+            schlagwoerter += [w for w in teile.get("a", []) if w and not w.startswith("(")]
         elif tag == "041":
             sprache = sprache or erste.get("a")
         elif tag == "770":
@@ -129,6 +146,8 @@ def parse(xml: str) -> Record:
         series_index=band,
         language=sprache,
         contains=tuple(dict.fromkeys(enthalten)),
+        original_title=original,
+        keywords=tuple(dict.fromkeys(schlagwoerter)),
     )
 
 

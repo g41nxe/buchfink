@@ -288,8 +288,8 @@ def _apply_gate(store: Store, deltas, profile: Profile, now: datetime, sources=(
         budget=profile.rating_budget,
         batch_size=profile.rating_batch_size,
         now=now,
-        full_blurbs=(
-            lambda observations: _with_full_blurbs(store, profile, observations, sources)
+        evidence=(
+            lambda observations: _with_evidence(store, profile, observations, sources)
         )
         if sources
         else None,
@@ -471,8 +471,38 @@ def _dismissals(profile, sources) -> int:
     return EXIT_OK
 
 
-def _with_full_blurbs(store: Store, profile: Profile, observations, sources):
-    """Den ganzen Klappentext holen — eine Anfrage je Buch, und nur hier.
+def _with_evidence(store: Store, profile: Profile, observations, sources):
+    """Was der Bewerter zu sehen bekommt — zusammengetragen unmittelbar davor.
+
+    Nur fuer die Buecher, die gleich ein Urteil bekommen; alles hier kostet
+    Anfragen, und das Budget des Tors begrenzt, wie viele es sind.
+
+    Drei Belege neben dem Klappentext (#17): die Schlagwoerter der Detailseite,
+    die Leseprobe dahinter und was die DNB schon gesagt hat (Originaltitel,
+    Schlagwoerter des Verlags). Die DNB wird hier nicht gefragt — das tut der
+    Lauf an seiner eigenen Stelle, mit ihrem eigenen Budget.
+    """
+    observations = _with_details(store, profile, observations, sources)
+    dnb = store.dnb_facts(o.isbn for o in observations if o.isbn)
+    belegt = []
+    for observation in observations:
+        original, dnb_woerter = dnb.get(observation.isbn or "", (None, ()))
+        belegt.append(
+            replace(
+                observation,
+                keywords=tuple(dict.fromkeys((*observation.keywords, *dnb_woerter))),
+                original_title=original,
+            )
+        )
+    return belegt
+
+
+def _with_details(store: Store, profile: Profile, observations, sources):
+    """Die Detailseite holen — eine Anfrage je Buch, und nur hier.
+
+    Fuer den ganzen Klappentext, die Schlagwoerter und die Leseprobe. Die
+    Probe wird gleich mitgeholt, solange die Quelle zur Hand ist: eine Anfrage
+    mehr, an dieselbe Quelle, mit derselben Hoeflichkeit.
 
     Angehängt statt überschrieben: der Snapshot wird nie umgeschrieben
     (ADR 5). Der Shop *hat* das gesagt, nur auf einer anderen Seite, und damit
@@ -480,16 +510,19 @@ def _with_full_blurbs(store: Store, profile: Profile, observations, sources):
     ebenfalls von dort — weicht der Preis ab, ist das eine echte Änderung und
     keine erfundene.
 
-    Was schon einen ganzen Klappentext trägt, wird nicht noch einmal geholt.
+    Frueher wurde nur geholt, was keinen ganzen Klappentext trug. Seit die
+    Seite auch Leseprobe und Schlagwoerter liefert, wird sie fuer jedes Buch
+    geholt, das beurteilt wird (#17) — ins Journal kommt sie nur, wenn sich
+    Klappentext oder Titelbild geaendert haben.
     """
-    from .cleaning import is_truncated
+    from .sample import fetch_opening
 
     by_name = {source.name: source for source in sources}
-    offen = [o for o in observations if is_truncated(o.blurb) or not o.blurb]
+    offen = [o for o in observations if o.source in by_name]
     if not offen:
         return observations
 
-    print(f"{len(offen)} Klappentexte nachladen …")
+    print(f"{len(offen)} Detailseiten und Leseproben holen …")
     now = datetime.now()
     # Als Eintrag, nicht als Rundgang: die Beobachtungen brauchen eine Zeile
     # im Journal, aber diese Zeile darf nicht als *der* letzte Lauf gelten.
@@ -516,19 +549,29 @@ def _with_full_blurbs(store: Store, profile: Profile, observations, sources):
         except Exception as exc:  # noqa: BLE001 - ein Buch, nicht der Stapel
             print(f"  {observation.title[:44]}: {type(exc).__name__}", file=sys.stderr)
             continue
-        if item is None or not item.blurb:
+        if item is None:
             continue
+        probe = None
+        client = getattr(source, "client", None)
+        if item.sample_url and client is not None:
+            try:
+                probe = fetch_opening(client, item.sample_url)
+            except RateLimited:
+                print("Leseproben: die Quelle drosselt — Rest übersprungen", file=sys.stderr)
+                break
         # Die Detailseite traegt auch das groessere Titelbild (600x600 statt
         # 200x200 auf der Kachel). Sie ist schon geholt — es hier fallen zu
         # lassen hiesse, sie fuer dasselbe Bild ein zweites Mal zu holen.
         voller = replace(
             observation,
-            blurb=item.blurb,
+            blurb=item.blurb or observation.blurb,
             cover_url=item.cover_url or observation.cover_url,
-            observed_at=now,
+            keywords=item.keywords,
+            sample=probe,
         )
         geholt[observation.key] = voller
-        frisch.append(voller)
+        if (voller.blurb, voller.cover_url) != (observation.blurb, observation.cover_url):
+            frisch.append(replace(voller, observed_at=now))
 
     if frisch:
         store.append(run_id, profile.slug, frisch, now)
@@ -731,7 +774,7 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
         return EXIT_OK
     beobachtungen = beobachtungen[:wieviele]
 
-    beobachtungen = _with_full_blurbs(store, profile, beobachtungen, sources)
+    beobachtungen = _with_evidence(store, profile, beobachtungen, sources)
     print(f"{len(beobachtungen)} Vorschläge, Bündel zu {profile.rating_batch_size} …")
     urteile = rate_in_batches(rater, beobachtungen, size=profile.rating_batch_size)
 

@@ -224,6 +224,10 @@ class Detail:
     #: Anrisse sind abgeschnitten. Er wurde hier bisher nicht gelesen, obwohl
     #: die Seite fuer jeden Watchlist-Titel ohnehin geholt wird.
     blurb: str | None = None
+    #: Die Leseprobe als EPUB, fuer den Bewerter (#17).
+    sample_url: str | None = None
+    #: Die Schlagwoerter des Shops, ohne Autor und Titel (#17).
+    keywords: tuple[str, ...] = ()
 
 
 def _isbn_from_order_number(order_number: str | None) -> str | None:
@@ -275,15 +279,36 @@ def parse_detail(html: str) -> Detail:
     canonical = page.select_one(sel.DETAIL_CANONICAL)
     href = canonical.get("href") if canonical is not None else None
 
+    title = title_node.get_text(" ", strip=True) if title_node else None
+    sample = page.select_one(sel.DETAIL_SAMPLE)
+    sample_href = sample.get("href") if sample is not None else None
+
     return Detail(
-        title=title_node.get_text(" ", strip=True) if title_node else None,
+        title=title,
         price_cents=price_cents,
         isbn=isbn,
         cover_url=_detail_cover(scope),
         author=author or None,
         url=canonical_url(href) if isinstance(href, str) and href else None,
         blurb=blurb,
+        sample_url=sample_href if isinstance(sample_href, str) and sample_href else None,
+        keywords=_keywords(page, leave_out=(author, title)),
     )
+
+
+def _keywords(page, *, leave_out) -> tuple[str, ...]:
+    """Die Schlagwoerter aus dem Kopf der Seite (#17).
+
+    Autor und Titel stehen auch darin; die kennt der Bewerter schon, und sie
+    als "Schlagwort" noch einmal zu nennen, hiesse ihm Gewicht zu geben.
+    """
+    meta = page.select_one(sel.DETAIL_KEYWORDS)
+    content = meta.get("content") if meta is not None else None
+    if not isinstance(content, str):
+        return ()
+    bekannt = {wort.casefold() for wort in leave_out if wort}
+    woerter = (wort.strip() for wort in content.split(","))
+    return tuple(dict.fromkeys(w for w in woerter if w and w.casefold() not in bekannt))
 
 
 def _detail_cover(scope) -> str | None:
@@ -327,7 +352,7 @@ def _description(page) -> str | None:
     # Der erste Knoten, der auch wirklich etwas traegt. Nur auf "ist da" zu
     # pruefen reichte nicht: ein leerer ``--full``-Knoten haette den
     # Klappentext ganz verschluckt — und ein Buch ohne Klappentext wird von
-    # ``_with_full_blurbs`` bei **jedem** Lauf erneut geholt.
+    # ``_with_evidence`` bei **jedem** Lauf erneut geholt.
     kandidaten = (
         node.select_one(sel.DETAIL_DESCRIPTION_FULL),
         node.select_one(sel.DETAIL_DESCRIPTION_PREVIEW),

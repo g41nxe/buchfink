@@ -96,6 +96,16 @@ class Observation:
     #: Nur gesetzt, wo eine Source die Reihe ausdrücklich benennt.
     series: str | None = None
     observed_at: datetime | None = None
+    # --- Belege fuer den Bewerter (#17) ---------------------------------
+    # Nicht gespeichert und nicht verglichen: sie werden erst unmittelbar vor
+    # einem Urteil zusammengetragen, und nur fuer die Buecher, die eins
+    # bekommen. Im Journal stuenden sonst taeglich fuenfzig Seiten Text.
+    #: Schlagwoerter von Quelle und DNB — Motive und Vergleichstitel.
+    keywords: tuple[str, ...] = ()
+    #: Der Titel des Originals, bei einer Uebersetzung (DNB).
+    original_title: str | None = None
+    #: Der Anfang des Buchs aus der Leseprobe.
+    sample: str | None = None
 
     @property
     def key(self) -> tuple[str, str]:

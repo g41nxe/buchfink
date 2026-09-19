@@ -99,3 +99,11 @@ LABEL_ISBN = "ISBN:"
 #: never their values — copies and queue lengths change by the hour.
 PROBE_QUERY = "Die sieben Schwestern"
 PROBE_DETAIL_PATH = "mediaInfo,0-0-373164461-200-0-0-0-0-0-0-0.html"
+
+#: Die Detailseite zu einer Kennung. Dieselbe Form wie die Probe oben; die
+#: Nullen sind Suchzustand, den die Seite nicht braucht (#17).
+DETAIL_PATH = "mediaInfo,0-0-{title_id}-200-0-0-0-0-0-0-0.html"
+
+#: Der Knopf "Leseprobe" — ein Link auf den Webreader, die EPUB-Datei steht
+#: in dessen Adresse hinter ``url=`` (#17).
+SAMPLE_LINK = 'a[href*="reader.onleihe.de"][href*="url="]'

@@ -61,6 +61,29 @@ def test_the_series_comes_out_of_490() -> None:
     assert parse(antwort("bundle-3in1.xml")).series == "David Hunter"
 
 
+def test_a_translation_names_its_original_title() -> None:
+    """``240 $a`` ist der Einheitstitel — bei einer Übersetzung der Titel des
+    Originals. Mit ihm findet sich das Buch auch dort, wo nur die englische
+    Ausgabe steht (#17)."""
+    assert parse(antwort("translation.xml")).original_title == "Dark Matter"
+
+
+def test_the_keywords_are_the_publishers_own_words() -> None:
+    """``653`` trägt die Schlagwörter aus dem VLB — Motive und Vergleichstitel,
+    die weder der Titel noch der Klappentext nennt (#17). Was in Klammern
+    beginnt, ist ein Code für den Handel (Produktform, Warengruppe, BISAC)
+    und sagt dem Bewerter nichts."""
+    schlagwoerter = parse(antwort("translation.xml")).keywords
+
+    assert "Alternative Realität" in schlagwoerter
+    assert "Der Marsianer" in schlagwoerter
+    assert not any(wort.startswith("(") for wort in schlagwoerter)
+
+
+def test_a_book_without_an_original_has_no_original_title() -> None:
+    assert parse(antwort("bundle-slash.xml")).original_title is None
+
+
 def test_an_unknown_isbn_is_an_empty_record_not_an_error() -> None:
     """Neun von dreißig kennt die DNB nicht. Das ist eine Antwort."""
     datensatz = parse(antwort("nothing.xml"))

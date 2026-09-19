@@ -560,6 +560,18 @@ def _a_judgement_names_its_axes(connection: Connection) -> None:
     add_column(connection, "rating", "axes", "TEXT")
 
 
+def _the_library_reads_more(connection: Connection) -> None:
+    """Originaltitel und Schlagwoerter der DNB (#17).
+
+    Die Felder standen immer im Datensatz, nur las sie niemand. Die schon
+    gefragten ISBNs bekommen Fassung 1 und werden damit einmal neu gefragt —
+    im Rahmen des gewohnten Budgets, nicht an einem Tag.
+    """
+    add_column(connection, "dnb_record", "original_title", "TEXT")
+    add_column(connection, "dnb_record", "keywords", "TEXT")
+    add_column(connection, "dnb_record", "reading", "INTEGER NOT NULL DEFAULT 1")
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     _backfill_seeded_scopes,
     _add_blurb_columns,
@@ -590,6 +602,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _book_carries_its_volume,
     _a_judgement_knows_its_way,
     _a_judgement_names_its_axes,
+    _the_library_reads_more,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

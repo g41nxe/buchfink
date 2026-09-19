@@ -125,6 +125,28 @@ def test_detail_price_comes_from_the_main_product_not_a_recommendation() -> None
     assert detail.price_cents == 499
 
 
+def test_the_detail_page_names_its_reading_sample() -> None:
+    """Die Leseprobe als EPUB — das einzige Stück vom Buch selbst, das vor dem
+    Kauf zu haben ist (#17). Eine Anfrage mehr, und nur für den Bewerter."""
+    assert beam_detail("product-detail.html").sample_url == (
+        "https://www.beam-shop.de/media/unknown/e8/45/19/"
+        "9783104911854_8cd11dc5-4f26-402e-b60a-3686864c1b1d.epub"
+    )
+
+
+def test_the_shops_keywords_leave_out_author_and_title() -> None:
+    """Die Schlagwörter nennen Motive und Vergleichstitel ("Dune", "The
+    Expanse"). Autor und Titel stehen auch darin, und die weiß der Bewerter
+    schon (#17)."""
+    schlagwoerter = beam_detail("product-detail.html").keywords
+
+    assert "Space Opera" in schlagwoerter
+    assert "The Expanse" in schlagwoerter
+    assert "John Scalzi" not in schlagwoerter
+    assert "Krieg der Klone" not in schlagwoerter
+    assert len(schlagwoerter) == len(set(schlagwoerter))
+
+
 def test_a_detail_page_without_the_product_block_raises() -> None:
     with pytest.raises(SourceStructureError, match="detail markup changed"):
         parse.parse_detail("<html><body><h1>Beam Shop</h1></body></html>")
@@ -262,7 +284,7 @@ def test_a_renamed_node_still_does_not_double_the_text() -> None:
 def test_an_empty_full_node_does_not_swallow_the_blurb() -> None:
     """Nur auf „Knoten da?" zu pruefen reichte nicht: ein leerer
     ``description--full`` liess den Klappentext ganz verschwinden — und ein
-    Buch ohne Klappentext holt ``_with_full_blurbs`` bei jedem Lauf erneut."""
+    Buch ohne Klappentext holt ``_with_evidence`` bei jedem Lauf erneut."""
     html = (
         '<html><head><link rel="canonical" href="https://www.beam-shop.de/a"></head>'
         '<body><div class="product--details"><h1 class="product--title">T</h1>'

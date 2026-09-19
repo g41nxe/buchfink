@@ -199,7 +199,7 @@ def test_the_gate_gets_the_sources_from_the_run(
     echtes_tor = gate.apply
 
     def beobachtet(deltas, **kwargs):
-        gereicht.append(kwargs.get("full_blurbs") is not None)
+        gereicht.append(kwargs.get("evidence") is not None)
         return echtes_tor(deltas, **kwargs)
 
     monkeypatch.setattr(run_modul.gate, "apply", beobachtet)
@@ -224,7 +224,7 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.run import _with_full_blurbs
+    from ebook_watchlist.run import _with_evidence
     from ebook_watchlist.sources.fake import FakeSource
     from ebook_watchlist.store import ENTRY_TRIGGER, Store
 
@@ -241,7 +241,7 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
     )
 
     quelle = FakeSource(data_dir / "fake-source.yaml")
-    _with_full_blurbs(store, profile, [angerissen], [quelle])
+    _with_evidence(store, profile, [angerissen], [quelle])
 
     laeufe = store.recent_runs(profile.slug)
     assert laeufe[0].id == rundgang, "das Nachladen gilt als letzter Lauf"
@@ -428,3 +428,58 @@ def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> No
     bleibt = run_modul._without_foreign_languages(store, [fund, gewollt], load_profile())
 
     assert bleibt == [gewollt]
+
+
+def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> None:
+    """Die Belege für den Bewerter (#17) kommen aus drei Ecken: Schlagwörter
+    und Leseprobe von der Detailseite, Originaltitel und weitere Schlagwörter
+    aus dem, was die DNB schon gesagt hat. Keine Anfrage an die DNB hier —
+    gefragt wird sie an ihrer eigenen Stelle im Lauf, mit ihrem Budget."""
+    from ebook_watchlist import paths
+    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.dnb import Record
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.run import _with_evidence
+    from ebook_watchlist.sources.base import Item
+    from ebook_watchlist.store import Store
+    from test_sample import KAPITEL, epub
+
+    store, profile = Store(paths.db_path()), load_profile()
+    store.save_dnb(
+        "9783641171421",
+        Record(original_title="Dark Matter", keywords=("Quantenphysik", "Space Opera")),
+        datetime.now(),
+    )
+
+    class Client:
+        def get_bytes(self, url: str) -> bytes:
+            assert url == "https://beam.invalid/probe.epub"
+            return epub(("k", "Eins. " + KAPITEL))
+
+    class Quelle:
+        name = "beam"
+        client = Client()
+
+        def item(self, source_item_id: str) -> Item:
+            return Item(
+                source_item_id=source_item_id,
+                title="Der Zeitenläufer",
+                blurb="Der ganze Klappentext.",
+                sample_url="https://beam.invalid/probe.epub",
+                keywords=("Space Opera", "Dune"),
+            )
+
+    fund = Observation(
+        source="beam",
+        source_item_id="7",
+        title="Der Zeitenläufer",
+        match_reason=MatchReason.GENRE_CATEGORY,
+        isbn="9783641171421",
+        blurb="Der ganze Klappentext.",
+    )
+
+    (belegt,) = _with_evidence(store, profile, [fund], [Quelle()])
+
+    assert belegt.keywords == ("Space Opera", "Dune", "Quantenphysik")
+    assert belegt.original_title == "Dark Matter"
+    assert belegt.sample is not None and belegt.sample.startswith("Eins. Regen")

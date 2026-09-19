@@ -14,11 +14,12 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from sqlalchemy import update
 
 from ebook_watchlist import paths
 from ebook_watchlist.dnb import Record
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.store import Store
+from ebook_watchlist.store import DnbRecordRow, Store
 
 NOW = datetime(2026, 9, 6, 10, 0)
 #: Der Slug des Testprofils — nicht "default", das war ein Rateversuch.
@@ -100,6 +101,33 @@ def test_silence_is_recorded_too(db: Store) -> None:
     db.save_dnb("9783644025028", None, NOW)
 
     assert db.isbns_without_dnb(SLUG, 10) == []
+
+
+def test_an_answer_read_by_an_older_parser_is_asked_again(db: Store) -> None:
+    """Originaltitel und Schlagwörter standen immer im Datensatz, nur las sie
+    niemand (#17). Ein altes Ja wird deshalb einmal neu gefragt — ein altes
+    Nein nicht: was die DNB nicht kannte, kennt sie auch jetzt kaum."""
+    gesehen(db, "9783644025028", nummer="1")
+    gesehen(db, "9783641171421", nummer="2")
+    db.save_dnb("9783644025028", Record(title="Ein Buch"), NOW)
+    db.save_dnb("9783641171421", None, NOW)
+    with db.session() as session:  # so, wie die Migration alte Zeilen hinterlaesst
+        session.execute(update(DnbRecordRow).values(reading=1))
+        session.commit()
+
+    assert db.isbns_without_dnb(SLUG, 10) == ["9783644025028"]
+
+
+def test_original_title_and_keywords_are_kept(db: Store) -> None:
+    db.save_dnb(
+        "9783641171421",
+        Record(original_title="Dark Matter", keywords=("Quantenphysik", "Der Marsianer")),
+        NOW,
+    )
+
+    fakten = db.dnb_facts(["9783641171421", "9780000000000"])
+
+    assert fakten == {"9783641171421": ("Dark Matter", ("Quantenphysik", "Der Marsianer"))}
 
 
 # --- was wir aufheben -------------------------------------------------------

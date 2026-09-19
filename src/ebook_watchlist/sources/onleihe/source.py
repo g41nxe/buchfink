@@ -13,7 +13,7 @@ from ...config import WatchlistEntry
 from ...http import HttpClient, NotFound
 from ...matching import Candidate, Confidence, Query, Resolution, match
 from ...models import MatchReason, Observation
-from ..base import LibrarySource, SourceStructureError
+from ..base import Item, LibrarySource, SourceStructureError
 from . import parse
 from . import selectors as sel
 
@@ -146,6 +146,26 @@ class OnleiheSource(LibrarySource):
                 return resolution
 
         return match(query, seen)
+
+    def item(self, source_item_id: str) -> Item | None:
+        """Die Detailseite hinter einer Kennung — fuer Klappentext und Leseprobe (#17)."""
+        url = urljoin(self.base, sel.DETAIL_PATH.format(title_id=source_item_id))
+        try:
+            detail = parse.parse_detail(self.client.get(url))
+        except NotFound:
+            return None
+        if not detail.title:
+            return None
+        return Item(
+            source_item_id=source_item_id,
+            title=detail.title,
+            author=detail.author,
+            isbn=detail.isbn,
+            url=url,
+            blurb=detail.blurb,
+            cover_url=detail.cover_url,
+            sample_url=detail.sample_url,
+        )
 
     def probe(self) -> None:
         """Known-good pages must still parse. Values are free to change."""

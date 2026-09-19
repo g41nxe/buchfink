@@ -296,7 +296,7 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.run import _with_full_blurbs
+    from ebook_watchlist.run import _with_evidence
     from ebook_watchlist.sources.base import Item
     from ebook_watchlist.store import Store
 
@@ -323,7 +323,7 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
                 cover_url="https://beam.invalid/gross_600x600.jpg",
             )
 
-    zurueck = _with_full_blurbs(store, profile, [beobachtung], [Quelle()])
+    zurueck = _with_evidence(store, profile, [beobachtung], [Quelle()])
 
     assert zurueck[0].cover_url == "https://beam.invalid/gross_600x600.jpg"
     gespeichert = store.latest_observations(profile.slug, [("beam", "7")])[("beam", "7")]

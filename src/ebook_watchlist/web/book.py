@@ -587,7 +587,7 @@ def rate_observation(
         )
 
     # Der ganze Klappentext steht meist schon am Buch. Anders als der Lauf
-    # (``_with_full_blurbs``) holt diese Seite deshalb keine Detailseite —
+    # (``_with_evidence``) holt diese Seite deshalb keine Detailseite —
     # ein Knopfdruck soll keine Quelle anfragen.
     duenn = not observation.blurb or is_truncated(observation.blurb)
     if duenn and blurb:

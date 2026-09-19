@@ -304,6 +304,8 @@ def _facts(observation: Observation) -> list[str]:
     facts = [f"Titel: {observation.title}"]
     if observation.subtitle:
         facts.append(f"Untertitel: {observation.subtitle}")
+    if observation.original_title:
+        facts.append(f"Originaltitel: {observation.original_title}")
     facts.append(f"Autor:in: {observation.author or 'unbekannt'}")
     if observation.series:
         facts.append(f"Reihe: {observation.series}")
@@ -320,6 +322,18 @@ def _facts(observation: Observation) -> list[str]:
         # schlimmer, als die Herkunft wegzulassen.
         cut = " (von der Quelle abgeschnitten)" if is_truncated(observation.blurb) else ""
         facts.append(f"Klappentext{cut}: {observation.blurb}")
+    if observation.keywords:
+        # Von Verlag und Shop: Motive und Vergleichstitel, die weder Titel
+        # noch Klappentext nennen (#17).
+        facts.append(f"Schlagwörter: {', '.join(observation.keywords)}")
+    if observation.sample:
+        facts.append(
+            "Leseprobe (der Anfang des Buchs selbst, kein Werbetext):\n"
+            f"<<<\n{observation.sample}\n>>>"
+        )
+    else:
+        # Ausdruecklich gesagt: ein Modell liest ein Fehlen nicht mit.
+        facts.append("Leseprobe: keine Leseprobe vorhanden")
     return facts
 
 
@@ -429,7 +443,11 @@ def parse_many(
             continue
         try:
             ratings[observation.key] = parse_answer(
-                json.dumps(entry), version, scheme, axes=axes
+                json.dumps(entry),
+                version,
+                scheme,
+                axes=axes,
+                had_sample=bool(observation.sample),
             )
         except RatingUnavailable:
             continue
@@ -454,7 +472,12 @@ def _axis_list(data: dict, key: str, axes: Collection[str] | None) -> tuple[str,
 
 
 def parse_answer(
-    text: str, version: int, scheme: Scheme, *, axes: Collection[str] | None = None
+    text: str,
+    version: int,
+    scheme: Scheme,
+    *,
+    axes: Collection[str] | None = None,
+    had_sample: bool = False,
 ) -> Rating:
     """Die Antwort des Modells, streng gelesen.
 
@@ -471,6 +494,11 @@ def parse_answer(
 
     ``axes`` sind die Namen aus dem Leseprofil. Ohne sie wird die erste Probe
     uebersprungen — gebraucht fuer Tests, die kein Profil laden.
+
+    Die staerkste Gewissheit braucht die Leseprobe (#17). Klappentext und
+    Schlagwoerter versprechen, was das Buch vielleicht nicht haelt; wer nur
+    sie hatte, wird eine Stufe herabgesetzt statt verworfen — ``had_sample``
+    sagt, ob das Buch eine hatte.
     """
     data = _json_object(text)
 
@@ -486,6 +514,8 @@ def parse_answer(
     confidence = str(data.get("confidence", "")).strip().lower()
     if confidence not in scheme.confidences:
         raise RatingUnavailable(f"unbekannte confidence {confidence!r}")
+    if not had_sample and confidence == scheme.confidences[0] and len(scheme.confidences) > 1:
+        confidence = scheme.confidences[1]
 
     reason = str(data.get("reason", "")).strip()
     if not reason:
@@ -586,6 +616,7 @@ class ModelRater:
             self.version,
             self.scheme,
             axes=self.axes,
+            had_sample=bool(observation.sample),
         )
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
@@ -674,7 +705,13 @@ class ClaudeCodeRater:
 
     def rate(self, observation: Observation) -> Rating:
         prompt = prompt_for(observation, self.leseprofil, self.scheme)
-        return parse_answer(self._ask(prompt), self.version, self.scheme, axes=self.axes)
+        return parse_answer(
+            self._ask(prompt),
+            self.version,
+            self.scheme,
+            axes=self.axes,
+            had_sample=bool(observation.sample),
+        )
 
     def rate_many(
         self, observations: Sequence[Observation]

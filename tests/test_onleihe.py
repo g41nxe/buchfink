@@ -50,6 +50,37 @@ def test_unavailable_title_reports_queue_and_eta() -> None:
     assert detail.availability is Availability.UNAVAILABLE
 
 
+def test_the_reading_sample_is_the_epub_behind_the_reader() -> None:
+    """Der Knopf "Leseprobe" öffnet den Webreader; die EPUB-Datei steht in
+    dessen Adresse hinter ``url=``. Die Datei ist, was der Bewerter braucht,
+    nicht der Reader (#17)."""
+    assert parse.parse_detail(fixture("detail-available.html")).sample_url == (
+        "https://static.onleihe.de/content/978/310/491/276/9/"
+        "65c24250673f3d10bd6298ee/v9783104912769.epub"
+    )
+
+
+def test_a_title_id_is_enough_to_read_its_page() -> None:
+    """Der Weg, auf dem der Bewerter Klappentext und Leseprobe bekommt (#17):
+    nur mit der Kennung, ohne Suche."""
+    client = StubClient(fixture("detail-available.html"))
+
+    item = OnleiheSource(client).item("373164461")
+
+    assert item is not None
+    assert item.title == "Sieben Richtige"
+    assert item.sample_url is not None and item.sample_url.endswith(".epub")
+    assert "mediaInfo,0-0-373164461-200-" in client.requests[0][0]
+
+
+def test_a_title_the_library_dropped_is_no_item() -> None:
+    class Weg(StubClient):
+        def get(self, url: str, params: dict | None = None) -> str:
+            raise NotFound(url)
+
+    assert OnleiheSource(Weg("")).item("373164461") is None
+
+
 def test_available_title_has_no_eta() -> None:
     detail = parse.parse_detail(fixture("detail-available.html"))
     assert detail.title == "Sieben Richtige"

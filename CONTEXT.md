@@ -272,6 +272,30 @@ allowed a suspected one.
 
 **Reader-facing name: *Bewertungsschema*.**
 
+### Evidence
+*deutsch: Belege*
+
+What a rater sees of a book beyond title, author and blurb, gathered right
+before a Rating and never stored with the Observation: the **Sample**, the
+**Keywords**, and the original title of a translation (#17). Only books about
+to be rated get it, because it costs requests.
+
+### Sample
+*deutsch: Leseprobe*
+
+The opening of the book itself, read from the EPUB sample that the shop and the
+library link on the detail page — the first couple of thousand words after the
+front matter. The only Evidence that shows *how* a book is written rather than
+what it promises. Without it, a Rating is at most `teils`: `belegt` needs the
+Sample.
+
+### Keywords
+*deutsch: Schlagwörter*
+
+What publisher and shop tag a book with — motifs and comparable titles ("Space
+Opera", "Dune"). From the shop's detail page and from the DNB record (MARC
+`653`, the publisher's own words from the VLB), without trade codes.
+
 ### Reference Author
 *deutsch: Referenzautor:in*
 
