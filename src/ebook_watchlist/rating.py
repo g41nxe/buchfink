@@ -24,7 +24,7 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -101,6 +101,12 @@ class Rating:
     #: Begründung — die ist ein Protokoll zum Nachprüfen und nennt auch, was
     #: fehlt (bewertungsschema.yaml, "pitch").
     pitch: str = ""
+    #: Welche Achsen des Leseprofils das Buch trifft und welche es verfehlt —
+    #: als Daten, in der Schreibung des Profils (#12). Der Text sagt es in
+    #: normalen Worten; die Namen stehen als Marken darueber. Leer bei
+    #: Urteilen von vorher.
+    hits: tuple[str, ...] = ()
+    misses: tuple[str, ...] = ()
 
     def passes(self, threshold: int) -> bool:
         return self.stars >= threshold
@@ -157,6 +163,20 @@ def load_leseprofil(path: Path | None = None) -> tuple[str, int]:
     except (yaml.YAMLError, AttributeError) as exc:
         raise RatingUnavailable(f"Leseprofil unbrauchbar: {exc}") from exc
     return _render(fuer_das_modell), version
+
+
+def leseprofil_axes(path: Path | None = None) -> frozenset[str]:
+    """Die Namen der Achsen im Leseprofil — woran ein Urteil seine Marken prueft (#12).
+
+    Ein Name, den es hier nicht gibt, ist ein erfundener Bezug, und genau den
+    soll das Einlesen fangen.
+    """
+    target = path or LESEPROFIL_PATH
+    try:
+        data = yaml.safe_load(target.read_text(encoding="utf-8"))
+        return frozenset(str(achse["name"]).strip() for achse in data.get("achsen") or ())
+    except (OSError, yaml.YAMLError, AttributeError, KeyError, TypeError) as exc:
+        raise RatingUnavailable(f"Leseprofil unbrauchbar: {exc}") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,8 +288,10 @@ def _answer_shape(scheme: Scheme) -> str:
     return (
         f'{{"stars": <{scheme.min_stars}-{scheme.max_stars}>, '
         f'"confidence": "{"|".join(scheme.confidences)}", '
-        '"reason": "<ein Satz, der einen Teil des Profils benennt und einen Beleg nennt>", '
-        '"pitch": "<ein Satz für die Leserin: warum dieses Buch für sie in Frage kommt>"}'
+        '"reason": "<hoechstens drei Saetze in normalen Worten, ohne Achsennamen>", '
+        '"pitch": "<ein Satz für die Leserin: warum dieses Buch für sie in Frage kommt>", '
+        '"trifft": ["<Name einer Achse des Leseprofils>", ...], '
+        '"fehlt": ["<Name einer Achse des Leseprofils>", ...]}'
     )
 
 
@@ -379,7 +401,12 @@ def _json_object(text: str):
 
 
 def parse_many(
-    text: str, observations: Sequence[Observation], version: int, scheme: Scheme
+    text: str,
+    observations: Sequence[Observation],
+    version: int,
+    scheme: Scheme,
+    *,
+    axes: Collection[str] | None = None,
 ) -> dict[tuple[str, str], Rating]:
     """Die Antwort auf ein Bündel, buchweise gelesen.
 
@@ -401,17 +428,49 @@ def parse_many(
         if not isinstance(entry, dict):
             continue
         try:
-            ratings[observation.key] = parse_answer(json.dumps(entry), version, scheme)
+            ratings[observation.key] = parse_answer(
+                json.dumps(entry), version, scheme, axes=axes
+            )
         except RatingUnavailable:
             continue
     return ratings
 
 
-def parse_answer(text: str, version: int, scheme: Scheme) -> Rating:
+def _axis_list(data: dict, key: str, axes: Collection[str] | None) -> tuple[str, ...]:
+    """Eine Achsenliste aus der Antwort, in der Schreibung des Profils."""
+    roh = data.get(key) or []
+    if not isinstance(roh, list):
+        raise RatingUnavailable(f"'{key}' ist keine Liste")
+    if axes is None:
+        return tuple(str(name).strip() for name in roh if str(name).strip())
+    nach_klein = {name.casefold(): name for name in axes}
+    gefunden = []
+    for name in roh:
+        profil = nach_klein.get(str(name).strip().casefold())
+        if profil is None:
+            raise RatingUnavailable(f"unbekannte Achse {name!r} unter '{key}'")
+        gefunden.append(profil)
+    return tuple(dict.fromkeys(gefunden))
+
+
+def parse_answer(
+    text: str, version: int, scheme: Scheme, *, axes: Collection[str] | None = None
+) -> Rating:
     """Die Antwort des Modells, streng gelesen.
 
     Eine unlesbare Antwort ist kein Anlass zu raten: sie fuehrt dazu, dass das
     Buch unbewertet bleibt und trotzdem erscheint.
+
+    Drei Proben an den Achsen (#12), und jede verwirft das ganze Urteil statt
+    es milde zu lesen — ein falscher Name, der still verschwindet, liesse
+    niemanden mehr etwas pruefen:
+
+    * ein Achsenname, den es im Leseprofil nicht gibt,
+    * fuenf Sterne und trotzdem ein Eintrag unter ``fehlt``,
+    * drei oder mehr Sterne und kein einziger Eintrag unter ``trifft``.
+
+    ``axes`` sind die Namen aus dem Leseprofil. Ohne sie wird die erste Probe
+    uebersprungen — gebraucht fuer Tests, die kein Profil laden.
     """
     data = _json_object(text)
 
@@ -432,6 +491,13 @@ def parse_answer(text: str, version: int, scheme: Scheme) -> Rating:
     if not reason:
         raise RatingUnavailable("Antwort nennt keine Begründung")
 
+    hits = _axis_list(data, "trifft", axes)
+    misses = _axis_list(data, "fehlt", axes)
+    if stars == scheme.max_stars and misses:
+        raise RatingUnavailable("fünf Sterne und trotzdem etwas unter 'fehlt'")
+    if stars >= 3 and not hits:
+        raise RatingUnavailable("drei oder mehr Sterne und nichts unter 'trifft'")
+
     # Ein fehlender Pitch kostet nicht das ganze Urteil: die Sterne und die
     # Begründung tragen für sich, und ein Buch deswegen unbewertet zu lassen
     # wäre teurer als eine leere Zeile im Digest.
@@ -441,6 +507,8 @@ def parse_answer(text: str, version: int, scheme: Scheme) -> Rating:
         confidence=confidence,
         profile_version=version,
         pitch=str(data.get("pitch", "")).strip(),
+        hits=hits,
+        misses=misses,
     )
 
 
@@ -497,11 +565,16 @@ class ModelRater:
     leseprofil: str = ""
     scheme: Scheme | None = None
     version: int = 0
+    #: Die Achsennamen des Leseprofils, gegen die ein Urteil geprueft wird (#12).
+    axes: frozenset[str] | None = None
     session: requests.Session | None = None
 
     def __post_init__(self) -> None:
         if not self.leseprofil:
             self.leseprofil, self.version = load_leseprofil()
+            # Nur mit dem Profil aus der Datei: wer ein eigenes hereinreicht
+            # (Tests), bringt keine Achsen mit, und die Namensprobe entfaellt.
+            self.axes = leseprofil_axes()
         if self.scheme is None:
             self.scheme = load_rating_scheme()
         if self.session is None:
@@ -512,6 +585,7 @@ class ModelRater:
             self.ask(prompt_for(observation, self.leseprofil, self.scheme)),
             self.version,
             self.scheme,
+            axes=self.axes,
         )
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
@@ -586,16 +660,21 @@ class ClaudeCodeRater:
     leseprofil: str = ""
     scheme: Scheme | None = None
     version: int = 0
+    #: Die Achsennamen des Leseprofils, gegen die ein Urteil geprueft wird (#12).
+    axes: frozenset[str] | None = None
 
     def __post_init__(self) -> None:
         if not self.leseprofil:
             self.leseprofil, self.version = load_leseprofil()
+            # Nur mit dem Profil aus der Datei: wer ein eigenes hereinreicht
+            # (Tests), bringt keine Achsen mit, und die Namensprobe entfaellt.
+            self.axes = leseprofil_axes()
         if self.scheme is None:
             self.scheme = load_rating_scheme()
 
     def rate(self, observation: Observation) -> Rating:
         prompt = prompt_for(observation, self.leseprofil, self.scheme)
-        return parse_answer(self._ask(prompt), self.version, self.scheme)
+        return parse_answer(self._ask(prompt), self.version, self.scheme, axes=self.axes)
 
     def rate_many(
         self, observations: Sequence[Observation]
@@ -610,7 +689,7 @@ class ClaudeCodeRater:
         if not observations:
             return {}
         answer = self._ask(prompt_for_many(observations, self.leseprofil, self.scheme))
-        return parse_many(answer, observations, self.version, self.scheme)
+        return parse_many(answer, observations, self.version, self.scheme, axes=self.axes)
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
         """Siehe :meth:`ModelRater.ask` — derselbe Weg, andere Leitung.

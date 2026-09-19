@@ -19,6 +19,7 @@ fuer_den_bewerter:
   - sterne
   - confidence
   - begruendung
+  - achsen
   - pitch
   - nichts_erfinden
 
@@ -116,8 +117,11 @@ begruendung:
   anforderungen: |
     Vier Dinge. Fehlt eines, ist die Begründung unbrauchbar.
 
-    1. WELCHER TEIL DES PROFILS getroffen oder verfehlt wird — benannt, nicht
-       angedeutet. Mit den Worten des Profils.
+    1. WAS DAS BUCH FÜR DIESE LESERIN TRÄGT ODER NICHT TRÄGT — in normalen
+       Worten, OHNE die Namen der Achsen. Die Namen stehen in "trifft" und
+       "fehlt" daneben (siehe ACHSEN). Statt "trifft Katz und Maus" heißt es
+       "beide Seiten handeln"; der Satz verbindet Buch und Erwartung, die
+       Marke darüber nennt die Achse.
     2. WORAN IM BUCH das festzumachen ist: die konkrete Figur, Konstellation
        oder Situation. Nicht das Etikett.
     3. WAS DEN STERN KOSTET, bei allem unter fünf. Ausdrücklich.
@@ -146,6 +150,11 @@ begruendung:
     darüber, wie schnell erzählt wird".
 
   verboten:
+    - untugend: Achsenname im Text
+      beispiel: >-
+        Trifft "Katz und Maus" wörtlich. → Der Name steht unter "trifft"; der
+        Text sagt, woran man es sieht: "der Erpresser handelt selbst und setzt
+        eine Frist".
     - untugend: Tatsache statt Grund
       beispiel: Band 1 einer Reihe um Margarete von Brühl.
     - untugend: Zirkelschluss
@@ -181,6 +190,23 @@ begruendung:
     Der Unterschied zum Verbotenen: es steht da, WAS IM BUCH PASSIERT und
     WELCHE ERWARTUNG DES PROFILS das bedient — und der fehlende Stern ist
     begründet, nicht bloß vergeben.
+
+achsen: |
+  Neben der Begründung stehen zwei Listen: "trifft" und "fehlt". Sie nennen
+  die Achsen des Leseprofils, die das Buch trifft und die es verfehlt — mit
+  genau dem Namen, den die Achse im Leseprofil trägt, und keinem anderen.
+
+  Drei Regeln, und der Code prüft jede. Verletzt eine Antwort eine davon,
+  wird das ganze Urteil verworfen, und das Buch bleibt unbeurteilt:
+
+  - Nur Namen, die es im Leseprofil gibt. Ein erfundener Name ist ein
+    erfundener Bezug.
+  - Fünf Sterne heißt: nichts fehlt. "fehlt" ist dann leer.
+  - Ab drei Sternen trifft das Buch mindestens eine Achse. "trifft" ist dann
+    nicht leer — wer drei Sterne gibt, weiß, wofür.
+
+  Eine Achse, zu der der Klappentext nichts sagt, gehört in keine der beiden
+  Listen. "fehlt" heißt: das Buch verfehlt sie, nicht: niemand weiß es.
 
 pitch:
 

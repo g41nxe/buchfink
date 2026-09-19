@@ -899,3 +899,21 @@ def test_the_book_page_names_series_and_volume(client: TestClient, db: Store) ->
     db.series_from_dnb()
 
     assert "Southern Reach, Band 2" in client.get(f"/book/{buch.id}").text
+
+
+def test_the_axes_stand_as_marks_above_the_reason(client: TestClient, db: Store) -> None:
+    """Die Marke traegt den Namen, der Satz den Beleg — nicht dasselbe zweimal
+    (#12). Getroffen und verfehlt sehen verschieden aus."""
+    buch = db.books()[0]
+    sighting(db, buch.id, when=NOW)
+    db.put_rating("item:beam:1", stars=4, confidence="teils", reason="Beide Seiten handeln.",
+                  profile_version=1, now=NOW, origin=BY_MODEL,
+                  hits=("Katz und Maus",), misses=("Die Figur trägt alles",))
+
+    body = client.get(f"/book/{buch.id}").text
+
+    trifft = body.index('data-achse="trifft"')
+    fehlt = body.index('data-achse="fehlt"')
+    assert "Katz und Maus" in body[trifft:fehlt]
+    assert "Die Figur trägt alles" in body[fehlt:]
+    assert body.index("Katz und Maus") < body.index("Beide Seiten handeln.")

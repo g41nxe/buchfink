@@ -155,6 +155,10 @@ class Judgement:
     when: datetime | None
     #: Auf wie vielen Stimmen die Angabe ruht — nur bei fremden Urteilen.
     votes: int | None = None
+    #: Welche Achsen das Urteil trifft und verfehlt (#12). Leer bei Urteilen
+    #: von vorher und bei allem, was kein Modell gefaellt hat.
+    hits: tuple[str, ...] = ()
+    misses: tuple[str, ...] = ()
 
     @property
     def confidence_label(self) -> str:
@@ -394,6 +398,8 @@ def _judgements(
             profile_version=row.profile_version,
             when=row.rated_at,
             votes=row.votes,
+            hits=row.hits,
+            misses=row.misses,
         )
         for origin in ORIGIN_ORDER
         if (row := found.get(origin)) is not None
@@ -604,6 +610,8 @@ def rate_observation(
         origin=BY_MODEL,
         pitch=rating.pitch,
         via=via,
+        hits=rating.hits,
+        misses=rating.misses,
     )
     return ""
 

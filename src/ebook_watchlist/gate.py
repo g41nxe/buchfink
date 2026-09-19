@@ -53,6 +53,8 @@ def _as_rating(row) -> Rating:
         confidence=row.confidence,
         profile_version=row.profile_version,
         pitch=row.pitch,
+        hits=row.hits,
+        misses=row.misses,
     )
 
 
@@ -236,6 +238,8 @@ def apply(
                 origin=BY_MODEL,
                 pitch=rating.pitch,
                 via=VIA_RUN,
+                hits=rating.hits,
+                misses=rating.misses,
             )
 
         _decide(rating, delta, threshold, kept, report)

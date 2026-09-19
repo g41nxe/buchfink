@@ -125,7 +125,7 @@ def test_a_whole_blurb_is_not_flagged() -> None:
 
 
 def test_a_clean_answer_is_read() -> None:
-    answer = '{"stars": 4, "confidence": "teils", "reason": "Achse A: Reihe"}'
+    answer = '{"stars": 4, "confidence": "teils", "reason": "Achse A: Reihe", "trifft": ["Tempo"]}'
     result = parse_answer(answer, version=1, scheme=SCHEMA)
 
     assert (result.stars, result.confidence) == (4, "teils")
@@ -570,7 +570,8 @@ def test_a_watchlist_price_drop_is_never_measured_against_a_judgement(store: Sto
 # --- der Weg ohne Schlüssel: claude -p (Ticket 12) --------------------------
 
 
-ANSWER = '{"stars": 4, "reason": "Achse D: isoliertes Setting", "confidence": "teils"}'
+ANSWER = ('{"stars": 4, "reason": "Achse D: isoliertes Setting", "confidence": "teils", '
+          '"trifft": ["Tempo"]}')
 
 
 def _completed(stdout: str = "", stderr: str = "", returncode: int = 0):
@@ -712,7 +713,9 @@ def _books(count: int) -> list[Observation]:
 
 
 def _entry(stars: int) -> dict:
-    return {"stars": stars, "confidence": "teils", "reason": f"Achse D, {stars} Sterne"}
+    # Ab drei Sternen braucht ein Urteil einen Treffer (#12).
+    return {"stars": stars, "confidence": "teils", "reason": f"Achse D, {stars} Sterne",
+            "trifft": ["Tempo"] if stars >= 3 else []}
 
 
 def test_the_leseprofil_goes_out_once_not_once_per_book() -> None:
@@ -1044,7 +1047,7 @@ def test_the_answer_shape_comes_from_the_scheme() -> None:
 
 
 def test_a_pitch_is_read_from_the_answer() -> None:
-    answer = ('{"stars": 4, "confidence": "teils", "reason": "x", '
+    answer = ('{"stars": 4, "confidence": "teils", "reason": "x", "trifft": ["Tempo"], '
               '"pitch": "Ein Profiler am Abgrund, und die Jagd beginnt auf Seite eins."}')
 
     result = parse_answer(answer, 1, SCHEMA)
@@ -1055,7 +1058,9 @@ def test_a_pitch_is_read_from_the_answer() -> None:
 def test_a_missing_pitch_does_not_cost_the_judgement() -> None:
     """Sterne und Begründung tragen für sich. Ein Buch deswegen unbewertet zu
     lassen wäre teurer als eine leere Zeile im Digest."""
-    result = parse_answer('{"stars": 4, "confidence": "teils", "reason": "x"}', 1, SCHEMA)
+    result = parse_answer(
+        '{"stars": 4, "confidence": "teils", "reason": "x", "trifft": ["Tempo"]}', 1, SCHEMA
+    )
 
     assert (result.stars, result.pitch) == (4, "")
 
@@ -1256,3 +1261,74 @@ def test_genuinely_broken_json_still_fails(monkeypatch) -> None:
     JSON ist, bleibt unbewertet (ADR 7)."""
     with pytest.raises(RatingUnavailable, match="kein gültiges JSON"):
         parse_answer('{"stars": 2, "confidence" "vermutet"}', 1, load_rating_scheme())
+
+
+# --- die Achsen als Daten (#12) ---------------------------------------------
+
+ACHSEN = frozenset({"Die Figur trägt alles", "Tempo", "Katz und Maus"})
+
+
+def antwort(stars: int, trifft: list[str], fehlt: list[str]) -> str:
+    import json
+
+    return json.dumps({"stars": stars, "confidence": "teils", "reason": "Beide Seiten handeln.",
+                       "pitch": "Ein Duell.", "trifft": trifft, "fehlt": fehlt})
+
+
+def test_the_axes_come_as_data_beside_the_text() -> None:
+    """Die Begruendung stand voller Achsennamen — "trifft Katz und Maus
+    woertlich". Jetzt sagt der Text es in normalen Worten, und die Achsen
+    kommen daneben als Daten: die Marke traegt den Namen, der Satz den Beleg."""
+    gelesen = parse_answer(antwort(4, ["Katz und Maus", "tempo"], ["Die Figur trägt alles"]),
+                           1, SCHEMA, axes=ACHSEN)
+
+    # Gross- und Kleinschreibung zaehlt nicht, gespeichert wird die Schreibung
+    # des Profils.
+    assert gelesen.hits == ("Katz und Maus", "Tempo")
+    assert gelesen.misses == ("Die Figur trägt alles",)
+
+
+@pytest.mark.parametrize(
+    ("stars", "trifft", "fehlt", "grund"),
+    [
+        (4, ["Erfundene Achse"], [], "unbekannt"),
+        (5, ["Tempo"], ["Katz und Maus"], "fünf Sterne"),
+        (3, [], ["Tempo"], "trifft"),
+    ],
+)
+def test_a_judgement_that_contradicts_itself_is_refused(
+    stars: int, trifft: list[str], fehlt: list[str], grund: str
+) -> None:
+    """Streng gelesen (#12): ein Achsenname, den es im Profil nicht gibt; fuenf
+    Sterne und trotzdem etwas unter "fehlt"; drei oder mehr Sterne und nichts
+    unter "trifft". Jede der drei verwirft das ganze Urteil — das Buch bleibt
+    unbeurteilt und wird trotzdem gezeigt. Milde lesen hiesse, ein erfundener
+    Bezug verschwaende still, und niemand pruefte mehr etwas."""
+    with pytest.raises(RatingUnavailable, match=grund):
+        parse_answer(antwort(stars, trifft, fehlt), 1, SCHEMA, axes=ACHSEN)
+
+
+def test_a_low_judgement_may_hit_nothing() -> None:
+    """Unter drei Sternen darf "trifft" leer sein — das ist die Aussage."""
+    gelesen = parse_answer(antwort(1, [], ["Die Figur trägt alles"]), 1, SCHEMA, axes=ACHSEN)
+
+    assert gelesen.hits == ()
+
+
+def test_the_axes_are_read_from_the_reading_profile() -> None:
+    from ebook_watchlist.rating import leseprofil_axes
+
+    achsen = leseprofil_axes()
+
+    assert "Die Figur trägt alles" in achsen
+    assert "Katz und Maus" in achsen
+
+
+def test_the_axes_are_stored_with_the_judgement(store: Store) -> None:
+    store.put_rating("isbn:9783104911854", stars=4, confidence="teils", reason="Passt.",
+                     profile_version=1, now=NOW, origin=BY_MODEL,
+                     hits=("Katz und Maus",), misses=("Tempo",))
+
+    zeile = store.ratings_for(["isbn:9783104911854"])[("isbn:9783104911854", BY_MODEL)]
+
+    assert (zeile.hits, zeile.misses) == (("Katz und Maus",), ("Tempo",))

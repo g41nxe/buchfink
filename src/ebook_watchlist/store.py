@@ -272,6 +272,18 @@ class RatingRow(Base):
     #: ``book_page`` (#10). Leer bei allem, was kein Modell geurteilt hat, und
     #: bei Urteilen von vorher.
     via: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Welche Achsen das Urteil trifft und verfehlt, als JSON
+    #: ``{"trifft": [...], "fehlt": [...]}`` (#12). JSON wie
+    #: ``book_source.details``, weil nichts danach filtert oder sortiert.
+    axes: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    @property
+    def hits(self) -> tuple[str, ...]:
+        return tuple(json.loads(self.axes).get("trifft", ())) if self.axes else ()
+
+    @property
+    def misses(self) -> tuple[str, ...]:
+        return tuple(json.loads(self.axes).get("fehlt", ())) if self.axes else ()
     #: Die Fassung des Leseprofils, gegen die geurteilt wurde. Eine neue
     #: Fassung macht ein Maschinenurteil ungültig — das ist die eine Änderung,
     #: bei der ein erneuter Aufruf richtig ist. Eine Änderung am
@@ -1425,6 +1437,8 @@ class Store:
         pitch: str = "",
         votes: int | None = None,
         via: str | None = None,
+        hits: Sequence[str] = (),
+        misses: Sequence[str] = (),
     ) -> None:
         """Ein Urteil festhalten.
 
@@ -1450,6 +1464,11 @@ class Store:
             row.confidence = confidence
             row.votes = votes
             row.via = via
+            row.axes = (
+                json.dumps({"trifft": list(hits), "fehlt": list(misses)}, ensure_ascii=False)
+                if hits or misses
+                else None
+            )
             row.pitch = pitch
             row.reason = reason
             row.profile_version = profile_version

@@ -551,6 +551,15 @@ def _a_judgement_knows_its_way(connection: Connection) -> None:
     add_column(connection, "rating", "via", "TEXT")
 
 
+def _a_judgement_names_its_axes(connection: Connection) -> None:
+    """Welche Achsen ein Urteil trifft und verfehlt, als Daten (#12).
+
+    Aeltere Urteile bleiben leer; sie tragen ihre Achsen im Fliesstext, und
+    daraus Namen herauszulesen hiesse raten.
+    """
+    add_column(connection, "rating", "axes", "TEXT")
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     _backfill_seeded_scopes,
     _add_blurb_columns,
@@ -580,6 +589,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _library_readers_are_named_per_library,
     _book_carries_its_volume,
     _a_judgement_knows_its_way,
+    _a_judgement_names_its_axes,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
