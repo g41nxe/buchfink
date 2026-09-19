@@ -393,3 +393,95 @@ def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
     _fetch_candidate_covers(store, profile, client)
 
     assert client.calls == []
+
+
+# --- ein besseres Bild ersetzt ein schlechteres (#10) -----------------------
+
+
+def jpeg(breite: int, hoehe: int) -> bytes:
+    """Ein JPEG-Kopf mit SOF0 — mehr liest ``pixels`` nicht."""
+    sof = b"\xff\xc0\x00\x11\x08" + hoehe.to_bytes(2, "big") + breite.to_bytes(2, "big")
+    return b"\xff\xd8" + b"\xff\xe0\x00\x04ab" + sof + b"\x03" + b"x" * MIN_BYTES
+
+
+def png(breite: int, hoehe: int) -> bytes:
+    ihdr = breite.to_bytes(4, "big") + hoehe.to_bytes(4, "big") + b"\x08\x02\x00\x00\x00"
+    return b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + ihdr + b"x" * MIN_BYTES
+
+
+def test_the_size_is_read_from_the_header() -> None:
+    from ebook_watchlist.covers import pixels
+
+    assert pixels(jpeg(134, 200)) == 134 * 200
+    assert pixels(png(600, 600)) == 600 * 600
+    assert pixels(b"GIF89a" + b"x" * MIN_BYTES) is None
+
+
+class ByAddress:
+    """Liefert je Adresse ein anderes Bild und zaehlt mit."""
+
+    def __init__(self, bilder: dict[str, bytes]) -> None:
+        self.bilder = bilder
+        self.calls: list[str] = []
+
+    def get_bytes(self, url: str) -> bytes:
+        self.calls.append(url)
+        return self.bilder[url]
+
+
+def _gesehen(book_id: int, url: str):
+    from ebook_watchlist.models import MatchReason, Observation
+
+    return Observation(source="beam", source_item_id=str(book_id), title="Egal",
+                       match_reason=MatchReason.WATCHLIST, book_id=book_id, cover_url=url)
+
+
+@pytest.fixture
+def buchlager(tmp_path: Path, monkeypatch):
+    from ebook_watchlist import paths
+    from ebook_watchlist.store import Store
+
+    monkeypatch.setenv("EBW_DATA_DIR", str(tmp_path))
+    return Store(paths.db_path())
+
+
+def test_a_larger_cover_replaces_a_smaller_one(buchlager) -> None:
+    """Das erste Bild gewann bisher fuer immer: *Dark Matter* sass auf einer
+    Kachel von 134x200 fest, obwohl Shop und OverDrive groessere liefern."""
+    from ebook_watchlist.covers import fetch_for_books
+
+    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    klein, gross = "https://example.invalid/klein.jpg", "https://example.invalid/gross.jpg"
+    client = ByAddress({klein: jpeg(134, 200), gross: jpeg(600, 600)})
+
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, klein)])
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, gross)])
+
+    assert buchlager.book(buch.id).cover_file == file_name(gross)
+
+
+def test_a_smaller_cover_does_not_replace_a_larger_one(buchlager) -> None:
+    from ebook_watchlist.covers import fetch_for_books
+
+    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    klein, gross = "https://example.invalid/klein.jpg", "https://example.invalid/gross.jpg"
+    client = ByAddress({klein: jpeg(134, 200), gross: jpeg(600, 600)})
+
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, gross)])
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, klein)])
+
+    assert buchlager.book(buch.id).cover_file == file_name(gross)
+
+
+def test_the_same_address_costs_nothing(buchlager) -> None:
+    """Dieselbe Adresse ist dasselbe Bild — kein Abruf, kein Vergleich."""
+    from ebook_watchlist.covers import fetch_for_books
+
+    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    adresse = "https://example.invalid/eins.jpg"
+    client = ByAddress({adresse: jpeg(600, 600)})
+
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, adresse)])
+    fetch_for_books(buchlager, client, [_gesehen(buch.id, adresse)])
+
+    assert client.calls == [adresse]

@@ -65,6 +65,41 @@ def file_name(url: str) -> str:
     return f"{digest}{_suffix(url)}"
 
 
+#: Die Startmarken der JPEG-Segmente, die Breite und Hoehe tragen: SOF0 bis
+#: SOF15 ohne DHT (C4), JPG (C8) und DAC (CC), die dieselben Nummern teilen.
+_SOF = frozenset(range(0xC0, 0xD0)) - {0xC4, 0xC8, 0xCC}
+
+
+def pixels(data: bytes) -> int | None:
+    """Wie viele Bildpunkte ein Titelbild hat — gelesen aus dem Dateikopf.
+
+    Kein Pillow: das Projekt braucht die Groesse an genau einer Stelle, und
+    fuer eine Zahl eine Bildbibliothek mitzuschleppen waere teurer als die
+    zwanzig Zeilen hier. Gelesen werden die beiden Formate, die die Quellen
+    liefern, JPEG und PNG. Alles andere heisst ``None``, und ein Bild, dessen
+    Groesse niemand kennt, verdraengt kein anderes.
+    """
+    if data.startswith(b"\x89PNG\r\n\x1a\n") and data[12:16] == b"IHDR":
+        return int.from_bytes(data[16:20], "big") * int.from_bytes(data[20:24], "big")
+    if not data.startswith(b"\xff\xd8"):
+        return None
+    stelle = 2
+    while stelle + 9 <= len(data):
+        if data[stelle] != 0xFF:
+            return None
+        marke = data[stelle + 1]
+        if marke == 0xFF:  # Fuellbyte vor einer Marke
+            stelle += 1
+            continue
+        laenge = int.from_bytes(data[stelle + 2 : stelle + 4], "big")
+        if marke in _SOF:
+            hoehe = int.from_bytes(data[stelle + 5 : stelle + 7], "big")
+            breite = int.from_bytes(data[stelle + 7 : stelle + 9], "big")
+            return breite * hoehe
+        stelle += 2 + laenge
+    return None
+
+
 class CoverStore:
     """Der Ordner mit den Titelbildern."""
 
@@ -101,6 +136,24 @@ class CoverStore:
         return name
 
 
+def _better(covers: CoverStore, name: str, *, than: str | None) -> bool:
+    """Ob ``name`` das vorhandene Titelbild ersetzen soll (#10).
+
+    Bisher gewann das erste Bild fuer immer. Kam zuerst die Kachel aus der
+    Suche, sass ein Buch auf 200 Pixeln fest, obwohl die Detailseite 600
+    lieferte — gemessen vier von 24 Buechern mit Bild, darunter *Dark Matter*
+    mit 134x200. Jetzt gewinnt, was mehr Bildpunkte hat; bei Gleichstand bleibt
+    das vorhandene, damit zwei gleich grosse Fassungen nicht hin und her
+    wechseln. Gemessen wird am Bild, nicht an der Adresse: das ``_600x600`` im
+    Namen ist eine Gewohnheit des Shops, keine Regel.
+    """
+    if not than or not covers.has(than):
+        return True
+    neu = pixels(covers.path(name).read_bytes())
+    alt = pixels(covers.path(than).read_bytes())
+    return neu is not None and (alt is None or neu > alt)
+
+
 def fetch_for_books(store: Store, client: HttpClient, observations: Sequence[Observation]) -> None:
     """Titelbilder holen — einmal pro Buch, und nur für Bücher (Ticket 15).
 
@@ -123,7 +176,9 @@ def fetch_for_books(store: Store, client: HttpClient, observations: Sequence[Obs
             continue
         done.add(book_id)
         book = store.book(book_id)
-        if book is None or book.cover_file:
+        # Dieselbe Adresse ist dasselbe Bild: der Name ist ihr Hash. Nur eine
+        # *andere* Adresse ist die Frage wert, ob sie das bessere Bild hat.
+        if book is None or book.cover_file == file_name(url):
             continue
         try:
             name = covers.fetch(client, url)
@@ -137,5 +192,5 @@ def fetch_for_books(store: Store, client: HttpClient, observations: Sequence[Obs
             # Art, ein Platzhalterbild zu vermeiden.
             print(f"Titelbild {book_id}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        if name:
+        if name and _better(covers, name, than=book.cover_file):
             store.set_cover(book_id, name)
