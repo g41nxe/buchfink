@@ -1,11 +1,11 @@
 # Offene Punkte und was unterwegs schiefging
 
-Stand 2026-09-04, nach Ticket 23. Zwei Listen: **was noch nicht stimmt oder fehlt**, und
+Stand 2026-09-19, nach #10. Zwei Listen: **was noch nicht stimmt oder fehlt**, und
 **welche Behauptungen sich als falsch herausgestellt haben**. Die zweite ist
 die nützlichere — sie sagt, wo dieses Projekt zum Irrtum neigt.
 
-Die Tickets liegen in `.scratch/ebook-watchlist-phase2/issues/` und sind nicht
-Teil des Repositories.
+Die Tickets liegen in GitHub Issues (`gh issue list`); die älteren bis
+Ticket 56 in `.scratch/ebook-watchlist-phase2/issues/`, nicht im Repository.
 
 ---
 
@@ -51,49 +51,23 @@ Zwei Einschränkungen, die dazugehören:
   das ein unsicheres Urteil davon abhält, ein Buch zu verstecken, ist bisher
   Theorie — 1 von 109.
 
-### Die Metadatenquelle ist recherchiert, nicht angebunden
+### Mit #10 geschlossen (19.09.2026)
 
-`docs/research/metadata-sources.md` empfiehlt die DNB über `MARC21-xml` für
-Titel, Autor, Reihe und **Sprache**. Implementiert ist davon **nichts**. Damit
-fehlt weiterhin:
-
-- der Sprachfilter (Ticket 15) — es gibt kein Feld, aus dem er lesen könnte
-- die kanonische Schreibweise auf Buchebene (Ticket 16 baut sie, wendet sie
-  aber nicht auf `book.title` / `book.author` an)
-- Reihe und Bandnummer, und damit die Grundlage für Serien-Tracking
-
-### Cover: da, aber der Name hängt an der Adresse
-
-Der Weg steht und der Stapel ist bebildert — 26 von 26. Der Dateiname ist ein
-Hash der **Bildadresse**, damit dasselbe Bild eine Datei ist, gleichgültig ob
-es an einem Vorschlag oder an einer `book`-Zeile hängt.
-
-Das hat einen Preis, der beim ersten Mal zugeschlagen hat: die Detailseite
-nennt ein 600x600-Bild, die Kachel ein 200x200. Wer zuletzt schreibt, gewinnt.
-Ein Lauf überschrieb drei frisch geholte Detailadressen mit Kacheladressen —
-und damit zeigte die Seite wieder Platzhalter, obwohl die Dateien dalagen. Sie
-waren nur nicht mehr unter dem berechneten Namen zu finden. Drei verwaiste
-Dateien, drei überflüssige Anfragen.
-
-Und der Punkt, an dem wir jetzt allein hängen, ist ungeprüft: **die
-Nutzungsbedingungen von beam für Produktbilder** hat niemand gelesen. Die
-DNB-Cover sind rechtlich ausgeschieden, Google-Books-Thumbnails dürfen nur
-24 Stunden zwischengespeichert werden.
-
-### Die Testsuite verfehlt ihr Ziel
-
-108 s → 28 s. Ticket 18 wollte unter zehn. Der Rest ist gleichmäßig verteilt
-(0,08 s je Test, kein Ausreißer) und besteht aus Tests, die echte Arbeit tun.
-Darunter zu kommen hieße, Ende-zu-Ende-Tests zusammenzulegen — Unabhängigkeit
-gegen Geschwindigkeit. **Dieser Tausch ist nicht getroffen worden**, er steht
-offen.
-
-### Kleinere offene Punkte
-
-- **Die Anfragefrequenz bei der DNB ist undokumentiert.** Nirgends eine Zahl;
-  wer Gewissheit will, muss `schnittstellen-service@dnb.de` fragen.
-- **Der Rückstand von 358 Vorschlägen ist unbearbeitet** — auf ausdrücklichen
-  Wunsch, bis das Tor gefiltert hat (Ticket 19).
+- **Die DNB ist angebunden** — und ihre Auskunft wird jetzt auch benutzt:
+  - **Sprache.** Ein Fund, den die DNB ausdrücklich in einer anderen Sprache
+    führt als im Profil (`languages`, voreingestellt `ger`), kommt nicht in
+    den Stapel und kostet kein Urteil. Unbekannt gilt nie als fremd.
+  - **Reihe und Band** landen in leeren Feldern am Buch und stehen im Kopf der
+    Buchseite.
+- **Titelbild:** ein neues ersetzt das vorhandene nur, wenn es mehr Bildpunkte
+  hat, gemessen am Dateikopf. Vier von 24 Büchern saßen auf 200 Pixeln fest.
+- **Ein Modellurteil trägt seinen Weg** (`via`: Lauf, Rückstand, Buchseite).
+  Erst damit lässt sich messen, ob das Tor im Lauf etwas entscheidet.
+- **Gestrichen:** das Ziel „Testsuite unter zehn Sekunden“ (unabhängige Tests
+  sind mehr wert als die halbe Minute) und die Frage nach der DNB-Frequenz
+  (50 je Lauf mit Pausen, harter Halt bei 429, bisher keine Abweisung).
+- **Die Bildrechte beim Shop** verantwortet der Betreiber selbst; keine offene
+  Aufgabe des Werkzeugs.
 
 ### Mit Ticket 23 geschlossen
 
@@ -205,6 +179,15 @@ ungenutzt in `cleaning.py`.
 - **Das Ablehnungs-Nachschlagewerk wuchs mit dem Stapel** (~2,5 s je Lauf bei
   dreihundert).
 - **`ic-dots` fehlte im Sprite** — ein Menü mit unsichtbarem Griff.
+
+- **Die DNB fragte nie nach den eigenen Büchern.** Gefragt wurde „zuletzt
+  gesehen zuerst“, 50 je Lauf — und jeder Lauf sieht Hunderte neuer Funde
+  *nach* den Watchlist-Titeln. Die ISBNs der eigenen Bücher wurden bei jedem
+  Lauf wieder verdrängt: 34 Bücher mit ISBN, **einer** davon mit Datensatz.
+  Aufgefallen erst, als die Reihe aufs Buch sollte und bei einem ankam.
+- **„Das kleinere Titelbild überschreibt das größere“** stand in dieser Liste
+  und stimmte nicht mehr: alle Stellen prüften längst, ob schon ein Bild da
+  ist. Das echte Problem war die Kehrseite — das erste Bild gewann für immer.
 
 ---
 
