@@ -13,6 +13,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from .config import Profile
+from .dnb import Record
 from .http import RateLimited
 from .models import Observation
 from .store import ENTRY_TRIGGER, Store
@@ -33,12 +34,15 @@ def gather(store: Store, profile: Profile, observations, sources):
     dnb = store.dnb_facts(o.isbn for o in observations if o.isbn)
     belegt = []
     for observation in observations:
-        original, dnb_woerter = dnb.get(observation.isbn or "", (None, ()))
+        fakten = dnb.get(observation.isbn or "", Record())
         belegt.append(
             replace(
                 observation,
-                keywords=tuple(dict.fromkeys((*observation.keywords, *dnb_woerter))),
-                original_title=original,
+                keywords=tuple(dict.fromkeys((*observation.keywords, *fakten.keywords))),
+                original_title=fakten.original_title,
+                # Die Detailseite zuerst: sie ist frisch geholt, die DNB hat
+                # zu einem neuen Fund vielleicht noch gar nicht geantwortet.
+                publisher=observation.publisher or fakten.publisher,
             )
         )
     return belegt
@@ -114,6 +118,7 @@ def _with_details(store: Store, profile: Profile, observations, sources):
             blurb=item.blurb or observation.blurb,
             cover_url=item.cover_url or observation.cover_url,
             keywords=item.keywords,
+            publisher=item.publisher,
             sample=probe,
         )
         geholt[observation.key] = voller

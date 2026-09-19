@@ -59,6 +59,8 @@ class Detail:
     blurb: str | None = None
     #: Die Leseprobe als EPUB, fuer den Bewerter (#17).
     sample_url: str | None = None
+    #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
+    publisher: str | None = None
 
     @property
     def availability(self) -> Availability:
@@ -122,7 +124,14 @@ def parse_detail(html: str) -> Detail:
         votes=_votes(page),
         blurb=_blurb(page),
         sample_url=_sample(page),
+        publisher=_publisher(page),
     )
+
+
+def _publisher(page) -> str | None:
+    marke = page.select_one(sel.PUBLISHER_LABEL)
+    wert = marke.find_next_sibling() if marke is not None else None
+    return wert.get_text(" ", strip=True) or None if wert is not None else None
 
 
 def _sample(page) -> str | None:

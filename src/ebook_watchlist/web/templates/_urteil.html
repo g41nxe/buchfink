@@ -23,6 +23,13 @@
   <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft">
     {{ judgement.votes }} Stimmen</span>
   {% endif %}
+  {# Was der Code nach dem Urteil abzog (#28). Ohne das stuende ein Buch mit
+     drei Sternen da, und niemand saehe, dass das Modell vier gegeben hatte. #}
+  {% if judgement.deductions %}
+  <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft">
+    {{ judgement.model_stars | sterne }} vom Modell,
+    {% for abzug in judgement.deductions %}−1 {{ abzug }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
+  {% endif %}
   <span class="text-sm text-soft">{{ judgement.label }}</span>
   {# Worauf das Urteil ruht — nur bei den eigenen. Eine fremde Stimme ist ein
      Durchschnitt aus Stimmen, und "im Text belegt" daneben behauptete, jemand

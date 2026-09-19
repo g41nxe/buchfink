@@ -55,6 +55,8 @@ class Item:
     sample_url: str | None = None
     #: Die Schlagwoerter der Quelle, ohne Autor und Titel (#17).
     keywords: tuple[str, ...] = ()
+    #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
+    publisher: str | None = None
 
 
 @dataclass(slots=True)

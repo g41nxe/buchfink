@@ -83,6 +83,11 @@ DETAIL_DESCRIPTION_FULL = ".description--full"
 DETAIL_DESCRIPTION_PREVIEW = ".description--preview"
 #: Die Leseprobe als EPUB, verlinkt unter "Downloads" (#17).
 DETAIL_SAMPLE = 'a.link--download[href$=".epub"]'
+#: Der Verlag: ein Link in der Angabenliste, gleich hinter der Marke "Verlag"
+#: (#28). Die Marke ist ein eigener ``span``, der Link steht im Geschwister.
+DETAIL_FACT = ".entryWrap"
+DETAIL_FACT_LABEL = ".entryText"
+DETAIL_FACT_VALUE = ".entryTextAdditional"
 #: Die Schlagwoerter des Shops — Motive, Vergleichstitel, dazu Autor und Titel.
 DETAIL_KEYWORDS = 'meta[name="keywords"]'
 

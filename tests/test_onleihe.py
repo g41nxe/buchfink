@@ -81,6 +81,10 @@ def test_a_title_the_library_dropped_is_no_item() -> None:
     assert OnleiheSource(Weg("")).item("373164461") is None
 
 
+def test_the_detail_page_names_the_publisher() -> None:
+    assert parse.parse_detail(fixture("detail-available.html")).publisher == "FISCHER E-Books"
+
+
 def test_available_title_has_no_eta() -> None:
     detail = parse.parse_detail(fixture("detail-available.html"))
     assert detail.title == "Sieben Richtige"

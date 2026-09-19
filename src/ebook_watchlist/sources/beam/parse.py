@@ -228,6 +228,8 @@ class Detail:
     sample_url: str | None = None
     #: Die Schlagwoerter des Shops, ohne Autor und Titel (#17).
     keywords: tuple[str, ...] = ()
+    #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
+    publisher: str | None = None
 
 
 def _isbn_from_order_number(order_number: str | None) -> str | None:
@@ -293,7 +295,22 @@ def parse_detail(html: str) -> Detail:
         blurb=blurb,
         sample_url=sample_href if isinstance(sample_href, str) and sample_href else None,
         keywords=_keywords(page, leave_out=(author, title)),
+        publisher=_fact(page, "Verlag"),
     )
+
+
+def _fact(page, label: str) -> str | None:
+    """Ein Wert aus der Angabenliste der Detailseite, gesucht ueber seine Marke."""
+    for eintrag in page.select(sel.DETAIL_FACT):
+        marke = eintrag.select_one(sel.DETAIL_FACT_LABEL)
+        wert = eintrag.select_one(sel.DETAIL_FACT_VALUE)
+        if marke and wert and marke.get_text(strip=True) == label:
+            # Vor dem Namen steht ein Symbol als Ligatur ("find_in_page"):
+            # Text fuer die Schrift, nicht fuer uns.
+            for symbol in wert.select(".material-icons"):
+                symbol.decompose()
+            return wert.get_text(" ", strip=True) or None
+    return None
 
 
 def _keywords(page, *, leave_out) -> tuple[str, ...]:

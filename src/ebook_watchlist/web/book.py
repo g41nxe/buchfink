@@ -161,6 +161,9 @@ class Judgement:
     #: von vorher und bei allem, was kein Modell gefaellt hat.
     hits: tuple[str, ...] = ()
     misses: tuple[str, ...] = ()
+    #: Was der Code nach dem Urteil abzog, und die Sterne des Modells davor (#28).
+    deductions: tuple[str, ...] = ()
+    model_stars: float | None = None
 
     @property
     def confidence_label(self) -> str:
@@ -402,6 +405,8 @@ def _judgements(
             votes=row.votes,
             hits=row.hits,
             misses=row.misses,
+            deductions=row.deductions,
+            model_stars=row.model_stars,
         )
         for origin in ORIGIN_ORDER
         if (row := found.get(origin)) is not None
@@ -625,6 +630,8 @@ def rate_observation(
         via=via,
         hits=rating.hits,
         misses=rating.misses,
+        model_stars=rating.model_stars,
+        deductions=rating.deductions,
     )
     return ""
 

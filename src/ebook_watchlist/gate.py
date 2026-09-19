@@ -241,6 +241,8 @@ def apply(
                 via=VIA_RUN,
                 hits=rating.hits,
                 misses=rating.misses,
+                model_stars=rating.model_stars,
+                deductions=rating.deductions,
             )
 
         _decide(rating, delta, threshold, kept, report)

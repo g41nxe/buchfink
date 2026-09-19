@@ -572,6 +572,21 @@ def _the_library_reads_more(connection: Connection) -> None:
     add_column(connection, "dnb_record", "reading", "INTEGER NOT NULL DEFAULT 1")
 
 
+def _the_library_names_the_publisher(connection: Connection) -> None:
+    """Der Verlag aus der DNB, fuer den Abzug bei Selbstverlag (#28).
+
+    ``reading`` bleibt, wie es ist: die Zeilen tragen Fassung 1 oder 2, und
+    ``DNB_READING`` steht jetzt auf 3 — so werden sie einmal neu gefragt.
+    """
+    add_column(connection, "dnb_record", "publisher", "TEXT")
+
+
+def _a_judgement_shows_what_came_off(connection: Connection) -> None:
+    """Abzuege nach dem Urteil und die Sterne des Modells davor (#28)."""
+    add_column(connection, "rating", "deducted", "TEXT")
+    add_column(connection, "rating", "model_stars", "FLOAT")
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     _backfill_seeded_scopes,
     _add_blurb_columns,
@@ -603,6 +618,8 @@ MIGRATIONS: tuple[Migration, ...] = (
     _a_judgement_knows_its_way,
     _a_judgement_names_its_axes,
     _the_library_reads_more,
+    _the_library_names_the_publisher,
+    _a_judgement_shows_what_came_off,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

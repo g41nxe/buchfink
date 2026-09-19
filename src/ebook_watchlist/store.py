@@ -33,6 +33,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from .books import BookLike
 from .books import find as find_book
 from .cleaning import author_key, preferred_spelling
+from .dnb import Record
 from .migrations import migrate
 from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .ratings import PROFILE_BOUND, RATING_ORIGINS
@@ -155,8 +156,8 @@ class BookRow(Base):
 
 #: Die Fassung, in der ``dnb.parse`` einen Datensatz liest. Hochzaehlen, wenn
 #: es ein Feld mehr liest: dann werden die schon gefundenen einmal neu gefragt.
-#: 2 = Originaltitel und Schlagwoerter (#17).
-DNB_READING = 2
+#: 2 = Originaltitel und Schlagwoerter (#17), 3 = Verlag (#28).
+DNB_READING = 3
 
 
 class DnbRecordRow(Base):
@@ -187,6 +188,7 @@ class DnbRecordRow(Base):
     original_title: Mapped[str | None] = mapped_column(String, nullable=True)
     #: JSON-Liste der Schlagwoerter aus ``653``.
     keywords: Mapped[str | None] = mapped_column(String, nullable=True)
+    publisher: Mapped[str | None] = mapped_column(String, nullable=True)
     #: Mit welcher Fassung des Auslesens die Antwort gelesen wurde. Liest der
     #: Parser mehr als frueher, wird ein altes Ja einmal neu gefragt (#17).
     reading: Mapped[int] = mapped_column(Integer, default=DNB_READING)
@@ -288,6 +290,15 @@ class RatingRow(Base):
     #: ``{"trifft": [...], "fehlt": [...]}`` (#12). JSON wie
     #: ``book_source.details``, weil nichts danach filtert oder sortiert.
     axes: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Was der Code nach dem Urteil abgezogen hat, als JSON-Liste, und die
+    #: Sterne des Modells davor (#28). ``stars`` sind die geltenden: nach ihnen
+    #: entscheiden Tor, Stapel und Tagesbericht, ohne den Abzug zu kennen.
+    deducted: Mapped[str | None] = mapped_column(String, nullable=True)
+    model_stars: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    @property
+    def deductions(self) -> tuple[str, ...]:
+        return tuple(json.loads(self.deducted)) if self.deducted else ()
 
     @property
     def hits(self) -> tuple[str, ...]:
@@ -868,17 +879,19 @@ class Store:
                 zeile.language = record.language
                 zeile.original_title = record.original_title
                 zeile.keywords = json.dumps(list(record.keywords), ensure_ascii=False)
+                zeile.publisher = record.publisher
                 for enthalten in record.contains:
                     if session.get(DnbContainsRow, (isbn, enthalten)) is None:
                         session.add(DnbContainsRow(isbn=isbn, contained=enthalten))
             zeile.reading = DNB_READING
             session.commit()
 
-    def dnb_facts(self, isbns: Iterable[str]) -> dict[str, tuple[str | None, tuple[str, ...]]]:
-        """ISBN -> (Originaltitel, Schlagwoerter), wo die DNB eines von beiden nennt.
+    def dnb_facts(self, isbns: Iterable[str]) -> dict[str, Record]:
+        """ISBN -> was die DNB fuer den Bewerter weiss, wo sie etwas davon weiss.
 
-        Fuer den Bewerter (#17): was der Verlag selbst an Motiven und
-        Vergleichstiteln angibt, steht weder im Titel noch im Klappentext.
+        Originaltitel und Schlagwoerter (#17): was der Verlag selbst an Motiven
+        und Vergleichstiteln angibt, steht weder im Titel noch im Klappentext.
+        Dazu der Verlag, als Rueckfall fuer den Abzug bei Selbstverlag (#28).
         """
         gesucht = [isbn for isbn in isbns if isbn]
         if not gesucht:
@@ -886,14 +899,19 @@ class Store:
         with self.session() as session:
             zeilen = session.execute(
                 select(
-                    DnbRecordRow.isbn, DnbRecordRow.original_title, DnbRecordRow.keywords
+                    DnbRecordRow.isbn,
+                    DnbRecordRow.original_title,
+                    DnbRecordRow.keywords,
+                    DnbRecordRow.publisher,
                 ).where(DnbRecordRow.isbn.in_(gesucht), DnbRecordRow.found.is_(True))
             )
             fakten = {}
-            for isbn, original, schlagwoerter in zeilen:
+            for isbn, original, schlagwoerter, verlag in zeilen:
                 woerter = tuple(json.loads(schlagwoerter)) if schlagwoerter else ()
-                if original or woerter:
-                    fakten[isbn] = (original, woerter)
+                if original or woerter or verlag:
+                    fakten[isbn] = Record(
+                        original_title=original, keywords=woerter, publisher=verlag
+                    )
             return fakten
 
     def dnb_languages(self) -> dict[str, str]:
@@ -1480,6 +1498,8 @@ class Store:
         via: str | None = None,
         hits: Sequence[str] = (),
         misses: Sequence[str] = (),
+        model_stars: float | None = None,
+        deductions: Sequence[str] = (),
     ) -> None:
         """Ein Urteil festhalten.
 
@@ -1510,6 +1530,8 @@ class Store:
                 if hits or misses
                 else None
             )
+            row.model_stars = model_stars
+            row.deducted = json.dumps(list(deductions), ensure_ascii=False) if deductions else None
             row.pitch = pitch
             row.reason = reason
             row.profile_version = profile_version

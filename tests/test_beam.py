@@ -147,6 +147,11 @@ def test_the_shops_keywords_leave_out_author_and_title() -> None:
     assert len(schlagwoerter) == len(set(schlagwoerter))
 
 
+def test_the_detail_page_names_the_publisher() -> None:
+    """Der Verlag entscheidet, ob ein Stern für Selbstverlag abgeht (#28)."""
+    assert beam_detail("product-detail.html").publisher == "FISCHER E-Books"
+
+
 def test_a_detail_page_without_the_product_block_raises() -> None:
     with pytest.raises(SourceStructureError, match="detail markup changed"):
         parse.parse_detail("<html><body><h1>Beam Shop</h1></body></html>")

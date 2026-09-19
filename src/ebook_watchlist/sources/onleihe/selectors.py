@@ -104,6 +104,9 @@ PROBE_DETAIL_PATH = "mediaInfo,0-0-373164461-200-0-0-0-0-0-0-0.html"
 #: Nullen sind Suchzustand, den die Seite nicht braucht (#17).
 DETAIL_PATH = "mediaInfo,0-0-{title_id}-200-0-0-0-0-0-0-0.html"
 
+#: Der Verlag: ein ``b.publisher`` als Marke, der Name im Link daneben (#28).
+PUBLISHER_LABEL = "b.publisher"
+
 #: Der Knopf "Leseprobe" — ein Link auf den Webreader, die EPUB-Datei steht
 #: in dessen Adresse hinter ``url=`` (#17).
 SAMPLE_LINK = 'a[href*="reader.onleihe.de"][href*="url="]'

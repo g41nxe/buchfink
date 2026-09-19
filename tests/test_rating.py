@@ -1317,6 +1317,16 @@ def antwort(stars: int, trifft: list[str], fehlt: list[str]) -> str:
                        "pitch": "Ein Duell.", "trifft": trifft, "fehlt": fehlt})
 
 
+def test_text_after_the_answer_does_not_cost_the_judgement() -> None:
+    """Gemessen am 2026-09-19 auf der Fundseite: das Modell schrieb nach dem
+    Objekt noch etwas, und das ganze Urteil fiel mit "Extra data" aus. Das
+    erste vollständige Objekt ist die Antwort; was danach kommt, ist keine
+    zweite Lesart, sondern Beiwerk."""
+    text = antwort(1, [], ["Tempo"]) + '\n\nHinweis: {"das hier" gehört nicht dazu}'
+
+    assert parse_answer(text, 1, SCHEMA, axes=ACHSEN).stars == 1
+
+
 def test_the_axes_come_as_data_beside_the_text() -> None:
     """Die Begruendung stand voller Achsennamen — "trifft Katz und Maus
     woertlich". Jetzt sagt der Text es in normalen Worten, und die Achsen
@@ -1361,6 +1371,54 @@ def test_belegt_needs_the_sample() -> None:
 
     assert parse_answer(belegt, 1, SCHEMA, had_sample=False).confidence == "teils"
     assert parse_answer(belegt, 1, SCHEMA, had_sample=True).confidence == "belegt"
+
+
+@pytest.mark.parametrize(
+    "verlag",
+    ["neobooks", "epubli", "tredition GmbH", "via tolino media", "Independently published",
+     "BoD – Books on Demand"],
+)
+def test_self_publishing_costs_a_star(verlag: str) -> None:
+    """Ein Buch ohne Verlag im Rücken muss aus eigener Kraft vier Sterne holen,
+    um über die Schwelle von drei zu kommen (#28). Abgezogen wird im Code und
+    nach dem Urteil — das Modell soll das Buch beurteilen, nicht den Verlag."""
+    gelesen = parse_answer(antwort(4, ["Tempo"], []), 1, SCHEMA, axes=ACHSEN, publisher=verlag)
+
+    assert gelesen.stars == 3
+    assert gelesen.model_stars == 4
+    assert gelesen.deductions == ("Selbstverlag",)
+
+
+@pytest.mark.parametrize("verlag", ["Luzifer-Verlag", "Goldmann Verlag", "PerryPayneBooks", None])
+def test_a_real_publisher_or_none_costs_nothing(verlag: str | None) -> None:
+    """Kleinverlage haben ein Lektorat; ein Autorenlabel ist nicht zu erkennen,
+    und eine fehlende Angabe ist kein Beleg."""
+    gelesen = parse_answer(antwort(4, ["Tempo"], []), 1, SCHEMA, axes=ACHSEN, publisher=verlag)
+
+    assert gelesen.stars == 4
+    assert gelesen.model_stars is None
+    assert gelesen.deductions == ()
+
+
+def test_no_star_goes_below_zero() -> None:
+    gelesen = parse_answer(antwort(0, [], ["Tempo"]), 1, SCHEMA, axes=ACHSEN,
+                           publisher="neobooks")
+
+    # Wo nichts mehr abgeht, wird auch kein Abzug verbucht — "0 vom Modell,
+    # −1 Selbstverlag" hiesse, es sei etwas abgezogen worden.
+    assert gelesen.stars == 0
+    assert gelesen.deductions == ()
+    assert gelesen.model_stars is None
+
+
+def test_the_deduction_is_stored_beside_the_judgement(store: Store) -> None:
+    store.put_rating("isbn:9783754123456", stars=3, confidence="teils", reason="Zieht.",
+                     profile_version=1, now=NOW, origin=BY_MODEL,
+                     model_stars=4, deductions=("Selbstverlag",))
+
+    zeile = store.ratings_for(["isbn:9783754123456"])[("isbn:9783754123456", BY_MODEL)]
+
+    assert (zeile.stars, zeile.model_stars, zeile.deductions) == (3, 4, ("Selbstverlag",))
 
 
 def test_a_low_judgement_may_hit_nothing() -> None:

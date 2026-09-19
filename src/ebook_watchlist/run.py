@@ -690,6 +690,8 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
             via=VIA_BACKLOG,
             hits=rating.hits,
             misses=rating.misses,
+            model_stars=rating.model_stars,
+            deductions=rating.deductions,
         )
         verteilung[rating.stars] = verteilung.get(rating.stars, 0) + 1
         print(

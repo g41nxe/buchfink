@@ -288,3 +288,19 @@ def test_a_find_can_be_judged_again_from_its_page(
     zeile = db.ratings_for([subject_of(beobachtung)])[(subject_of(beobachtung), BY_MODEL)]
     assert zeile.via == VIA_DISCOVERY_PAGE
     assert "Neu beurteilt." in client.get("/discovery/beam/7").text
+
+
+def test_a_deduction_is_shown_beside_the_stars(client: TestClient, db: Store) -> None:
+    """Warum ein Buch unter die Schwelle fiel, muss auf der Seite stehen (#28):
+    die Sterne des Modells, und was der Code davon abgezogen hat."""
+    from ebook_watchlist.ratings import BY_MODEL
+
+    beobachtung = fund(db, item_id="7")
+    db.put_rating(subject_of(beobachtung), stars=3, confidence="teils", reason="Zieht.",
+                  profile_version=1, now=NOW, origin=BY_MODEL,
+                  model_stars=4, deductions=("Selbstverlag",))
+
+    seite = client.get("/discovery/beam/7").text
+
+    assert "4 vom Modell" in seite
+    assert "−1 Selbstverlag" in seite

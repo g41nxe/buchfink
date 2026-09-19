@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +32,7 @@ import requests
 import yaml
 
 from .cleaning import is_truncated
+from .deductions import deductions_for
 from .models import Observation
 from .reasons import THEMA, thema_name
 
@@ -107,6 +107,10 @@ class Rating:
     #: Urteilen von vorher.
     hits: tuple[str, ...] = ()
     misses: tuple[str, ...] = ()
+    #: Was der Code nach dem Urteil abgezogen hat, je einen Stern (#28), und
+    #: die Sterne des Modells davor. ``None``, wo nichts abging.
+    deductions: tuple[str, ...] = ()
+    model_stars: float | None = None
 
     def passes(self, threshold: int) -> bool:
         return self.stars >= threshold
@@ -306,6 +310,10 @@ def _facts(observation: Observation) -> list[str]:
         facts.append(f"Untertitel: {observation.subtitle}")
     if observation.original_title:
         facts.append(f"Originaltitel: {observation.original_title}")
+    if observation.publisher:
+        # Eine Angabe wie jede andere. Den Abzug fuer Selbstverlag macht der
+        # Code nach dem Urteil (#28) — hier stuende er doppelt.
+        facts.append(f"Verlag: {observation.publisher}")
     facts.append(f"Autor:in: {observation.author or 'unbekannt'}")
     if observation.series:
         facts.append(f"Reihe: {observation.series}")
@@ -402,14 +410,19 @@ def _json_object(text: str):
     weiter flickt, faengt an zu raten, und dann ist unbewertet ehrlicher
     (ADR 7).
     """
-    match = re.search(r"\{.*\}", text, re.S)
-    if match is None:
+    # Gelesen wird das erste vollstaendige Objekt; was danach kommt, bleibt
+    # liegen. Ein Hinweis hinter der Antwort kostete sonst das ganze Urteil
+    # ("Extra data", gemessen am 2026-09-19). Das ist kein Flicken: das Objekt
+    # selbst bleibt, wie es kam.
+    anfang = text.find("{")
+    if anfang < 0:
         raise RatingUnavailable("Antwort enthält kein JSON")
+    lesen = json.JSONDecoder().raw_decode
     try:
-        return json.loads(match.group(0))
+        return lesen(text, anfang)[0]
     except ValueError as exc:
         try:
-            return json.loads(match.group(0).replace(r"\'", "'"))
+            return lesen(text.replace(r"\'", "'"), anfang)[0]
         except ValueError:
             raise RatingUnavailable(f"Antwort ist kein gültiges JSON: {exc}") from exc
 
@@ -448,6 +461,7 @@ def parse_many(
                 scheme,
                 axes=axes,
                 had_sample=bool(observation.sample),
+                publisher=observation.publisher,
             )
         except RatingUnavailable:
             continue
@@ -478,6 +492,7 @@ def parse_answer(
     *,
     axes: Collection[str] | None = None,
     had_sample: bool = False,
+    publisher: str | None = None,
 ) -> Rating:
     """Die Antwort des Modells, streng gelesen.
 
@@ -499,6 +514,10 @@ def parse_answer(
     Schlagwoerter versprechen, was das Buch vielleicht nicht haelt; wer nur
     sie hatte, wird eine Stufe herabgesetzt statt verworfen — ``had_sample``
     sagt, ob das Buch eine hatte.
+
+    Zuletzt die Abzuege (#28), je einen Stern: erst nach den Proben, denn die
+    pruefen, ob das Modell sich selbst widerspricht, und das tut es an seinen
+    eigenen Sternen.
     """
     data = _json_object(text)
 
@@ -531,14 +550,18 @@ def parse_answer(
     # Ein fehlender Pitch kostet nicht das ganze Urteil: die Sterne und die
     # Begründung tragen für sich, und ein Buch deswegen unbewertet zu lassen
     # wäre teurer als eine leere Zeile im Digest.
+    # Wo nichts mehr abgeht, wird auch nichts verbucht.
+    abzuege = deductions_for(publisher) if stars > scheme.min_stars else ()
     return Rating(
-        stars=stars,
+        stars=max(scheme.min_stars, stars - len(abzuege)),
         reason=reason,
         confidence=confidence,
         profile_version=version,
         pitch=str(data.get("pitch", "")).strip(),
         hits=hits,
         misses=misses,
+        deductions=abzuege,
+        model_stars=stars if abzuege else None,
     )
 
 
@@ -617,6 +640,7 @@ class ModelRater:
             self.scheme,
             axes=self.axes,
             had_sample=bool(observation.sample),
+            publisher=observation.publisher,
         )
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
@@ -711,6 +735,7 @@ class ClaudeCodeRater:
             self.scheme,
             axes=self.axes,
             had_sample=bool(observation.sample),
+            publisher=observation.publisher,
         )
 
     def rate_many(

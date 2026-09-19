@@ -296,6 +296,16 @@ What publisher and shop tag a book with — motifs and comparable titles ("Space
 Opera", "Dune"). From the shop's detail page and from the DNB record (MARC
 `653`, the publisher's own words from the VLB), without trade codes.
 
+### Deduction
+*deutsch: Abzug*
+
+A star taken off a machine Rating by the code, after the model has judged —
+for a rule that hangs on a list rather than on judgement, so it applies the
+same to every book (#28). The one today: **Selbstverlag**, when the publisher
+is a self-publishing platform (neobooks, epubli, tredition, BoD, …). Small
+presses are not on the list. The Rating keeps the model's own stars beside it,
+and the page shows both.
+
 ### Reference Author
 *deutsch: Referenzautor:in*
 

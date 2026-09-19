@@ -121,13 +121,20 @@ def test_an_answer_read_by_an_older_parser_is_asked_again(db: Store) -> None:
 def test_original_title_and_keywords_are_kept(db: Store) -> None:
     db.save_dnb(
         "9783641171421",
-        Record(original_title="Dark Matter", keywords=("Quantenphysik", "Der Marsianer")),
+        Record(
+            original_title="Dark Matter",
+            keywords=("Quantenphysik", "Der Marsianer"),
+            publisher="Goldmann Verlag",
+        ),
         NOW,
     )
 
     fakten = db.dnb_facts(["9783641171421", "9780000000000"])
 
-    assert fakten == {"9783641171421": ("Dark Matter", ("Quantenphysik", "Der Marsianer"))}
+    assert list(fakten) == ["9783641171421"]
+    assert fakten["9783641171421"].original_title == "Dark Matter"
+    assert fakten["9783641171421"].keywords == ("Quantenphysik", "Der Marsianer")
+    assert fakten["9783641171421"].publisher == "Goldmann Verlag"
 
 
 # --- was wir aufheben -------------------------------------------------------

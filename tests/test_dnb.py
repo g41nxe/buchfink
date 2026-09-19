@@ -84,6 +84,11 @@ def test_a_book_without_an_original_has_no_original_title() -> None:
     assert parse(antwort("bundle-slash.xml")).original_title is None
 
 
+def test_the_publisher_comes_out_of_264() -> None:
+    """Die Rückfallquelle für den Verlag, wenn die Detailseite ihn nicht nennt (#28)."""
+    assert parse(antwort("translation.xml")).publisher == "Goldmann Verlag"
+
+
 def test_an_unknown_isbn_is_an_empty_record_not_an_error() -> None:
     """Neun von dreißig kennt die DNB nicht. Das ist eine Antwort."""
     datensatz = parse(antwort("nothing.xml"))

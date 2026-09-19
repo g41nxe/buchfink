@@ -106,6 +106,8 @@ class Observation:
     original_title: str | None = None
     #: Der Anfang des Buchs aus der Leseprobe.
     sample: str | None = None
+    #: Der Verlag, von der Detailseite oder aus der DNB (#28).
+    publisher: str | None = None
 
     @property
     def key(self) -> tuple[str, str]:

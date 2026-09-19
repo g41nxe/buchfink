@@ -70,6 +70,9 @@ class Record:
     #: Die Schlagwörter des Verlags aus ``653``: Motive und Vergleichstitel.
     #: Ohne die Codes für den Handel, die dort in Klammern vorangestellt sind.
     keywords: tuple[str, ...] = ()
+    #: Der Verlag, aus ``264 $b`` (aeltere Saetze: ``260 $b``) — die
+    #: Rueckfallquelle fuer den Abzug bei Selbstverlag (#28).
+    publisher: str | None = None
 
     @property
     def is_empty(self) -> bool:
@@ -105,7 +108,7 @@ def parse(xml: str) -> Record:
     if treffer and treffer.group(1) == "0":
         return Record()
 
-    titel = untertitel = autor = reihe = band = sprache = original = None
+    titel = untertitel = autor = reihe = band = sprache = original = verlag = None
     enthalten: list[str] = []
     schlagwoerter: list[str] = []
 
@@ -121,6 +124,8 @@ def parse(xml: str) -> Record:
         elif tag == "490":
             reihe = reihe or erste.get("a")
             band = band or erste.get("v")
+        elif tag in ("264", "260"):
+            verlag = verlag or erste.get("b")
         elif tag == "240":
             original = original or erste.get("a")
         elif tag == "653":
@@ -148,6 +153,7 @@ def parse(xml: str) -> Record:
         contains=tuple(dict.fromkeys(enthalten)),
         original_title=original,
         keywords=tuple(dict.fromkeys(schlagwoerter)),
+        publisher=verlag,
     )
 
 
