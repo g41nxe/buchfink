@@ -279,11 +279,30 @@ def parse_detail(html: str) -> Detail:
         title=title_node.get_text(" ", strip=True) if title_node else None,
         price_cents=price_cents,
         isbn=isbn,
-        cover_url=_cover_from(scope.select_one(sel.DETAIL_IMAGE)),
+        cover_url=_detail_cover(scope),
         author=author or None,
         url=canonical_url(href) if isinstance(href, str) and href else None,
         blurb=blurb,
     )
+
+
+def _detail_cover(scope) -> str | None:
+    """Das Titelbild der Detailseite.
+
+    Eine Einzelausgabe traegt es mit ``srcset``; das ``src`` daneben ist ein
+    Platzhalterpixel, deshalb zuerst das. Eine Paketseite zeigt dagegen die
+    Bilder ihrer Baende mit schlichtem ``src`` und ohne ``srcset`` — der
+    *Wayward Pines-Trilogie* fehlte deshalb das Bild, obwohl drei auf der Seite
+    standen. Dann gilt das erste: es ist der erste Band.
+    """
+    gefunden = _cover_from(scope.select_one(sel.DETAIL_IMAGE))
+    if gefunden:
+        return gefunden
+    for bild in scope.select(sel.DETAIL_IMAGE_PLAIN):
+        adresse = bild.get("src")
+        if isinstance(adresse, str) and adresse.startswith("http"):
+            return adresse
+    return None
 
 
 def _description(page) -> str | None:

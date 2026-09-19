@@ -273,3 +273,20 @@ def test_an_empty_full_node_does_not_swallow_the_blurb() -> None:
     )
 
     assert parse.parse_detail(html).blurb == "Ein kurzer Text."
+
+
+def test_a_bundle_page_has_a_cover_too() -> None:
+    """Die Paketseite zeigt die Titelbilder ihrer Baende mit schlichtem ``src``,
+    ohne das ``srcset`` einer Einzelausgabe. Gesucht wurde nur nach ``srcset``
+    — die *Wayward Pines-Trilogie* blieb deshalb ohne Bild, obwohl drei auf
+    der Seite standen. Genommen wird das erste: es ist der erste Band."""
+    html = """<html><body><div class="product--details">
+      <h1 class="product--title">Wayward Pines-Trilogie</h1>
+      <meta itemprop="price" content="10.97">
+      <img src="https://www.beam-shop.de/media/image/d8/b8/01/9783641253226_600x600.jpg">
+      <img src="https://www.beam-shop.de/media/image/c3/9b/c9/9783641253233_600x600.jpg">
+    </div></body></html>"""
+
+    assert parse.parse_detail(html).cover_url == (
+        "https://www.beam-shop.de/media/image/d8/b8/01/9783641253226_600x600.jpg"
+    )

@@ -61,6 +61,8 @@ DETAIL_PRICE_META = 'meta[itemprop="price"]'
 DETAIL_ORDER_NUMBER = 'input[name="sAdd"]'
 #: Auf der Detailseite ist das Bild groesser (600x600 statt 200x200).
 DETAIL_IMAGE = "img[data-srcset], img[srcset]"
+#: Paketseiten zeigen die Baende mit schlichtem ``src``, ohne ``srcset``.
+DETAIL_IMAGE_PLAIN = "img[src]"
 #: Die Autor:in auf der Produktseite. Anders als die Kachel traegt der
 #: Produktblock keine ``product--author``-Klasse; der Link auf die
 #: Autorensuche ist innerhalb des Blocks der einzige seiner Art. Nach der
