@@ -332,6 +332,11 @@ def test_rating_the_backlog_asks_only_about_what_has_no_judgement(
 
     assert main(["rate"]) == EXIT_OK
     assert [call.source_item_id for call in stub.calls] == ["neu"]
+    # Der Weg steht am Urteil (#10): ueber den Rueckstand, nicht im Lauf.
+    from ebook_watchlist.ratings import VIA_BACKLOG
+
+    neu = store.ratings_for(["item:beam:neu"])[("item:beam:neu", BY_MODEL)]
+    assert neu.via == VIA_BACKLOG
 
 
 # --- ein Rundgang am Tag reicht ---------------------------------------------

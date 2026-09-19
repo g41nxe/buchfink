@@ -14,7 +14,14 @@ from datetime import datetime
 
 from .models import Delta, DeltaKind, MatchReason, Observation
 from .rating import BATCH_SIZE, Rater, Rating, rate_in_batches
-from .ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject, subject_of
+from .ratings import (
+    BY_CONVERSATION,
+    BY_MODEL,
+    BY_READER,
+    VIA_RUN,
+    book_subject,
+    subject_of,
+)
 from .store import Store
 
 
@@ -226,6 +233,7 @@ def apply(
                 now=now,
                 origin=BY_MODEL,
                 pitch=rating.pitch,
+                via=VIA_RUN,
             )
 
         _decide(rating, delta, threshold, kept, report)

@@ -25,6 +25,7 @@ from ..ratings import (
     FOREIGN_ORIGINS,
     HUMAN_ORIGINS,
     LABELS,
+    VIA_BOOK_PAGE,
     book_subject,
     subject_of,
 )
@@ -580,6 +581,7 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
         now=now,
         origin=BY_MODEL,
         pitch=rating.pitch,
+        via=VIA_BOOK_PAGE,
     )
     return ""
 

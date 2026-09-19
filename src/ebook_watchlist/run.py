@@ -688,7 +688,7 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
     beim Sammeln wären es dreihundert.
     """
     from .rating import load_leseprofil, rate_in_batches
-    from .ratings import BY_MODEL, subject_of
+    from .ratings import BY_MODEL, VIA_BACKLOG, subject_of
     from .web import triage
 
     store = Store(paths.db_path())
@@ -751,6 +751,7 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
             now=now,
             origin=BY_MODEL,
             pitch=rating.pitch,
+            via=VIA_BACKLOG,
         )
         verteilung[rating.stars] = verteilung.get(rating.stars, 0) + 1
         print(

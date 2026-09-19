@@ -268,6 +268,10 @@ class RatingRow(Base):
     #: 5,0 aus einer Stimme ist keine Auskunft, 2,8 aus 1641 schon
     #: (Ticket 54).
     votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Auf welchem Weg ein Modellurteil entstand: ``run``, ``backlog`` oder
+    #: ``book_page`` (#10). Leer bei allem, was kein Modell geurteilt hat, und
+    #: bei Urteilen von vorher.
+    via: Mapped[str | None] = mapped_column(String, nullable=True)
     #: Die Fassung des Leseprofils, gegen die geurteilt wurde. Eine neue
     #: Fassung macht ein Maschinenurteil ungültig — das ist die eine Änderung,
     #: bei der ein erneuter Aufruf richtig ist. Eine Änderung am
@@ -1420,6 +1424,7 @@ class Store:
         origin: str = "model",
         pitch: str = "",
         votes: int | None = None,
+        via: str | None = None,
     ) -> None:
         """Ein Urteil festhalten.
 
@@ -1444,6 +1449,7 @@ class Store:
             row.stars = stars
             row.confidence = confidence
             row.votes = votes
+            row.via = via
             row.pitch = pitch
             row.reason = reason
             row.profile_version = profile_version

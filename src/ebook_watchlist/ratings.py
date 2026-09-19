@@ -40,6 +40,14 @@ BY_READER = "reader"
 #: fuenf Zeilen im echten Bestand sind ISBN-Zeilen; es waere der Normalfall.
 BY_ONLEIHE_READERS = "onleihe_readers"
 
+#: Auf welchem Weg ein Modellurteil entstand (#10). Die Herkunft sagt, *wer*
+#: geurteilt hat; dies sagt, *wann und wozu*. Ohne das war nicht zu beantworten,
+#: ob das Tor im Lauf ueberhaupt etwas entscheidet — alle drei Wege schrieben
+#: dasselbe ``model``. Aeltere Urteile tragen keinen Weg; geraten wird nichts.
+VIA_RUN = "run"
+VIA_BACKLOG = "backlog"
+VIA_BOOK_PAGE = "book_page"
+
 RATING_ORIGINS: frozenset[str] = frozenset(
     {BY_MODEL, BY_CONVERSATION, BY_READER, BY_ONLEIHE_READERS}
 )

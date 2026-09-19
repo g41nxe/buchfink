@@ -542,6 +542,15 @@ def _book_carries_its_volume(connection: Connection) -> None:
     add_column(connection, "book", "series_index", "TEXT")
 
 
+def _a_judgement_knows_its_way(connection: Connection) -> None:
+    """Auf welchem Weg ein Modellurteil entstand (#10).
+
+    Aeltere Urteile bleiben leer: welcher Weg es war, weiss niemand mehr, und
+    ein geratener Wert waere schlechter als keiner.
+    """
+    add_column(connection, "rating", "via", "TEXT")
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     _backfill_seeded_scopes,
     _add_blurb_columns,
@@ -570,6 +579,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _voebb_is_called_onleihe,
     _library_readers_are_named_per_library,
     _book_carries_its_volume,
+    _a_judgement_knows_its_way,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

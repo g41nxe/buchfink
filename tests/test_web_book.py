@@ -688,6 +688,10 @@ def test_the_button_fetches_a_judgement_for_this_one_book(
     # Seite zu sehen.
     assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].stars == 4
     assert "Passt." in body
+    # Der Weg steht am Urteil (#10): von der Buchseite, nicht im Lauf.
+    from ebook_watchlist.ratings import VIA_BOOK_PAGE
+
+    assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].via == VIA_BOOK_PAGE
 
 
 def test_without_a_rater_the_page_says_why(

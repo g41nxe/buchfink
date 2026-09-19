@@ -165,6 +165,19 @@ def test_a_good_fit_passes(store: Store) -> None:
     assert report.held_back == 0
 
 
+def test_the_gate_notes_that_it_judged_in_a_run(store: Store) -> None:
+    """Drei Wege fuehren zu einem Modellurteil, und hinterher wusste niemand,
+    welcher es war — damit war "entscheidet das Tor im Lauf ueberhaupt?"
+    nicht zu beantworten (#10)."""
+    from ebook_watchlist.ratings import BY_MODEL, VIA_RUN
+
+    gate.apply([first_seen(discovery(isbn="9783104911854"))], store=store,
+               rater=StubRater(rating(4)), profile_version=1, threshold=3, budget=10, now=NOW)
+
+    zeile = store.ratings_for(["isbn:9783104911854"])[("isbn:9783104911854", BY_MODEL)]
+    assert zeile.via == VIA_RUN
+
+
 def test_a_poor_fit_never_reaches_the_pile(store: Store) -> None:
     deltas = [first_seen(discovery(isbn="9783104911854"))]
     kept, report = gate.apply(
