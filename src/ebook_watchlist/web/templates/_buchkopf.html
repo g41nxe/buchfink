@@ -16,33 +16,53 @@
 {% macro kopf(titel, autor=none, reihe=none, cover_file=none, borrowable=false,
               deal=false, pille=none, kacheln=none, herkunft=none,
               lauf_unterwegs=false) %}
-{# Auf dem Telefon steht das Cover ueber dem Text, nicht daneben: neben den
-   96 Pixeln des Covers blieben dem Titel 211, und "Er — Er ist hier. Er
-   beobachtet dich. Er will dich zerstoeren." brach darin in vier Zeilen.
-   Untereinander hat er die vollen 327. #}
-<div class="flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:gap-5">
-  {{ cover(titel, cover_file, borrowable, deal, strecken=true, gross=true) }}
+{# Drei Breiten, eine Vorlage.
 
-  {# Ab `sm` mindestens so hoch wie das Cover und mittig gesetzt: wie viel hier
-     steht, haengt davon ab, was das Buch mitbringt — Reihe, Anlass und Quellen
-     sind alle wahlweise. Ohne das Mindestmass ragte das Cover bei einem kargen
-     Buch unten heraus. #}
-  <div class="flex w-full min-w-0 flex-col sm:min-h-36 sm:w-auto sm:flex-1
-              sm:justify-center">
+   Telefon (unter `sm`): alles untereinander. Neben den 96 Pixeln des Covers
+   blieben dem Titel 211, und "Er — Er ist hier. Er beobachtet dich. Er will
+   dich zerstoeren." brach darin in vier Zeilen.
+
+   Breit (der Kopf selbst misst mindestens 42rem): das Cover links, rechts
+   daneben Titel und darunter die Kacheln — alle Quellen in einer Reihe.
+
+   Dazwischen: die Kacheln passen neben dem Cover nicht mehr in eine Reihe.
+   Bisher brachen sie dort in zwei Reihen um, der Kopf wurde doppelt so hoch,
+   und das Cover, das auf seine Hoehe gestreckt wurde, zeigte nur noch einen
+   schmalen Streifen aus der Bildmitte. Jetzt rutschen sie unter Cover und
+   Titel und bekommen die ganze Breite.
+
+   Entschieden wird ueber die Breite des *Kopfes*, nicht des Fensters
+   (Container-Abfrage): in einer Seitenleiste ist das Fenster breit und der
+   Kopf trotzdem schmal.
+
+   Das Cover wird nicht mehr gestreckt. Es behaelt 2:3 und steht oben; wird
+   der Kopf doch einmal hoeher, bleibt darunter Luft statt eines verzerrten
+   Ausschnitts. #}
+<div class="@container">
+<div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-x-5
+            sm:gap-y-3">
+  <div class="@min-[42rem]:row-span-2">
+    {{ cover(titel, cover_file, borrowable, deal, gross=true) }}
+  </div>
+
+  {# Neben dem Cover und mittig zu ihm, solange die Kacheln darunter stehen;
+     im breiten Kopf oben, und die Kacheln folgen in derselben Spalte. #}
+  <div class="min-w-0 sm:self-center @min-[42rem]:self-end">
     <h1 class="font-serif text-2xl font-semibold tracking-tight">{{ titel }}</h1>
     <p class="mt-0.5 text-soft">{{ autor or "unbekannt" }}
       {%- if reihe %} · {{ reihe }}{% endif %}</p>
 
     {% if pille %}<div class="mt-2 flex flex-wrap items-center gap-2">{{ pille }}</div>{% endif %}
+  </div>
 
+  <div class="min-w-0 sm:col-span-2 @min-[42rem]:col-span-1 @min-[42rem]:col-start-2
+              @min-[42rem]:self-start">
     {# Ein Raster statt eines Flex-Umbruchs: bricht die Reihe um, sitzt die
        Kachel darunter in derselben Spalte und ist genauso breit wie die
-       darueber. Mit `flex-1` streckte sich eine umgebrochene Kachel ueber die
-       ganze Breite, und drei gleichrangige Quellen sahen aus wie zwei grosse
-       und eine kleine. `auto-fit` legt nur so viele Spalten an, wie Kacheln da
-       sind — zwei Quellen fuellen die Reihe weiterhin. #}
+       darueber. `auto-fit` legt nur so viele Spalten an, wie Kacheln da sind
+       — zwei Quellen fuellen die Reihe weiterhin. #}
     {% if kacheln %}
-    <div class="mt-3 grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] items-stretch
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] items-stretch
                 gap-3">{{ kacheln }}</div>
     {% endif %}
 
@@ -60,5 +80,6 @@
       Ein Lauf ist gerade unterwegs — die Angaben können sich gleich ändern.</p>
     {% endif %}
   </div>
+</div>
 </div>
 {% endmacro %}
