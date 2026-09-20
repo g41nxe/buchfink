@@ -254,3 +254,28 @@ def test_a_run_that_never_got_off_the_ground_shows_why(
     assert runs_of(store) == []
     assert state.detail is not None
     assert "config error" in state.detail
+
+
+def test_the_run_opens_no_console_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ein abgekoppelter Konsolenprozess bekommt unter Windows sein *eigenes*
+    Fenster — und das poppte bei jedem Lauf und jedem Urteil auf dem Schreibtisch
+    auf. ``CREATE_NO_WINDOW`` statt ``DETACHED_PROCESS``: losgelöst bleibt er
+    durch die eigene Prozessgruppe."""
+    import subprocess
+
+    from ebook_watchlist.web import runs
+
+    monkeypatch.setattr(runs.sys, "platform", "win32")
+    gesehen: dict = {}
+
+    class Popen:
+        def __init__(self, *args, **kwargs) -> None:
+            gesehen.update(kwargs)
+
+    monkeypatch.setattr(runs.subprocess, "Popen", Popen)
+    RunLauncher()._spawn()
+
+    flags = gesehen["creationflags"]
+    assert flags & subprocess.CREATE_NO_WINDOW
+    assert flags & subprocess.CREATE_NEW_PROCESS_GROUP
+    assert not flags & subprocess.DETACHED_PROCESS

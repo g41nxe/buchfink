@@ -769,6 +769,11 @@ class ClaudeCodeRater:
         # gefunden" wurde, und zwoelf Buecher fielen mit dieser falschen
         # Begruendung aus dem Lauf.
         command = [self.executable, "-p", "--output-format", "json"]
+        # Kein Fenster: die Oberflaeche holt ein Urteil im Hintergrund, und
+        # unter Windows blitzte dabei jedes Mal eine Konsole auf.
+        ohne_fenster = (
+            {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+        )
         try:
             completed = subprocess.run(  # noqa: S603 - fester Befehl, kein Shell
                 command,
@@ -778,6 +783,7 @@ class ClaudeCodeRater:
                 encoding="utf-8",
                 errors="replace",
                 timeout=self.timeout,
+                **ohne_fenster,
             )
         except FileNotFoundError as exc:
             raise RatingUnavailable(f"{self.executable} nicht gefunden") from exc

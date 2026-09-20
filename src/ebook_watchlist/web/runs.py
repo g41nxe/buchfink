@@ -186,13 +186,19 @@ class RunLauncher:
         log = _log_path()
         log.parent.mkdir(parents=True, exist_ok=True)
         environment = dict(os.environ, EBW_DATA_DIR=str(paths.data_dir()))
-        # Detached, and its output goes to a file rather than to our pipes:
-        # a pipe nobody reads fills up and stalls the Run, and a child in our
-        # process group would be taken down with the web app on Ctrl-C.
+        # Eigene Prozessgruppe, und die Ausgabe geht in eine Datei statt in
+        # unsere Leitungen: eine Leitung, die niemand liest, laeuft voll und
+        # haelt den Lauf an, und ein Kind in unserer Gruppe ginge mit der
+        # Oberflaeche unter, sobald jemand dort Strg-C drueckt.
+        #
+        # ``CREATE_NO_WINDOW`` statt ``DETACHED_PROCESS``: abgekoppelt bekommt
+        # ein Konsolenprogramm unter Windows sein *eigenes* Fenster, und das
+        # sprang bei jedem Lauf auf dem Schreibtisch auf. Losgeloest genug ist
+        # der Lauf schon durch die eigene Prozessgruppe.
         if sys.platform == "win32":  # pragma: no cover - the other branch on Linux
             extra = {
                 "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
-                | subprocess.DETACHED_PROCESS
+                | subprocess.CREATE_NO_WINDOW
             }
         else:
             extra = {"start_new_session": True}
