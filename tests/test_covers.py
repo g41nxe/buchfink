@@ -337,9 +337,9 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
     lag an Bildern, die beim Bauen der Entwuerfe von Hand im Ordner landeten."""
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
+    from ebook_watchlist.covers import fetch_for_candidates
     from ebook_watchlist.models import LinkOutcome
     from ebook_watchlist.relations import RelationKind
-    from ebook_watchlist.run import _fetch_candidate_covers
     from ebook_watchlist.store import Store
 
     store, profile = Store(paths.db_path()), load_profile()
@@ -360,7 +360,7 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
     )
 
     client = StubClient()
-    _fetch_candidate_covers(store, profile, client)
+    fetch_for_candidates(store, profile.slug, client)
 
     assert client.calls == ["https://example.invalid/mit.jpg"]
     assert paths.covers_dir().joinpath(file_name(client.calls[0])).exists()
@@ -369,10 +369,9 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
 def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_profile
-    from ebook_watchlist.covers import CoverStore
+    from ebook_watchlist.covers import CoverStore, fetch_for_candidates
     from ebook_watchlist.models import LinkOutcome
     from ebook_watchlist.relations import RelationKind
-    from ebook_watchlist.run import _fetch_candidate_covers
     from ebook_watchlist.store import Store
 
     store, profile = Store(paths.db_path()), load_profile()
@@ -390,7 +389,7 @@ def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
     )
 
     client = StubClient()
-    _fetch_candidate_covers(store, profile, client)
+    fetch_for_candidates(store, profile.slug, client)
 
     assert client.calls == []
 
@@ -503,3 +502,33 @@ def test_every_source_gets_its_chance_not_only_the_first(buchlager) -> None:
     fetch_for_books(buchlager, client, [_gesehen(buch.id, klein), _gesehen(buch.id, gross)])
 
     assert buchlager.book(buch.id).cover_file == file_name(gross)
+
+
+def test_the_narrow_run_fetches_the_candidate_images_too(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Der enge Lauf kann die Frage selbst aufwerfen — "Welches Buch ist das
+    richtige?" —, holte aber nur die Bilder der Bücher. Die Auswahl stand
+    danach bis zum nächsten Rundgang als Reihe gezeichneter Rücken da."""
+    from ebook_watchlist import single
+    from ebook_watchlist.config import WatchlistEntry
+
+    geholt: list[str] = []
+    monkeypatch.setattr(
+        single, "_entry_for", lambda *a, **k: WatchlistEntry(title="Egal", author="Wer")
+    )
+
+    class Quelle:
+        name = "beam"
+
+        def watch(self, entries, context):
+            return []
+
+    monkeypatch.setattr(single, "build_sources", lambda profile, client: [Quelle()])
+    monkeypatch.setattr(
+        single, "fetch_for_candidates", lambda store, slug, client: geholt.append(slug)
+    )
+
+    single.check_one(1)
+
+    assert geholt == ["test"]

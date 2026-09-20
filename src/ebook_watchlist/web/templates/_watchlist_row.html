@@ -195,7 +195,10 @@
                       hover:underline underline-offset-2">
         <svg class="i"><use href="#ic-warn"/></svg>
         Welches Buch ist das richtige?
-        <span class="text-soft">({{ entry.candidates | length }})</span>
+        {# Die Frage gilt *einer* Quelle — ohne ihren Namen sieht es aus, als
+           stuende das Buch ueberhaupt in Zweifel. #}
+        <span class="text-soft">bei {{ entry.choice_label }}
+          ({{ entry.candidates | length }})</span>
       </summary>
 
       <form method="post" action="/watchlist/{{ entry.book_id }}/zuordnen"

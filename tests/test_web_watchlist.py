@@ -193,6 +193,30 @@ def test_an_unsure_link_asks_for_a_decision(client: TestClient, db: Store) -> No
     assert "Welches Buch ist das richtige?" in body
 
 
+def test_the_question_says_which_source_is_asking(client: TestClient, db: Store) -> None:
+    """Die Entscheidung gilt für *eine* Quelle: derselbe Titel kann im Shop
+    richtig zugeordnet sein und in der Bibliothek offen. Ohne den Namen steht
+    die Frage da, als ginge es um das Buch überhaupt."""
+    book = db.books()[0]
+    db.put_book_source(
+        book.id,
+        "onleihe",
+        outcome=str(LinkOutcome.UNSURE),
+        url="https://voebb.invalid/1",
+        resolved_at=NOW,
+        matched_title="Achtsam morden im Hier und Jetzt",
+        matched_author="Dusse, Karsten",
+        reason="der gesuchte Titel steckt im gefundenen",
+    )
+
+    body = client.get("/watchlist").text
+
+    # Im Fragetext selbst, nicht irgendwo auf der Seite: die Quellenkacheln
+    # nennen die Onleihe ohnehin.
+    frage = body[body.index("Welches Buch ist das richtige?") :][:400]
+    assert "Onleihe" in frage
+
+
 def test_a_not_found_link_asks_nobody(client: TestClient, db: Store) -> None:
     """Nicht im Katalog ist eine Antwort, keine Frage — genau die Verwechslung,
     die die alte Aufmerksamkeitsliste unbrauchbar machte (Ticket 04)."""

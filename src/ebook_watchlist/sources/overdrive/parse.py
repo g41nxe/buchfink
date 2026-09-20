@@ -112,12 +112,6 @@ def parse_title(item: dict) -> Detail:
     titel = item.get("title")
     if not isinstance(titel, str) or not titel.strip():
         raise SourceStructureError(f"OverDrive: Titel {item.get('id')!r} hat keinen Titel")
-    # ``covers`` ebenso gegen eine fremde Gestalt gesichert wie ``gross``
-    # darunter: eine Liste statt eines Objekts warf einen ``AttributeError``,
-    # und der steht im Tagesbericht als Panne statt als Auskunft (ADR 7).
-    bilder = item.get("covers")
-    bilder = bilder if isinstance(bilder, dict) else {}
-    gross = bilder.get("cover510Wide") or bilder.get("cover300Wide") or {}
     return Detail(
         title=titel.strip(),
         author=_text(item, "firstCreatorName"),
@@ -126,8 +120,21 @@ def parse_title(item: dict) -> Detail:
         available_copies=_int(item, "availableCopies"),
         holds=_int(item, "holdsCount"),
         blurb=_text(item, "description"),
-        cover_url=gross.get("href") if isinstance(gross, dict) else None,
+        cover_url=_cover(item),
     )
+
+
+def _cover(item: dict) -> str | None:
+    """Die Adresse des Titelbilds, aus ``covers``.
+
+    ``covers`` ist ebenso gegen eine fremde Gestalt gesichert wie das Bild
+    darunter: eine Liste statt eines Objekts warf einen ``AttributeError``,
+    und der steht im Tagesbericht als Panne statt als Auskunft (ADR 7).
+    """
+    bilder = item.get("covers")
+    bilder = bilder if isinstance(bilder, dict) else {}
+    gross = bilder.get("cover510Wide") or bilder.get("cover300Wide") or {}
+    return gross.get("href") if isinstance(gross, dict) else None
 
 
 def title_id(item: dict) -> str:
@@ -156,6 +163,9 @@ class Candidate:
     #: "Der Zeitenläufer (Dark Matter)" ein "zeitenlaufer" — die Klammer gilt
     #: ihm als Ausgabenrauschen, hier steht aber der Originaltitel darin.
     isbn: str | None = None
+    #: Das Titelbild des Treffers — bei einer offenen Zuordnung entscheidet
+    #: das Auge, welcher der richtige ist (Ticket 41).
+    cover_url: str | None = None
 
 
 def parse_search(text: str) -> list[Candidate] | None:
@@ -190,6 +200,7 @@ def parse_search(text: str) -> list[Candidate] | None:
                 author=_text(item, "firstCreatorName"),
                 title_id=title_id(item),
                 isbn=_isbn(item),
+                cover_url=_cover(item),
             )
         )
     return gefunden

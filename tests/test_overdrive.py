@@ -144,6 +144,19 @@ def test_without_an_isbn_the_renamed_edition_stays_unmatched() -> None:
     assert resolution.confidence is not Confidence.AUTO_ACCEPT
 
 
+def test_a_candidate_brings_its_cover() -> None:
+    """Bei einer offenen Zuordnung entscheidet das Auge, welcher Treffer der
+    richtige ist (Ticket 41). Die Karte trägt das Bild längst — weitergereicht
+    wurde es nicht, und in der Auswahl stand ein Platzhalter."""
+    quelle = source(fixture("search-hits.json"))
+
+    resolution = quelle.resolve(
+        WatchlistEntry(title="Dark Matter", author="Blake Crouch", isbn="9783641171421")
+    )
+
+    assert resolution.accepted.cover_url is not None
+
+
 def test_an_unknown_title_resolves_to_nothing() -> None:
     quelle = source(fixture("search-no-hits.json"))
 

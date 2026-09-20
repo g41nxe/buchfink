@@ -232,6 +232,9 @@ class Candidate:
     medium: str | None
     url: str
     blurb: str | None = None
+    #: Das Vorschaubild der Karte, fuer die Auswahl bei einer offenen
+    #: Zuordnung (Ticket 41).
+    cover_url: str | None = None
 
 
 def _card_text(card: Tag, selector: str) -> str | None:
@@ -290,9 +293,16 @@ def parse_search_results(html: str, base: str = sel.BASE) -> list[Candidate] | N
                 blurb=_card_text(card, sel.CARD_ABSTRACT),
                 medium=_medium_of(card),
                 url=urljoin(base, str(href)),
+                cover_url=_card_cover(card, base),
             )
         )
     return candidates
+
+
+def _card_cover(card: Tag, base: str) -> str | None:
+    bild = card.select_one(sel.CARD_COVER)
+    quelle = bild.get("src") if bild is not None else None
+    return urljoin(base, quelle) if isinstance(quelle, str) and quelle else None
 
 
 def total_hits(html: str) -> int | None:

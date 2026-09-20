@@ -115,6 +115,20 @@ def test_search_results_parse_into_candidates() -> None:
     assert first.url.startswith("https://voebb.onleihe.de/berlin/frontend/")
 
 
+def test_a_result_card_brings_its_thumbnail() -> None:
+    """Bei einer offenen Zuordnung stehen die Kandidaten nebeneinander, und
+    welcher der richtige ist, entscheidet das Auge (Ticket 41). Vom Shop kam
+    das Bild längst mit, von der Bibliothek nicht — dort stand ein Platzhalter,
+    obwohl die Trefferkarte ein Bild trägt."""
+    candidates = parse.parse_search_results(fixture("search-hits.html"))
+    assert candidates is not None
+
+    assert candidates[0].cover_url == (
+        "https://static.onleihe.de/images/978/364/111/700/9/"
+        "65c24254673f3d10bd629916/tn9783641117009s.jpg"
+    )
+
+
 def test_medium_icon_is_the_format_not_the_rating_star() -> None:
     """Cards carry ``ic_star`` rating icons too; picking by position gets it wrong."""
     candidates = parse.parse_search_results(fixture("search-hits.html"))

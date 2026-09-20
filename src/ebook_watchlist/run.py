@@ -8,7 +8,6 @@ changed*.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from collections.abc import Sequence
@@ -24,8 +23,7 @@ from .cleaning import clean_blurb
 from .config import ConfigError, Profile, load_dismissals, load_owned, load_profile, load_watchlist
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
-from .covers import CoverStore, fetch_for_books
-from .covers import file_name as cover_file_name
+from .covers import CoverStore, fetch_for_books, fetch_for_candidates
 from .diff import compute_deltas, keys_of, suppress_unseeded_interests
 from .digest import GateNote, build_digest
 from .dismissals import dismissed_books
@@ -516,52 +514,6 @@ def _record_foreign_ratings(store: Store, observations: Sequence[Observation]) -
         )
 
 
-def _fetch_candidate_covers(store: Store, profile: Profile, client: HttpClient) -> None:
-    """Titelbilder fuer die Ausgaben, zwischen denen die Leserin waehlen soll.
-
-    Ticket 41 haengt die Bildadresse an jeden Kandidaten — vergleichen ist eine
-    Frage ans Auge —, aber niemand holte die Bilder: Cover werden aus
-    **Beobachtungen** geholt, und ein Kandidat ist keine. Dass es trotzdem
-    aussah, als funktioniere es, lag daran, dass die Bilder der ersten
-    Kandidatengruppe beim Bauen der Entwuerfe von Hand im Ordner gelandet
-    waren.
-
-    Die Oberflaeche holt nichts nach (ADR 3): sie sieht den Namen auf der
-    Platte nach, und was fehlt, wird als gezeichneter Ruecken gezeigt. Geholt
-    wird deshalb hier, im Lauf.
-
-    Es sind wenige: gezeigt werden nur die Kandidaten, die der Matcher nicht
-    auseinanderhalten konnte, hoechstens fuenf je offener Frage. Was schon
-    dalag, kostet keine Anfrage — ``CoverStore.fetch`` sieht zuerst nach.
-    """
-    covers = CoverStore(paths.covers_dir())
-    offen: list[str] = []
-    for row in store.unsure_links(profile.slug):
-        try:
-            details = json.loads(row.details or "{}")
-        except ValueError:  # pragma: no cover - defekte Zeile
-            continue
-        for kandidat in details.get("candidates") or []:
-            url = kandidat.get("cover_url")
-            if url and not covers.has(cover_file_name(url)):
-                offen.append(url)
-    if not offen:
-        return
-
-    print(f"{len(offen)} Titelbilder für offene Zuordnungen …")
-    geholt = 0
-    for url in dict.fromkeys(offen):
-        try:
-            if covers.fetch(client, url):
-                geholt += 1
-        except RateLimited:
-            print("Titelbilder: der Shop drosselt — Rest übersprungen", file=sys.stderr)
-            return
-        except Exception as exc:  # noqa: BLE001 - bewusst: ein Bild ist Beiwerk
-            print(f"Titelbild: {type(exc).__name__}: {exc}", file=sys.stderr)
-    print(f"  {geholt} geholt")
-
-
 def _fetch_suggestion_covers(
     store: Store, profile: Profile, client: HttpClient
 ) -> None:
@@ -909,7 +861,7 @@ def _run(
     # weiter unten: ein Ausfall kostet nie Geschichte.
     fetch_for_books(store, client, observations)
     _record_foreign_ratings(store, observations)
-    _fetch_candidate_covers(store, profile, client)
+    fetch_for_candidates(store, profile.slug, client)
     _ask_the_library(store, client, profile)
 
     # Hinter der DNB-Abfrage, denn erst jetzt ist die Sprache neuer Funde

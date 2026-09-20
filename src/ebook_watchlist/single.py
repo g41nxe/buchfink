@@ -32,7 +32,7 @@ from . import paths
 from .config import Profile, WatchlistEntry, load_profile
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
-from .covers import fetch_for_books
+from .covers import fetch_for_books, fetch_for_candidates
 from .http import HttpClient, build_user_agent
 from .models import Observation
 from .sources import build_sources
@@ -134,6 +134,11 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
         # ueber "Jetzt pruefen" hereinkam, stand bis zum naechsten Rundgang
         # ohne Titelbild da.
         fetch_for_books(store, client, found)
+        # Und die Bilder der Ausgaben, zwischen denen die Leserin gleich
+        # waehlen soll: die Frage kann dieser Lauf selbst aufgeworfen haben,
+        # und ohne Bilder stand sie bis zum naechsten Rundgang als Reihe
+        # gezeichneter Ruecken da (Ticket 41).
+        fetch_for_candidates(store, profile.slug, client)
         return Report(observations=tuple(found), trouble="; ".join(stolperer))
     finally:
         # **Immer**, auch auf jedem Fehlerweg. Eine Zeile ohne Ende sieht fuer

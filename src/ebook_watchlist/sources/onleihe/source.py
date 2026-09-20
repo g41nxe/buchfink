@@ -138,7 +138,12 @@ class OnleiheSource(LibrarySource):
                 return None if page == 0 else match(query, seen)
 
             seen.extend(
-                Candidate(title=card.title, author=card.author, payload=card.url)
+                Candidate(
+                    title=card.title,
+                    author=card.author,
+                    cover_url=card.cover_url,
+                    payload=card.url,
+                )
                 for card in self._preferred(found)
             )
             resolution = match(query, seen)

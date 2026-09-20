@@ -160,6 +160,7 @@ class OverdriveSource(LibrarySource):
                     title=card.title,
                     author=card.author,
                     identifier=card.isbn,
+                    cover_url=card.cover_url,
                     payload=sel.TITLE_URL.format(title_id=card.title_id),
                 )
                 for card in gefunden

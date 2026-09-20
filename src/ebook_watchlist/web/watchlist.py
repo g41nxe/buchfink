@@ -204,9 +204,25 @@ class Entry:
     @property
     def choice_source(self) -> str | None:
         """Welche Quelle fragt — die Entscheidung gilt fuer sie."""
+        zustand = self._asking
+        return zustand.name if zustand else None
+
+    @property
+    def choice_label(self) -> str | None:
+        """Wie diese Quelle der Leserin gegenueber heisst.
+
+        Die Frage gilt einer Quelle, nicht dem Buch: derselbe Titel kann im
+        Shop richtig zugeordnet sein und in der Bibliothek offen. Ohne den
+        Namen las sich die Frage, als stuende das Buch ueberhaupt in Zweifel.
+        """
+        zustand = self._asking
+        return zustand.display if zustand else None
+
+    @property
+    def _asking(self) -> SourceState | None:
         for state in self.sources:
             if state.is_question and state.candidates:
-                return state.name
+                return state
         return None
 
     @property

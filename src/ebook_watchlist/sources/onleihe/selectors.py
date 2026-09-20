@@ -49,6 +49,9 @@ MEDIUM_ICONS = frozenset(MEDIUM_BY_NAME.values())
 #: cannot tell them apart and every such entry would need a human — so a
 #: watchlist means ebooks unless it says otherwise.
 DEFAULT_MEDIA: tuple[str, ...] = ("ic_ebook",)
+#: Das Vorschaubild der Trefferkarte — klein ("tn…s.jpg"), aber fuer die
+#: Auswahl bei einer offenen Zuordnung genug (Ticket 41).
+CARD_COVER = "img[src]"
 CARD_ABSTRACT = '[test-id="cardAbstract"]'
 CARD_AVAILABILITY = '[test-id="cardAvailability"]'
 CARD_AVAILABILITY_LABEL = '[test-id="cardLabelAvailability"]'
