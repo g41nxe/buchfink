@@ -193,7 +193,7 @@ def test_a_broken_configuration_is_a_page_not_a_traceback_on_post(
 @pytest.mark.parametrize(
     ("pfad", "name"),
     [("/", "Home"), ("/watchlist", "Watchlist"), ("/vorschlaege", "Vorschläge"),
-     ("/profil", "Profil")],
+     ("/profil", "Profil"), ("/uebersicht", "Übersicht")],
 )
 def test_the_navigation_marks_the_page_you_are_on(
     client: TestClient, pfad: str, name: str
@@ -204,6 +204,14 @@ def test_the_navigation_marks_the_page_you_are_on(
     assert body.count('aria-current="page"') == 1
     marker = body.index('aria-current="page"')
     assert name in body[marker : marker + 400]
+
+
+@pytest.mark.parametrize("pfad", ["/", "/watchlist", "/vorschlaege", "/profil"])
+def test_the_overview_is_reachable_from_every_page(client: TestClient, pfad: str) -> None:
+    """Die Uebersicht hing bis #25 an zwei Verweisen der Startseite: wer auf der
+    Watchlist stand und nachsehen wollte, wann zuletzt geprueft wurde, musste
+    erst zurueck."""
+    assert 'href="/uebersicht"' in client.get(pfad).text
 
 
 def test_a_digest_is_offered_as_a_report_not_as_a_file_name(

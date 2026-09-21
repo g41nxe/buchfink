@@ -61,10 +61,12 @@
      812 Pixel des Bildschirms — ein Achtel fuer einen Namen, den man nach dem
      ersten Blick kennt.
 
-     Die Rechnung bei 375 px, also 327 px Inhalt: die Links messen 294 px, mit
-     `px-1.5` statt `px-2.5` sind es 262, dazu drei Zwischenraeume (12) und das
-     Zeichen mit 28 px plus Abstand (36) — zusammen 310. Wer einen fuenften
-     Punkt hinzufuegt, muss neu rechnen. #}
+     Die Rechnung bei 375 px, also 327 px Inhalt: die vier beschrifteten Links
+     messen 294 px, mit `px-1.5` statt `px-2.5` sind es 262, dazu die
+     Zwischenraeume und das Zeichen mit 28 px plus Abstand (36) — zusammen 310.
+     Wer ein weiteres *Wort* hinzufuegt, muss neu rechnen; ein Punkt, der auf
+     dem Telefon nur sein Zeichen zeigt, kostet rund 28 statt 75 px, und so
+     sind die Uebersicht (#25) und CWA hineingekommen. #}
   <div class="mx-auto flex max-w-3xl flex-wrap items-center gap-x-2 gap-y-1
               px-6 py-2 sm:gap-x-3 sm:py-3">
     {# Der Namensgeber, und hier nicht dieselbe Datei wie im Tab.
@@ -76,8 +78,7 @@
        denken.
 
        Zeichen und Name fuehren auf die Startseite. Der Punkt "Home" tut das
-       auch: das Zeichen weiss man erst nach dem ersten Klick, und die Reihe
-       traegt vier Punkte, seit die Uebersicht aus dem Menue ist. #}
+       auch: das Zeichen weiss man erst nach dem ersten Klick. #}
     <a href="/" title="Zur Startseite" class="shrink-0">
       <img src="{{ url_for('static', path='buchfink.png') }}?v={{ asset_version }}"
            alt="" width="40" height="40" class="h-7 w-7 sm:h-10 sm:w-10"></a>
@@ -102,15 +103,31 @@
     <nav class="flex flex-1 flex-wrap justify-end gap-1 text-sm
                 sm:ml-auto sm:flex-none sm:justify-start">
       {% set pfad = request.url.path %}
-      {% for ziel, name in (("/", "Home"), ("/watchlist", "Watchlist"),
-                            ("/vorschlaege", "Vorschläge"), ("/profil", "Profil")) %}
-      {# Wo man steht, stand bisher nirgends — vier gleich aussehende Links.
+      {# Die Uebersicht traegt auf dem Telefon nur ihr Zeichen (#25). Sie ist
+         der fuenfte Punkt, und fuer den ist in der Rechnung oben kein Wort
+         mehr frei: "Uebersicht" misst rund 75 px, das Zeichen 28. Dasselbe
+         Muster wie beim CWA-Punkt daneben, nur ohne Rahmen — sie gehoert zu
+         Buchfink, CWA nicht.
+
+         Bis dahin fuehrten nur zwei Verweise der Startseite dorthin; wer auf
+         der Watchlist stand, musste erst zurueck. #}
+      {% for ziel, name, zeichen in (("/", "Home", none),
+                                     ("/watchlist", "Watchlist", none),
+                                     ("/vorschlaege", "Vorschläge", none),
+                                     ("/profil", "Profil", none),
+                                     ("/uebersicht", "Übersicht", "ic-clock")) %}
+      {# Wo man steht, stand bisher nirgends — gleich aussehende Links.
          `aria-current` sagt es der Vorlesehilfe, die Farbe dem Auge. #}
       {% set aktiv = pfad == ziel %}
       <a href="{{ ziel }}"{% if aktiv %} aria-current="page"{% endif %}
+         {% if zeichen %}title="{{ name }} — Läufe, Quellen und Tagesberichte"
+         aria-label="{{ name }}"{% endif %}
          class="tun inline-flex h-7 items-center rounded px-1.5 sm:px-2.5
                 hover:bg-hair hover:text-ink
-                {{ 'bg-hair text-ink' if aktiv else 'text-soft' }}">{{ name }}</a>
+                {{ 'bg-hair text-ink' if aktiv else 'text-soft' }}">
+        {%- if zeichen %}<svg class="i sm:hidden"><use href="#{{ zeichen }}"/></svg>
+        <span class="hidden sm:inline">{{ name }}</span>
+        {%- else %}{{ name }}{% endif %}</a>
       {% endfor %}
 
       {# Eine fremde Anwendung, kein Buchfink-Punkt — deshalb bewusst anders:
