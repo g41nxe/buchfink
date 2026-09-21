@@ -7,7 +7,9 @@
    Nur Zeichen, kein Wort: in einer Liste kosten drei beschriftete Knöpfe ein
    Drittel der Zeilenbreite. Das Wort erscheint beim Überfahren und bei
    Tastaturfokus — als eigene Blase, nicht als `title`: der native Hinweis
-   kommt erst nach einer Sekunde und auf dem Telefon gar nicht.
+   kommt erst nach einer Sekunde und auf dem Telefon gar nicht. Wie ein
+   solcher Knopf aussieht, steht in `_zeichenknopf.html`; die Watchlist-Zeile
+   benutzt denselben (#22).
 
    Zwei Bauarten, ein Aussehen. Im Stapel entscheidet htmx: die Seite ist
    *ein* Formular, ein Absende-Knopf darin schickte die angehakte Auswahl
@@ -18,36 +20,24 @@
    Seite danach die Zeile zum Zurücknehmen zeigen kann (ADR 30). `absenden`
    schaltet um.
 #}
+{% from "_zeichenknopf.html" import zeichenknopf %}
+
 {% macro entscheidungen(source, item_id, actions, icons, ziel="closest li",
                         absenden=false) %}
-{# Eine Reihe unter dem Preis, nicht eine Spalte neben ihm: so kostet die
-   Handlungszone nur die Breite des Preises (96 px statt 136), und die 40
-   gehen an Titel und Pitch. #}
-<span class="flex items-center gap-1">
+{# Auf dem Telefon eine Reihe über die volle Breite der Zeile, am Schreibtisch
+   eine Reihe unter dem Preis: dort kostet die Handlungszone nur die Breite
+   des Preises (96 px statt 136), und die 40 gehen an Titel und Pitch. #}
+<span class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in actions %}
-  <span class="group relative flex">
-    <button aria-label="{{ label }}"
-            {% if absenden %}type="submit" name="kind" value="{{ kind }}"
-            {% else %}type="button"
-            onclick="event.stopPropagation()"
-            hx-post="/vorschlaege/{{ source }}/{{ item_id }}/entscheiden"
-            hx-vals='{"kind": "{{ kind }}"}'
-            hx-target="{{ ziel }}" hx-swap="outerHTML"{% endif %}
-            class="tun inline-flex h-7 w-7 items-center justify-center rounded border
-                   transition
-                   {% if kind == 'dismissed' %}border-rule text-soft hover:border-danger hover:text-danger
-                   {% elif kind == 'owned' %}border-rule text-soft hover:border-amber hover:text-amber
-                   {% else %}border-rule text-soft hover:border-accent hover:text-accent{% endif %}">
-      <svg class="i"><use href="#{{ icons[kind] }}"/></svg>
-    </button>
-    {# Die Blase hängt unter dem Knopf und nimmt keine Klicks an. Über ihm
-       verdeckte sie den Preis, der genau dort steht. #}
-    <span class="pointer-events-none absolute top-full left-1/2 z-30 mt-1
-                 -translate-x-1/2 rounded bg-ink px-1.5 py-0.5 text-xs
-                 whitespace-nowrap text-paper opacity-0 transition
-                 group-hover:opacity-100 group-focus-within:opacity-100">
-      {{ label }}</span>
-  </span>
+  {% set ton = "danger" if kind == "dismissed" else ("amber" if kind == "owned" else "accent") %}
+  {% set attrs %}
+  {%- if absenden %}type="submit" name="kind" value="{{ kind }}"
+  {%- else %}type="button" onclick="event.stopPropagation()"
+    hx-post="/vorschlaege/{{ source }}/{{ item_id }}/entscheiden"
+    hx-vals='{"kind": "{{ kind }}"}'
+    hx-target="{{ ziel }}" hx-swap="outerHTML"{% endif %}
+  {% endset %}
+  {{ zeichenknopf(label, icons[kind], ton=ton, attrs=attrs) }}
   {% endfor %}
 </span>
 {% endmacro %}

@@ -10,12 +10,32 @@
    Preis · Handlungen. Was eine Seite nicht mitgibt, erscheint nicht — die
    Watchlist kennt keinen Pitch, ein Fund keine Verfügbarkeit.
 
-   Der Preis behält seine eigene schmale Spalte mit einer festen Zeile
-   darüber, damit die Beträge über alle drei Seiten hinweg auf derselben
-   Höhe stehen (ab `sm`; auf dem Telefon gibt es nichts, wogegen
-   auszurichten wäre).
+   Am Schreibtisch behält der Preis seine eigene schmale Spalte mit einer
+   festen Zeile darüber, damit die Beträge über alle drei Seiten hinweg auf
+   derselben Höhe stehen; die Zeichen stehen darunter. Auf dem Telefon steht
+   der Betrag rechts neben dem Titel und die Zeichen in einer eigenen Reihe
+   darunter (#22).
 #}
 {% from "_cover.html" import cover %}
+
+{# Der Betrag, wie er in beiden Ansichten aussieht — einmal geschrieben und
+   an zwei Stellen gesetzt (Telefon: Titelzeile, Schreibtisch: eigene Spalte).
+   Die feste Spaltenbreite am Schreibtisch sorgt dafuer, dass die Betraege
+   ueber alle Zeilen hinweg dieselbe Spalte teilen.
+
+   `preis_inhalt` fuer den einen Fall, in dem der Betrag mehr ist als eine
+   Zahl: waehrend ein enger Lauf nachsieht, steht der zuletzt bekannte
+   gedaempft da, mit einem Zeichen daneben (Ticket 51). #}
+{% macro preisblock(preis, preis_inhalt, oben, oben_farbe, deal) %}
+{# Die Werte kommen als Parameter herein: ein Makro sieht die Variablen der
+   aufrufenden Vorlage nicht, und ohne sie blieb der Betrag stumm leer. #}
+<span class="block h-4 text-xs {{ oben_farbe }}">{{ oben or "" }}</span>
+{% if preis_inhalt %}{{ preis_inhalt }}
+{% else %}
+<span class="text-lg font-semibold tabular-nums {{ 'text-amber' if deal }}">
+  {{ preis or "—" }}</span>
+{% endif %}
+{% endmacro %}
 
 {% macro zeile(
     titel,
@@ -33,7 +53,6 @@
     preis=none,
     preis_inhalt=none,
     aktionen=none,
-    aktionen_unter_preis=false,
     auswahl=none,
     umschliessend=false
 ) %}
@@ -86,12 +105,24 @@
        Zeile auf das Doppelte ihrer Nachbarin, und die Liste liess sich nicht
        mehr ueberfliegen. Gekuerzt wird nur die Ansicht: den ganzen Titel
        zeigen die Fundseite und der Hinweis beim Ueberfahren. #}
-    <p class="line-clamp-2 font-serif text-base font-semibold tracking-tight">
-      {% if titel_url %}
-      <a href="{{ titel_url }}" title="{{ titel }}" onclick="event.stopPropagation()"
-         class="hover:underline underline-offset-2">{{ titel }}</a>
-      {% else %}<span title="{{ titel }}">{{ titel }}</span>{% endif %}
-    </p>
+    {# Der Betrag steht auf dem Telefon rechts neben dem Titel — die Angabe,
+       wegen der man die Liste durchsieht, gehoert an die Stelle, die man
+       zuerst ansieht. Bis dahin brach er mit den Zeichen in eine eigene Reihe
+       um, und rechts neben dem Cover blieb Leere. Am Schreibtisch bleibt er in
+       seiner Spalte, damit die Betraege ueber alle Zeilen hinweg
+       untereinander stehen. #}
+    <div class="flex items-baseline gap-2">
+      <p class="line-clamp-2 min-w-0 flex-1 font-serif text-base font-semibold
+                tracking-tight">
+        {% if titel_url %}
+        <a href="{{ titel_url }}" title="{{ titel }}" onclick="event.stopPropagation()"
+           class="hover:underline underline-offset-2">{{ titel }}</a>
+        {% else %}<span title="{{ titel }}">{{ titel }}</span>{% endif %}
+      </p>
+      {% if preis is not none or oben %}
+      <span class="shrink-0 text-right leading-tight sm:hidden">{{ preisblock(preis, preis_inhalt, oben, oben_farbe, deal) }}</span>
+      {% endif %}
+    </div>
     <p class="truncate text-sm text-soft">{{ autor or "unbekannt" }}</p>
     {# Anlass und Quelle in einer Zeile unter dem Autor: die Pille sagt,
        *warum* das Buch hier steht, das Symbol *wo* es zu holen ist — beides
@@ -123,47 +154,23 @@
   </div>
   {% endif %}
 
-  {# Preis und Handlungen sitzen auf halber Hoehe der Zeile, nicht an ihrem
-     Fuss: die Textspalten sind unterschiedlich hoch, unten ausgerichtet
-     haengt der Betrag mal am Pitch, mal am Autor.
+  {# Preis und Handlungen am Schreibtisch: der Betrag in seiner Spalte, die
+     Zeichen darunter. So kostet die Zone nur die Breite des Preises, und was
+     uebrig bleibt, geht an Titel und Pitch.
 
-     Die Zeichen stehen unter dem Preis, nicht neben ihm: nebeneinander kostet
-     die Zone 136 Pixel Zeilenbreite, untereinander 96 — die Breite des
-     Preises, die ohnehin gebraucht wird. Auf dem Telefon bleiben sie
-     nebeneinander, dort ist die Zeile ohnehin gestapelt. #}
-  {# Auf dem Telefon steht die Zeile gestapelt, und Preis und Zeichen bilden
-     die letzte Reihe. Rechtsbuendig, nicht eingerueckt: eingerueckt stand der
-     Betrag unter dem Cover und die Zeichen mitten im Text — mit dem rechten
-     Rand als Kante liegen sie ueber allen Zeilen hinweg an derselben Stelle. #}
-  {# Preis und Handlungen stehen nebeneinander — ausser wo unter dem Betrag
-     drei Zeichen stehen (`aktionen_unter_preis`, Stapelseite): die brauchen
-     dieselbe Breite wie die Preisspalte und bekommen deshalb eine eigene
-     Reihe. Ein einzelnes Menue unter dem Betrag sah dagegen aus, als waere es
-     heruntergefallen. #}
-  <div class="order-last flex flex-1 items-center justify-end gap-3
-              sm:order-none sm:w-auto sm:flex-none sm:self-center
-              {{ 'sm:flex-col sm:items-end sm:gap-2.5' if aktionen_unter_preis }}">
+     Auf dem Telefon steht der Betrag oben in der Titelzeile (siehe dort) und
+     die Zeichen in einer eigenen Reihe darunter: nebeneinander blieben dem
+     Titel 107 der 327 Pixel, und "TAK-Die Zombie-Saga - Vorhersehung" war
+     nach zwei Zeilen immer noch nicht zu Ende (#22). #}
+  <div class="order-last flex w-full items-center justify-end gap-3
+              sm:order-none sm:w-auto sm:flex-none sm:flex-col sm:items-center
+              sm:gap-2.5 sm:self-center">
     {% if preis is not none or oben %}
-    {# Der Betrag steht mittig ueber der Reihe der Zeichen, nicht rechts
-       ausgerichtet: die Reihe ist 92 Pixel breit, die Preisspalte 96 — rechts
-       gesetzt sass er ueber dem letzten Zeichen statt ueber allen dreien.
-       Die feste Breite bleibt, damit die Betraege ueber alle Zeilen hinweg
-       dieselbe Spalte teilen. #}
-    <div class="flex shrink-0 items-baseline gap-2 leading-tight
-                sm:w-24 sm:flex-col sm:items-center sm:gap-0">
-      <span class="h-4 text-xs {{ oben_farbe }}">{{ oben or "" }}</span>
-      {# `preis_inhalt` fuer den einen Fall, in dem der Betrag mehr ist als eine
-         Zahl: waehrend ein enger Lauf nachsieht, steht der zuletzt bekannte
-         gedaempft da, mit einem Zeichen daneben (Ticket 51). Die Spalte bleibt
-         dieselbe, damit die Betraege ueber alle Zeilen ausgerichtet sind. #}
-      {% if preis_inhalt %}{{ preis_inhalt }}
-      {% else %}
-      <span class="text-lg font-semibold tabular-nums {{ 'text-amber' if deal }}">
-        {{ preis or "—" }}</span>
-      {% endif %}
+    <div class="hidden shrink-0 leading-tight sm:flex sm:w-24 sm:flex-col sm:items-center">
+      {{ preisblock(preis, preis_inhalt, oben, oben_farbe, deal) }}
     </div>
     {% endif %}
-    {% if aktionen %}<div class="shrink-0">{{ aktionen }}</div>{% endif %}
+    {% if aktionen %}{{ aktionen }}{% endif %}
   </div>
 </{{ tag }}>
 {% endmacro %}

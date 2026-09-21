@@ -345,7 +345,11 @@ def create_app() -> FastAPI:
     # --- Watchlist (Ticket 06) ---------------------------------------------
 
     def _watchlist_page(
-        request: Request, message: str | None = None, nur: str = ""
+        request: Request,
+        message: str | None = None,
+        nur: str = "",
+        undo: int | None = None,
+        kind: str = "",
     ) -> HTMLResponse:
         profile = load_profile()
         store = _store_for(paths.db_path())
@@ -363,13 +367,17 @@ def create_app() -> FastAPI:
                 "offene_wahl": offen,
                 "nur_unklar": nur_unklar,
                 "abschluss": watchlist.ABSCHLUSS,
+                "icons": symbols.RELATION_ICONS,
+                "undo": watchlist.undo_for(store, undo, kind) if undo else None,
             },
         )
 
     @app.get("/watchlist", response_class=HTMLResponse)
-    def watchlist_page(request: Request, nur: str = "") -> HTMLResponse:
+    def watchlist_page(
+        request: Request, nur: str = "", undo: int | None = None, kind: str = ""
+    ) -> HTMLResponse:
         try:
-            return _watchlist_page(request, nur=nur)
+            return _watchlist_page(request, nur=nur, undo=undo, kind=kind)
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -472,6 +480,7 @@ def create_app() -> FastAPI:
                 "now": datetime.now(),
                 "profile": profile,
                 "abschluss": watchlist.ABSCHLUSS,
+                "icons": symbols.RELATION_ICONS,
             },
         )
 
@@ -484,6 +493,27 @@ def create_app() -> FastAPI:
         ``watching``, und das Buch wurde weiter gemeldet (Ticket 48).
         """
         watchlist.finish(
+            _store_for(paths.db_path()),
+            load_profile().slug,
+            book_id,
+            kind,
+            now=datetime.now(),
+        )
+        # Der Weg zurueck steht danach ueber der Liste: die zwei Zeichen stehen
+        # jetzt offen in der Zeile statt hinter einem Menue, und eine Handlung
+        # ohne Nachfrage braucht einen Weg zurueck (ADR 30, #22).
+        return RedirectResponse(
+            f"/watchlist?undo={book_id}&kind={kind}", status_code=303
+        )
+
+    @app.post("/watchlist/zuruecknehmen")
+    def watchlist_undo(book_id: int = Form(...), kind: str = Form(...)) -> RedirectResponse:
+        """Einen Abschluss zuruecknehmen — der Eintrag steht wieder auf der Liste.
+
+        Stillgelegt, nicht geloescht (ADR 18): ``owned`` bleibt als Zeile
+        stehen und ruht, ``watching`` gilt wieder.
+        """
+        watchlist.unfinish(
             _store_for(paths.db_path()),
             load_profile().slug,
             book_id,

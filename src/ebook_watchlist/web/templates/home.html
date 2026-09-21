@@ -1,11 +1,18 @@
 {% extends "base.html" %}
 
+{% macro felder_ruecknahme(undo) %}
+<input type="hidden" name="key" value="{{ undo.key }}">
+<input type="hidden" name="kind" value="{{ undo.kind }}">
+<input type="hidden" name="zurueck" value="/">
+{% endmacro %}
+
 {% block content %}
 {% from "_abschnitt.html" import abschnitt %}
 {% from "_hero.html" import hero with context %}
 {% from "_buchzeile.html" import zeile %}
 {% from "_quellensymbole.html" import quellensymbole %}
 {% from "_entscheidungen.html" import entscheidungen %}
+{% from "_ruecknahme.html" import ruecknahme %}
 {% if view.first_run %}
 {# Der Leerzustand erklärt, was hier stehen wird, und zeigt einen Weg. Die
    drei Verkaufsargumente stehen nur hier: Rückkehrer blenden sie aus, und
@@ -119,18 +126,7 @@
 </div>
 
 {% if undo %}
-{# Rückgängig statt Nachfrage: die Handlung ist umkehrbar, ADR 18 löscht
-   nichts — also kein Dialog, sondern der Weg zurück an Ort und Stelle. #}
-<div class="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-rule
-            bg-card px-4 py-2 text-sm">
-  <span>„{{ undo.title }}" {{ undo.done }}.</span>
-  <form method="post" action="/vorschlaege/zuruecknehmen">
-    <input type="hidden" name="key" value="{{ undo.key }}">
-    <input type="hidden" name="kind" value="{{ undo.kind }}">
-    <input type="hidden" name="zurueck" value="/">
-    <button type="submit" class="tun text-accent underline underline-offset-2">Rückgängig</button>
-  </form>
-</div>
+{{ ruecknahme(undo.title, undo.done, "/vorschlaege/zuruecknehmen", felder_ruecknahme(undo)) }}
 {% endif %}
 
 {# Untereinander, nicht nebeneinander: die geteilte Buchzeile (Issue #9)
@@ -245,8 +241,7 @@
            kennzahlen=kennzahlen,
            pitch=item.pitch or item.blurb,
            preis=item.price,
-           aktionen=aktionen,
-           aktionen_unter_preis=true) }}
+           aktionen=aktionen) }}
     </li>
   {% endfor %}
   </ul>

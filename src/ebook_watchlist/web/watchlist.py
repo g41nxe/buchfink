@@ -14,7 +14,7 @@ from ..config import Profile
 from ..deals import is_strong_deal
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
-from ..relations import RelationKind, labelled_actions
+from ..relations import DONE_LABELS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
 
@@ -25,8 +25,12 @@ RESTRICTIONS = ("library", "shop")
 #: Womit ein Eintrag die Watchlist verlässt. Dieselben zwei Arten, nach denen
 #: :func:`entries` filtert — und die Namen aus der einen Tabelle statt aus der
 #: Vorlage, in der sie bis hierher zum zweiten Mal standen.
+#:
+#: Ausschließen zuerst, wie in der Reihe der Vorschlagsseite (``triage.ACTIONS``):
+#: dieselben zwei Zeichen stehen jetzt in beiden Listen, und sie sollen in
+#: derselben Reihenfolge stehen (#22).
 ABSCHLUSS: tuple[tuple[str, str], ...] = labelled_actions(
-    RelationKind.OWNED, RelationKind.DISMISSED
+    RelationKind.DISMISSED, RelationKind.OWNED
 )
 
 
@@ -393,6 +397,43 @@ def add(store: Store, profile_slug: str, *, title: str, author: str | None, now:
     )
     store.put_relation(profile_slug, book.id, str(RelationKind.WATCHING), now=now)
     return book.id
+
+
+@dataclass(frozen=True, slots=True)
+class Undo:
+    """Was die Seite zurückzunehmen anbietet."""
+
+    book_id: int
+    kind: str
+    title: str
+
+    @property
+    def done(self) -> str:
+        """Was geschehen ist, als Satz — nicht das Knopfwort. Dieselbe Tabelle
+        wie auf der Startseite, damit dort und hier dasselbe dasteht."""
+        return DONE_LABELS[self.kind]
+
+
+def undo_for(store: Store, book_id: int, kind: str) -> Undo | None:
+    """Nichts, wenn die Adresse etwas nennt, das es nicht gibt."""
+    if kind not in (str(RelationKind.OWNED), str(RelationKind.DISMISSED)):
+        return None
+    book = store.book(book_id)
+    return Undo(book_id, kind, book.title) if book is not None else None
+
+
+def unfinish(
+    store: Store, profile_slug: str, book_id: int, kind: str, *, now: datetime
+) -> None:
+    """Einen Abschluss zurücknehmen — die Umkehrung von :func:`finish`.
+
+    Stillgelegt, nicht gelöscht (ADR 18): dass das Buch einmal als gekauft
+    galt, bleibt als ruhende Zeile stehen.
+    """
+    if kind not in (str(RelationKind.OWNED), str(RelationKind.DISMISSED)):
+        return
+    store.deactivate_relation(profile_slug, book_id, kind, now=now)
+    store.put_relation(profile_slug, book_id, str(RelationKind.WATCHING), now=now)
 
 
 def finish(

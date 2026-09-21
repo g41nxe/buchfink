@@ -97,6 +97,17 @@ def labelled(*kinds: RelationKind) -> tuple[tuple[str, str], ...]:
     return tuple((str(kind), RELATION_LABELS[kind]) for kind in kinds)
 
 
+#: Was geschehen ist, in der Ruecknahme-Zeile — ein Satz, kein Knopfwort.
+#: "Hab ich" steht auf dem Knopf, "als vorhanden vermerkt" im Rueckblick.
+#: Steht hier und nicht in einer der Seiten: Startseite und Watchlist bieten
+#: dieselbe Ruecknahme an, und zwei Tabellen waeren zwei, die auseinanderlaufen.
+DONE_LABELS: dict[str, str] = {
+    str(RelationKind.DISMISSED): "verworfen",
+    str(RelationKind.OWNED): "als vorhanden vermerkt",
+    str(RelationKind.WATCHING): "in Beobachtung genommen",
+}
+
+
 def labelled_actions(*kinds: RelationKind) -> tuple[tuple[str, str], ...]:
     """``(schluessel, knopfwort)`` in der angegebenen Reihenfolge."""
     return tuple((str(kind), ACTION_LABELS[kind]) for kind in kinds)

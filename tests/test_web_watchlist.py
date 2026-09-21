@@ -111,7 +111,62 @@ def test_a_paused_entry_still_shows_on_the_page(client: TestClient, db: Store) -
 
     body = client.get("/watchlist").text
     assert book.title in body
-    assert "aktivieren" in body
+    assert 'aria-label="fortsetzen"' in body
+
+
+# --- die vier Zeichen der Zeile (#22) ---------------------------------------
+
+
+def test_the_row_offers_four_actions_instead_of_a_menu(client: TestClient) -> None:
+    """Dieselben Zeichen wie auf der Vorschlagsseite, nur zwei mehr: das Menue
+    verbarg, was man tun kann, und niemand oeffnet es zum Nachsehen."""
+    body = client.get("/watchlist").text
+
+    for label in ("Ausschließen", "Hab ich", "jetzt nachsehen", "pausieren"):
+        assert f'aria-label="{label}"' in body
+    assert "ic-dots" not in body
+
+
+def test_a_paused_entry_offers_resuming_instead_of_pausing(
+    client: TestClient, db: Store
+) -> None:
+    book = db.books()[0]
+    client.post(f"/watchlist/{book.id}/active", data={"active": "0"})
+
+    body = client.get("/watchlist").text
+
+    assert 'aria-label="fortsetzen"' in body
+    assert "ic-play" in body
+
+
+def test_finishing_an_entry_offers_to_take_it_back(client: TestClient, db: Store) -> None:
+    """Kein Dialog vorher, ein Weg zurueck danach — wie auf der Startseite
+    (ADR 30)."""
+    book = db.books()[0]
+
+    body = client.post(
+        f"/watchlist/{book.id}/abschliessen", data={"kind": str(RelationKind.OWNED)}
+    ).text
+
+    assert book.title in body
+    assert "Rückgängig" in body
+
+
+def test_taking_a_finished_entry_back_puts_it_on_the_list_again(
+    client: TestClient, db: Store
+) -> None:
+    book = db.books()[0]
+    client.post(f"/watchlist/{book.id}/abschliessen", data={"kind": str(RelationKind.OWNED)})
+
+    client.post(
+        "/watchlist/zuruecknehmen",
+        data={"book_id": str(book.id), "kind": str(RelationKind.OWNED)},
+    )
+
+    watching = db.relations("test", kind=str(RelationKind.WATCHING))
+    assert book.id in {row.book_id for row in watching}
+    owned = db.relations("test", kind=str(RelationKind.OWNED))
+    assert book.id not in {row.book_id for row in owned}
 
 
 # --- auf eine Art Quelle einschraenken --------------------------------------

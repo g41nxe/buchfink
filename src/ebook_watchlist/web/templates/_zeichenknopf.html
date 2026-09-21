@@ -1,0 +1,39 @@
+{# Ein quadratischer Knopf mit einem Zeichen, wie er in jeder Zeile steht (#22).
+
+   Eine Stelle für Vorschläge und Watchlist: dort standen dieselben Knöpfe
+   einmal als Reihe von Zeichen und einmal als Aufklappmenü — dieselbe Art zu
+   handeln, zwei Bauarten. Das Menü verbarg außerdem, was möglich ist, und
+   niemand öffnet es, um nachzusehen.
+
+   Nur das Aussehen ist geteilt, nicht die Mechanik: ein Vorschlag wird über
+   htmx entschieden, ein Watchlist-Eintrag über ein Formular. Was die Zeile
+   eigenes braucht, kommt als Zeichenkette in `attrs` herein — derselbe
+   Steckplatz-Gedanke wie in `_buchzeile.html`.
+
+   Größe: auf dem Telefon die volle Breite seiner Spalte und 40 Pixel hoch,
+   am Schreibtisch 36 im Quadrat. Die Reihe steht auf dem Telefon unter der
+   Zeile; nebeneinander blieben dem Titel 107 der 327 Pixel.
+
+   `ton` folgt der Bedeutung wie bei `_zustandsknopf.html`: rot für Ablehnung,
+   bernstein für Besitz, grün für alles Übrige.
+#}
+{% macro zeichenknopf(label, zeichen, ton="accent", attrs="") %}
+<span class="group relative flex">
+  <button aria-label="{{ label }}" {{ attrs|safe }}
+          class="tun inline-flex h-10 w-full items-center justify-center rounded border
+                 border-rule text-soft transition sm:h-9 sm:w-9
+                 {% if ton == 'danger' %}hover:border-danger hover:text-danger
+                 {% elif ton == 'amber' %}hover:border-amber hover:text-amber
+                 {% else %}hover:border-accent hover:text-accent{% endif %}">
+    <svg class="i"><use href="#{{ zeichen }}"/></svg>
+  </button>
+  {# Die Blase hängt unter dem Knopf und nimmt keine Klicks an. Über ihm
+     verdeckte sie den Preis, der genau dort steht. Auf dem Telefon zeigt sie
+     sich nie — dort gibt es kein Überfahren, und die Reihe hat Platz genug,
+     dass die Zeichen für sich stehen. #}
+  <span class="pointer-events-none absolute top-full left-1/2 z-30 mt-1 hidden
+               -translate-x-1/2 rounded bg-ink px-1.5 py-0.5 text-xs whitespace-nowrap
+               text-paper opacity-0 transition group-hover:opacity-100
+               group-focus-within:opacity-100 sm:block">{{ label }}</span>
+</span>
+{% endmacro %}

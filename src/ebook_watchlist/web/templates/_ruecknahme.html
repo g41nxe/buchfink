@@ -1,0 +1,22 @@
+{# Der Weg zurück nach einer Entscheidung, die ohne Nachfrage geschah.
+
+   Rückgängig statt Nachfrage: die Handlung ist umkehrbar, ADR 18 löscht
+   nichts — also kein Dialog, sondern der Weg zurück an Ort und Stelle
+   (ADR 30). Seit die zwei Abschlüsse auch in der Watchlist-Zeile offen
+   stehen (#22), braucht diese Seite dasselbe Band wie die Startseite; das
+   ist der Grund, warum es hier steht und nicht zweimal.
+
+   Was die Seiten unterscheidet, sind nur Ziel und Formularfelder: die
+   Startseite nimmt einen Fund zurück (`key`), die Watchlist einen Eintrag
+   (`book_id`). Beides kommt als **Steckplatz** herein, fertig gerendert.
+#}
+{% macro ruecknahme(titel, getan, ziel, felder) %}
+<div class="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-rule
+            bg-card px-4 py-2 text-sm">
+  <span>„{{ titel }}" {{ getan }}.</span>
+  <form method="post" action="{{ ziel }}">
+    {{ felder }}
+    <button type="submit" class="tun text-accent underline underline-offset-2">Rückgängig</button>
+  </form>
+</div>
+{% endmacro %}

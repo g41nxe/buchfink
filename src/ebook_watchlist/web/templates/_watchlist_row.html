@@ -10,6 +10,7 @@
    Betrag waehrend eines engen Laufs und das Menue. #}
 {% from "_buchzeile.html" import zeile %}
 {% from "_quellensymbole.html" import quellensymbole %}
+{% from "_zeichenknopf.html" import zeichenknopf %}
   {# Solange ein enger Lauf laeuft, fragt die Zeile selbst nach — und hoert
      von selbst auf, sobald der Server sie ohne Trigger zurueckgibt. Dasselbe
      Muster wie `_run_panel.html`: kein Websocket, kein Timer, der
@@ -54,64 +55,46 @@
     {% endset %}
 
     {% set aktionen %}
-    {# Dauerhaft sichtbar, nicht erst beim Ueberfahren: auf einem Telefon gibt
-       es kein Ueberfahren.
+    {# Vier Zeichen statt eines Aufklappmenues (#22). Dasselbe Element wie auf
+       der Vorschlagsseite (`_zeichenknopf.html`): dieselbe Art zu handeln soll
+       nicht zwei Bauarten haben — und ein Menue verbirgt, was moeglich ist.
+       Niemand oeffnet es, um nachzusehen.
 
-       Ein Aufklappmenue statt sichtbarer Symbole: was hier steht, tut man je
-       Buch **einmal**. Bis Ticket 48 enthielt es als einzigen Eintrag
-       "Pruefen bei" — eine Einstellung, die inzwischen auf der Buchseite
-       steht, wo die uebrigen Angaben zu diesem Buch stehen. Geblieben sind
-       die Abschluesse, und "gekauft" und "nicht interessant" stehen durch eine
-       Linie getrennt: sie nehmen den Eintrag aus der Liste
-       (docs/research/row-actions-and-overflow-menus.md).
+       Zwei davon beenden den Eintrag und nehmen ihn aus der Liste. Bisher
+       standen sie im Menue hinter einer Trennlinie; jetzt stehen sie offen, und
+       der Weg zurueck steht danach ueber der Liste (ADR 30) — kein Dialog
+       vorher, denn geloescht wird nichts (ADR 18).
 
-       Ein Menue soll zugehen, wenn man woanders hinklickt — `details` tut das
-       von sich aus nicht. Alpine statt eines eigenen Skripts: lokaler Zustand
-       ohne Serverwissen ist genau seine Haelfte der Arbeitsteilung (ADR 20).
-       Escape schliesst ebenfalls, damit die Tastatur nicht schlechter dasteht
-       als die Maus. #}
-    <details class="relative" x-data
-             @click.outside="$el.open = false"
-             @keydown.escape.window="$el.open = false">
-      {# Gross genug zum Treffen: mit `p-1.5` mass der Aufklapper 28 Pixel.
-         Auf dem Telefon mit Rahmen, damit ueberhaupt zu sehen ist, wo man
-         hindrueckt — dort gibt es kein Ueberfahren, das es zeigen koennte.
-         Ab `sm` ohne: ein Menue ist keine Handlung, sondern der Weg zu einer,
-         und mit Rahmen sah es aus wie ein vierter Knopf neben dem Betrag. #}
-      <summary title="was mit diesem Eintrag geschehen soll"
-               class="tun inline-flex h-9 w-9 cursor-pointer list-none items-center
-                      justify-center rounded border border-rule text-soft transition
-                      hover:bg-hair hover:text-ink sm:border-0">
-        <svg class="i"><use href="#ic-dots"/></svg>
-      </summary>
-      {# Das Menue haengt am rechten Rand und ist auf dem Telefon breiter als
-         der Knopf, aber nie breiter als der Bildschirm. #}
-      <div class="absolute right-0 z-10 mt-1 w-52 max-w-[calc(100vw-3rem)]
-                  rounded-lg border border-rule bg-card p-1 shadow-lg">
-        <form method="post" action="/watchlist/{{ entry.book_id }}/active">
-          <input type="hidden" name="active" value="{{ '0' if entry.active else '1' }}">
-          <button type="submit"
-                  class="tun w-full rounded px-2 py-2 text-left text-xs text-ink
-                         hover:bg-hair">
-            {{ 'pausieren' if entry.active else 'aktivieren' }}</button>
-        </form>
-        <form hx-post="/watchlist/{{ entry.book_id }}/nachsehen"
-              hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML">
-          <button type="submit"
-                  class="tun w-full rounded px-2 py-2 text-left text-xs text-ink
-                         hover:bg-hair">jetzt nachsehen</button>
-        </form>
-        <div class="my-1 border-t border-hair"></div>
-        {% for kind, label in abschluss %}
-        <form method="post" action="/watchlist/{{ entry.book_id }}/abschliessen">
-          <input type="hidden" name="kind" value="{{ kind }}">
-          <button type="submit"
-                  class="tun w-full rounded px-2 py-2 text-left text-xs text-ink
-                         hover:bg-hair">{{ label }}</button>
-        </form>
-        {% endfor %}
-      </div>
-    </details>
+       Bei einem pausierten Eintrag wird aus ⏸ ein ▶. Nachsehen bleibt auch
+       dort moeglich: der Lauf haengt nicht daran, ob der Eintrag ruht. #}
+    <span class="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
+      {% for kind, label in abschluss %}
+      <form method="post" action="/watchlist/{{ entry.book_id }}/abschliessen"
+            class="contents">
+        <input type="hidden" name="kind" value="{{ kind }}">
+        {% set attrs %}type="submit"{% endset %}
+        {{ zeichenknopf(label, icons[kind],
+                        ton=("danger" if kind == "dismissed" else "amber"),
+                        attrs=attrs) }}
+      </form>
+      {% endfor %}
+
+      {# Der enge Lauf taucht die Zeile gegen sich selbst aus, wie das Menue es
+         vorher tat (Ticket 51). #}
+      {% set nachsehen %}type="button"
+        hx-post="/watchlist/{{ entry.book_id }}/nachsehen"
+        hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
+      {{ zeichenknopf("jetzt nachsehen", "ic-refresh", attrs=nachsehen) }}
+
+      <form method="post" action="/watchlist/{{ entry.book_id }}/active"
+            class="contents">
+        <input type="hidden" name="active" value="{{ '0' if entry.active else '1' }}">
+        {% set umschalten %}type="submit"{% endset %}
+        {{ zeichenknopf("pausieren" if entry.active else "fortsetzen",
+                        "ic-pause" if entry.active else "ic-play",
+                        attrs=umschalten) }}
+      </form>
+    </span>
     {% endset %}
 
     {{ zeile(
