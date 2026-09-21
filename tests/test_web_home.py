@@ -217,6 +217,34 @@ def test_a_cheap_and_borrowable_watchlist_title_is_offered(
     assert "ausleihbar" in body
 
 
+def test_an_offer_carries_the_same_actions_as_on_the_watchlist(
+    client: TestClient, db: Store
+) -> None:
+    """Dieselbe Zeile soll ueberall dasselbe anbieten (#22): die Zeilen hier
+    trugen gar nichts, waehrend die Vorschlaege darunter drei Zeichen hatten."""
+    schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, schwestern.id, price=399, available=True)
+
+    body = client.get("/").text
+
+    for label in ("Ausschließen", "Hab ich", "jetzt nachsehen", "pausieren"):
+        assert f'aria-label="{label}"' in body
+
+
+def test_finishing_an_offer_stays_on_the_start_page(client: TestClient, db: Store) -> None:
+    """Wer hier entscheidet, will hier bleiben — und den Weg zurueck hier haben."""
+    schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, schwestern.id, price=399, available=True)
+
+    antwort = client.post(
+        f"/watchlist/{schwestern.id}/abschliessen",
+        data={"kind": "owned", "zurueck": "/"},
+    )
+
+    assert antwort.url.path == "/"
+    assert "Rückgängig" in antwort.text
+
+
 def test_a_title_that_is_neither_cheap_nor_borrowable_stays_off_the_front(
     client: TestClient,
 ) -> None:

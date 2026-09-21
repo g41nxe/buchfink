@@ -61,13 +61,15 @@
    ist die Frage eine unter vielen, hier ist sie der Grund, warum die Seite
    ueberhaupt offen ist. #}
 {{ abschnitt("Was du dazu sagst", "ic-tag") }}
-<form method="post" action="/vorschlaege/entscheiden" class="flex flex-wrap gap-2">
+<form method="post" action="/vorschlaege/entscheiden"
+      class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
   <input type="hidden" name="keys" value="{{ page.key }}">
   {# Nach der Entscheidung auf die Buchseite: den Fund gibt es dann nicht mehr,
      das Buch schon. #}
   <input type="hidden" name="zurueck" value="buch">
   {% for kind, label in actions %}
-  {{ zustandsknopf(kind, label, zeichen=icons[kind], wert=kind) }}
+  {{ zustandsknopf(kind, label, zeichen=icons[kind], wert=kind,
+                   zusatz="w-full sm:w-auto") }}
   {% endfor %}
 </form>
 

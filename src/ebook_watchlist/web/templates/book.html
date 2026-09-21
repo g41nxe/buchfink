@@ -140,13 +140,21 @@
 {{ abschnitt("Was du dazu sagst", "ic-tag") }}
 {# Dieselben Knoepfe wie auf der Fundseite, nur mit Zustandsnamen statt
    Knopfwoertern (ADR 29) — und einer davon kann gerade gelten. #}
-<div class="flex flex-wrap gap-2">
+{# Auf dem Telefon zwei Reihen, und der Umbruch folgt der Bedeutung: oben die
+   drei Zustaende (was mit dem Buch geschieht), unten die zwei Geschmacks-
+   knoepfe (was du davon haeltst). Bisher brach die Reihe dort um, wo die
+   Woerter zufaellig endeten — dass dabei dieselbe Trennung herauskam, war
+   Glueck. Sechs Spalten, weil 3 und 2 sich darin beide aufgehen: zwei
+   Spalten je Zustand, drei je Geschmack (#22). #}
+<div class="grid grid-cols-6 gap-2 sm:flex sm:flex-wrap">
   {% for kind, label in kinds %}
   {% set on = kind in page.active_kinds %}
-  <form method="post" action="/book/{{ page.book_id }}/relation">
+  <form method="post" action="/book/{{ page.book_id }}/relation"
+        class="{{ 'col-span-2' if loop.index <= 3 else 'col-span-3' }} sm:col-auto">
     <input type="hidden" name="kind" value="{{ kind }}">
     <input type="hidden" name="active" value="{{ '0' if on else '1' }}">
-    {{ zustandsknopf(kind, label, zeichen=icons[kind], aktiv=on) }}
+    {{ zustandsknopf(kind, label, zeichen=icons[kind], aktiv=on,
+                     zusatz="w-full sm:w-auto") }}
   </form>
   {% endfor %}
 </div>

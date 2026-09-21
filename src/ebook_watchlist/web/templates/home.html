@@ -11,6 +11,7 @@
 {% from "_hero.html" import hero with context %}
 {% from "_buchzeile.html" import zeile %}
 {% from "_quellensymbole.html" import quellensymbole %}
+{% from "_watchlist_aktionen.html" import watchlist_aktionen %}
 {% from "_entscheidungen.html" import entscheidungen %}
 {% from "_ruecknahme.html" import ruecknahme %}
 {% if view.first_run %}
@@ -129,6 +130,15 @@
 {{ ruecknahme(undo.title, undo.done, "/vorschlaege/zuruecknehmen", felder_ruecknahme(undo)) }}
 {% endif %}
 
+{% if undo_eintrag %}
+{% set felder %}
+<input type="hidden" name="book_id" value="{{ undo_eintrag.book_id }}">
+<input type="hidden" name="kind" value="{{ undo_eintrag.kind }}">
+<input type="hidden" name="zurueck" value="/">
+{% endset %}
+{{ ruecknahme(undo_eintrag.title, undo_eintrag.done, "/watchlist/zuruecknehmen", felder) }}
+{% endif %}
+
 {# Untereinander, nicht nebeneinander: die geteilte Buchzeile (Issue #9)
    fordert 352 Pixel Mindestbreite — Cover 64, Titelspalte 160, Preisspalte 96
    und zwei Abstaende —, zwei Spalten geben je 344. Gestapelt bekommt sie die
@@ -151,9 +161,17 @@
   {% endcall %}
   <ul class="divide-y divide-hair">
   {% for entry in view.offers %}
-    <li>
+    {# Dieselbe Kennung wie auf der Watchlist: der enge Lauf tauscht die Zeile
+       gegen sich selbst aus, und das soll hier wie dort gehen. #}
+    <li id="eintrag-{{ entry.book_id }}">
       {% set unter_autor %}
       {{ quellensymbole(entry.sources) }}
+      {% endset %}
+      {# Dieselben vier Zeichen wie auf der Watchlist (#22): es ist dieselbe
+         Zeile, und bei einem Schnaeppchen ist "Hab ich" die wahrscheinlichste
+         Handlung ueberhaupt. #}
+      {% set aktionen %}
+      {{ watchlist_aktionen(entry, abschluss, icons, zurueck="/") }}
       {% endset %}
       {{ zeile(
            entry.title,
@@ -165,7 +183,8 @@
            unter_autor=unter_autor,
            oben=entry.availability,
            oben_farbe="text-accent" if entry.borrowable else "text-soft",
-           preis=entry.price) }}
+           preis=entry.price,
+           aktionen=aktionen) }}
     </li>
   {% endfor %}
   </ul>
@@ -222,7 +241,10 @@
          Zeichen wie im Stapel, nur als gewoehnliche Absende-Knoepfe: das
          Formular schickt `zurueck=/`, damit die Seite danach das
          Zuruecknehmen anbieten kann. #}
-      <form method="post" action="/vorschlaege/entscheiden">
+      {# Volle Breite auf dem Telefon: das Formular steht zwischen der Zeile und
+         den Zeichen, und ohne diese Zeile blieb die Reihe so schmal wie ihr
+         Inhalt statt so breit wie die Zeile (#22). #}
+      <form method="post" action="/vorschlaege/entscheiden" class="w-full sm:w-auto">
         <input type="hidden" name="keys" value="{{ item.key }}">
         <input type="hidden" name="zurueck" value="/">
         {{ entscheidungen(item.source, item.source_item_id, actions, icons,

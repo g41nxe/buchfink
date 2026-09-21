@@ -286,10 +286,20 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/", response_class=HTMLResponse)
-    def start_page(request: Request, rueckgaengig: str = "", art: str = "") -> HTMLResponse:
+    def start_page(
+        request: Request,
+        rueckgaengig: str = "",
+        art: str = "",
+        undo: int | None = None,
+        kind: str = "",
+    ) -> HTMLResponse:
         """Was heute zählt — nicht der Zustand des Werkzeugs, der steht auf
-        der Übersicht (Issue #5). ``rueckgaengig`` und ``art`` nennen die
-        gerade getroffene Entscheidung, die die Seite zurückzunehmen anbietet."""
+        der Übersicht (Issue #5).
+
+        Zwei Arten von Rücknahme, weil die Seite zwei Arten von Zeilen zeigt:
+        ``rueckgaengig``/``art`` nennen einen entschiedenen Fund,
+        ``undo``/``kind`` einen abgeschlossenen Watchlist-Eintrag (#22).
+        """
         profile = load_profile()
         store = _store_for(paths.db_path())
         return TEMPLATES.TemplateResponse(
@@ -300,6 +310,8 @@ def create_app() -> FastAPI:
                 "asset_version": asset_version(),
                 "view": home.build(store, profile, now=datetime.now()),
                 "undo": home.undo_for(store, rueckgaengig, art) if rueckgaengig else None,
+                "undo_eintrag": watchlist.undo_for(store, undo, kind) if undo else None,
+                "abschluss": watchlist.ABSCHLUSS,
                 # Der juengste Tagesbericht ist der Weg hinter "N Aenderungen";
                 # der Lauf-Knopf ist derselbe wie auf der Uebersicht.
                 "digest": next(iter(digest_files(limit=1)), None),
@@ -406,7 +418,9 @@ def create_app() -> FastAPI:
         return RedirectResponse("/watchlist", status_code=303)
 
     @app.post("/watchlist/{book_id}/active")
-    def watchlist_active(book_id: int, active: str = Form("")) -> RedirectResponse:
+    def watchlist_active(
+        book_id: int, active: str = Form(""), zurueck: str = Form("/watchlist")
+    ) -> RedirectResponse:
         """Pausieren und fortsetzen — nie loeschen (ADR 18)."""
         profile = load_profile()
         store = _store_for(paths.db_path())
@@ -419,7 +433,7 @@ def create_app() -> FastAPI:
             store.deactivate_relation(
                 profile.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
             )
-        return RedirectResponse("/watchlist", status_code=303)
+        return RedirectResponse(_seite_zurueck(zurueck), status_code=303)
 
     @app.post("/book/{book_id}/restrict")
     def book_restrict(book_id: int, restrict: str = Form("")) -> RedirectResponse:
@@ -443,7 +457,9 @@ def create_app() -> FastAPI:
         return RedirectResponse(f"/book/{book_id}", status_code=303)
 
     @app.post("/watchlist/{book_id}/nachsehen")
-    def watchlist_recheck(request: Request, book_id: int) -> HTMLResponse:
+    def watchlist_recheck(
+        request: Request, book_id: int, zurueck: str = "/watchlist"
+    ) -> HTMLResponse:
         """Genau diesen einen Eintrag jetzt pruefen (Ticket 51).
 
         Wer gerade bestaetigt, berichtigt oder aufgenommen hat, wartet sonst
@@ -451,14 +467,16 @@ def create_app() -> FastAPI:
         vorbei sein.
         """
         rechecker.start(book_id)
-        return _zeile(request, book_id)
+        return _zeile(request, book_id, zurueck=zurueck)
 
     @app.get("/watchlist/{book_id}/nachsehen")
-    def watchlist_recheck_status(request: Request, book_id: int) -> HTMLResponse:
+    def watchlist_recheck_status(
+        request: Request, book_id: int, zurueck: str = "/watchlist"
+    ) -> HTMLResponse:
         """Dasselbe Fragment, das der POST liefert — htmx fragt hier nach."""
-        return _zeile(request, book_id)
+        return _zeile(request, book_id, zurueck=zurueck)
 
-    def _zeile(request: Request, book_id: int) -> HTMLResponse:
+    def _zeile(request: Request, book_id: int, zurueck: str = "/watchlist") -> HTMLResponse:
         """Die eine Zeile, frisch gelesen, mit dem Stand ihres engen Laufs.
 
         Beide Routen liefern genau dieses Fragment, damit Knopf und Anzeige
@@ -481,11 +499,25 @@ def create_app() -> FastAPI:
                 "profile": profile,
                 "abschluss": watchlist.ABSCHLUSS,
                 "icons": symbols.RELATION_ICONS,
+                # Die nachgeladene Zeile muss wissen, auf welcher Seite sie steht:
+                # sonst fuehrt der Weg zurueck von der Startseite auf die
+                # Watchlist (#22).
+                "zurueck": _seite_zurueck(zurueck),
             },
         )
 
+    def _seite_zurueck(ziel: str) -> str:
+        """Startseite oder Watchlist — ein Formularfeld ist kein Ziel.
+
+        Beide Seiten zeigen dieselbe Zeile mit denselben Zeichen (#22), und nach
+        einer Entscheidung soll man dort stehen, wo man sie getroffen hat.
+        """
+        return "/" if ziel == "/" else "/watchlist"
+
     @app.post("/watchlist/{book_id}/abschliessen")
-    def watchlist_finish(book_id: int, kind: str = Form(...)) -> RedirectResponse:
+    def watchlist_finish(
+        book_id: int, kind: str = Form(...), zurueck: str = Form("/watchlist")
+    ) -> RedirectResponse:
         """Gekauft, oder nicht mehr interessant — und damit von der Liste.
 
         Setzt die Beziehung **und** legt das Beobachten still. Beides einzeln
@@ -502,12 +534,16 @@ def create_app() -> FastAPI:
         # Der Weg zurueck steht danach ueber der Liste: die zwei Zeichen stehen
         # jetzt offen in der Zeile statt hinter einem Menue, und eine Handlung
         # ohne Nachfrage braucht einen Weg zurueck (ADR 30, #22).
+        ziel = _seite_zurueck(zurueck)
+        trenner = "?" if ziel == "/" else "?"
         return RedirectResponse(
-            f"/watchlist?undo={book_id}&kind={kind}", status_code=303
+            f"{ziel}{trenner}undo={book_id}&kind={kind}", status_code=303
         )
 
     @app.post("/watchlist/zuruecknehmen")
-    def watchlist_undo(book_id: int = Form(...), kind: str = Form(...)) -> RedirectResponse:
+    def watchlist_undo(
+        book_id: int = Form(...), kind: str = Form(...), zurueck: str = Form("/watchlist")
+    ) -> RedirectResponse:
         """Einen Abschluss zuruecknehmen — der Eintrag steht wieder auf der Liste.
 
         Stillgelegt, nicht geloescht (ADR 18): ``owned`` bleibt als Zeile
@@ -520,7 +556,7 @@ def create_app() -> FastAPI:
             kind,
             now=datetime.now(),
         )
-        return RedirectResponse("/watchlist", status_code=303)
+        return RedirectResponse(_seite_zurueck(zurueck), status_code=303)
 
     @app.post("/watchlist/{book_id}/confirm")
     def watchlist_confirm(

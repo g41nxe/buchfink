@@ -16,9 +16,12 @@
 
    Erwartet: `url` (wohin der Knopf schickt), `job` (der Stand, oder nichts),
    `vorhanden` (ob schon ein Maschinenurteil dasteht). #}
+{# Auf dem Telefon unter der Überschrift, am Schreibtisch daneben: nebeneinander
+   brach die Zeile aus Überschrift, Knopf und Hinweis in zwei Zeilen um, und die
+   Überschrift stand plötzlich zweizeilig da (#22). #}
 <span id="urteil-stand"
-      class="ml-auto flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs
-             font-normal text-soft"
+      class="mt-2 flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-xs
+             font-normal text-soft sm:mt-0 sm:ml-auto sm:w-auto sm:justify-end"
       {% if job and job.busy %}
       hx-get="{{ url }}"
       hx-trigger="every 2s"

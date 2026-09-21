@@ -10,7 +10,7 @@
    Betrag waehrend eines engen Laufs und das Menue. #}
 {% from "_buchzeile.html" import zeile %}
 {% from "_quellensymbole.html" import quellensymbole %}
-{% from "_zeichenknopf.html" import zeichenknopf %}
+{% from "_watchlist_aktionen.html" import watchlist_aktionen %}
   {# Solange ein enger Lauf laeuft, fragt die Zeile selbst nach — und hoert
      von selbst auf, sobald der Server sie ohne Trigger zurueckgibt. Dasselbe
      Muster wie `_run_panel.html`: kein Websocket, kein Timer, der
@@ -55,46 +55,7 @@
     {% endset %}
 
     {% set aktionen %}
-    {# Vier Zeichen statt eines Aufklappmenues (#22). Dasselbe Element wie auf
-       der Vorschlagsseite (`_zeichenknopf.html`): dieselbe Art zu handeln soll
-       nicht zwei Bauarten haben — und ein Menue verbirgt, was moeglich ist.
-       Niemand oeffnet es, um nachzusehen.
-
-       Zwei davon beenden den Eintrag und nehmen ihn aus der Liste. Bisher
-       standen sie im Menue hinter einer Trennlinie; jetzt stehen sie offen, und
-       der Weg zurueck steht danach ueber der Liste (ADR 30) — kein Dialog
-       vorher, denn geloescht wird nichts (ADR 18).
-
-       Bei einem pausierten Eintrag wird aus ⏸ ein ▶. Nachsehen bleibt auch
-       dort moeglich: der Lauf haengt nicht daran, ob der Eintrag ruht. #}
-    <span class="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
-      {% for kind, label in abschluss %}
-      <form method="post" action="/watchlist/{{ entry.book_id }}/abschliessen"
-            class="contents">
-        <input type="hidden" name="kind" value="{{ kind }}">
-        {% set attrs %}type="submit"{% endset %}
-        {{ zeichenknopf(label, icons[kind],
-                        ton=("danger" if kind == "dismissed" else "amber"),
-                        attrs=attrs) }}
-      </form>
-      {% endfor %}
-
-      {# Der enge Lauf taucht die Zeile gegen sich selbst aus, wie das Menue es
-         vorher tat (Ticket 51). #}
-      {% set nachsehen %}type="button"
-        hx-post="/watchlist/{{ entry.book_id }}/nachsehen"
-        hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
-      {{ zeichenknopf("jetzt nachsehen", "ic-refresh", attrs=nachsehen) }}
-
-      <form method="post" action="/watchlist/{{ entry.book_id }}/active"
-            class="contents">
-        <input type="hidden" name="active" value="{{ '0' if entry.active else '1' }}">
-        {% set umschalten %}type="submit"{% endset %}
-        {{ zeichenknopf("pausieren" if entry.active else "fortsetzen",
-                        "ic-pause" if entry.active else "ic-play",
-                        attrs=umschalten) }}
-      </form>
-    </span>
+    {{ watchlist_aktionen(entry, abschluss, icons, zurueck=zurueck | default("/watchlist")) }}
     {% endset %}
 
     {{ zeile(

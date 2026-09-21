@@ -6,21 +6,25 @@
    es sein — ein Titel, der seit elf Läufen dasselbe kostet, hatte elf Zeilen
    mit elfmal demselben Betrag.
 
-   Der Wrapper durfte schon scrollen, die Tabelle wollte nur nicht: mit
-   `w-full` allein schrumpfte sie auf die Breite des Telefons, und dort zerfiel
-   „4,99 €" in zwei Zeilen und die Kopfzelle „Dort anders genannt" in drei.
-   Eine Mindestbreite lässt sie stattdessen scrollen.
+   Auf dem Telefon drei Spalten statt fünf: Wann · Quelle · Preis, und der
+   Ausleihstand als Zeichen dahinter. Fünf Spalten brauchten dort eine
+   Mindestbreite, und die Tabelle lief rechts aus dem Bild — die Kopfzeile
+   endete mitten in „Bibliothe". Die Tabelle beantwortet eine Frage: wie hat
+   sich der Preis bewegt. Dafür zählen Zeitpunkt, Quelle und Betrag; wie die
+   Quelle das Buch nennt, steht darunter im Abschnitt „Zuordnung", in ganzen
+   Sätzen (#22).
 #}
 {% macro beobachtungen(sichtungen, verborgen=0) %}
 <div class="overflow-x-auto">
-<table class="w-full min-w-xl border-collapse text-sm whitespace-nowrap">
+<table class="w-full border-collapse text-sm whitespace-nowrap sm:min-w-xl">
   <thead>
     <tr class="border-b border-rule text-left text-soft">
       <th class="py-1.5 pr-3 font-semibold">Wann</th>
       <th class="py-1.5 pr-3 font-semibold">Quelle</th>
       <th class="py-1.5 pr-3 font-semibold">Preis</th>
-      <th class="py-1.5 pr-3 font-semibold">Bibliothek</th>
-      <th class="py-1.5 font-semibold">Dort anders genannt</th>
+      <th class="py-1.5 pr-3 font-semibold">
+        <span class="hidden sm:inline">Bibliothek</span></th>
+      <th class="hidden py-1.5 font-semibold sm:table-cell">Dort anders genannt</th>
     </tr>
   </thead>
   <tbody class="divide-y divide-hair">
@@ -31,12 +35,19 @@
       <td class="py-2 pr-3">{{ sighting.source }}</td>
       <td class="py-2 pr-3 tabular-nums {{ 'text-amber' if sighting.deal }}">
         {{ sighting.price or "—" }}</td>
+      {# Auf dem Telefon nur das Zeichen der Bibliothek, grün wenn ausleihbar:
+         das Wort „nicht im Katalog" kostet dort mehr Platz, als die Auskunft
+         wert ist. #}
       <td class="py-2 pr-3 {{ 'text-accent' if sighting.availability == 'ausleihbar' }}">
-        {{ sighting.availability or "—" }}</td>
+        <span class="hidden sm:inline">{{ sighting.availability or "—" }}</span>
+        {% if sighting.availability == "ausleihbar" %}
+        <svg class="i sm:hidden" aria-label="ausleihbar"><use href="#ic-lib"/></svg>
+        {% else %}<span class="sm:hidden" aria-label="{{ sighting.availability or 'unbekannt' }}">—</span>
+        {% endif %}</td>
       {# Nur, wenn die Quelle anders benennt — sonst wiederholte die Spalte in
          jeder Zeile denselben Titel, und der eine Fall, auf den es ankommt,
          ginge darin unter (ADR 9). #}
-      <td class="py-2 whitespace-normal
+      <td class="hidden py-2 whitespace-normal sm:table-cell
                  {{ 'text-danger' if sighting.other_title else 'text-soft' }}">
         {{ sighting.other_title or "—" }}</td>
     </tr>
