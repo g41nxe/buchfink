@@ -32,7 +32,7 @@
     {% endset %}
 
     {% set unter_autor %}
-    {{ quellensymbole(entry.sources, unresolved=entry.unresolved) }}
+    {{ quellensymbole(entry.source_groups, unresolved=entry.unresolved) }}
     {% endset %}
 
     {% set preis_inhalt %}

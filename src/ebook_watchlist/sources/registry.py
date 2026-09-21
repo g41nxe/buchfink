@@ -85,6 +85,11 @@ KINDS: dict[str, str] = {
 LIBRARY = "Bibliothek"
 SHOP = "Shop"
 
+#: In welcher Reihenfolge die Arten erscheinen — im Buchkopf, in den
+#: Listenzeilen, ueberall. Bibliothek vor Shop: leihen kostet nichts, und wer
+#: leihen kann, fragt nicht mehr nach dem Preis (#21).
+CATEGORY_ORDER: tuple[str, ...] = ("library", "shop")
+
 #: Wo die Art als Beschriftung nicht mehr reicht. Ticket 14 zeigte die *Art*
 #: statt des Namens, und das war richtig: "voebb" war nie ein Wort fuer die
 #: Leserin. Mit zwei Bibliotheken trug die Regel nicht mehr — die Buchseite

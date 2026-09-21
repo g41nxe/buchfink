@@ -1,26 +1,36 @@
-{# Wo es dieses Buch gibt, als Reihe von Zeichen.
+{# Wo es dieses Buch gibt, als ein Zeichen je Quellenart (#35).
 
-   Eine Stelle für Watchlist und Startseite (Issue #9). Gefunden heißt farbig
-   und verlinkt, grün für die Bibliothek, bernstein für den Shop; was nicht
-   gefunden wurde, bleibt stumpf und trägt die Auskunft im Hinweis.
+   Eine Stelle für Watchlist und Startseite (Issue #9). Farbig heißt: mindestens
+   eine Quelle dieser Art führt das Buch — grün für die Bibliothek, bernstein
+   für den Shop. Was keine führt, bleibt stumpf.
+
+   **Ein Zeichen je Art, nicht je Quelle.** Vorher wuchs die Reihe mit jeder
+   Quelle; bei acht wären es acht Zeichen, die niemand auseinanderhält — welche
+   Bibliothek welches ist, sieht man ohnehin nicht. In einer Liste zählt: kann
+   ich es leihen, und ist es billig. Das beantwortet die Farbe. Die Zahl
+   dahinter sagt, wie viele Quellen nachgesehen haben, und erscheint erst ab
+   zwei; welche es waren, steht im Hinweis und auf der Buchseite.
+
+   Die Zeile bleibt damit gleich breit, egal wie viele Quellen dazukommen — in
+   einer Liste sollen alle Zeilen gleich gebaut sein.
 
    `stopp` setzt `stopPropagation` auf die Verweise: wo die ganze Zeile das
    Label eines Kästchens ist, darf ein Klick auf die Quelle nicht auswählen.
 #}
-{% macro quellensymbole(sources, unresolved=false, stopp=false) %}
-{% for state in sources %}
-{% set library = state.category == "library" %}
-{% set symbol = "ic-lib" if library else "ic-shop" %}
-{% if state.url and state.outcome in ("linked", "confirmed") %}
-<a href="{{ state.url }}" target="_blank" rel="noopener"
-   title="{{ state.display }}: gefunden"
+{% macro quellensymbole(gruppen, unresolved=false, stopp=false) %}
+{% for gruppe in gruppen %}
+{% set symbol = "ic-lib" if gruppe.library else "ic-shop" %}
+{% set ton = ("text-accent" if gruppe.library else "text-amber") if gruppe.found else "text-rule" %}
+<{{ "a" if gruppe.url else "span" }}
+   {% if gruppe.url %}href="{{ gruppe.url }}" target="_blank" rel="noopener"
    {% if stopp %}onclick="event.stopPropagation()"{% endif %}
-   class="{{ 'text-accent' if library else 'text-amber' }} hover:opacity-70">
-  <svg class="i"><use href="#{{ symbol }}"/></svg></a>
-{% else %}
-<span title="{{ state.display }}: {{ state.label }}" class="text-rule">
-  <svg class="i"><use href="#{{ symbol }}"/></svg></span>
-{% endif %}
+   class="hover:opacity-70 {% else %}class="{% endif %}
+          inline-flex items-center gap-0.5 {{ ton }}"
+   title="{{ gruppe.hint }}">
+  <svg class="i"><use href="#{{ symbol }}"/></svg>
+  {%- if gruppe.count > 1 %}<span class="text-[0.7rem] tabular-nums"
+    >{{ gruppe.count }}</span>{% endif %}
+</{{ "a" if gruppe.url else "span" }}>
 {% endfor %}
 {% if unresolved %}
 <span class="text-xs text-soft italic">noch nicht gesucht</span>

@@ -7,6 +7,7 @@ HTTP-Client zu bemühen — und damit die Vorlage nichts rechnet.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -82,6 +83,71 @@ class SourceState:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceGroup:
+    """Alle Quellen einer Art, als *ein* Zeichen in der Zeile (#35).
+
+    In einer Liste zaehlt: kann ich es leihen, und ist es billig. Das
+    beantwortet die Farbe; die Zahl sagt, wie viele Quellen nachgesehen haben.
+    Ein Zeichen je Quelle waere bei acht Quellen kein Ueberblick mehr, sondern
+    ein Muster — und welche Bibliothek welches Zeichen ist, sieht man ohnehin
+    nicht. Welche es genau war, steht auf der Buchseite (#34).
+
+    Die Breite der Zeile bleibt damit gleich, egal wie viele Quellen
+    dazukommen. Das ist der Punkt: in einer Liste sollen alle Zeilen gleich
+    gebaut sein.
+    """
+
+    category: str
+    sources: tuple[SourceState, ...]
+
+    @property
+    def library(self) -> bool:
+        return self.category == "library"
+
+    @property
+    def count(self) -> int:
+        return len(self.sources)
+
+    @property
+    def found(self) -> bool:
+        """Ob ueberhaupt eine Quelle dieser Art das Buch fuehrt."""
+        return any(state.outcome in ("linked", "confirmed") for state in self.sources)
+
+    @property
+    def url(self) -> str | None:
+        """Wohin der Klick fuehrt: zur ersten Quelle, die es hat.
+
+        Eine Zeile hat ein Ziel. Welche Quelle sonst noch, steht auf der
+        Buchseite.
+        """
+        for state in self.sources:
+            if state.url and state.outcome in ("linked", "confirmed"):
+                return state.url
+        return None
+
+    @property
+    def hint(self) -> str:
+        """Die Zahl sagt wie viele, dieser Hinweis welche."""
+        return " · ".join(f"{state.display}: {state.label}" for state in self.sources)
+
+
+def source_groups(sources: Sequence[SourceState]) -> tuple[SourceGroup, ...]:
+    """Die Quellen einer Zeile, nach Art gebuendelt (#35).
+
+    Innerhalb der Art die gefundenen zuerst: sie faerben das Zeichen, sie
+    tragen den Verweis, und sie stehen im Hinweis vorn.
+    """
+    gruppen = []
+    for art in registry.CATEGORY_ORDER:
+        gleiche = [state for state in sources if state.category == art]
+        if not gleiche:
+            continue
+        gleiche.sort(key=lambda state: state.outcome not in ("linked", "confirmed"))
+        gruppen.append(SourceGroup(art, tuple(gleiche)))
+    return tuple(gruppen)
+
+
+@dataclass(frozen=True, slots=True)
 class Entry:
     """Eine Zeile der Watchlist."""
 
@@ -107,6 +173,11 @@ class Entry:
     def is_bundle(self) -> bool:
         """Siehe ``triage.Suggestion.is_bundle`` — dieselbe Ableitung."""
         return looks_like_bundle(self.title)
+
+    @property
+    def source_groups(self) -> tuple[SourceGroup, ...]:
+        """Die Quellen dieser Zeile, nach Art gebuendelt (#35)."""
+        return source_groups(self.sources)
 
     @property
     def needs_attention(self) -> bool:

@@ -264,10 +264,6 @@ class Category:
         return self.category == "library"
 
 
-#: Bibliothek vor Shop: leihen kostet nichts, und wer leihen kann, fragt nicht
-#: mehr nach dem Preis.
-CATEGORY_ORDER: tuple[str, ...] = ("library", "shop")
-
 #: Der schlechteste Rang: diese Quelle hat nachgesehen und nichts gefunden.
 #: Nur er heisst "kein Name zu nennen" — ein verliehenes Exemplar ist
 #: gefunden, es ist nur gerade nicht da.
@@ -340,7 +336,7 @@ class Page:
     def categories(self) -> tuple[Category, ...]:
         """Je Quellenart eine Kachel, mit allen Quellen dieser Art (#33)."""
         arten = []
-        for art in CATEGORY_ORDER:
+        for art in registry.CATEGORY_ORDER:
             quellen = [state for state in self.sources if state.category == art]
             if not quellen:
                 continue

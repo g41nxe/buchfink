@@ -410,3 +410,60 @@ def test_a_library_without_a_price_does_not_erase_the_shop_price(db: Store) -> N
     zeile = next(e for e in view.entries(db, profile) if e.book_id == buch.id)
 
     assert zeile.price == "4,99 €"
+
+
+# --- je Quellenart ein Zeichen mit Zahl (#35) -------------------------------
+
+
+def zustand(name: str, art: str, gefunden: bool = True) -> view.SourceState:
+    return view.SourceState(
+        name=name,
+        outcome=str(LinkOutcome.LINKED if gefunden else LinkOutcome.NOT_FOUND),
+        url=f"https://{name}.invalid/1" if gefunden else None,
+        matched_title=None,
+        matched_author=None,
+        reason="",
+        category=art,
+        display=name.capitalize(),
+    )
+
+
+def test_two_libraries_become_one_symbol_with_a_count() -> None:
+    """Acht Zeichen in einer Zeile sind kein Ueberblick mehr, sondern ein
+    Muster — und welche Bibliothek welches ist, sieht man ohnehin nicht."""
+    gruppen = view.source_groups(
+        (zustand("onleihe", "library", gefunden=False),
+         zustand("overdrive", "library"),
+         zustand("beam", "shop"))
+    )
+
+    assert [(g.category, g.count, g.found) for g in gruppen] == [
+        ("library", 2, True), ("shop", 1, True)]
+
+
+def test_a_category_nobody_found_stays_dull() -> None:
+    gruppen = view.source_groups(
+        (zustand("onleihe", "library", gefunden=False),
+         zustand("overdrive", "library", gefunden=False))
+    )
+
+    assert gruppen[0].found is False
+
+
+def test_the_symbol_links_to_the_source_that_has_it() -> None:
+    """Eine Quelle hat es: dorthin fuehrt der Klick. Mehrere: die Erste von
+    ihnen, denn eine Zeile hat nur ein Ziel."""
+    gruppen = view.source_groups(
+        (zustand("onleihe", "library", gefunden=False), zustand("overdrive", "library"))
+    )
+
+    assert gruppen[0].url == "https://overdrive.invalid/1"
+
+
+def test_the_hint_names_every_source_of_the_category() -> None:
+    """Die Zahl sagt wie viele, der Hinweis welche."""
+    gruppen = view.source_groups(
+        (zustand("onleihe", "library", gefunden=False), zustand("overdrive", "library"))
+    )
+
+    assert gruppen[0].hint == "Overdrive: gefunden · Onleihe: nicht im Katalog"
