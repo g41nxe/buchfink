@@ -40,7 +40,8 @@
        url=art.best.url if art.best and art.best.outcome in ("linked", "confirmed") else none,
        preis=art.sighting.price if art.sighting else none,
        verfuegbarkeit=art.sighting.availability if art.sighting else none,
-       ersatz="nicht im Katalog" if art.library else "nicht gefunden",
+       ersatz=art.best.label if art.best
+              else ("nicht im Katalog" if art.library else "nicht gefunden"),
        deal=art.sighting.deal if art.sighting else false,
        wann=art.sighting.when if art.sighting else none,
        pille=anlass_pille if loop.first else none,

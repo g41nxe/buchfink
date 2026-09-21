@@ -268,6 +268,11 @@ class Category:
 #: mehr nach dem Preis.
 CATEGORY_ORDER: tuple[str, ...] = ("library", "shop")
 
+#: Der schlechteste Rang: diese Quelle hat nachgesehen und nichts gefunden.
+#: Nur er heisst "kein Name zu nennen" — ein verliehenes Exemplar ist
+#: gefunden, es ist nur gerade nicht da.
+NOT_FOUND = 2
+
 
 @dataclass(frozen=True, slots=True)
 class Page:
@@ -342,9 +347,11 @@ class Page:
             quellen.sort(key=lambda state: self._rank(art, state))
             beste = quellen[0]
             sichtung = self.latest_at(beste.name)
-            if self._rank(art, beste)[0] > 0:
+            if self._rank(art, beste)[0] >= NOT_FOUND:
                 # Keine Quelle dieser Art kennt das Buch: die Kachel sagt das,
-                # ohne einen Namen zu nennen, den es nicht gibt.
+                # ohne einen Namen zu nennen, den es nicht gibt. *Gefuehrt und
+                # gerade verliehen* gehoert nicht hierher — das heisst warten,
+                # nicht anderswo suchen.
                 beste, sichtung = None, None
             arten.append(Category(art, beste, sichtung, tuple(quellen)))
         return tuple(arten)
@@ -361,10 +368,10 @@ class Page:
         if category == "library":
             if sichtung and sichtung.availability == "ausleihbar":
                 return (0, 0)
-            return (1 if gefunden else 2, 0)
+            return (1 if gefunden else NOT_FOUND, 0)
         if sichtung and sichtung.price_cents is not None:
             return (0, sichtung.price_cents)
-        return (1 if gefunden else 2, 0)
+        return (1 if gefunden else NOT_FOUND, 0)
 
     @property
     def my_stars(self) -> int | None:

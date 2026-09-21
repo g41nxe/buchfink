@@ -1125,3 +1125,29 @@ def test_the_row_repeats_the_title_only_when_it_differs(client: TestClient, db: 
                        matched_title=book.title, resolved_at=NOW)
 
     assert "nennt es" not in client.get(f"/book/{book.id}").text
+
+
+def test_a_lent_out_copy_still_names_its_library(db: Store) -> None:
+    """Gefuehrt und gerade verliehen ist nicht dasselbe wie "nicht im Katalog":
+    das eine heisst warten, das andere anderswo suchen."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE,
+             source="onleihe", reservations=3)
+
+    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+
+    assert bibliothek.best is not None and bibliothek.best.name == "onleihe"
+    assert bibliothek.sighting is not None
+    assert bibliothek.sighting.availability == "verliehen"
+
+
+def test_a_borrowable_library_beats_a_lent_out_one(db: Store) -> None:
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe", "overdrive")
+    sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE, source="onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
+
+    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+
+    assert bibliothek.best is not None and bibliothek.best.name == "overdrive"
