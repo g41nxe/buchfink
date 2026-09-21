@@ -43,7 +43,8 @@
        ersatz="nicht im Katalog" if art.library else "nicht gefunden",
        deal=art.sighting.deal if art.sighting else false,
        wann=art.sighting.when if art.sighting else none,
-       pille=anlass_pille if loop.first else none) }}
+       pille=anlass_pille if loop.first else none,
+       fuellt=true) }}
   {{ blasen(art) }}
 </div>
 {% endfor %}

@@ -14,20 +14,22 @@
    dieselbe.
 #}
 {% macro kachel(display, library=false, url=none, preis=none, verfuegbarkeit=none,
-                ersatz=none, deal=false, wann=none, pille=none) %}
+                ersatz=none, deal=false, wann=none, pille=none, fuellt=false) %}
 {% set ton = ("text-accent" if library else "text-amber") if url else "text-soft" %}
 <{{ "a" if url else "div" }}
    {% if url %}href="{{ url }}" target="_blank" rel="noopener"
    title="{{ display }} öffnen" class="kachel-klickbar cursor-pointer {% else %}
-   {# `max-w-xs`: bei einer einzigen Kachel ist die Rasterspalte so breit wie
-      der ganze Kopf, und ein Preis in einem 720 Pixel breiten Kasten sieht
-      aus wie ein Fehler.
+   {# `max-w-xs`, wo die Kachel allein steht: sonst ist die Rasterspalte so
+      breit wie der ganze Kopf, und ein Preis in einem 1024 Pixel breiten
+      Kasten sieht aus wie ein Fehler. Auf der Buchseite stehen seit #33 zwei
+      Kacheln nebeneinander, je eine Quellenart — dort fuellt jede ihre Spalte
+      (`fuellt`), sonst klaffte rechts neben ihr eine Luecke.
 
-      `min-w-44` passt zur Spaltenbreite im Kopf (`minmax(11rem, 1fr)`): der
-      Kopf ist 604 Pixel breit, drei Kacheln mit ihren zwei Zwischenraeumen
-      bekommen davon je 193 — mit 208 als Untergrenze passten nur zwei. Die
-      gleiche Breite beim Umbruch regelt der Kopf, nicht die Kachel. #}
-   class="{% endif %}{{ ton }} relative flex min-w-44 max-w-xs flex-col
+      `min-w-44`: die Untergrenze, ab der Wert und Zeitpunkt nebeneinander
+      Platz haben. Die gleiche Breite beim Umbruch regelt der Kopf, nicht die
+      Kachel. #}
+   class="{% endif %}{{ ton }} relative flex min-w-44 flex-col
+          {{ "w-full" if fuellt else "max-w-xs" }}
           justify-between overflow-hidden rounded-lg border border-rule bg-card
           px-3 pt-2 pr-12 pb-2.5">
   <svg class="kachelbild {{ ton }}" aria-hidden="true">
