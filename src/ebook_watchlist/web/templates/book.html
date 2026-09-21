@@ -309,38 +309,62 @@
 
 {{ beobachtungen(page.recent_history, page.hidden_history) }}
 {% endif %}
-{# Seit die Kacheln im Kopf stehen, sagt dieser Abschnitt den Preis nicht
-   noch einmal — was bleibt, ist der Zustand der Zuordnung. Das ist
-   Werkzeug und keine Auskunft, also steht es klein und am Ende. #}
-{{ abschnitt("Zuordnung", "ic-plug", rand="mt-9 mb-3") }}
+{# Die Uebersicht ueber alle Quellen (#34). Der Kopf nennt je Art nur die
+   eine, die die Frage beantwortet — hier steht, wer sonst noch nachgesehen
+   hat und was dabei herauskam.
+
+   Hiess "Zuordnung", weil sie zeigte, welche Quelle welchen Titel meint.
+   Genau das steht jetzt im roten Kasten weiter oben, und zwar nur dann, wenn
+   die Titel auseinandergehen (ADR 9). Was bleibt, ist die Uebersicht — der
+   Begriff *Zuordnung* meint weiter die Sache selbst (CONTEXT.md, Resolution).
+
+   Eine Zeile je Quelle, drei Angaben: Name, Stand, Wert. Der Name traegt den
+   Verweis; ein eigenes "dort ansehen" daneben sagte dasselbe ein zweites Mal.
+   Sortiert wie die Kacheln, also beste Quelle je Art zuerst. #}
+{{ abschnitt("Quellen", "ic-plug", rand="mt-9 mb-3") }}
 {% if not page.sources %}
 <p class="py-2 text-sm text-soft italic">Noch keine Quelle hat nachgesehen.</p>
 {% endif %}
 <ul class="divide-y divide-hair">
-  {% for state in page.sources %}
-  {% set library = state.category == "library" %}
-  {# Auf dem Telefon untereinander: nebeneinander brach jede Zeile an einer
-     anderen Stelle um, und "dort ansehen" stand allein am rechten Rand. #}
-  <li class="flex flex-col gap-1 py-2.5 text-sm
-             sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3 sm:gap-y-1">
-    <span class="flex w-28 shrink-0 items-center gap-1.5
-                 {{ 'text-accent' if library else 'text-amber' }}">
-      <svg class="i"><use href="#ic-{{ 'lib' if library else 'shop' }}"/></svg>
+  {% for art in page.categories %}
+  {% for state in art.sources %}
+  {% set sichtung = page.latest_at(state.name) %}
+  {% set gefunden = state.outcome in ("linked", "confirmed") %}
+  {# Auf dem Telefon zwei Zeilen: Name und Wert nebeneinander, der Stand
+     darunter. Nebeneinander blieben dem Namen 90 Pixel. #}
+  <li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5 text-sm">
+    <{{ "a" if state.url and gefunden else "span" }}
+       {% if state.url and gefunden %}href="{{ state.url }}" target="_blank" rel="noopener"
+       class="hover:decoration-current {% else %}class="{% endif %}
+              flex shrink-0 items-center gap-1.5 sm:w-40
+              {{ 'text-accent' if art.library else 'text-amber' }}
+              {{ 'underline decoration-current/30 underline-offset-2' if state.url and gefunden }}">
+      <svg class="i"><use href="#{{ 'ic-lib' if art.library else 'ic-shop' }}"/></svg>
       {{ state.display }}
+      {% if state.url and gefunden %}
+      <svg class="i text-[0.85em] opacity-70"><use href="#ic-extern"/></svg>{% endif %}
+    </{{ "a" if state.url and gefunden else "span" }}>
+
+    {# Der Wert steht auf dem Telefon rechts in derselben Zeile wie der Name,
+       am Schreibtisch hinter dem Stand. #}
+    <span class="ml-auto shrink-0 tabular-nums sm:order-last
+                 {{ 'text-amber' if sichtung and sichtung.deal else 'text-ink' }}">
+      {%- if sichtung and sichtung.price %}{{ sichtung.price }}
+      {%- elif sichtung and sichtung.hold %}{{ sichtung.hold }}
+      {%- else %}<span class="text-soft">—</span>{% endif %}</span>
+
+    <span class="w-full sm:w-auto sm:flex-1
+                 {{ 'text-danger' if state.is_question else 'text-soft' }}">
+      {{ state.label }}
+      {% if state in page.mismatch %}
+      {# Nur, wenn die Quelle das Buch anders nennt — dann ist es der Hinweis,
+         auf den es ankommt, und er steht hervorgehoben (ADR 9). #}
+      <span class="text-danger">· nennt es „{{ state.matched_title }}“{% if state.matched_author %},
+        {{ state.matched_author }}{% endif %}</span>
+      {% endif %}
     </span>
-    <span class="{{ 'text-danger' if state.is_question else 'text-soft' }}">{{ state.label }}</span>
-    {% if state.matched_title %}
-    {# Wie *diese* Quelle das Buch nennt — daran bleibt eine falsche Zuordnung
-       sichtbar (ADR 9). #}
-    <span class="text-soft">nennt es „{{ state.matched_title }}“{% if state.matched_author %},
-      {{ state.matched_author }}{% endif %}</span>
-    {% endif %}
-    {% if state.url %}
-    <a href="{{ state.url }}" target="_blank" rel="noopener"
-       class="text-accent underline decoration-accent/30 underline-offset-2
-              hover:decoration-accent sm:ml-auto">dort ansehen</a>
-    {% endif %}
   </li>
+  {% endfor %}
   {% endfor %}
 </ul>
 {% endblock %}

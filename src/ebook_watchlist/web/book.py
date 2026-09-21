@@ -124,6 +124,29 @@ class Sighting:
     #: fuers Sortieren: die Kachel nennt den guenstigsten Shop (#33), und
     #: als Text waere "12,99 €" kleiner als "4,99 €".
     price_cents: int | None = None
+    #: Wie viele vor der Leserin warten, und ab wann das Exemplar wieder da
+    #: ist. Beides lag bisher ungenutzt in der Beobachtung (#34).
+    reservation_count: int | None = None
+    available_from: str | None = None
+
+    @property
+    def hold(self) -> str | None:
+        """Was die Wartezeit sagt — oder nichts.
+
+        Bei einem ausleihbaren Titel wartet niemand, und "0 Vormerkungen"
+        waere eine Antwort auf eine Frage, die sich nicht stellt. Sonst zaehlt
+        zuerst das Datum: "frei ab 12.10." sagt mehr als eine Zahl, denn
+        danach richtet man sich. Erst wenn keines bekannt ist, sagt die Zahl
+        wenigstens, wie lang die Schlange ist.
+        """
+        if self.availability == "ausleihbar":
+            return None
+        if self.available_from:
+            return f"frei ab {self.available_from}"
+        if self.reservation_count:
+            eine = self.reservation_count == 1
+            return f"{self.reservation_count} Vormerkung{'' if eine else 'en'}"
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -541,6 +564,8 @@ def build(store: Store, profile: Profile, book_id: int) -> Page | None:
             source=registry.label(profile, observation.source),
             price=_price(observation.price_cents),
             price_cents=observation.price_cents,
+            reservation_count=observation.reservation_count,
+            available_from=observation.available_from,
             availability=_AVAILABILITY.get(observation.availability)
             if observation.availability
             else None,

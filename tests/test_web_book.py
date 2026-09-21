@@ -38,7 +38,8 @@ def db(data_dir: Path) -> Store:
 
 def sighting(db: Store, book_id: int, *, when: datetime, price: int | None = None,
              availability: Availability | None = None, title: str = "Die sieben Schwestern",
-             source: str = "beam") -> None:
+             source: str = "beam", reservations: int | None = None,
+             available_from: str | None = None) -> None:
     run_id = db.start_run("test", "cli", when)
     db.append(
         run_id,
@@ -52,6 +53,8 @@ def sighting(db: Store, book_id: int, *, when: datetime, price: int | None = Non
                 book_id=book_id,
                 price_cents=price,
                 availability=availability,
+                reservation_count=reservations,
+                available_from=available_from,
                 observed_at=when,
             )
         ],
@@ -120,8 +123,10 @@ def test_an_unknown_relation_is_refused(client: TestClient, db: Store) -> None:
 # --- was die Quellen sagen --------------------------------------------------
 
 
-def test_each_source_shows_its_own_title(client: TestClient, db: Store) -> None:
-    """Daran bleibt eine falsche automatische Zuordnung sichtbar (ADR 9)."""
+def test_a_slightly_different_title_is_not_repeated(client: TestClient, db: Store) -> None:
+    """„Die sieben Schwestern / Roman" ist dasselbe Buch mit Zusatz. Bis #34
+    stand es trotzdem in der Zeile und sagte, dass alles stimmt; jetzt steht
+    der fremde Titel nur, wo er wirklich fremd ist (ADR 9)."""
     book = db.books()[0]
     db.put_book_source(
         book.id, "beam", outcome=str(LinkOutcome.LINKED), url="https://beam.invalid/1",
@@ -129,8 +134,9 @@ def test_each_source_shows_its_own_title(client: TestClient, db: Store) -> None:
     )
 
     body = client.get(f"/book/{book.id}").text
-    assert "Die sieben Schwestern / Roman" in body
-    assert "dort ansehen" in body
+    assert "Die sieben Schwestern / Roman" not in body
+    # Der Verweis haengt am Namen der Quelle, nicht an einem eigenen Wort.
+    assert 'href="https://beam.invalid/1"' in body
 
 
 def test_a_wildly_different_title_is_flagged(client: TestClient, db: Store) -> None:
@@ -1046,3 +1052,76 @@ def test_a_category_without_a_find_has_no_best(db: Store) -> None:
 
     assert bibliothek.best is None
     assert len(bibliothek.sources) == 2
+
+
+# --- die Quellen, eine Zeile je Quelle (#34) --------------------------------
+
+
+def test_the_section_is_called_sources(client: TestClient, db: Store) -> None:
+    """Sie zeigte, welche Quelle welchen Titel meint — das zieht in den roten
+    Kasten um. Was bleibt, ist die Uebersicht ueber alle Quellen."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "beam")
+
+    body = client.get(f"/book/{book.id}").text
+
+    kopf = body[body.index("#ic-plug") :][:200]
+    assert "Quellen" in kopf
+    assert "Zuordnung" not in kopf
+
+
+def test_a_library_row_says_how_long_the_wait_is(db: Store) -> None:
+    """Statt eines Strichs die Auskunft, die man braucht: wie viele vor mir."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE,
+             source="onleihe", reservations=3)
+
+    sichtung = view.build(db, drei_quellen(), book.id).latest_at("onleihe")
+
+    assert sichtung is not None
+    assert sichtung.hold == "3 Vormerkungen"
+
+
+def test_a_returning_copy_names_the_date(db: Store) -> None:
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE,
+             source="onleihe", available_from="12.10.2026")
+
+    sichtung = view.build(db, drei_quellen(), book.id).latest_at("onleihe")
+
+    assert sichtung is not None and sichtung.hold == "frei ab 12.10.2026"
+
+
+def test_a_borrowable_copy_has_nothing_to_wait_for(db: Store) -> None:
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE,
+             source="onleihe", reservations=0)
+
+    sichtung = view.build(db, drei_quellen(), book.id).latest_at("onleihe")
+
+    assert sichtung is not None and sichtung.hold is None
+
+
+def test_the_source_row_links_on_the_name(client: TestClient, db: Store) -> None:
+    """Der eigene Verweis "dort ansehen" sagte dasselbe ein zweites Mal."""
+    book = db.books()[0]
+    db.put_book_source(book.id, "beam", outcome=str(LinkOutcome.LINKED),
+                       url="https://beam.invalid/1", resolved_at=NOW)
+
+    body = client.get(f"/book/{book.id}").text
+
+    assert "dort ansehen" not in body
+    assert 'href="https://beam.invalid/1"' in body
+
+
+def test_the_row_repeats_the_title_only_when_it_differs(client: TestClient, db: Store) -> None:
+    """Sonst stand in jeder Zeile "nennt es ..." und sagte jedes Mal, dass
+    alles stimmt — die Warnung steht ohnehin im roten Kasten darueber (ADR 9)."""
+    book = db.books()[0]
+    db.put_book_source(book.id, "beam", outcome=str(LinkOutcome.LINKED),
+                       matched_title=book.title, resolved_at=NOW)
+
+    assert "nennt es" not in client.get(f"/book/{book.id}").text
