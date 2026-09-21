@@ -1,0 +1,32 @@
+{# Alle Quellen einer Art, als Reihe kleiner Blasen unter ihrer Kachel (#33).
+
+   Die Kachel darüber nennt die Quelle, die die Frage beantwortet — ausleihbar
+   bei welcher, günstigster Preis bei welchem. Die Blasen sind der Beleg
+   daneben: sie zeigen, wer überhaupt nachgesehen hat. Ohne sie wüsste die
+   Leserin nicht, ob eine Quelle schweigt oder gar nicht gefragt wurde.
+
+   Unter ihrer Kachel und nicht in einer gemeinsamen Reihe: bei acht Quellen
+   wächst so nur die betroffene Spalte, und wer die Bibliotheken sucht, findet
+   sie unter „Bibliothek".
+
+   Bei einer einzigen Quelle der Art steht hier nichts — sie sagte dasselbe wie
+   die Kachel, nur kleiner.
+#}
+{% macro blasen(art) %}
+{% if art.sources | length > 1 %}
+<div class="flex flex-wrap gap-1.5">
+  {% for state in art.sources %}
+  {% set gefunden = state.outcome in ("linked", "confirmed") %}
+  {% set ton = ("text-accent border-accent/40" if art.library else "text-amber border-amber/40")
+               if gefunden else "border-rule text-soft opacity-60" %}
+  <{{ "a" if state.url and gefunden else "span" }}
+     {% if state.url and gefunden %}href="{{ state.url }}" target="_blank" rel="noopener"
+     class="hover:opacity-80 {% else %}class="{% endif %}
+            inline-flex h-6 items-center gap-1 rounded-full border px-2 text-xs {{ ton }}"
+     title="{{ state.display }}: {{ state.label }}">
+    <svg class="i"><use href="#{{ 'ic-lib' if art.library else 'ic-shop' }}"/></svg>
+    {{ state.display }}</{{ "a" if state.url and gefunden else "span" }}>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}

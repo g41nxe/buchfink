@@ -5,6 +5,7 @@
 {% from "_klappentext.html" import klappentext %}
 {% from "_buchkopf.html" import kopf %}
 {% from "_quellenkachel.html" import kachel %}
+{% from "_quellenblasen.html" import blasen %}
 {% from "_beobachtungen.html" import beobachtungen %}
 {% from "_urteil.html" import urteil %}
 {% from "_zustandsknopf.html" import zustandsknopf %}
@@ -26,19 +27,25 @@
 {% endif %}
 {% endset %}
 
+{# Je Quellenart eine Kachel mit der Quelle, die die Frage beantwortet, und
+   darunter eine Blase je Quelle dieser Art (#33). Vorher stand je Quelle eine
+   Kachel: mit drei Quellen dreimal 65 Pixel, davon zweimal "nicht im
+   Katalog". #}
 {% set kacheln %}
-{% for state in page.sources %}
-{% set sichtung = page.latest_at(state.name) %}
-{{ kachel(
-     state.display,
-     library=state.category == "library",
-     url=state.url if state.outcome in ("linked", "confirmed") else none,
-     preis=sichtung.price if sichtung else none,
-     verfuegbarkeit=sichtung.availability if sichtung else none,
-     ersatz=state.label,
-     deal=sichtung.deal if sichtung else false,
-     wann=sichtung.when if sichtung else none,
-     pille=anlass_pille if loop.first else none) }}
+{% for art in page.categories %}
+<div class="flex min-w-0 flex-col gap-2" data-kachel="{{ art.category }}">
+  {{ kachel(
+       art.best.display if art.best else ("Bibliothek" if art.library else "Shop"),
+       library=art.library,
+       url=art.best.url if art.best and art.best.outcome in ("linked", "confirmed") else none,
+       preis=art.sighting.price if art.sighting else none,
+       verfuegbarkeit=art.sighting.availability if art.sighting else none,
+       ersatz="nicht im Katalog" if art.library else "nicht gefunden",
+       deal=art.sighting.deal if art.sighting else false,
+       wann=art.sighting.when if art.sighting else none,
+       pille=anlass_pille if loop.first else none) }}
+  {{ blasen(art) }}
+</div>
 {% endfor %}
 {% endset %}
 

@@ -120,6 +120,10 @@ class Sighting:
     #: dasselbe, und der eine interessante Fall ginge darin unter.
     other_title: str | None
     deal: bool
+    #: Derselbe Betrag als Zahl. Der Text ist fuers Auge ("4,99 €"), die Zahl
+    #: fuers Sortieren: die Kachel nennt den guenstigsten Shop (#33), und
+    #: als Text waere "12,99 €" kleiner als "4,99 €".
+    price_cents: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,6 +215,38 @@ def _series_label(series: str | None, index: str | None) -> str | None:
 
 
 @dataclass(frozen=True, slots=True)
+class Category:
+    """Was eine Quellen*art* ueber dieses Buch sagt (#33).
+
+    Der Kopf zeigt je Art **eine** Kachel, nicht eine je Quelle: die Seite
+    beantwortet zwei Fragen — kann ich es leihen, was kostet es —, und beide
+    haben genau eine Antwort. Mit drei Quellen standen dort dreimal 65 Pixel,
+    davon zweimal "nicht im Katalog".
+
+    ``best`` ist die Quelle, die die Frage beantwortet: bei Bibliotheken die
+    ausleihbare, bei Shops die guenstigste. Kennt keine das Buch, ist sie
+    ``None`` — dann gibt es keinen Namen zu nennen.
+
+    ``sources`` bleibt vollstaendig, beste zuerst: darunter steht je Quelle
+    eine Blase, damit die Uebersicht nicht verloren geht.
+    """
+
+    category: str
+    best: SourceState | None
+    sighting: Sighting | None
+    sources: tuple[SourceState, ...]
+
+    @property
+    def library(self) -> bool:
+        return self.category == "library"
+
+
+#: Bibliothek vor Shop: leihen kostet nichts, und wer leihen kann, fragt nicht
+#: mehr nach dem Preis.
+CATEGORY_ORDER: tuple[str, ...] = ("library", "shop")
+
+
+@dataclass(frozen=True, slots=True)
 class Page:
     book_id: int
     title: str
@@ -271,6 +307,41 @@ class Page:
             if sichtung.name == name:
                 return sichtung
         return None
+
+    @property
+    def categories(self) -> tuple[Category, ...]:
+        """Je Quellenart eine Kachel, mit allen Quellen dieser Art (#33)."""
+        arten = []
+        for art in CATEGORY_ORDER:
+            quellen = [state for state in self.sources if state.category == art]
+            if not quellen:
+                continue
+            quellen.sort(key=lambda state: self._rank(art, state))
+            beste = quellen[0]
+            sichtung = self.latest_at(beste.name)
+            if self._rank(art, beste)[0] > 0:
+                # Keine Quelle dieser Art kennt das Buch: die Kachel sagt das,
+                # ohne einen Namen zu nennen, den es nicht gibt.
+                beste, sichtung = None, None
+            arten.append(Category(art, beste, sichtung, tuple(quellen)))
+        return tuple(arten)
+
+    def _rank(self, category: str, state: SourceState) -> tuple[int, int]:
+        """Je kleiner, desto eher beantwortet diese Quelle die Frage der Art.
+
+        Bibliothek: ausleihbar schlaegt alles, danach zaehlt ueberhaupt
+        gefunden. Shop: der guenstigste Preis; ohne Preis ist der Fund nur ein
+        Eintrag im Katalog und kommt dahinter.
+        """
+        sichtung = self.latest_at(state.name)
+        gefunden = state.outcome in ("linked", "confirmed")
+        if category == "library":
+            if sichtung and sichtung.availability == "ausleihbar":
+                return (0, 0)
+            return (1 if gefunden else 2, 0)
+        if sichtung and sichtung.price_cents is not None:
+            return (0, sichtung.price_cents)
+        return (1 if gefunden else 2, 0)
 
     @property
     def my_stars(self) -> int | None:
@@ -469,6 +540,7 @@ def build(store: Store, profile: Profile, book_id: int) -> Page | None:
             name=observation.source,
             source=registry.label(profile, observation.source),
             price=_price(observation.price_cents),
+            price_cents=observation.price_cents,
             availability=_AVAILABILITY.get(observation.availability)
             if observation.availability
             else None,

@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import Profile, load_profile
 from ebook_watchlist.models import Availability, LinkOutcome, MatchReason, Observation
 from ebook_watchlist.rating import Rating, RatingUnavailable
 from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
@@ -944,3 +944,105 @@ def test_the_axes_stand_as_marks_above_the_reason(client: TestClient, db: Store)
     assert "Katz und Maus" in body[trifft:fehlt]
     assert "Die Figur trägt alles" in body[fehlt:]
     assert body.index("Katz und Maus") < body.index("Beide Seiten handeln.")
+
+
+# --- je Quellenart eine Kachel (#33) ----------------------------------------
+
+
+def drei_quellen() -> Profile:
+    """Zwei Bibliotheken und ein Shop — der Fall, fuer den der Kopf gebaut wird."""
+    return Profile(slug="test", name="Testprofil",
+                   sources={"onleihe": {}, "overdrive": {}, "beam": {}})
+
+
+def verknuepft(db: Store, book_id: int, *namen: str, ohne: str = "") -> None:
+    """Die Quellen ans Buch haengen — ohne Verknuepfung kennt der Kopf sie nicht.
+
+    ``ohne`` nennt die Quelle, die nachgesehen und nichts gefunden hat.
+    """
+    for name in namen:
+        db.put_book_source(
+            book_id,
+            name,
+            outcome=str(LinkOutcome.NOT_FOUND if name == ohne else LinkOutcome.LINKED),
+            resolved_at=NOW,
+        )
+
+
+def test_each_category_becomes_one_tile(db: Store) -> None:
+    """Drei Quellen, zwei Kacheln: die Seite beantwortet zwei Fragen — kann ich
+    es leihen, was kostet es —, und beide haben genau eine Antwort."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "overdrive", "onleihe", "beam")
+    sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
+    sighting(db, book.id, when=NOW, source="onleihe")
+    sighting(db, book.id, when=NOW, price=999, source="beam")
+
+    arten = view.build(db, drei_quellen(), book.id).categories
+
+    assert [art.category for art in arten] == ["library", "shop"]
+
+
+def test_the_library_tile_names_the_source_that_has_it(db: Store) -> None:
+    """Zwei Bibliotheken, eine hat es: die Kachel nennt sie, statt zweimal
+    "nicht im Katalog" nebeneinanderzustellen."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe", "overdrive")
+    sighting(db, book.id, when=NOW, source="onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
+
+    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+
+    assert bibliothek.best is not None
+    assert bibliothek.best.name == "overdrive"
+    assert bibliothek.sighting is not None
+    assert bibliothek.sighting.availability == "ausleihbar"
+
+
+def test_the_shop_tile_names_the_cheapest(db: Store) -> None:
+    """Der zweitguenstigste Preis aendert keine Entscheidung."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "beam", "fake")
+    sighting(db, book.id, when=NOW, price=1299, source="beam")
+    sighting(db, book.id, when=NOW, price=499, source="fake")
+
+    laden = view.build(
+        db,
+        Profile(slug="test", name="Testprofil", sources={"beam": {}, "fake": {}}),
+        book.id,
+    ).categories[0]
+
+    assert laden.category == "shop"
+    assert laden.best is not None and laden.best.name == "fake"
+    assert laden.sighting is not None and laden.sighting.price == "4,99 €"
+
+
+def test_every_source_of_a_category_is_listed(db: Store) -> None:
+    """Die Uebersicht bleibt: je Quelle eine Blase unter ihrer Kachel."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe", "overdrive", "beam")
+    sighting(db, book.id, when=NOW, source="onleihe")
+    sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
+    sighting(db, book.id, when=NOW, price=999, source="beam")
+
+    arten = view.build(db, drei_quellen(), book.id).categories
+
+    assert [len(art.sources) for art in arten] == [2, 1]
+    # Die beste zuerst, damit die Blasenreihe liest wie die Kachel darueber.
+    assert arten[0].sources[0].name == "overdrive"
+
+
+def test_a_category_without_a_find_has_no_best(db: Store) -> None:
+    """Kennt keine Bibliothek das Buch, steht in der Kachel "nicht im Katalog"
+    — und kein Name, denn es gibt keinen zu nennen."""
+    book = db.books()[0]
+    verknuepft(db, book.id, "onleihe", "overdrive", "beam",
+               ohne="onleihe")
+    db.put_book_source(book.id, "overdrive", outcome=str(LinkOutcome.NOT_FOUND),
+                       resolved_at=NOW)
+    sighting(db, book.id, when=NOW, price=999, source="beam")
+
+    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+
+    assert bibliothek.best is None
+    assert len(bibliothek.sources) == 2

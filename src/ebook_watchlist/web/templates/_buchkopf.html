@@ -18,9 +18,13 @@
               lauf_unterwegs=false) %}
 {# Zwei Breiten, eine Vorlage — dieselben zwei wie ueberall (`sm`, 48rem).
 
-   Telefon: alles untereinander. Neben den 96 Pixeln des Covers blieben dem
-   Titel 211, und "Er — Er ist hier. Er beobachtet dich. Er will dich
-   zerstoeren." brach darin in vier Zeilen.
+   Telefon: Cover links, Titel und Autor:in rechts daneben, die Kacheln
+   darunter ueber die ganze Breite (#33). Gestapelt stand rechts neben dem
+   Cover Leere, und bis zur ersten Kachel kostete der Kopf 214 Pixel; so sind
+   es 146. Dem Titel bleiben 235 Pixel und hoechstens drei Zeilen — genug fuer
+   "TAK-Die Zombie-Saga - Vorhersehung", den laengsten Titel des Bestands.
+   Neben dem *grossen* Cover von 96 Pixeln waere es zu eng, deshalb ist es
+   dort schmaler.
 
    Schreibtisch: das Cover links, rechts daneben Titel und darunter die
    Kacheln. Reichen die Kacheln nicht in eine Reihe, brechen sie in derselben
@@ -28,28 +32,34 @@
 
    Das Cover wird nicht gestreckt. Es behaelt 2:3 und steht oben; wird der
    Kopf hoeher, bleibt darunter Luft statt eines verzerrten Ausschnitts. #}
-<div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-x-5
+<div class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-4 sm:gap-x-5
             sm:gap-y-3">
   <div class="sm:row-span-2">
     {{ cover(titel, cover_file, borrowable, deal, gross=true) }}
   </div>
 
-  <div class="min-w-0 sm:self-end">
-    <h1 class="font-serif text-2xl font-semibold tracking-tight">{{ titel }}</h1>
-    <p class="mt-0.5 text-soft">{{ autor or "unbekannt" }}
+  <div class="min-w-0 self-center sm:self-end">
+    {# Hoechstens drei Zeilen: ein Viertel der Titel traegt hinter einem Strich
+       einen ganzen Werbesatz, und ungekuerzt schoebe er die Kacheln nach
+       unten. #}
+    <h1 class="line-clamp-3 font-serif text-xl font-semibold tracking-tight sm:text-2xl">
+      {{ titel }}</h1>
+    <p class="mt-0.5 text-sm text-soft sm:text-base">{{ autor or "unbekannt" }}
       {%- if reihe %} · {{ reihe }}{% endif %}</p>
 
     {% if pille %}<div class="mt-2 flex flex-wrap items-center gap-2">{{ pille }}</div>{% endif %}
   </div>
 
-  <div class="min-w-0 sm:col-start-2 sm:self-start">
+  {# Auf dem Telefon ueber beide Spalten: neben dem Cover blieben einer Kachel
+     215 Pixel, und der Preis stuende in einem Kasten voller Luft. #}
+  <div class="col-span-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:self-start">
     {# Ein Raster statt eines Flex-Umbruchs: bricht die Reihe um, sitzt die
        Kachel darunter in derselben Spalte und ist genauso breit wie die
-       darueber. `auto-fit` legt nur so viele Spalten an, wie Kacheln da sind
-       — zwei Quellen fuellen die Reihe weiterhin. #}
+       darueber. Seit #33 sind es hoechstens zwei — eine Kachel je Quellenart
+       —, und auf dem Telefon stehen sie untereinander. #}
     {% if kacheln %}
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] items-stretch
-                gap-3">{{ kacheln }}</div>
+    <div class="grid grid-cols-1 items-start gap-3
+                sm:grid-cols-[repeat(auto-fit,minmax(14rem,1fr))]">{{ kacheln }}</div>
     {% endif %}
 
     {# Warum dieses Buch ueberhaupt hereinkam. Ein Watchlist-Titel bekommt
