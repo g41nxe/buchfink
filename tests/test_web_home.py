@@ -78,8 +78,11 @@ def test_the_root_is_the_start_page_not_the_dashboard(client: TestClient) -> Non
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Tagesberichte" not in response.text
-    assert "Läufe" not in response.text
+    # Die Woerter selbst stehen seit #25 im Hinweis des Leisten-Punktes, der auf
+    # jeder Seite steht. Geprueft wird deshalb, was nur die Uebersicht zeigt:
+    # ihre Tabelle der Laeufe.
+    assert "Auslöser" not in response.text
+    assert "Tagesbericht</a>" not in response.text
 
 
 def test_before_the_first_run_the_page_explains_and_points_to_the_watchlist(
@@ -486,15 +489,17 @@ def test_the_dashboard_lives_at_uebersicht(client: TestClient) -> None:
 def test_the_navigation_leads_home_and_the_dashboard_stays_reachable(
     client: TestClient,
 ) -> None:
-    """Vier Punkte, und einer davon fuehrt nach Hause: die Uebersicht ist ein
-    Zustand der Quellen, den man nicht taeglich aufschlaegt. Verschwinden darf
-    sie deswegen nicht — der Zeitpunkt auf der Startseite fuehrt hin, denn
-    dort stehen die Laeufe, aus denen er kommt."""
+    """Ein Punkt fuehrt nach Hause, und die Uebersicht steht daneben (#25).
+
+    Sie ist ein Zustand der Quellen, den man nicht taeglich aufschlaegt — aber
+    erreichbar von jeder Seite, nicht nur ueber den Zeitpunkt auf der
+    Startseite. Auf dem Telefon traegt sie nur ihr Zeichen, deshalb steht das
+    Wort in einer eigenen Huelle."""
     body = client.get("/watchlist").text
 
     assert ">Home<" in body
-    assert ">Übersicht<" not in body
-    assert 'href="/uebersicht"' in client.get("/").text
+    assert 'href="/uebersicht"' in body
+    assert ">Übersicht</span>" in body
 
 
 def test_the_emblem_and_the_name_lead_home(client: TestClient) -> None:
