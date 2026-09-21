@@ -261,7 +261,32 @@ def load_profile(path: Path | None = None) -> Profile:
         )
     if not isinstance(profile.sources, dict):
         raise ConfigError("profile.yaml: 'sources' must be a mapping of source name to options")
+    _check_source_names(profile)
     return profile
+
+
+def _check_source_names(profile: Profile) -> None:
+    """Zwei Quellen duerfen nicht gleich heissen (#14).
+
+    Sonst stehen in der Zuordnung zwei Zeilen "Onleihe", und welche welche ist,
+    steht nirgends — eine Falschaussage, die niemand bemerkt. Sie steckt in der
+    Datei, nicht im Betrieb, also faellt sie beim Lesen auf und nicht erst,
+    wenn ein Lauf etwas Falsches behauptet.
+
+    Hier und nicht in der Registry: die Registry beantwortet Fragen zu *einer*
+    Quelle, der Widerspruch entsteht zwischen zweien.
+    """
+    from .sources import registry
+
+    gesehen: dict[str, str] = {}
+    for name in profile.sources:
+        beschriftung = registry.label(profile, name)
+        if erster := gesehen.get(beschriftung):
+            raise ConfigError(
+                f"profile.yaml: '{erster}' und '{name}' heissen beide "
+                f"\"{beschriftung}\" — gib einer von beiden ein eigenes 'name:'"
+            )
+        gesehen[beschriftung] = name
 
 
 def load_dismissals(path: Path | None = None) -> dict[str, frozenset[str]]:

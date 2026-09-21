@@ -24,11 +24,15 @@ name: Testprofil
 sources:
   gut:
     kind: fake
+    name: Gut
     fixture: fake-source.yaml
   kaputt:
     kind: fake
+    name: Kaputt
     fixture: broken.yaml
 """
+# Zwei Quellen derselben Bauart brauchen eigene Namen, sonst hiessen beide
+# "Shop" — und die Konfiguration wird beim Lesen zurueckgewiesen (#14).
 
 
 @pytest.fixture

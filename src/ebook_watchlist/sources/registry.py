@@ -99,6 +99,11 @@ CATEGORY_ORDER: tuple[str, ...] = ("library", "shop")
 #: "Onleihe" und "OverDrive" sind dagegen sehr wohl Woerter fuer die Leserin:
 #: das sind die beiden Stellen, an denen sie ausleiht. Was hier fehlt, faellt
 #: weiterhin auf die Art zurueck — ein einzelner Shop bleibt "Shop".
+#:
+#: Geschluesselt nach **Quellname**, nicht nach Art: `voebb: {kind: onleihe}`
+#: ist dieselbe Software, aber ein anderer Verbund — nach Art geschluesselt
+#: hiessen beide "Onleihe", und die Einrichtung haette nichts dagegen sagen
+#: koennen (#14).
 DISPLAY: dict[str, str] = {"onleihe": "Onleihe", "overdrive": "OverDrive"}
 
 
@@ -112,12 +117,22 @@ def category(profile: Profile, name: str) -> str:
 def label(profile: Profile, name: str) -> str:
     """Wie die Quelle der Leserin gegenueber heisst.
 
-    Ihr eigener Name, wo sie einen hat, den die Leserin kennt — sonst die Art.
+    Drei Stufen, in dieser Reihenfolge (#14):
+
+    1. **Die Tabelle** — das Werkzeug kennt die Plattformen, die es
+       unterstuetzt, und niemand muss "Onleihe" von Hand eintragen.
+    2. **Die Einrichtung** (``name:`` in der Konfiguration) — sie springt ein,
+       wo die Tabelle nichts weiss. Eine zweite Bibliothek desselben Bauart
+       braucht das, denn wie sie heisst, haengt an der Installation.
+    3. **Die Art** — ein einzelner Shop bleibt "Shop"; solange es je Art eine
+       gibt, ist das kein Verlust, und "beam" war nie ein Wort fuer die
+       Leserin (Ticket 14).
     """
     options = profile.sources.get(name) or {}
-    kind = options.get("kind", name) if isinstance(options, dict) else name
-    if eigener := DISPLAY.get(kind):
+    if eigener := DISPLAY.get(name):
         return eigener
+    if isinstance(options, dict) and (aus_der_einrichtung := options.get("name")):
+        return str(aus_der_einrichtung)
     return LIBRARY if category(profile, name) == "library" else SHOP
 
 

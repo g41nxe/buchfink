@@ -69,6 +69,13 @@ sources:
   # EPUB-E-Books, keine Optionen.
   overdrive:
   beam:
+  # Eine zweite Quelle derselben Bauart braucht einen eigenen Namen: sonst
+  # hieße sie wie ihre Nachbarin, und die Oberfläche könnte beide nicht
+  # auseinanderhalten. Wie die Bibliothek heißt, hängt an der Installation —
+  # das Werkzeug kennt nur die Namen der Plattformen, die es unterstützt (#14).
+  # voebb:
+  #   kind: onleihe
+  #   name: VÖBB
   # A canned source for trying the pipeline out without touching the network.
   # fake:
   #   fixture: fake-source.yaml

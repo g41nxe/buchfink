@@ -172,3 +172,32 @@ def test_each_library_says_which_one_it_is() -> None:
     assert registry.label(p, "overdrive") == "OverDrive"
     # Ein einzelner Shop braucht keinen eigenen Namen: die Art genügt.
     assert registry.label(p, "beam") == "Shop"
+
+
+# --- zwei Quellen derselben Art (#14) ---------------------------------------
+
+
+def test_a_second_library_of_the_same_kind_gets_its_own_name() -> None:
+    """`voebb: {kind: onleihe}` ist dieselbe Software, aber ein anderer
+    Verbund. Die Tabelle kennt nur "onleihe" — wie die zweite heisst, sagt die
+    Einrichtung, denn der Name haengt an ihr."""
+    p = profil(onleihe={}, voebb={"kind": "onleihe", "name": "VOEBB"})
+
+    assert registry.label(p, "onleihe") == "Onleihe"
+    assert registry.label(p, "voebb") == "VOEBB"
+
+
+def test_the_table_outranks_the_configuration() -> None:
+    """Das Werkzeug kennt die Plattformen, die es unterstuetzt; die
+    Einrichtung springt nur ein, wo die Tabelle nichts weiss."""
+    p = profil(onleihe={"name": "Meine Bibliothek"})
+
+    assert registry.label(p, "onleihe") == "Onleihe"
+
+
+def test_a_named_shop_keeps_its_name() -> None:
+    """Ein zweiter Shop hiesse sonst wie der erste: "Shop"."""
+    p = profil(beam={}, tolino={"kind": "beam", "name": "Tolino"})
+
+    assert registry.label(p, "beam") == "Shop"
+    assert registry.label(p, "tolino") == "Tolino"
