@@ -46,12 +46,15 @@ def test_a_german_find_is_not(db: Store) -> None:
                                  "ohne Sprachangabe"])
 def test_unknown_is_never_foreign(db: Store, wie: str) -> None:
     """Viele Selbstverlagstitel haben keine ISBN, und die DNB kennt nicht
-    alles. Unbekannt darf nie heissen: fremd."""
-    isbn = None if wie == "ohne ISBN" else "9780000000002"
+    alles. Unbekannt darf nie heissen: fremd.
+
+    Die Nummer gehoert zur Gruppe 992, die in keiner Tabelle steht: seit #32
+    spraeche sonst die ISBN selbst, und der Fall waere keiner mehr."""
+    isbn = None if wie == "ohne ISBN" else "9789920000002"
     if wie == "DNB kennt es nicht":
-        db.save_dnb("9780000000002", None, NOW)
+        db.save_dnb("9789920000002", None, NOW)
     if wie == "ohne Sprachangabe":
-        db.save_dnb("9780000000002", Record(title="A Book"), NOW)
+        db.save_dnb("9789920000002", Record(title="A Book"), NOW)
 
     assert not is_foreign(fund(isbn), load_profile(), language_finder(db))
 
@@ -72,3 +75,42 @@ def test_the_codes_for_unknown_are_not_foreign(db: Store, code: str) -> None:
     db.save_dnb("9780000000003", Record(title="Zweisprachig", language=code), NOW)
 
     assert not is_foreign(fund("9780000000003"), load_profile(), language_finder(db))
+
+
+# --- die Registrierungsgruppe der ISBN (#32) --------------------------------
+
+
+def test_a_hungarian_isbn_is_foreign_even_without_a_dnb_record(db: Store) -> None:
+    """Der Fall, der das Ticket ausgeloest hat: *Wayward Pines* mit ungarischem
+    Klappentext. Die DNB kennt die Nummer nicht — sie erfasst deutsche
+    Veroeffentlichungen —, aber die Gruppe 978-615 sagt Ungarn."""
+    assert is_foreign(fund("9786155522017"), load_profile(), language_finder(db))
+
+
+def test_an_unknown_group_stays_silent(db: Store) -> None:
+    """Gruppe 992 steht in keiner Tabelle. Behaupten ist schlimmer als
+    schweigen: der Fund bleibt im Stapel."""
+    assert not is_foreign(fund("9789920000001"), load_profile(), language_finder(db))
+
+
+def test_the_dnb_outranks_the_group(db: Store) -> None:
+    """Ein deutscher Text bei einem ungarischen Verlag. Die DNB hatte das Buch
+    in der Hand, die Gruppe kennt nur den Verlag."""
+    db.save_dnb("9789630000001", Record(title="Ein Buch", language="ger"), NOW)
+
+    assert not is_foreign(fund("9789630000001"), load_profile(), language_finder(db))
+
+
+def test_the_group_only_speaks_where_the_dnb_is_silent(db: Store) -> None:
+    """Umgekehrt: deutsche Gruppe, aber die DNB nennt Englisch. Das fing schon
+    #10, und daran aendert die Gruppe nichts."""
+    db.save_dnb("9783000000099", Record(title="A Book", language="eng"), NOW)
+
+    assert is_foreign(fund("9783000000099"), load_profile(), language_finder(db))
+
+
+def test_a_watchlist_title_stays_whatever_its_isbn_says(db: Store) -> None:
+    """Was die Leserin selbst auf die Liste setzt, bleibt dort."""
+    assert not is_foreign(
+        fund("9786155522017", MatchReason.WATCHLIST), load_profile(), language_finder(db)
+    )

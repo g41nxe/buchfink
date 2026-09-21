@@ -1,10 +1,18 @@
-"""Nur Funde in den Sprachen des Profils (#10).
+"""Nur Funde in den Sprachen des Profils (#10, #32).
 
 Die DNB nennt zu jeder ISBN, die sie kennt, die Sprache. Benutzt wurde das
 nirgends: eine englische Ausgabe kam auf den Stapel und bekam ein volles
 Urteil, obwohl das Profil ausdruecklich auf deutschsprachige Literatur zielt.
 Ein solcher Fund ist nicht *schwaecher* als ein deutscher — er kommt gar nicht
 in Frage, und ihn zu beurteilen kostet einen Modellaufruf fuer nichts.
+
+**Zwei Zeugen, einer mit Vorrang.** Die DNB kennt nur deutsche
+Veroeffentlichungen; eine ungarische Ausgabe von *Wayward Pines* stand deshalb
+mit ungarischem Klappentext im Stapel, ohne dass jemand widersprochen haette.
+Die ISBN sagt es selbst: ihre Registrierungsgruppe nennt den Sprachraum, ohne
+eine Anfrage und ohne neue Quelle. Gefragt wird sie aber erst, wenn die DNB
+schweigt — die hatte das Buch in der Hand, die Gruppe kennt nur den Verlag
+(#32).
 
 Eine Regel, zwei Stellen: der Lauf filtert vor dem Bewertungstor, der Stapel
 beim Anzeigen. Beide fragen hier.
@@ -30,6 +38,43 @@ LanguageOf = Callable[[str], "str | None"]
 NOT_A_LANGUAGE = frozenset({"und", "mul", "zxx", "mis"})
 
 
+#: Registrierungsgruppe der ISBN -> Sprache, in den Codes der DNB
+#: (ISO 639-2/B). Klein gehalten: jede Zeile hat einen Anlass, und was hier
+#: fehlt, schweigt — behaupten ist schlimmer als schweigen. Gruppe 992 aus dem
+#: Bestand steht deshalb nicht hier.
+#:
+#: Die einstelligen Gruppen sind Sprachraeume, die dreistelligen Laender: 2
+#: heisst "franzoesischsprachig", 606 dagegen "in Rumaenien registriert". Ein
+#: ungarischsprachiges Buch aus Rumaenien bekaeme von uns also ``rum``. Fuer
+#: diese Regel macht das keinen Unterschied — beides steht nicht im Profil —,
+#: richtig ist es trotzdem nicht.
+GROUP_LANGUAGES: dict[str, str] = {
+    "0": "eng",
+    "1": "eng",
+    "2": "fre",
+    "3": "ger",
+    "4": "jpn",
+    "5": "rus",
+    "606": "rum",
+    "615": "hun",
+    "963": "hun",
+}
+
+
+def language_of_isbn(isbn: str) -> str | None:
+    """Die Sprache, die die Registrierungsgruppe nennt — oder nichts.
+
+    Gelesen wird nur die Gruppe hinter dem Praefix (978 oder 979): erst ein
+    Zeichen, dann drei. Die zwei- und vierstelligen Gruppen dazwischen stehen
+    nicht in der Tabelle, und was nicht darin steht, schweigt.
+    """
+    ziffern = "".join(z for z in isbn if z.isdigit())
+    if len(ziffern) != 13 or not ziffern.startswith(("978", "979")):
+        return None
+    rest = ziffern[3:]
+    return GROUP_LANGUAGES.get(rest[:1]) or GROUP_LANGUAGES.get(rest[:3])
+
+
 def language_finder(store: Store) -> LanguageOf:
     """Einmal gelesen, fuer den ganzen Lauf oder die ganze Seite."""
     sprachen = store.dnb_languages()
@@ -49,6 +94,12 @@ def is_foreign(observation: Observation, profile: Profile, language_of: Language
     if observation.match_reason is MatchReason.WATCHLIST or not observation.isbn:
         return False
     sprache = language_of(observation.isbn)
+    if sprache is None:
+        # Nur wo die DNB den Titel gar nicht kennt, spricht die Nummer selbst
+        # (#32). Sagt die DNB "unbestimmt" oder "mehrsprachig", hat sie das
+        # Buch immerhin in der Hand gehabt — dann gilt ihr Schweigen, nicht
+        # die Herkunft des Verlags.
+        sprache = language_of_isbn(observation.isbn)
     if sprache is None or sprache in NOT_A_LANGUAGE:
         return False
     return sprache not in profile.languages
