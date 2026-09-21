@@ -67,7 +67,7 @@
      Wer ein weiteres *Wort* hinzufuegt, muss neu rechnen; ein Punkt, der auf
      dem Telefon nur sein Zeichen zeigt, kostet rund 28 statt 75 px, und so
      sind die Uebersicht (#25) und CWA hineingekommen. #}
-  <div class="mx-auto flex max-w-3xl flex-wrap items-center gap-x-2 gap-y-1
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-2 gap-y-1
               px-6 py-2 sm:gap-x-3 sm:py-3">
     {# Der Namensgeber, und hier nicht dieselbe Datei wie im Tab.
        Urspruenglich war es eine: ein Zeichen, das die Anwendung meint, sollte
@@ -158,7 +158,19 @@
   </div>
 </header>
 
-<main class="mx-auto max-w-3xl px-6 pt-8 pb-24">
+{# Eine Breite fuer alle Seiten, 1024 statt 768 Pixel (#23).
+
+   Gemessen an den Vorschlaegen bei 1280 px Fenster: von 20 Titeln waren bei
+   768 elf abgeschnitten, bei 896 noch drei, bei 1024 einer — daruber bringt
+   mehr Breite nichts, die Zeilenhoehe bleibt ohnehin bei 121 px. Die Listen
+   gewinnen also, und zwar genau bis hierher.
+
+   Keine zweite Breite fuer die Leseseiten: wie breit ein *Text* sein darf, ist
+   eine Frage an den Text, nicht an die Seite. Sie wird dort beantwortet, wo er
+   steht (`max-w-prose`, rund 65 Zeichen) — sonst liefe ein Absatz hier auf 130
+   Zeichen je Zeile. Die Kopfzeile traegt dieselbe Breite, damit die linke
+   Kante durchgeht. #}
+<main class="mx-auto max-w-5xl px-6 pt-8 pb-24">
 {% block content %}{% endblock %}
 </main>
 

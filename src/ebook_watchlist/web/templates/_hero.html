@@ -1,15 +1,17 @@
 {# Das Titelbild der Startseite, im Leerzustand wie am gewöhnlichen Tag.
 
-   Ganz, nicht beschnitten: das Bild erzählt von links nach rechts — Regal,
-   Sessel, Tisch mit der Watchlist, Fink — und ein Band durch die Mitte nimmt
-   ihm den Anfang und das Ende. Die Höhe ergibt sich aus der Breite (1440 zu
-   610, also gut 2,3 zu 1): 304 Pixel auf dem Schreibtisch, 138 auf dem
-   Telefon.
+   Das Bild erzählt von links nach rechts — Regal, Sessel, Tisch mit der
+   Watchlist, Fink — und ein Band durch die Mitte nähme ihm Anfang und Ende.
+   Beschnitten ist es trotzdem, aber oben: 3 zu 1 statt 2,36 zu 1, weil die
+   Spalte seit #23 1024 statt 720 Pixel zeigt und das Bild damit 434 Pixel
+   hoch geworden wäre — ein knappes Drittel der Startseite, bevor „Heute"
+   kommt. Weggefallen ist Fensterfläche über dem Sessel, keine Figur. Jetzt
+   sind es 341 Pixel auf dem Schreibtisch, 109 auf dem Telefon.
 
    Die Datei unter `assets/` ist die verkleinerte Fassung des Originals aus
-   `docs/bilder/`: 1440 Pixel breit, also das Doppelte der 720, die die Spalte
-   je zeigt, und damit auch auf einem dichten Bildschirm scharf. Aus 620 KB
-   werden so 124. Wer das Bild tauscht, verkleinert es dabei:
+   `docs/bilder/`: 2048 Pixel breit, also das Doppelte der 1024, die die
+   Spalte zeigt, und damit auch auf einem dichten Bildschirm scharf. Aus 604
+   KB werden so 210. Wer das Bild tauscht, schneidet und verkleinert es dabei:
    `uv run --with pillow python -c "…"` — eine Abhängigkeit dafür trägt das
    Projekt nicht.
 
@@ -24,6 +26,6 @@
 {% macro hero() %}
 <div class="overflow-hidden rounded-lg border border-hair">
   <img src="{{ url_for('static', path='hero-lesezimmer.jpg') }}?v={{ asset_version }}" alt=""
-       width="1440" height="610" class="block w-full">
+       width="2048" height="683" class="block w-full">
 </div>
 {% endmacro %}

@@ -146,7 +146,7 @@
 {{ abschnitt("Das Leseprofil", "ic-doc") }}
 {% if view.leseprofil %}
 <div class="rounded-lg border border-rule bg-card px-5 py-4">
-  <p class="mb-3 text-sm text-soft">
+  <p class="mb-3 max-w-prose text-sm text-soft">
     Profilversion <span class="font-medium text-ink">{{ view.profile_version }}</span>.
     <strong class="text-ink">Hier nicht änderbar</strong> — und das ist Absicht:
     es liegt als <code class="rounded bg-hair px-1">docs/{{ view.leseprofil_path }}</code>
@@ -155,7 +155,7 @@
     Geändert wird es über den Skill <code class="rounded bg-hair px-1">leseprofil-schaerfen</code>,
     der dich vorher um Zustimmung bittet.
   </p>
-  <p class="mb-3 text-sm text-soft">
+  <p class="mb-3 max-w-prose text-sm text-soft">
     Eine neue Profilversion entwertet die Urteile des Werkzeugs — deine eigenen
     Sterne bleiben. Wie geurteilt wird, steht getrennt davon im
     <strong class="text-ink">Bewertungsschema</strong> unten; eine Änderung dort
@@ -178,7 +178,7 @@
 {{ abschnitt("Das Bewertungsschema", "ic-star") }}
 {% if view.scheme %}
 <div class="rounded-lg border border-rule bg-card px-5 py-4">
-  <p class="mb-3 text-sm text-soft">
+  <p class="mb-3 max-w-prose text-sm text-soft">
     Das Verfahren: was ein Stern bedeutet, was eine Begründung leisten muss,
     worauf ein Urteil ruhen darf. <strong class="text-ink">Ohne Version</strong>
     — es nennt nichts, was mit deinem Geschmack zu tun hat, und würde für eine
