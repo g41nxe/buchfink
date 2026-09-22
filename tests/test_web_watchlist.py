@@ -14,7 +14,7 @@ from ebook_watchlist.models import LinkOutcome, MatchReason, Observation
 from ebook_watchlist.ratings import BY_MODEL
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
-from ebook_watchlist.web import create_app
+from ebook_watchlist.web import create_app, sorting
 from ebook_watchlist.web import watchlist as view
 
 NOW = datetime(2026, 9, 4, 20, 0)
@@ -503,3 +503,62 @@ def test_a_title_nobody_judged_shows_no_stars(db: Store) -> None:
 
     assert eintrag.stars is None
     assert eintrag.pitch is None
+
+
+# --- sortieren (#37) --------------------------------------------------------
+
+
+def test_the_list_offers_every_sort_key(client: TestClient) -> None:
+    """Ein Auswahlfeld, und darin stehen die Schluessel mit ihrer Richtung."""
+    body = client.get("/watchlist").text
+
+    assert "Sortiert nach" in body
+    for order in sorting.WATCHLIST:
+        assert order.label in body
+
+
+def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
+    alt = view.add(db, "test", title="Zuerst da", author=None, now=datetime(2026, 1, 1))
+    neu = view.add(db, "test", title="Eben erst", author=None, now=datetime(2026, 9, 1))
+    assert alt != neu
+
+    body = client.get("/watchlist?sortiert=neu").text
+
+    assert body.index("Eben erst") < body.index("Zuerst da")
+
+
+def test_the_chosen_order_is_the_one_the_field_shows(client: TestClient) -> None:
+    """Sonst sortiert die Seite nach dem einen und behauptet das andere."""
+    body = client.get("/watchlist?sortiert=preis").text
+    assert 'value="preis" selected' in body
+
+
+def test_an_unknown_order_falls_back_instead_of_failing(client: TestClient) -> None:
+    """Ein Tippfehler in der Adresse ist kein Grund, die Liste zu verweigern
+    (ADR 7)."""
+    antwort = client.get("/watchlist?sortiert=gibtsnicht")
+
+    assert antwort.status_code == 200
+    assert f'value="{sorting.WATCHLIST[0].slug}" selected' in antwort.text
+
+
+def test_the_filter_for_open_assignments_keeps_the_order(
+    client: TestClient, db: Store
+) -> None:
+    """Ein Filter wirft die Reihenfolge nicht weg."""
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "beam", outcome=str(LinkOutcome.UNSURE), resolved_at=NOW,
+        matched_title="Irgendwas", url="https://beam.invalid/1",
+    )
+
+    body = client.get("/watchlist?sortiert=preis").text
+
+    assert "nur=unklar" in body
+    assert "sortiert=preis" in body
+
+
+def test_the_default_order_stays_out_of_the_links(client: TestClient) -> None:
+    """`?sortiert=offen` an jedem Verweis waere Laerm: die Voreinstellung gilt
+    ohnehin."""
+    assert "sortiert=offen" not in client.get("/watchlist").text

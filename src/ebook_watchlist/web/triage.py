@@ -22,13 +22,14 @@ from ..diff import worth_announcing
 from ..junk import is_junk
 from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
-from ..models import MatchReason, Observation
+from ..models import Availability, MatchReason, Observation
 from ..rating import DEFAULT_THRESHOLD
 from ..ratings import BY_MODEL, subject_of
 from ..reasons import short_why, thema_name, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
+from . import sorting
 
 #: Was mit einem Stapel geschehen kann. Alle drei schreiben eine Beziehung —
 #: "verworfen" ist keine Löschung, sondern eine Aussage über das Buch.
@@ -80,6 +81,13 @@ class Suggestion:
     #: Was die Sammelausgabe gegenueber den Einzelbaenden spart — ``None``,
     #: wenn es keine ist oder die Baende nicht bekannt sind (ADR 24).
     bundle: BundleAdvantage | None = None
+    #: Ob eine Bibliothek den Fund gerade herausgibt. Fuer die Sortierung
+    #: gebraucht (#37) — in der Zeile steht es als Zeichen der Quellenart.
+    borrowable: bool = False
+    #: Wann der Fund zuletzt gesehen wurde. Die Watchlist nennt denselben
+    #: Schluessel "zuletzt hinzugefuegt"; ein Fund wird nicht hinzugefuegt,
+    #: er taucht auf.
+    observed_at: datetime | None = None
 
     @property
     def is_bundle(self) -> bool:
@@ -179,6 +187,8 @@ def _suggestion(
         cover_file=_cover_file(observation, covers),
         pitch=(judgement.pitch or None) if judgement else None,
         bundle=bundle,
+        borrowable=observation.availability is Availability.AVAILABLE,
+        observed_at=observation.observed_at,
     )
 
 
@@ -188,6 +198,7 @@ def pending(
     *,
     reason: str | None = None,
     limit: int = PAGE_SIZE,
+    sort: str | None = None,
 ) -> Pile:
     """Die Funde, zu denen noch nichts gesagt wurde.
 
@@ -248,14 +259,14 @@ def pending(
             _suggestion(observation, profile, judgement, vorteil, covers)
         )
 
-    # Das Beste zuerst. Ohne das stehen oben die Funde, die zufaellig zuletzt
-    # gesehen wurden — und der Stapel faengt mit dem an, was das Profil gerade
-    # abgelehnt hat. Unbewertetes kommt ans Ende: es ist keine Empfehlung,
-    # sondern eine offene Frage.
-    items.sort(key=lambda item: (item.stars is not None, item.stars or 0), reverse=True)
+    # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
+    # ersten fuenfzig einer zufaelligen Reihe, nur huebsch geordnet.
+    # Voreingestellt steht das Beste oben und Unbewertetes am Ende — es ist
+    # keine Empfehlung, sondern eine offene Frage (#37).
+    geordnet = sorting.apply(sorting.SUGGESTIONS, items, sort)
 
     return Pile(
-        items=tuple(items[:limit]),
+        items=tuple(geordnet[:limit]),
         total=len(items),
         hidden_junk=hidden_junk,
         hidden_priced=hidden_priced,

@@ -3,6 +3,7 @@
 
 {% from "_cover.html" import cover %}
 {% from "_ruecknahme.html" import ruecknahme %}
+{% from "_sortierung.html" import sortierung %}
 
 {% block content %}
 {% if undo %}
@@ -58,18 +59,30 @@
     {{ offene_wahl }}
     {%- if offene_wahl == 1 %} Zuordnung braucht{% else %} Zuordnungen brauchen{% endif %}
     deine Entscheidung</span>
-  <a href="{{ '/watchlist' if nur_unklar else '/watchlist?nur=unklar' }}"
+  <a href="{{ links.alle if nur_unklar else links.unklar }}"
      class="ml-auto tun inline-flex h-7 items-center rounded border border-rule bg-card px-2.5 text-xs font-medium
             hover:border-accent hover:text-accent">
     {{ 'alle zeigen' if nur_unklar else 'nur diese zeigen' }}</a>
 </div>
 {% elif nur_unklar %}
 <p class="mb-4 rounded-lg border border-rule bg-card px-3 py-2 text-sm text-soft">
-  Nichts offen — <a href="/watchlist" class="text-accent underline">alle zeigen</a>.</p>
+  Nichts offen — <a href="{{ links.alle }}" class="text-accent underline">alle zeigen</a>.</p>
 {% endif %}
 
 {% if not entries %}
 <p class="py-3 text-sm text-soft italic">Noch nichts auf der Watchlist.</p>
+{% else %}
+{# Die Reihenfolge gilt wörtlich: nach Preis sortiert stehen auch offene
+   Zuordnungen mittendrin. Verloren gehen sie nicht — die Leiste darüber nennt
+   ihre Zahl und filtert mit einem Klick auf genau sie (#37). #}
+{% set sortier_felder %}
+{% if nur_unklar %}<input type="hidden" name="nur" value="unklar">{% endif %}
+{% endset %}
+<div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
+  {{ sortierung(sortierungen, sortiert, "/watchlist", sortier_felder) }}
+  <span class="ml-auto text-xs text-soft">
+    {{ entries | length }} Titel</span>
+</div>
 {% endif %}
 
 <ul class="divide-y divide-hair">

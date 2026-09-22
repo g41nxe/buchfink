@@ -7,6 +7,7 @@
 {% from "_entscheidungen.html" import entscheidungen %}
 {% from "_zustandsknopf.html" import zustandsknopf %}
 {% from "_pille.html" import pille %}
+{% from "_sortierung.html" import sortierung %}
 
 {% block content %}
 <h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Vorschläge</h1>
@@ -35,6 +36,37 @@
   {% endif %}
 </p>
 {% else %}
+
+{# Was die Ansicht bestimmt, steht ueber der Liste und ausserhalb des
+   Formulars: ein Filter und eine Reihenfolge sind Ansichten, keine Eingaben —
+   und ein Formular im Formular gibt es nicht (#37).
+
+   Der Filter ist ein Pillenband, die Sortierung ein Auswahlfeld. Zwei gleich
+   aussehende Pillenreihen untereinander waeren die schlechtere Wahl gewesen:
+   die eine wirft Zeilen weg, die andere ordnet sie nur um. #}
+{% set sortier_felder %}
+{% if anlass %}<input type="hidden" name="anlass" value="{{ anlass }}">{% endif %}
+{% endset %}
+<div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
+  {{ pille("alle", url=links["alle"], aktiv=not anlass) }}
+  {{ pille("Autor:innen", url=links["profile_author"],
+           aktiv=anlass == "profile_author") }}
+  {{ pille("Themen", url=links["genre_category"],
+           aktiv=anlass == "genre_category", ton="amber") }}
+
+  {{ sortierung(sortierungen, sortiert, "/vorschlaege", sortier_felder) }}
+
+  <span class="ml-auto text-xs text-soft">
+    {{ pile.total }} offen{% if pile.items | length < pile.total %},
+    {{ pile.items | length }} gezeigt{% endif %}
+    {%- if pile.hidden_junk %} · {{ pile.hidden_junk }} Sammelbände und
+    Gratistitel ausgeblendet{% endif %}
+    {%- if pile.hidden_priced %} · {{ pile.hidden_priced }} weder Schnäppchen
+    noch ausleihbar{% endif %}
+    {%- if pile.hidden_weak %} · {{ pile.hidden_weak }} unter drei Sternen{% endif %}
+    {%- if pile.hidden_language %} · {{ pile.hidden_language }} in anderen Sprachen{% endif %}
+  </span>
+</div>
 
 {# Der Zaehler und "alle/keine" sind reiner Browserzustand: niemand speichert
    sie, kein Server kennt sie, und bei fuenfzig Zeilen ist "wie viele habe ich
@@ -69,28 +101,7 @@
          der Zaehler sonst Geister: das Entfernen loest kein `change` aus. #}
       @htmx:after-swap.window="recount()">
 <input type="hidden" name="anlass" value="{{ anlass }}">
-
-<div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
-  {# Filter als Verweise, nicht als Formularfelder: ein Filter ist eine Ansicht,
-     keine Eingabe — und so bleibt er verlinkbar. Dieselbe Pille wie
-     "Pruefen bei" auf der Buchseite. #}
-  {{ pille("alle", url="/vorschlaege", aktiv=not anlass) }}
-  {{ pille("Autor:innen", url="/vorschlaege?anlass=profile_author",
-           aktiv=anlass == "profile_author") }}
-  {{ pille("Themen", url="/vorschlaege?anlass=genre_category",
-           aktiv=anlass == "genre_category", ton="amber") }}
-
-  <span class="ml-auto text-xs text-soft">
-    {{ pile.total }} offen{% if pile.items | length < pile.total %},
-    {{ pile.items | length }} gezeigt{% endif %}
-    {%- if pile.hidden_junk %} · {{ pile.hidden_junk }} Sammelbände und
-    Gratistitel ausgeblendet{% endif %}
-    {%- if pile.hidden_priced %} · {{ pile.hidden_priced }} weder Schnäppchen
-    noch ausleihbar{% endif %}
-    {%- if pile.hidden_weak %} · {{ pile.hidden_weak }} unter drei Sternen{% endif %}
-    {%- if pile.hidden_language %} · {{ pile.hidden_language }} in anderen Sprachen{% endif %}
-  </span>
-</div>
+<input type="hidden" name="sortiert" value="{{ gewaehlt }}">
 
 <ul class="divide-y divide-hair">
   {% for item in pile.items %}

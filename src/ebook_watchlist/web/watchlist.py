@@ -19,6 +19,7 @@ from ..ratings import BY_MODEL, book_subject, subject_of
 from ..relations import DONE_LABELS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
+from . import sorting
 
 #: Nur fuer den Vergleich zweier Zeitstempel, von denen einer fehlen darf.
 _EPOCH = datetime.min
@@ -178,6 +179,10 @@ class Entry:
     #: abgeschlossen und von der Liste.
     stars: float | None = None
     pitch: str | None = None
+    #: Wann dieser Titel auf die Watchlist kam. Der Zeitstempel der Beziehung,
+    #: und der wird nur beim Anlegen gesetzt — ein Pausieren und Fortsetzen
+    #: macht einen alten Eintrag also nicht zu einem neuen (#37).
+    added_at: datetime | None = None
 
     @property
     def is_bundle(self) -> bool:
@@ -408,9 +413,17 @@ def _judgement(ratings: dict, observations: Sequence[Observation], book_id: int)
 
 
 def entries(
-    store: Store, profile: Profile, *, include_paused: bool = True
+    store: Store,
+    profile: Profile,
+    *,
+    include_paused: bool = True,
+    sort: str | None = None,
 ) -> list[Entry]:
-    """Die Watchlist, wie die Seite sie zeigt."""
+    """Die Watchlist, wie die Seite sie zeigt.
+
+    ``sort`` ist der Schluessel aus der Adresse; was ihn nicht trifft, bekommt
+    die Voreinstellung (:mod:`.sorting`).
+    """
     profile_slug = profile.slug
     relations = store.relations(
         profile_slug, kind=str(RelationKind.WATCHING), active_only=not include_paused
@@ -477,6 +490,7 @@ def entries(
                 restrict=details.get("restrict"),
                 note=details.get("note"),
                 cover_file=book.cover_file,
+                added_at=relation.created_at,
                 sources=states,
                 latest=tuple(latest.get(book.id, ())),
                 known_missing=details.get("known_missing"),
@@ -498,8 +512,10 @@ def entries(
                 ),
             )
         )
-    rows.sort(key=lambda entry: (not entry.needs_attention, entry.title.casefold()))
-    return rows
+    # Die gewaehlte Reihenfolge gilt woertlich: auch offene Zuordnungen stehen
+    # nach Preis sortiert mittendrin. Verloren gehen sie nicht — die Leiste
+    # ueber der Liste nennt ihre Zahl und filtert auf genau sie (#37).
+    return sorting.apply(sorting.WATCHLIST, rows, sort)
 
 
 def add(store: Store, profile_slug: str, *, title: str, author: str | None, now: datetime) -> int:

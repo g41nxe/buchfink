@@ -1,0 +1,62 @@
+{# Wonach die Liste sortiert ist — ein Auswahlfeld, keine Pillenreihe (#37).
+
+   Warum kein Pillenband wie die Filter darüber: auf der Vorschlagsseite
+   stünden dann zwei gleich aussehende Reihen untereinander, von denen die eine
+   Zeilen wegwirft und die andere sie nur umordnet. Ein Auswahlfeld ist
+   sichtbar ein anderes Ding, kostet eine Zeile statt zweier, und ein sechster
+   Schlüssel kostet darin keinen Platz.
+
+   Ein GET-Formular, kein Zustand: die Adresse trägt die Wahl
+   (`?sortiert=preis`), damit sie teilbar ist und der Zurück-Knopf stimmt.
+   Die anderen Parameter der Seite — `anlass`, `nur` — reisen als `felder` mit,
+   sonst fiele beim Sortieren der Filter weg.
+
+   `onchange` statt Alpine: hier ist nichts zu verwalten, nur abzuschicken.
+#}
+{% macro sortierung(orders, aktiv, ziel, felder="") %}
+{# Die Adresse ist die Wahrheit, der Browserspeicher füllt nur ihre Lücke: wer
+   `/watchlist` ohne Angabe öffnet, bekommt den zuletzt gewählten Schlüssel —
+   und die Adresse wird dabei mitgeschrieben, damit sie nie etwas anderes
+   behauptet, als die Seite zeigt. `replace`, nicht `assign`: der leere Aufruf
+   soll nicht als eigener Schritt im Verlauf stehen.
+
+   Vor der Liste und ohne `defer`: der Austausch soll geschehen, bevor die
+   erste Zeile auf dem Schirm steht. Kein Speicher, kein Schaden — jeder
+   Zugriff steht in einem `try`, und in einem privaten Fenster wirft er. #}
+<script>
+(function () {
+  var name = "sortiert:{{ ziel }}";
+  var erlaubt = [{% for order in orders %}"{{ order.slug }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+  var adresse = new URL(location.href);
+  if (adresse.searchParams.has("sortiert")) return;
+  var gemerkt = null;
+  try { gemerkt = localStorage.getItem(name); } catch (e) { return; }
+  if (!gemerkt || gemerkt === erlaubt[0] || erlaubt.indexOf(gemerkt) < 0) return;
+  adresse.searchParams.set("sortiert", gemerkt);
+  location.replace(adresse.toString());
+})();
+</script>
+<form method="get" action="{{ ziel }}" class="flex w-full items-center gap-2 sm:w-auto">
+  {{ felder }}
+  <label class="flex w-full items-center gap-2 sm:w-auto">
+    <span class="shrink-0 text-xs text-soft">Sortiert nach</span>
+    <select name="sortiert"
+            onchange="try { localStorage.setItem('sortiert:{{ ziel }}', this.value) } catch (e) {}; this.form.submit()"
+            class="h-10 w-full rounded border border-rule bg-card px-2 text-sm text-ink
+                   outline-none focus:border-accent sm:h-8 sm:w-auto">
+      {% for order in orders %}
+      <option value="{{ order.slug }}"{% if order.slug == aktiv %} selected{% endif %}>
+        {{ order.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {# Ohne JavaScript schickt nichts das Formular ab. Der Knopf verschwindet,
+     sobald welches da ist — er ist der Rückfall, nicht das Bedienelement. #}
+  <noscript>
+    <button type="submit"
+            class="tun inline-flex h-10 items-center rounded border border-rule px-3
+                   text-sm text-soft hover:border-accent hover:text-accent
+                   sm:h-8">los</button>
+  </noscript>
+</form>
+{% endmacro %}

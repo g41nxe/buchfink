@@ -38,6 +38,7 @@ from . import (
     discovery,
     home,
     profile_page,
+    sorting,
     symbols,
     triage,
     watchlist,
@@ -46,6 +47,20 @@ from .recheck import Rechecker
 from .runs import RunLauncher, journal_status
 
 STATIC = Path(__file__).parent / "static"
+
+
+def _link(path: str, **params: str) -> str:
+    """Eine Adresse mit den Parametern, die etwas sagen.
+
+    Filter und Sortierung stehen beide in der Abfrage und duerfen einander
+    nicht abwerfen: wer im Stapel auf "Themen" klickt, behaelt seine
+    Reihenfolge (#37). Leere Werte fallen weg — `?anlass=` ist dasselbe wie
+    nichts und liest sich nur schlechter.
+
+    Hier und nicht in der Vorlage: die rechnet nichts.
+    """
+    gesetzt = {name: wert for name, wert in params.items() if wert}
+    return f"{path}?{urlencode(gesetzt)}" if gesetzt else path
 
 
 def asset_version() -> str:
@@ -362,10 +377,14 @@ def create_app() -> FastAPI:
         nur: str = "",
         undo: int | None = None,
         kind: str = "",
+        sortiert: str = "",
     ) -> HTMLResponse:
         profile = load_profile()
         store = _store_for(paths.db_path())
-        alle = watchlist.entries(store, profile)
+        # Der aufgeloeste Schluessel, nicht der aus der Adresse: die Seite soll
+        # auch bei einem Tippfehler die Reihenfolge anzeigen, die sie benutzt.
+        ordnung, gewaehlt = sorting.chosen(sorting.WATCHLIST, sortiert)
+        alle = watchlist.entries(store, profile, sort=ordnung.slug)
         offen = sum(1 for eintrag in alle if eintrag.needs_choice)
         nur_unklar = nur == "unklar"
         return TEMPLATES.TemplateResponse(
@@ -381,15 +400,27 @@ def create_app() -> FastAPI:
                 "abschluss": watchlist.ABSCHLUSS,
                 "icons": symbols.RELATION_ICONS,
                 "undo": watchlist.undo_for(store, undo, kind) if undo else None,
+                "sortierungen": sorting.WATCHLIST,
+                "sortiert": ordnung.slug,
+                "links": {
+                    "alle": _link("/watchlist", sortiert=gewaehlt),
+                    "unklar": _link("/watchlist", nur="unklar", sortiert=gewaehlt),
+                },
             },
         )
 
     @app.get("/watchlist", response_class=HTMLResponse)
     def watchlist_page(
-        request: Request, nur: str = "", undo: int | None = None, kind: str = ""
+        request: Request,
+        nur: str = "",
+        undo: int | None = None,
+        kind: str = "",
+        sortiert: str = "",
     ) -> HTMLResponse:
         try:
-            return _watchlist_page(request, nur=nur, undo=undo, kind=kind)
+            return _watchlist_page(
+                request, nur=nur, undo=undo, kind=kind, sortiert=sortiert
+            )
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -872,7 +903,9 @@ def create_app() -> FastAPI:
     # --- Triage (Ticket 08) -------------------------------------------------
 
     @app.get("/vorschlaege", response_class=HTMLResponse)
-    def triage_page(request: Request, anlass: str = "") -> HTMLResponse:
+    def triage_page(
+        request: Request, anlass: str = "", sortiert: str = ""
+    ) -> HTMLResponse:
         try:
             profile = load_profile()
         except ConfigError as exc:
@@ -882,8 +915,12 @@ def create_app() -> FastAPI:
                 {"message": str(exc), "asset_version": asset_version()},
                 status_code=500,
             )
+        ordnung, gewaehlt = sorting.chosen(sorting.SUGGESTIONS, sortiert)
         pile = triage.pending(
-            _store_for(paths.db_path()), profile, reason=anlass or None
+            _store_for(paths.db_path()),
+            profile,
+            reason=anlass or None,
+            sort=ordnung.slug,
         )
         return TEMPLATES.TemplateResponse(
             request,
@@ -895,6 +932,21 @@ def create_app() -> FastAPI:
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
                 "anlass": anlass,
+                "sortierungen": sorting.SUGGESTIONS,
+                "sortiert": ordnung.slug,
+                # Das Formular schickt es mit, damit die Entscheidung in
+                # derselben Reihenfolge endet, in der sie getroffen wurde.
+                "gewaehlt": gewaehlt,
+                # Ein Filter wirft die Sortierung nicht weg und umgekehrt.
+                "links": {
+                    "alle": _link("/vorschlaege", sortiert=gewaehlt),
+                    "profile_author": _link(
+                        "/vorschlaege", anlass="profile_author", sortiert=gewaehlt
+                    ),
+                    "genre_category": _link(
+                        "/vorschlaege", anlass="genre_category", sortiert=gewaehlt
+                    ),
+                },
             },
         )
 
@@ -903,6 +955,7 @@ def create_app() -> FastAPI:
         kind: str = Form(...),
         keys: list[str] = _SELECTED,
         anlass: str = Form(""),
+        sortiert: str = Form(""),
         zurueck: str = Form("/vorschlaege"),
     ) -> RedirectResponse:
         """Eine Entscheidung auf die Auswahl anwenden.
@@ -935,8 +988,12 @@ def create_app() -> FastAPI:
                     "/?" + urlencode({"rueckgaengig": keys[0], "art": kind}), status_code=303
                 )
             return RedirectResponse("/", status_code=303)
-        target = f"/vorschlaege?anlass={anlass}" if anlass else "/vorschlaege"
-        return RedirectResponse(target, status_code=303)
+        # Filter *und* Reihenfolge ueberleben die Entscheidung: nach dem
+        # Ausschliessen von drei Funden steht man sonst in einer anders
+        # geordneten Liste als der, aus der man sie gewaehlt hat (#37).
+        return RedirectResponse(
+            _link("/vorschlaege", anlass=anlass, sortiert=sortiert), status_code=303
+        )
 
     @app.post("/vorschlaege/{source}/{item_id}/entscheiden", response_class=HTMLResponse)
     def triage_decide_one(source: str, item_id: str, kind: str = Form(...)) -> HTMLResponse:

@@ -16,7 +16,7 @@ from ebook_watchlist.config import load_profile
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
-from ebook_watchlist.web import create_app
+from ebook_watchlist.web import create_app, sorting
 from ebook_watchlist.web import triage as view
 
 NOW = datetime(2026, 9, 4, 21, 0)
@@ -680,3 +680,71 @@ def test_an_ordinary_title_carries_no_bundle_badge(client: TestClient, db: Store
 
     assert 'Sammelausgabe' not in body
     assert 'Bände' not in body
+
+
+# --- sortieren (#37) --------------------------------------------------------
+
+
+def test_the_stack_offers_every_sort_key(client: TestClient, db: Store) -> None:
+    found(db)
+    body = client.get("/vorschlaege").text
+
+    assert "Sortiert nach" in body
+    for order in sorting.SUGGESTIONS:
+        assert order.label in body
+
+
+def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
+    # Beide unter der Schnaeppchen-Grenze: was nie gemeldet wuerde, steht
+    # auch nicht im Stapel (ADR 19) — und waere dann nicht zu sortieren.
+    found(db, item_id="teuer", title="Kostet viel", price=499)
+    found(db, item_id="billig", title="Kostet wenig", price=199)
+
+    body = client.get("/vorschlaege?sortiert=preis").text
+
+    assert body.index("Kostet wenig") < body.index("Kostet viel")
+
+
+def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -> None:
+    """Sonst zeigte die Seite die ersten fuenfzig einer zufaelligen Reihe,
+    nur huebsch geordnet."""
+    for nummer in range(5):
+        found(db, item_id=str(nummer), title=f"Fund {nummer}", price=100 + nummer)
+
+    pile = view.pending(db, load_profile(), limit=2, sort="preis")
+
+    assert [item.title for item in pile.items] == ["Fund 0", "Fund 1"]
+    assert pile.total == 5
+
+
+def test_the_filter_keeps_the_order(client: TestClient, db: Store) -> None:
+    """Wer auf "Themen" klickt, behaelt seine Reihenfolge."""
+    found(db)
+    body = client.get("/vorschlaege?sortiert=preis").text
+
+    assert "anlass=genre_category" in body
+    assert "sortiert=preis" in body
+
+
+def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> None:
+    """Sonst steht man nach dem Ausschliessen in einer anders geordneten Liste
+    als der, aus der man gewaehlt hat."""
+    fund = found(db, item_id="weg", title="Nichts fuer mich")
+
+    antwort = TestClient(
+        create_app(), raise_server_exceptions=False, follow_redirects=False
+    ).post(
+        "/vorschlaege/entscheiden",
+        data={
+            "kind": str(RelationKind.DISMISSED),
+            "keys": [f"{fund.source}:{fund.source_item_id}"],
+            "sortiert": "preis",
+        },
+    )
+
+    assert antwort.headers["location"] == "/vorschlaege?sortiert=preis"
+
+
+def test_the_default_order_stays_out_of_the_links(client: TestClient, db: Store) -> None:
+    found(db)
+    assert "sortiert=sterne" not in client.get("/vorschlaege").text
