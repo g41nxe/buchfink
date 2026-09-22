@@ -12,6 +12,7 @@
 {% from "_buchzeile.html" import zeile %}
 {% from "_quellensymbole.html" import quellensymbole %}
 {% from "_watchlist_aktionen.html" import watchlist_aktionen %}
+{% from "_urteilssterne.html" import urteilssterne %}
 {% from "_entscheidungen.html" import entscheidungen %}
 {% from "_ruecknahme.html" import ruecknahme %}
 {% if view.first_run %}
@@ -173,6 +174,9 @@
       {% set aktionen %}
       {{ watchlist_aktionen(entry, abschluss, icons, zurueck="/") }}
       {% endset %}
+      {# Dieselbe Spalte wie auf der Watchlist und im Stapel (#16): es ist
+         dieselbe Zeile, und sie soll ueberall dasselbe sagen. #}
+      {% set kennzahlen %}{{ urteilssterne(entry.stars) }}{% endset %}
       {{ zeile(
            entry.title,
            titel_url="/book/" ~ entry.book_id,
@@ -184,6 +188,8 @@
            oben=entry.availability,
            oben_farbe="text-accent" if entry.borrowable else "text-soft",
            preis=entry.price,
+           kennzahlen=kennzahlen,
+           pitch=entry.pitch,
            aktionen=aktionen) }}
     </li>
   {% endfor %}
