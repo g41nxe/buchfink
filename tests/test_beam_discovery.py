@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from conftest import beam_fixture, beam_tiles
-from ebook_watchlist.config import Profile, WatchlistEntry
+from ebook_watchlist.config import Settings, WatchlistEntry
 from ebook_watchlist.http import NotFound
 from ebook_watchlist.matching import author_matches
 from ebook_watchlist.models import MatchReason
@@ -193,10 +193,10 @@ def test_a_watchlisted_title_is_not_also_reported_as_a_discovery(tmp_path: Path)
         author="John Scalzi",
         resolved_links={"beam": "https://www.beam-shop.de/x/y/z/606983/krieg-der-klone"},
     )
-    profile = Profile(slug="t", name="T", reference_authors=["John Scalzi"])
+    settings = Settings(slug="t", name="T", reference_authors=["John Scalzi"])
     context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"), now=NOW)
 
-    observations = beam.collect(profile, [entry], context)
+    observations = beam.collect(settings, [entry], context)
 
     ids = [o.source_item_id for o in observations]
     assert len(ids) == len(set(ids))

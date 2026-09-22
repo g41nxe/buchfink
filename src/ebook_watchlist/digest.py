@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .config import Profile
+from .config import Settings
 from .deals import deal_flags
 from .models import Attention, Delta, DeltaKind, MatchReason, SourceFailure
 from .rating import Rating, confidence_label
@@ -152,7 +152,7 @@ def _judgement_text(rating: Rating | None) -> str | None:
 
 def _entry_for(
     delta: Delta,
-    profile: Profile | None,
+    settings: Settings | None,
     judgements: dict[tuple[str, str], Rating],
     advantage_of=None,
 ) -> tuple[str, DigestEntry]:
@@ -187,7 +187,7 @@ def _entry_for(
         detail = f"{vorteil.summary} · {detail}"
 
     section = _SECTION_BY_REASON[current.match_reason]
-    flags = deal_flags(current, previous, profile) if profile else ()
+    flags = deal_flags(current, previous, settings) if settings else ()
     return section, DigestEntry(
         title=current.title,
         author=current.author,
@@ -206,7 +206,7 @@ def build_digest(
     deltas: list[Delta],
     failures: list[SourceFailure],
     attention: list[Attention] | None = None,
-    profile: Profile | None = None,
+    settings: Settings | None = None,
     judgements: dict[tuple[str, str], Rating] | None = None,
     gate: GateNote | None = None,
     advantage_of=None,
@@ -215,7 +215,7 @@ def build_digest(
     judgements = judgements or {}
 
     for delta in deltas:
-        section, entry = _entry_for(delta, profile, judgements, advantage_of)
+        section, entry = _entry_for(delta, settings, judgements, advantage_of)
         buckets[section].append(entry)
 
     for item in attention or []:

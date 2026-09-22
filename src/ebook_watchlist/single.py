@@ -29,7 +29,7 @@ from datetime import datetime, timedelta
 from filelock import FileLock, Timeout
 
 from . import paths
-from .config import Profile, WatchlistEntry, load_profile
+from .config import Settings, WatchlistEntry, load_settings
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
 from .covers import fetch_for_books, fetch_for_candidates
@@ -59,7 +59,7 @@ class Report:
         return not self.trouble
 
 
-def _entry_for(book_id: int, store: Store, profile: Profile) -> WatchlistEntry | None:
+def _entry_for(book_id: int, store: Store, settings: Settings) -> WatchlistEntry | None:
     """Der Watchlist-Eintrag zu dieser Buch-Nummer.
 
     Über Titel und Autor:in gesucht und nicht über eine Spalte: ein Eintrag
@@ -70,7 +70,7 @@ def _entry_for(book_id: int, store: Store, profile: Profile) -> WatchlistEntry |
     if book is None:
         return None
     try:
-        configured = load_configuration(store, profile)
+        configured = load_configuration(store, settings)
     except NotSeeded:
         return None
     wanted = (book.title.strip().casefold(), (book.author or "").strip().casefold())
@@ -88,9 +88,9 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
     """
     now = now or datetime.now()
     store = Store(paths.db_path())
-    profile = load_profile()
+    settings = load_settings()
 
-    entry = _entry_for(book_id, store, profile)
+    entry = _entry_for(book_id, store, settings)
     if entry is None:
         return Report(trouble="kein Watchlist-Eintrag zu diesem Buch")
     if not entry.active:
@@ -99,8 +99,8 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
     # Mit Kontaktadresse, wie im Rundgang (``run.py``): ein Betreiber, der
     # wissen will, wer da fragt, soll es nicht davon abhaengig finden, ob die
     # Leserin den Knopf gedrueckt oder der Wirt gerufen hat.
-    client = HttpClient(user_agent=build_user_agent(profile.contact))
-    sources = build_sources(profile, client)
+    client = HttpClient(user_agent=build_user_agent(settings.contact))
+    sources = build_sources(settings, client)
     enabled = [source for source in sources if store.is_enabled(source.name)]
     if not enabled:
         return Report(trouble="keine Quelle eingeschaltet")
@@ -117,8 +117,8 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
     stolperer: list[str] = []
 
     try:
-        run_id = store.start_run(profile.slug, ENTRY_TRIGGER, now, pid=os.getpid())
-        context = RunContext(profile_slug=profile.slug, store=store, now=now)
+        run_id = store.start_run(settings.slug, ENTRY_TRIGGER, now, pid=os.getpid())
+        context = RunContext(profile_slug=settings.slug, store=store, now=now)
         for source in enabled:
             try:
                 found.extend(source.watch([entry], context))
@@ -128,7 +128,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
                 # enge Lauf ab, und eine hakende Onleihe verhinderte den
                 # Shop-Preis.
                 stolperer.append(f"{source.name}: {type(exc).__name__}")
-        store.append(run_id, profile.slug, found, now)
+        store.append(run_id, settings.slug, found, now)
         # Erst die Geschichte, dann das Beiwerk — dieselbe Reihenfolge wie im
         # Rundgang. Vorher holte der enge Lauf gar kein Bild, und ein Buch, das
         # ueber "Jetzt pruefen" hereinkam, stand bis zum naechsten Rundgang
@@ -138,7 +138,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
         # waehlen soll: die Frage kann dieser Lauf selbst aufgeworfen haben,
         # und ohne Bilder stand sie bis zum naechsten Rundgang als Reihe
         # gezeichneter Ruecken da (Ticket 41).
-        fetch_for_candidates(store, profile.slug, client)
+        fetch_for_candidates(store, settings.slug, client)
         return Report(observations=tuple(found), trouble="; ".join(stolperer))
     finally:
         # **Immer**, auch auf jedem Fehlerweg. Eine Zeile ohne Ende sieht fuer

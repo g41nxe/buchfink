@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 from .models import MatchReason, Observation
 
 if TYPE_CHECKING:
-    from .config import Profile
+    from .config import Settings
     from .store import Store
 
 LanguageOf = Callable[[str], "str | None"]
@@ -81,7 +81,7 @@ def language_finder(store: Store) -> LanguageOf:
     return sprachen.get
 
 
-def is_foreign(observation: Observation, profile: Profile, language_of: LanguageOf) -> bool:
+def is_foreign(observation: Observation, settings: Settings, language_of: LanguageOf) -> bool:
     """Ob die DNB diesen Fund **ausdruecklich** in einer fremden Sprache fuehrt.
 
     Unbekannt ist nie fremd. Viele Selbstverlagstitel haben keine ISBN, und die
@@ -102,4 +102,4 @@ def is_foreign(observation: Observation, profile: Profile, language_of: Language
         sprache = language_of_isbn(observation.isbn)
     if sprache is None or sprache in NOT_A_LANGUAGE:
         return False
-    return sprache not in profile.languages
+    return sprache not in settings.languages

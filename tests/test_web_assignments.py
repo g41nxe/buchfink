@@ -18,7 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import LinkOutcome
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
@@ -39,9 +39,9 @@ def client(data_dir: Path) -> TestClient:
 
 def unklar(db: Store, *kandidaten: tuple[str, str]) -> int:
     """Ein beobachtetes Buch mit einer unsicheren Zuordnung."""
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Red Rising", author="Pierce Brown", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(
         buch.id,
         "beam",
@@ -96,8 +96,8 @@ def test_none_of_them_rejects_the_whole_group(client: TestClient, db: Store) -> 
 
     # „Keiner davon" trifft die ganze gezeigte Gruppe: einen einzelnen
     # abzulehnen gibt es nicht mehr (Ticket 41).
-    assert not any(e.needs_choice for e in watchlist.entries(db, load_profile()))
-    eintrag = next(e for e in watchlist.entries(db, load_profile()) if e.book_id == buch_id)
+    assert not any(e.needs_choice for e in watchlist.entries(db, load_settings()))
+    eintrag = next(e for e in watchlist.entries(db, load_settings()) if e.book_id == buch_id)
     assert len(eintrag.rejected) == 2
 
 
@@ -111,7 +111,7 @@ def test_a_rejection_can_be_taken_back(client: TestClient, db: Store) -> None:
         data={"source": "beam", "was": "zurueck"},
     )
 
-    eintrag = next(e for e in watchlist.entries(db, load_profile()) if e.needs_choice)
+    eintrag = next(e for e in watchlist.entries(db, load_settings()) if e.needs_choice)
     assert not eintrag.rejected
     assert len(eintrag.candidates) == 1
 
@@ -129,11 +129,11 @@ def test_rejecting_twice_records_it_once(db: Store) -> None:
 def test_a_book_no_longer_watched_is_no_longer_a_question(db: Store) -> None:
     """Eine unklare Zuordnung zu einem Buch, das niemand mehr beobachtet, ist
     keine Frage an die Leserin."""
-    profile = load_profile()
+    settings = load_settings()
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
-    db.deactivate_relation(profile.slug, buch_id, str(RelationKind.WATCHING), now=NOW)
+    db.deactivate_relation(settings.slug, buch_id, str(RelationKind.WATCHING), now=NOW)
 
-    assert not any(e.needs_choice for e in watchlist.entries(db, profile))
+    assert not any(e.needs_choice for e in watchlist.entries(db, settings))
 
 
 def test_an_empty_pile_says_so(client: TestClient, db: Store) -> None:
@@ -158,9 +158,9 @@ def test_an_old_row_without_a_candidate_list_still_asks(client: TestClient, db: 
     """Zeilen aus der Zeit vor der Kandidatenliste tragen nur den Sieger. Ohne
     Rückfall hörten sie stillschweigend auf zu fragen — der teuerste denkbare
     Weg, eine Entscheidung zu verlieren."""
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Red Rising", author="Pierce Brown", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(
         buch.id,
         "beam",
@@ -181,11 +181,11 @@ def test_an_old_row_without_a_candidate_list_still_asks(client: TestClient, db: 
 def test_a_paused_entry_asks_nothing(db: Store) -> None:
     """Pausiert heißt: wird nicht mehr geprüft. Dann ist die Zuordnung auch
     keine offene Frage."""
-    profile = load_profile()
+    settings = load_settings()
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
-    db.deactivate_relation(profile.slug, buch_id, str(RelationKind.WATCHING), now=NOW)
+    db.deactivate_relation(settings.slug, buch_id, str(RelationKind.WATCHING), now=NOW)
 
-    eintrag = next(e for e in watchlist.entries(db, profile) if e.book_id == buch_id)
+    eintrag = next(e for e in watchlist.entries(db, settings) if e.book_id == buch_id)
     assert eintrag.candidates
     assert not eintrag.needs_choice
 
@@ -224,14 +224,14 @@ def test_the_book_inherits_the_cover_of_the_chosen_edition(
     Schritt stand die Zeile bis zum nächsten Lauf mit einem Platzhalter."""
     from ebook_watchlist.covers import CoverStore, file_name
 
-    profile = load_profile()
+    settings = load_settings()
     bild = "https://beam.invalid/cover.jpg"
     covers = CoverStore(paths.covers_dir())
     covers.directory.mkdir(parents=True, exist_ok=True)
     covers.path(file_name(bild)).write_bytes(b"x" * 5000)
 
     buch = db.find_or_create_book(isbn=None, title="Dark Matter", author="Crouch", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(
         buch.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
         reason="unklar",
@@ -264,10 +264,10 @@ def test_the_last_decision_does_not_land_on_an_empty_filter(
 
 
 def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store) -> None:
-    profile = load_profile()
+    settings = load_settings()
     erstes = unklar(db, ("Red Rising", "https://beam.invalid/1"))
     zweites = db.find_or_create_book(isbn=None, title="Noch eins", author="Wer", now=NOW)
-    db.put_relation(profile.slug, zweites.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, zweites.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(
         zweites.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
         reason="unklar",

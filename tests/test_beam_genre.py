@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from conftest import beam_fixture
-from ebook_watchlist.config import ConfigError, Profile, load_dismissals
+from ebook_watchlist.config import ConfigError, Settings, load_dismissals
 from ebook_watchlist.diff import compute_deltas, suppress_unseeded_interests
 from ebook_watchlist.digest import SECTION_GENRE, build_digest
 from ebook_watchlist.dismissals import Dismissed
@@ -22,7 +22,7 @@ from ebook_watchlist.store import Store
 FIXTURES = Path(__file__).parent / "fixtures" / "beam"
 NOW = datetime(2026, 9, 4, 6, 0)
 SPACE_OPERA = "belletristik/science-fiction/space-opera"
-PROFILE = Profile(slug="t", name="T")
+PROFILE = Settings(slug="t", name="T")
 
 
 def fixture(name: str) -> str:
@@ -163,7 +163,7 @@ def test_suggestions_land_in_their_own_section_never_among_real_hits() -> None:
         since=None,
         deltas=compute_deltas(_bargains(observations), {}, PROFILE),
         failures=[],
-        profile=PROFILE,
+        settings=PROFILE,
     )
 
     assert [section.title for section in digest.sections] == [SECTION_GENRE]
@@ -181,9 +181,9 @@ def test_a_dismissed_suggestion_never_comes_back(tmp_path: Path) -> None:
     all_ids = {o.source_item_id for o in beam.by_category(SPACE_OPERA)}
     unwanted = sorted(all_ids)[0]
 
-    profile = Profile(slug="t", name="T", genre_categories=[SPACE_OPERA])
+    settings = Settings(slug="t", name="T", genre_categories=[SPACE_OPERA])
     ctx = context(tmp_path, dismissed=Dismissed(items=frozenset({("beam", unwanted)})))
-    observations = beam.collect(profile, [], ctx)
+    observations = beam.collect(settings, [], ctx)
 
     assert unwanted not in {o.source_item_id for o in observations}
     assert len(observations) == len(all_ids) - 1

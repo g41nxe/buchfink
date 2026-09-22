@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .config import OwnedBook, Profile, WatchlistEntry
+from .config import OwnedBook, Settings, WatchlistEntry
 from .ratings import BY_CONVERSATION, book_subject
 from .relations import InterestKey, RelationKind
 from .store import Store
@@ -126,7 +126,7 @@ def _put_missing_relation(
     return True
 
 
-def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
+def seed(store: Store, settings: Settings, watchlist: list[WatchlistEntry],
          *, owned: list[OwnedBook] | None = None,
          now: datetime | None = None) -> SeedReport:
     """Alles einlesen, was heute in YAML steht."""
@@ -150,7 +150,7 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
             details["restrict"] = "library" if entry.check_library else "shop"
         if _put_missing_relation(
             store,
-            profile.slug,
+            settings.slug,
             book.id,
             str(RelationKind.WATCHING),
             active=entry.active,
@@ -161,8 +161,8 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
 
     # --- Gefallen und nicht gefallen: Freitext, also mit Vorbehalt ----------
     for kind, entries in (
-        (RelationKind.LIKED, profile.liked_books),
-        (RelationKind.DISLIKED, profile.disliked_books),
+        (RelationKind.LIKED, settings.liked_books),
+        (RelationKind.DISLIKED, settings.disliked_books),
     ):
         for entry in entries:
             book_id, note = _book_for_free_text(store, entry, at)
@@ -170,7 +170,7 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
                 report.unresolved.append(f"{kind}: {entry}")
                 continue
             details = {"note": note} if note else {}
-            if _put_missing_relation(store, profile.slug, book_id, str(kind), now=at, **details):
+            if _put_missing_relation(store, settings.slug, book_id, str(kind), now=at, **details):
                 report.relations += 1
 
     # --- Besitz: Titel und Autor:in stehen da, das Urteil auch -------------
@@ -188,7 +188,7 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
         # gehört an die Beziehung, wo die Leserin es beim Nachsehen findet.
         details = {"note": entry.hinweis} if entry.hinweis else {}
         if _put_missing_relation(
-            store, profile.slug, book.id, str(RelationKind.OWNED), now=at, **details
+            store, settings.slug, book.id, str(RelationKind.OWNED), now=at, **details
         ):
             report.relations += 1
             # Was "besitze ich" in der Oberfläche tut, tut auch der Import: ein
@@ -198,8 +198,8 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
             # Beobachtung wieder eingeschaltet, bleibt sie an. Und nur, wenn es
             # eine gibt: sonst stünde da ein "Früher: beobachtet", das nie galt.
             watching = str(RelationKind.WATCHING)
-            if any(row.kind == watching for row in store.relations_of(profile.slug, book.id)):
-                store.deactivate_relation(profile.slug, book.id, watching, now=at)
+            if any(row.kind == watching for row in store.relations_of(settings.slug, book.id)):
+                store.deactivate_relation(settings.slug, book.id, watching, now=at)
         if entry.stars is None:
             continue
         store.put_rating(
@@ -219,18 +219,18 @@ def seed(store: Store, profile: Profile, watchlist: list[WatchlistEntry],
     # in einen Import: ``ebw dismissals`` loest sie einmalig auf (Ticket 17).
 
     # --- Interessen: Autor:innen und Themen --------------------------------
-    for author in profile.reference_authors:
-        store.put_interest(profile.slug, str(InterestKey.AUTHOR), author, now=at, tier="core")
+    for author in settings.reference_authors:
+        store.put_interest(settings.slug, str(InterestKey.AUTHOR), author, now=at, tier="core")
         report.interests += 1
-    for author in profile.extended_authors:
-        if author in profile.reference_authors:
+    for author in settings.extended_authors:
+        if author in settings.reference_authors:
             continue
         store.put_interest(
-            profile.slug, str(InterestKey.AUTHOR), author, now=at, tier="extended"
+            settings.slug, str(InterestKey.AUTHOR), author, now=at, tier="extended"
         )
         report.interests += 1
-    for category in profile.genre_categories:
-        store.put_interest(profile.slug, str(InterestKey.THEMA), category, now=at, tier="core")
+    for category in settings.genre_categories:
+        store.put_interest(settings.slug, str(InterestKey.THEMA), category, now=at, tier="core")
         report.interests += 1
 
     report.books = len(store.books()) - before

@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import paths
-from ..config import ConfigError, load_profile
+from ..config import ConfigError, load_settings
 from ..models import LinkOutcome
 from ..relations import RelationKind
 from ..single import Report
@@ -201,11 +201,11 @@ class SourceHealth:
         return f"{self.last_probe_at:%d.%m. %H:%M}" if self.last_probe_at else "nie"
 
 
-def source_health(store: Store, profile) -> list[SourceHealth]:
+def source_health(store: Store, settings) -> list[SourceHealth]:
     return [
         SourceHealth(
             name=row.name,
-            display=registry.label(profile, row.name),
+            display=registry.label(settings, row.name),
             enabled=row.enabled,
             ok=row.last_probe_ok,
             last_probe_at=row.last_probe_at,
@@ -258,16 +258,16 @@ def create_app() -> FastAPI:
         Schluessel sagt, was beurteilt wird: ``("book", 39)`` fuer die
         Buchseite, ``("item", "beam", "7")`` fuer einen Fund.
         """
-        store, profile, now = _store_for(paths.db_path()), load_profile(), datetime.now()
+        store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
         if key[0] == "book":
-            return Report(trouble=book.rate(store, profile, key[1], now=now))
-        return Report(trouble=discovery.rate(store, profile, key[1], key[2], now=now))
+            return Report(trouble=book.rate(store, settings, key[1], now=now))
+        return Report(trouble=discovery.rate(store, settings, key[1], key[2], now=now))
 
     urteiler = Rechecker(work=_urteilen)
 
-    def _lauf_unterwegs(store: Store, profile) -> bool:
+    def _lauf_unterwegs(store: Store, settings) -> bool:
         """Ob gerade ein grosser Lauf jedes Buch anfasst — fuer den Kopf der Seite."""
-        return launcher.state(store, profile.slug).busy
+        return launcher.state(store, settings.slug).busy
 
     def _urteil_stand(request: Request, key, url: str) -> Response:
         """Das Fragment neben *Bewertung*, solange ein Urteil entsteht.
@@ -315,22 +315,22 @@ def create_app() -> FastAPI:
         ``rueckgaengig``/``art`` nennen einen entschiedenen Fund,
         ``undo``/``kind`` einen abgeschlossenen Watchlist-Eintrag (#22).
         """
-        profile = load_profile()
+        settings = load_settings()
         store = _store_for(paths.db_path())
         return TEMPLATES.TemplateResponse(
             request,
             "home.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
-                "view": home.build(store, profile, now=datetime.now()),
+                "view": home.build(store, settings, now=datetime.now()),
                 "undo": home.undo_for(store, rueckgaengig, art) if rueckgaengig else None,
                 "undo_eintrag": watchlist.undo_for(store, undo, kind) if undo else None,
                 "abschluss": watchlist.ABSCHLUSS,
                 # Der juengste Tagesbericht ist der Weg hinter "N Aenderungen";
                 # der Lauf-Knopf ist derselbe wie auf der Uebersicht.
                 "digest": next(iter(digest_files(limit=1)), None),
-                "run_state": launcher.state(store, profile.slug),
+                "run_state": launcher.state(store, settings.slug),
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
                 "arguments": home.ARGUMENTS,
@@ -340,7 +340,7 @@ def create_app() -> FastAPI:
     @app.get("/uebersicht", response_class=HTMLResponse)
     def dashboard(request: Request) -> HTMLResponse:
         try:
-            profile = load_profile()
+            settings = load_settings()
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -350,21 +350,21 @@ def create_app() -> FastAPI:
             )
 
         store = _store_for(paths.db_path())
-        runs = store.recent_runs(profile.slug)
+        runs = store.recent_runs(settings.slug)
         return TEMPLATES.TemplateResponse(
             request,
             "dashboard.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
                 "runs": runs,
-                "run_state": launcher.state(store, profile.slug),
+                "run_state": launcher.state(store, settings.slug),
                 # Nicht run.status: ein abgeschossener Lauf steht dort fuer
                 # immer als "running", weil der Prozess, der das haette
                 # richtigstellen sollen, eben weg ist (Ticket 10).
                 "run_status": journal_status(runs),
                 "digests": digest_files(),
-                "sources": source_health(store, profile),
+                "sources": source_health(store, settings),
                 "trouble": source_trouble(runs),
             },
         )
@@ -379,19 +379,19 @@ def create_app() -> FastAPI:
         kind: str = "",
         sortiert: str = "",
     ) -> HTMLResponse:
-        profile = load_profile()
+        settings = load_settings()
         store = _store_for(paths.db_path())
         # Der aufgeloeste Schluessel, nicht der aus der Adresse: die Seite soll
         # auch bei einem Tippfehler die Reihenfolge anzeigen, die sie benutzt.
         ordnung, gewaehlt = sorting.chosen(sorting.WATCHLIST, sortiert)
-        alle = watchlist.entries(store, profile, sort=ordnung.slug)
+        alle = watchlist.entries(store, settings, sort=ordnung.slug)
         offen = sum(1 for eintrag in alle if eintrag.needs_choice)
         nur_unklar = nur == "unklar"
         return TEMPLATES.TemplateResponse(
             request,
             "watchlist.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
                 "entries": [e for e in alle if e.needs_choice] if nur_unklar else alle,
                 "message": message,
@@ -437,10 +437,10 @@ def create_app() -> FastAPI:
         # (Ticket 51).
         if not title.strip():
             return RedirectResponse("/watchlist", status_code=303)
-        profile = load_profile()
+        settings = load_settings()
         book_id = watchlist.add(
             _store_for(paths.db_path()),
-            profile.slug,
+            settings.slug,
             title=title,
             author=author,
             now=datetime.now(),
@@ -459,16 +459,16 @@ def create_app() -> FastAPI:
         book_id: int, active: str = Form(""), zurueck: str = Form("/watchlist")
     ) -> RedirectResponse:
         """Pausieren und fortsetzen — nie loeschen (ADR 18)."""
-        profile = load_profile()
+        settings = load_settings()
         store = _store_for(paths.db_path())
         wanted = active == "1"
         if wanted:
             store.put_relation(
-                profile.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
+                settings.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
             )
         else:
             store.deactivate_relation(
-                profile.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
+                settings.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
             )
         return RedirectResponse(_seite_zurueck(zurueck), status_code=303)
 
@@ -481,12 +481,12 @@ def create_app() -> FastAPI:
         wie die Abschluesse — was aus dem Menue eine Resterampe machte
         (docs/research/row-actions-and-overflow-menus.md, Ticket 48).
         """
-        profile = load_profile()
+        settings = load_settings()
         # Leer heisst "alle eingeschalteten Quellen", nicht "keine". Ein
         # unbekannter Wert scheitert in der Validierung des Ladens (Ticket 05).
         watchlist.set_restriction(
             _store_for(paths.db_path()),
-            profile.slug,
+            settings.slug,
             book_id,
             restrict or None,
             now=datetime.now(),
@@ -519,10 +519,10 @@ def create_app() -> FastAPI:
         Beide Routen liefern genau dieses Fragment, damit Knopf und Anzeige
         nicht auseinanderlaufen koennen — dieselbe Regel wie beim grossen Lauf.
         """
-        profile = load_profile()
+        settings = load_settings()
         store = _store_for(paths.db_path())
         eintrag = next(
-            (e for e in watchlist.entries(store, profile) if e.book_id == book_id), None
+            (e for e in watchlist.entries(store, settings) if e.book_id == book_id), None
         )
         if eintrag is None:
             raise HTTPException(status_code=404, detail="kein solcher Eintrag")
@@ -533,7 +533,7 @@ def create_app() -> FastAPI:
                 "entry": eintrag,
                 "check": rechecker.state(book_id),
                 "now": datetime.now(),
-                "profile": profile,
+                "settings": settings,
                 "abschluss": watchlist.ABSCHLUSS,
                 "icons": symbols.RELATION_ICONS,
                 # Die nachgeladene Zeile muss wissen, auf welcher Seite sie steht:
@@ -563,7 +563,7 @@ def create_app() -> FastAPI:
         """
         watchlist.finish(
             _store_for(paths.db_path()),
-            load_profile().slug,
+            load_settings().slug,
             book_id,
             kind,
             now=datetime.now(),
@@ -588,7 +588,7 @@ def create_app() -> FastAPI:
         """
         watchlist.unfinish(
             _store_for(paths.db_path()),
-            load_profile().slug,
+            load_settings().slug,
             book_id,
             kind,
             now=datetime.now(),
@@ -651,19 +651,19 @@ def create_app() -> FastAPI:
         wieder (ADR 27).
         """
         store = _store_for(paths.db_path())
-        profile = load_profile()
+        settings = load_settings()
         kind = str(RelationKind.WATCHING)
         vorhanden = next(
             (
                 relation
-                for relation in store.relations_of(profile.slug, book_id)
+                for relation in store.relations_of(settings.slug, book_id)
                 if relation.kind == kind
             ),
             None,
         )
         details = json.loads(vorhanden.details or "{}") if vorhanden else {}
         details["known_missing"] = title
-        store.set_relation_details(profile.slug, book_id, kind, details, now=datetime.now())
+        store.set_relation_details(settings.slug, book_id, kind, details, now=datetime.now())
         return RedirectResponse("/watchlist", status_code=303)
 
     @app.post("/watchlist/{book_id}/zuordnen")
@@ -700,7 +700,7 @@ def create_app() -> FastAPI:
         # "Nichts offen" und verlangt einen weiteren Klick, um wieder etwas
         # zu sehen. Dann lieber gleich die ganze Liste.
         if ziel.endswith("?nur=unklar") and not any(
-            eintrag.needs_choice for eintrag in watchlist.entries(store, load_profile())
+            eintrag.needs_choice for eintrag in watchlist.entries(store, load_settings())
         ):
             ziel = "/watchlist"
         return RedirectResponse(ziel, status_code=303)
@@ -711,7 +711,7 @@ def create_app() -> FastAPI:
     @app.get("/book/{book_id}", response_class=HTMLResponse)
     def book_page(request: Request, book_id: int) -> HTMLResponse:
         try:
-            profile = load_profile()
+            settings = load_settings()
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -720,14 +720,14 @@ def create_app() -> FastAPI:
                 status_code=500,
             )
         store = _store_for(paths.db_path())
-        page = book.build(store, profile, book_id)
+        page = book.build(store, settings, book_id)
         if page is None:
             raise HTTPException(status_code=404, detail="kein solches Buch")
         return TEMPLATES.TemplateResponse(
             request,
             "book.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
                 "page": page,
                 "kinds": book.KINDS,
@@ -735,7 +735,7 @@ def create_app() -> FastAPI:
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
                 "urteil_job": urteiler.state(("book", book_id)),
-                "lauf_unterwegs": _lauf_unterwegs(store, profile),
+                "lauf_unterwegs": _lauf_unterwegs(store, settings),
             },
         )
 
@@ -793,8 +793,8 @@ def create_app() -> FastAPI:
         return _buch_stand(request, book_id)
 
     def _buch_stand(request: Request, book_id: int) -> HTMLResponse:
-        profile = load_profile()
-        page = book.build(_store_for(paths.db_path()), profile, book_id)
+        settings = load_settings()
+        page = book.build(_store_for(paths.db_path()), settings, book_id)
         if page is None:
             raise HTTPException(status_code=404, detail="kein solches Buch")
         return TEMPLATES.TemplateResponse(
@@ -804,7 +804,7 @@ def create_app() -> FastAPI:
                 "page": page,
                 "check": rechecker.state(book_id),
                 "now": datetime.now(),
-                "profile": profile,
+                "settings": settings,
             },
         )
 
@@ -819,7 +819,7 @@ def create_app() -> FastAPI:
         """
         book.set_relation(
             _store_for(paths.db_path()),
-            load_profile(),
+            load_settings(),
             book_id,
             kind,
             active=active == "1",
@@ -864,27 +864,27 @@ def create_app() -> FastAPI:
         Beziehung bindet die Weiterleitung ausserdem ans Profil; die
         Nummernsuche allein tut das nicht.
         """
-        profile = load_profile()
+        settings = load_settings()
         store = _store_for(paths.db_path())
         book_id = store.book_by_source_item(source, item_id)
         if book_id is not None and any(
-            row.active for row in store.relations_of(profile.slug, book_id)
+            row.active for row in store.relations_of(settings.slug, book_id)
         ):
             return RedirectResponse(f"/book/{book_id}", status_code=303)
-        page = discovery.build(store, profile, source, item_id)
+        page = discovery.build(store, settings, source, item_id)
         if page is None:
             raise HTTPException(status_code=404, detail="kein solcher Fund")
         return TEMPLATES.TemplateResponse(
             request,
             "discovery.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
                 "page": page,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
                 "urteil_job": urteiler.state(("item", source, item_id)),
-                "lauf_unterwegs": _lauf_unterwegs(store, profile),
+                "lauf_unterwegs": _lauf_unterwegs(store, settings),
             },
         )
 
@@ -907,7 +907,7 @@ def create_app() -> FastAPI:
         request: Request, anlass: str = "", sortiert: str = ""
     ) -> HTMLResponse:
         try:
-            profile = load_profile()
+            settings = load_settings()
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -918,7 +918,7 @@ def create_app() -> FastAPI:
         ordnung, gewaehlt = sorting.chosen(sorting.SUGGESTIONS, sortiert)
         pile = triage.pending(
             _store_for(paths.db_path()),
-            profile,
+            settings,
             reason=anlass or None,
             sort=ordnung.slug,
         )
@@ -926,7 +926,7 @@ def create_app() -> FastAPI:
             request,
             "triage.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
                 "pile": pile,
                 "actions": triage.ACTIONS,
@@ -974,7 +974,7 @@ def create_app() -> FastAPI:
         """
         store = _store_for(paths.db_path())
         try:
-            triage.decide(store, load_profile(), keys, kind, now=datetime.now())
+            triage.decide(store, load_settings(), keys, kind, now=datetime.now())
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         if zurueck == "buch" and len(keys) == 1:
@@ -1010,7 +1010,7 @@ def create_app() -> FastAPI:
         try:
             decided = triage.decide(
                 _store_for(paths.db_path()),
-                load_profile(),
+                load_settings(),
                 [f"{source}:{item_id}"],
                 kind,
                 now=datetime.now(),
@@ -1028,7 +1028,7 @@ def create_app() -> FastAPI:
         """Eine Entscheidung zuruecknehmen: die Beziehung wird stillgelegt,
         nicht geloescht (ADR 18) — und der Fund steht wieder im Stapel."""
         home.undo(
-            _store_for(paths.db_path()), load_profile(), key, kind, now=datetime.now()
+            _store_for(paths.db_path()), load_settings(), key, kind, now=datetime.now()
         )
         return RedirectResponse("/" if zurueck == "/" else "/vorschlaege", status_code=303)
 
@@ -1043,7 +1043,7 @@ def create_app() -> FastAPI:
         es zu dieser Seite keine schreibende Route.
         """
         try:
-            profile = load_profile()
+            settings = load_settings()
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -1055,9 +1055,9 @@ def create_app() -> FastAPI:
             request,
             "profile.html",
             {
-                "profile": profile,
+                "settings": settings,
                 "asset_version": asset_version(),
-                "view": profile_page.build(_store_for(paths.db_path()), profile),
+                "view": profile_page.build(_store_for(paths.db_path()), settings),
             },
         )
 
@@ -1065,7 +1065,7 @@ def create_app() -> FastAPI:
 
     def _run_panel(request: Request, decide, refresh_when_over: bool = False) -> HTMLResponse:
         try:
-            profile = load_profile()
+            settings = load_settings()
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
                 request,
@@ -1074,7 +1074,7 @@ def create_app() -> FastAPI:
                 status_code=500,
             )
         store = _store_for(paths.db_path())
-        state = decide(store, profile.slug)
+        state = decide(store, settings.slug)
         headers = {"HX-Refresh": "true"} if refresh_when_over and not state.busy else None
         return TEMPLATES.TemplateResponse(
             request, "_run_panel.html", {"run_state": state}, headers=headers

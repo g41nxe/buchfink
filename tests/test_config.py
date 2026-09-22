@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from ebook_watchlist.config import ConfigError, load_profile, load_watchlist
+from ebook_watchlist.config import ConfigError, load_settings, load_watchlist
 
 
 def test_loads_profile_with_defaults(data_dir: Path) -> None:
-    profile = load_profile()
-    assert profile.slug == "test"
-    assert profile.strong_deal_max_cents == 500
-    assert profile.deal_max_cents == 1000
-    assert profile.min_discount_pct == 25
-    assert profile.sources == {"fake": {"fixture": "fake-source.yaml"}}
+    settings = load_settings()
+    assert settings.slug == "test"
+    assert settings.strong_deal_max_cents == 500
+    assert settings.deal_max_cents == 1000
+    assert settings.min_discount_pct == 25
+    assert settings.sources == {"fake": {"fixture": "fake-source.yaml"}}
 
 
 def test_loads_watchlist(data_dir: Path) -> None:
@@ -26,7 +26,7 @@ def test_loads_watchlist(data_dir: Path) -> None:
 def test_missing_profile_fails_loudly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("EBW_DATA_DIR", str(tmp_path))
     with pytest.raises(ConfigError, match="profile.yaml not found"):
-        load_profile()
+        load_settings()
 
 
 def test_empty_watchlist_file_fails_loudly(data_dir: Path) -> None:
@@ -38,13 +38,13 @@ def test_empty_watchlist_file_fails_loudly(data_dir: Path) -> None:
 def test_broken_yaml_fails_loudly(data_dir: Path) -> None:
     (data_dir / "profile.yaml").write_text("slug: [unclosed", encoding="utf-8")
     with pytest.raises(ConfigError, match="not valid YAML"):
-        load_profile()
+        load_settings()
 
 
 def test_missing_required_field_fails_loudly(data_dir: Path) -> None:
     (data_dir / "profile.yaml").write_text("name: Ohne Slug\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="'slug'"):
-        load_profile()
+        load_settings()
 
 
 def test_inverted_deal_thresholds_rejected(data_dir: Path) -> None:
@@ -53,7 +53,7 @@ def test_inverted_deal_thresholds_rejected(data_dir: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="must be below"):
-        load_profile()
+        load_settings()
 
 
 def test_duplicate_watchlist_entry_rejected(data_dir: Path) -> None:
@@ -67,7 +67,7 @@ def test_duplicate_watchlist_entry_rejected(data_dir: Path) -> None:
 def test_shipped_examples_load(monkeypatch: pytest.MonkeyPatch) -> None:
     examples = Path(__file__).resolve().parents[1] / "examples"
     monkeypatch.setenv("EBW_DATA_DIR", str(examples))
-    assert load_profile().slug == "default"
+    assert load_settings().slug == "default"
     assert len(load_watchlist()) == 2
 
 
@@ -77,7 +77,7 @@ def test_a_zero_discount_threshold_is_allowed(data_dir: Path) -> None:
         "slug: t\nname: T\nmin_discount_pct: 0\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    assert load_profile().min_discount_pct == 0
+    assert load_settings().min_discount_pct == 0
 
 
 def test_a_discount_threshold_of_a_hundred_percent_is_rejected(data_dir: Path) -> None:
@@ -87,7 +87,7 @@ def test_a_discount_threshold_of_a_hundred_percent_is_rejected(data_dir: Path) -
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="0 to 99"):
-        load_profile()
+        load_settings()
 
 
 def test_the_price_ceilings_still_have_to_be_positive(data_dir: Path) -> None:
@@ -96,18 +96,18 @@ def test_the_price_ceilings_still_have_to_be_positive(data_dir: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="positive integer"):
-        load_profile()
+        load_settings()
 
 
 def test_the_rating_budget_is_configurable(data_dir: Path) -> None:
     """Wie viele Urteile ein Lauf einholt, entscheidet die Konfiguration —
     im Zweifel weniger (ADR 19, Ticket 20)."""
-    assert load_profile().rating_budget == 40
+    assert load_settings().rating_budget == 40
     (data_dir / "profile.yaml").write_text(
         "slug: t\nname: T\nrating_budget: 5\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    assert load_profile().rating_budget == 5
+    assert load_settings().rating_budget == 5
 
 
 def test_a_budget_of_zero_is_rejected(data_dir: Path) -> None:
@@ -118,7 +118,7 @@ def test_a_budget_of_zero_is_rejected(data_dir: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="positive integer"):
-        load_profile()
+        load_settings()
 
 
 def test_liked_books_are_kept_even_though_nothing_reads_them_yet(data_dir: Path) -> None:
@@ -129,37 +129,37 @@ def test_liked_books_are_kept_even_though_nothing_reads_them_yet(data_dir: Path)
         "sources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    assert load_profile().liked_books == ["Cry Baby - Gillian Flynn"]
+    assert load_settings().liked_books == ["Cry Baby - Gillian Flynn"]
 
 
 def test_no_liked_books_is_simply_an_empty_list(data_dir: Path) -> None:
-    assert load_profile().liked_books == []
+    assert load_settings().liked_books == []
 
 
 def test_the_cadence_comes_from_the_profile(data_dir: Path) -> None:
     """Wie oft gelaufen wird, ist eine Einstellung und keine Konstante: das
     Journal weiss, wann zuletzt gelaufen wurde, die Kadenz sagt, ab wann
     wieder."""
-    assert load_profile().run_every_hours == 20
+    assert load_settings().run_every_hours == 20
     (data_dir / "profile.yaml").write_text(
         "slug: t\nname: T\nrun_every_hours: 6\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    assert load_profile().run_every_hours == 6
+    assert load_settings().run_every_hours == 6
 
 
 # --- Sprachen (#10) ----------------------------------------------------------
 
 
 def test_german_is_the_default_language(data_dir: Path) -> None:
-    assert load_profile().languages == ("ger",)
+    assert load_settings().languages == ("ger",)
 
 
 def test_the_languages_can_be_set(data_dir: Path) -> None:
     (data_dir / "profile.yaml").write_text(
         "slug: t\nname: T\nlanguages: [ger, eng]\n", encoding="utf-8"
     )
-    assert load_profile().languages == ("ger", "eng")
+    assert load_settings().languages == ("ger", "eng")
 
 
 def test_a_language_is_a_dnb_code(data_dir: Path) -> None:
@@ -169,7 +169,7 @@ def test_a_language_is_a_dnb_code(data_dir: Path) -> None:
         "slug: t\nname: T\nlanguages: [de]\n", encoding="utf-8"
     )
     with pytest.raises(ConfigError, match="languages"):
-        load_profile()
+        load_settings()
 
 
 #: Zwei namenlose Bibliotheken neben der Onleihe: beide fallen auf die Art
@@ -193,7 +193,7 @@ def test_two_sources_with_the_same_name_fail_loudly(data_dir: Path) -> None:
     (data_dir / "profile.yaml").write_text(GLEICHNAMIG, encoding="utf-8")
 
     with pytest.raises(ConfigError, match="Bibliothek"):
-        load_profile()
+        load_settings()
 
 
 def test_a_second_source_with_its_own_name_is_fine(data_dir: Path) -> None:
@@ -203,6 +203,6 @@ def test_a_second_source_with_its_own_name_is_fine(data_dir: Path) -> None:
         encoding="utf-8",
     )
 
-    profil = load_profile()
+    profil = load_settings()
 
     assert set(profil.sources) == {"onleihe", "voebb", "hamburg"}

@@ -18,7 +18,7 @@ class ConfigError(Exception):
 
 
 @dataclass(frozen=True, slots=True)
-class Profile:
+class Settings:
     slug: str
     name: str
     strong_deal_max_cents: int = 500
@@ -216,7 +216,7 @@ def _reference_authors(data: dict[str, Any], what: str) -> tuple[list[str], list
     )
 
 
-def load_profile(path: Path | None = None) -> Profile:
+def load_settings(path: Path | None = None) -> Settings:
     path = path or paths.profile_path()
     data = _load_yaml(path, "profile.yaml")
     if not isinstance(data, dict):
@@ -230,7 +230,7 @@ def load_profile(path: Path | None = None) -> Profile:
             f"{what}: 'extended_sweep_weekday' must be 0 (Monday) to 6 (Sunday), got {weekday!r}"
         )
 
-    profile = Profile(
+    settings = Settings(
         slug=str(_require(data, "slug", what)),
         name=str(_require(data, "name", what)),
         strong_deal_max_cents=_positive_int(data, "strong_deal_max_cents", 500, what),
@@ -254,18 +254,18 @@ def load_profile(path: Path | None = None) -> Profile:
         sources=data.get("sources") or {},
         contact=str(data["contact"]) if data.get("contact") else None,
     )
-    if profile.strong_deal_max_cents >= profile.deal_max_cents:
+    if settings.strong_deal_max_cents >= settings.deal_max_cents:
         raise ConfigError(
             "profile.yaml: strong_deal_max_cents must be below deal_max_cents "
-            f"({profile.strong_deal_max_cents} >= {profile.deal_max_cents})"
+            f"({settings.strong_deal_max_cents} >= {settings.deal_max_cents})"
         )
-    if not isinstance(profile.sources, dict):
+    if not isinstance(settings.sources, dict):
         raise ConfigError("profile.yaml: 'sources' must be a mapping of source name to options")
-    _check_source_names(profile)
-    return profile
+    _check_source_names(settings)
+    return settings
 
 
-def _check_source_names(profile: Profile) -> None:
+def _check_source_names(settings: Settings) -> None:
     """Zwei Quellen duerfen nicht gleich heissen (#14).
 
     Sonst stehen in der Zuordnung zwei Zeilen "Onleihe", und welche welche ist,
@@ -279,8 +279,8 @@ def _check_source_names(profile: Profile) -> None:
     from .sources import registry
 
     gesehen: dict[str, str] = {}
-    for name in profile.sources:
-        beschriftung = registry.label(profile, name)
+    for name in settings.sources:
+        beschriftung = registry.label(settings, name)
         if erster := gesehen.get(beschriftung):
             raise ConfigError(
                 f"profile.yaml: '{erster}' und '{name}' heissen beide "

@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from ..config import Profile, WatchlistEntry
+from ..config import Settings, WatchlistEntry
 from ..models import Availability, MatchReason, Observation
 from .base import Item, RunContext, Source, SourceStructureError
 
@@ -39,7 +39,7 @@ class FakeSource(Source):
 
     def collect(
         self,
-        profile: Profile,
+        settings: Settings,
         watchlist: Sequence[WatchlistEntry],
         context: RunContext,
     ) -> list[Observation]:

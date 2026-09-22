@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.relations import InterestKey, RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app
@@ -68,12 +68,12 @@ def test_the_thresholds_are_stated(client: TestClient) -> None:
 def test_an_overdue_sweep_says_so(db: Store) -> None:
     """Ein Lauf, der nie stattfand, darf keine ganze Woche kosten (ADR 4)."""
     db.set_state("test", view.EXTENDED_SWEEP_KEY, NOW - timedelta(days=9))
-    assert "überfällig" in view.build(db, load_profile()).next_sweep
+    assert "überfällig" in view.build(db, load_settings()).next_sweep
 
 
 def test_a_sweep_that_just_ran_names_the_day(db: Store) -> None:
     db.set_state("test", view.EXTENDED_SWEEP_KEY, datetime.now())
-    assert "überfällig" not in view.build(db, load_profile()).next_sweep
+    assert "überfällig" not in view.build(db, load_settings()).next_sweep
 
 
 def test_the_counts_cover_every_relation(client: TestClient, db: Store) -> None:
@@ -137,7 +137,7 @@ def test_neither_document_is_shown_as_a_python_object(client: TestClient) -> Non
 
 def besessen(db: Store, titel: str, autor: str = "Wer Auch Immer") -> int:
     buch = db.find_or_create_book(isbn=None, title=titel, author=autor, now=NOW)
-    db.put_relation(load_profile().slug, buch.id, str(RelationKind.OWNED), now=NOW)
+    db.put_relation(load_settings().slug, buch.id, str(RelationKind.OWNED), now=NOW)
     return buch.id
 
 
@@ -156,7 +156,7 @@ def test_the_number_still_says_how_many(client: TestClient, db: Store) -> None:
     besessen(db, "Cold Eternity")
     besessen(db, "Providence")
 
-    regal = next(r for r in view.build(db, load_profile()).counts if r.kind == "owned")
+    regal = next(r for r in view.build(db, load_settings()).counts if r.kind == "owned")
 
     assert regal.count == 2
     assert [b.title for b in regal.books] == ["Cold Eternity", "Providence"]
@@ -188,6 +188,6 @@ def test_a_relation_to_a_vanished_book_is_skipped(client: TestClient, db: Store)
         session.delete(session.get(BookRow, buch_id))
         session.commit()
 
-    regal = next(r for r in view.build(db, load_profile()).counts if r.kind == "owned")
+    regal = next(r for r in view.build(db, load_settings()).counts if r.kind == "owned")
 
     assert regal.count == 0

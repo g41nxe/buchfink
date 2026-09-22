@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from ebook_watchlist.config import Profile, WatchlistEntry
+from ebook_watchlist.config import Settings, WatchlistEntry
 from ebook_watchlist.matching import Confidence
 from ebook_watchlist.sources.base import RESOLUTION_RETRY_AFTER, RunContext
 from ebook_watchlist.sources.onleihe import selectors as sel
@@ -254,7 +254,7 @@ def test_collect_resolves_then_reads_availability(context: RunContext) -> None:
     onleihe = source(fixture("search-hits.html"), fixture("detail-unavailable.html"))
     entry = WatchlistEntry(title="Die sieben Schwestern", author="Lucinda Riley")
 
-    observations = onleihe.collect(Profile(slug="test", name="Test"), [entry], context)
+    observations = onleihe.collect(Settings(slug="test", name="Test"), [entry], context)
 
     assert len(observations) == 1
     assert observations[0].source_item_id == "373164461"

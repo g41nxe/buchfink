@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.single import Report
 from ebook_watchlist.store import Store
@@ -37,7 +37,7 @@ def client(data_dir: Path) -> TestClient:
 
 def eintrag(db: Store, titel: str = "Kugelblitz") -> int:
     buch = db.find_or_create_book(isbn=None, title=titel, author="Cixin Liu", now=NOW)
-    db.put_relation(load_profile().slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(load_settings().slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     return buch.id
 
 
@@ -158,7 +158,7 @@ def test_a_narrow_run_always_closes_its_row(data_dir: Path, db: Store) -> None:
     from ebook_watchlist import single
 
     buch_id = eintrag(db)
-    profile = load_profile()
+    settings = load_settings()
     echte_quellen = single.build_sources
 
     class Stolpert:
@@ -168,13 +168,13 @@ def test_a_narrow_run_always_closes_its_row(data_dir: Path, db: Store) -> None:
             raise RuntimeError("der Shop ist weg")
 
     monkeypatch_ziel = single
-    monkeypatch_ziel.build_sources = lambda profile, client: [Stolpert()]  # type: ignore[assignment]
+    monkeypatch_ziel.build_sources = lambda settings, client: [Stolpert()]  # type: ignore[assignment]
     try:
         bericht = single.check_one(buch_id)
     finally:
         monkeypatch_ziel.build_sources = echte_quellen
 
-    offen = [row for row in db.recent_runs(profile.slug, limit=50) if row.finished_at is None]
+    offen = [row for row in db.recent_runs(settings.slug, limit=50) if row.finished_at is None]
     assert not offen
     assert "beam" in bericht.trouble
 
@@ -185,12 +185,12 @@ def test_a_narrow_run_is_not_the_last_run(data_dir: Path, db: Store) -> None:
     1 Änderung(en)" setzen."""
     from ebook_watchlist.store import ENTRY_TRIGGER
 
-    profile = load_profile()
-    gross = db.start_run(profile.slug, "cli", NOW)
+    settings = load_settings()
+    gross = db.start_run(settings.slug, "cli", NOW)
     db.finish_run(gross, status="ok", delta_count=42, finished_at=NOW)
-    db.start_run(profile.slug, ENTRY_TRIGGER, NOW)
+    db.start_run(settings.slug, ENTRY_TRIGGER, NOW)
 
-    assert db.latest_run(profile.slug).id == gross
+    assert db.latest_run(settings.slug).id == gross
 
 
 def test_the_digest_dates_itself_from_the_last_real_run(data_dir: Path, db: Store) -> None:
@@ -198,14 +198,14 @@ def test_the_digest_dates_itself_from_the_last_real_run(data_dir: Path, db: Stor
     Eintrag, den die Leserin selbst angesehen hat."""
     from ebook_watchlist.store import ENTRY_TRIGGER
 
-    profile = load_profile()
-    gross = db.start_run(profile.slug, "cli", NOW)
+    settings = load_settings()
+    gross = db.start_run(settings.slug, "cli", NOW)
     db.finish_run(gross, status="ok", delta_count=42, finished_at=NOW)
-    eng = db.start_run(profile.slug, ENTRY_TRIGGER, NOW)
+    eng = db.start_run(settings.slug, ENTRY_TRIGGER, NOW)
     db.finish_run(eng, status="ok", delta_count=1, finished_at=NOW)
-    naechster = db.start_run(profile.slug, "cli", NOW)
+    naechster = db.start_run(settings.slug, "cli", NOW)
 
-    assert db.last_finished_run(profile.slug, naechster).id == gross
+    assert db.last_finished_run(settings.slug, naechster).id == gross
 
 
 # --- das Titelbild ----------------------------------------------------------
@@ -247,7 +247,7 @@ def test_a_narrow_run_fetches_the_cover(data_dir: Path, db: Store) -> None:
             return bild
 
     echte_quellen, echter_client = single.build_sources, single.HttpClient
-    single.build_sources = lambda profile, client: [Findet()]  # type: ignore[assignment]
+    single.build_sources = lambda settings, client: [Findet()]  # type: ignore[assignment]
     single.HttpClient = HoltDasBild  # type: ignore[assignment]
     try:
         single.check_one(buch_id)

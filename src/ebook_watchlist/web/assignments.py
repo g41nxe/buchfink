@@ -22,7 +22,7 @@ import json
 from dataclasses import dataclass
 
 from .. import paths
-from ..config import Profile
+from ..config import Settings
 from ..covers import CoverStore, file_name
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import LinkOutcome
@@ -115,10 +115,10 @@ def _candidate(raw: dict, rejected: set[str]) -> Candidate:
     )
 
 
-def open_questions(store: Store, profile: Profile) -> Pile:
+def open_questions(store: Store, settings: Settings) -> Pile:
     """Alles, was auf eine Entscheidung wartet."""
     fragen: list[Question] = []
-    for row in store.unsure_links(profile.slug):
+    for row in store.unsure_links(settings.slug):
         details = _details(row)
         rejected = set(details.get("rejected") or [])
         alle = [_candidate(raw, rejected) for raw in details.get("candidates") or []]
@@ -131,7 +131,7 @@ def open_questions(store: Store, profile: Profile) -> Pile:
                 title=buch.title,
                 author=buch.author,
                 source=row.source,
-                source_label=registry.label(profile, row.source),
+                source_label=registry.label(settings, row.source),
                 reason=details.get("reason") or "",
                 candidates=tuple(k for k in alle if not k.rejected),
                 rejected=tuple(k for k in alle if k.rejected),

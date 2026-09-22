@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence
 
 from .bundle_deal import BundleAdvantage
-from .config import Profile
+from .config import Settings
 from .deals import is_strong_deal
 from .junk import is_junk
 from .models import Availability, Delta, DeltaKind, MatchReason, Observation
@@ -32,7 +32,7 @@ DISCOVERY_REASONS: frozenset[MatchReason] = frozenset(
 
 def worth_announcing(
     observation: Observation,
-    profile: Profile | None,
+    settings: Settings | None,
     *,
     bundle_advantage: BundleAdvantage | None = None,
 ) -> bool:
@@ -75,7 +75,7 @@ def worth_announcing(
         return True
     if bundle_advantage is not None:
         return True
-    return profile is not None and is_strong_deal(observation.price_cents, profile)
+    return settings is not None and is_strong_deal(observation.price_cents, settings)
 
 
 #: Was eine Sammelausgabe gegenueber ihren Einzelbaenden spart. Als Funktion
@@ -87,7 +87,7 @@ AdvantageOf = Callable[[Observation], BundleAdvantage | None]
 def compare(
     current: Observation,
     previous: Observation | None,
-    profile: Profile | None = None,
+    settings: Settings | None = None,
     advantage_of: AdvantageOf | None = None,
 ) -> list[Delta]:
     """Every change between two Observations of the same item, notifiable or not."""
@@ -95,7 +95,7 @@ def compare(
     if previous is None:
         # Nothing is lost by staying quiet: the Observation is stored either
         # way, so a book first seen at full price surfaces the day it drops.
-        if worth_announcing(current, profile, bundle_advantage=vorteil):
+        if worth_announcing(current, settings, bundle_advantage=vorteil):
             return [Delta(DeltaKind.FIRST_SEEN, current, None)]
         return []
 
@@ -114,7 +114,7 @@ def compare(
             # was strict at the front door and open at the back: a shelf title
             # slipping from 11,99 € to 11,49 € would have been reported after
             # being kept quiet at 11,99 €.
-            if worth_announcing(current, profile, bundle_advantage=vorteil):
+            if worth_announcing(current, settings, bundle_advantage=vorteil):
                 deltas.append(Delta(DeltaKind.PRICE_DROP, current, previous))
         elif current.price_cents > previous.price_cents:
             deltas.append(Delta(DeltaKind.PRICE_RISE, current, previous))
@@ -125,7 +125,7 @@ def compare(
 def compute_deltas(
     observations: Sequence[Observation],
     previous: Mapping[tuple[str, str], Observation],
-    profile: Profile | None = None,
+    settings: Settings | None = None,
     advantage_of: AdvantageOf | None = None,
 ) -> list[Delta]:
     """The notifiable Deltas for one Run's worth of Observations."""
@@ -133,7 +133,7 @@ def compute_deltas(
         delta
         for observation in observations
         for delta in compare(
-            observation, previous.get(observation.key), profile, advantage_of
+            observation, previous.get(observation.key), settings, advantage_of
         )
         if delta.kind in NOTIFIABLE
     ]

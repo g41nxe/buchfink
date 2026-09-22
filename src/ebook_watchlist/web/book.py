@@ -13,7 +13,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from ..cleaning import is_truncated
-from ..config import Profile
+from ..config import Settings
 from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
 from ..http import HttpClient, build_user_agent
@@ -526,13 +526,13 @@ def _latest_per_source(history: tuple[Sighting, ...]) -> tuple[Sighting, ...]:
     return tuple(neueste.values())
 
 
-def build(store: Store, profile: Profile, book_id: int) -> Page | None:
+def build(store: Store, settings: Settings, book_id: int) -> Page | None:
     """Die Seite zu einem Buch, oder ``None``, wenn es das nicht gibt."""
     book = store.book(book_id)
     if book is None:
         return None
 
-    known = {row.kind: row for row in store.relations_of(profile.slug, book_id)}
+    known = {row.kind: row for row in store.relations_of(settings.slug, book_id)}
     relations = tuple(
         Relation(
             kind=kind,
@@ -553,18 +553,18 @@ def build(store: Store, profile: Profile, book_id: int) -> Page | None:
             matched_title=_details(link).get("matched_title"),
             matched_author=_details(link).get("matched_author"),
             reason=_details(link).get("reason", ""),
-            category=registry.category(profile, link.source),
-            display=registry.label(profile, link.source),
+            category=registry.category(settings, link.source),
+            display=registry.label(settings, link.source),
         )
         for link in store.book_sources(book_id)
     )
 
-    seen = store.observations_for_book(profile.slug, book_id)
+    seen = store.observations_for_book(settings.slug, book_id)
     history = tuple(
         Sighting(
             when=observation.observed_at,
             name=observation.source,
-            source=registry.label(profile, observation.source),
+            source=registry.label(settings, observation.source),
             price=_price(observation.price_cents),
             price_cents=observation.price_cents,
             reservation_count=observation.reservation_count,
@@ -575,7 +575,7 @@ def build(store: Store, profile: Profile, book_id: int) -> Page | None:
             other_title=(
                 observation.title if observation.title.strip() != book.title.strip() else None
             ),
-            deal=is_strong_deal(observation.price_cents, profile),
+            deal=is_strong_deal(observation.price_cents, settings),
         )
         for observation in seen
     )
@@ -612,12 +612,12 @@ def build(store: Store, profile: Profile, book_id: int) -> Page | None:
 
 
 def set_relation(
-    store: Store, profile: Profile, book_id: int, kind: str, *, active: bool, now: datetime
+    store: Store, settings: Settings, book_id: int, kind: str, *, active: bool, now: datetime
 ) -> None:
     """Eine Beziehung setzen oder stilllegen — nie löschen (ADR 18)."""
     if kind not in RELATION_KINDS:
         raise ValueError(f"unbekannte Beziehung {kind!r}")
-    store.put_relation(profile.slug, book_id, kind, active=active, now=now)
+    store.put_relation(settings.slug, book_id, kind, active=active, now=now)
 
 
 def price_points(history: tuple[Sighting, ...]) -> list[Sighting]:
@@ -641,7 +641,7 @@ def price_points(history: tuple[Sighting, ...]) -> list[Sighting]:
     return seen
 
 
-def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
+def rate(store: Store, settings: Settings, book_id: int, *, now: datetime) -> str:
     """Das Tor jetzt über dieses eine Buch urteilen lassen (Ticket 55).
 
     Im Lauf sieht das Tor nur, was auch im Stapel landen würde. Ein
@@ -659,7 +659,7 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
     if book is None:  # pragma: no cover - nur bei geloeschtem Buch
         return "Dieses Buch gibt es nicht mehr."
 
-    seen = store.observations_for_book(profile.slug, book_id)
+    seen = store.observations_for_book(settings.slug, book_id)
     if not seen:
         # Noch kein Fund: ein frisch eingetragener Watchlist-Titel ist bei
         # keiner Quelle aufgeloest (#38). Beurteilt wird dann, was dasteht —
@@ -669,7 +669,7 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
         # "neu beurteilen", stillschweigend ersetzt wird es nie.
         return rate_observation(
             store,
-            profile,
+            settings,
             _as_find(book),
             now=now,
             via=VIA_BOOK_PAGE,
@@ -680,7 +680,7 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
     # Das Urteil hängt am Fund, nicht am Buch (ADR 18): am jüngsten, denn er
     # trägt den aktuellen Preis und die aktuelle Verfügbarkeit.
     return rate_observation(
-        store, profile, seen[0], now=now, via=VIA_BOOK_PAGE, blurb=book.blurb
+        store, settings, seen[0], now=now, via=VIA_BOOK_PAGE, blurb=book.blurb
     )
 
 
@@ -702,15 +702,15 @@ def _as_find(book) -> Observation:
     )
 
 
-def evidence_sources(profile: Profile, store: Store) -> list:
+def evidence_sources(settings: Settings, store: Store) -> list:
     """Die eingeschalteten Quellen, mit Kontaktadresse wie im Rundgang."""
-    client = HttpClient(user_agent=build_user_agent(profile.contact))
-    return [s for s in build_sources(profile, client) if store.is_enabled(s.name)]
+    client = HttpClient(user_agent=build_user_agent(settings.contact))
+    return [s for s in build_sources(settings, client) if store.is_enabled(s.name)]
 
 
 def rate_observation(
     store: Store,
-    profile: Profile,
+    settings: Settings,
     observation,
     *,
     now: datetime,
@@ -728,7 +728,7 @@ def rate_observation(
 
     Zurück kommt der Grund, warum es nicht ging — leer heißt: das Urteil steht.
     """
-    rater = build_rater(profile.rating_model)
+    rater = build_rater(settings.rating_model)
     if rater is None:
         return (
             "Kein Bewerter eingerichtet: weder ein API-Schlüssel in der Umgebung "
@@ -744,7 +744,7 @@ def rate_observation(
     # eine Anfrage danach waere eine Anfrage ins Leere (#38).
     if with_evidence:
         observation = gather_evidence(
-            store, profile, [observation], evidence_sources(profile, store)
+            store, settings, [observation], evidence_sources(settings, store)
         )[0]
     duenn = not observation.blurb or is_truncated(observation.blurb)
     if duenn and blurb:

@@ -34,7 +34,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .config import Profile
+from .config import Settings
 from .matching.bundles import looks_like_bundle, volume_titles
 from .models import MatchReason, Observation
 
@@ -72,7 +72,7 @@ class BundleAdvantage:
 
 def advantage_for(
     observation: Observation,
-    profile: Profile,
+    settings: Settings,
     price_of: Callable[[str], int | None],
     *,
     contained: Callable[[str], tuple[str, ...]] | None = None,
@@ -101,7 +101,7 @@ def advantage_for(
             if all(preis and preis > 0 for preis in aus_preisen):
                 return _vorteil(
                     observation,
-                    profile,
+                    settings,
                     aus_der_bibliothek,
                     sum(preis for preis in aus_preisen if preis),
                 )
@@ -118,12 +118,12 @@ def advantage_for(
         return None
 
     einzeln = sum(preis for preis in preise if preis is not None)
-    return _vorteil(observation, profile, bände, einzeln)
+    return _vorteil(observation, settings, bände, einzeln)
 
 
 def _vorteil(
     observation: Observation,
-    profile: Profile,
+    settings: Settings,
     bände: tuple[str, ...],
     einzeln: int,
 ) -> BundleAdvantage | None:
@@ -133,10 +133,10 @@ def _vorteil(
     vorteil = BundleAdvantage(
         volumes=bände, singles_cents=einzeln, price_cents=observation.price_cents
     )
-    return vorteil if vorteil.saved_pct >= profile.min_discount_pct else None
+    return vorteil if vorteil.saved_pct >= settings.min_discount_pct else None
 
 
-def advantage_finder(store, profile):
+def advantage_finder(store, settings):
     """Eine Funktion, die zu einer Beobachtung ihren Buendelvorteil sagt.
 
     Einmal gebaut, viele Male gefragt: die Preistabellen werden hier **einmal**
@@ -153,17 +153,17 @@ def advantage_finder(store, profile):
 
     tabellen = [
         (
-            store.latest_prices_by_title(profile.slug, name),
-            store.prices_by_isbn(profile.slug, name),
+            store.latest_prices_by_title(settings.slug, name),
+            store.prices_by_isbn(settings.slug, name),
         )
-        for name in registry.shops(profile)
+        for name in registry.shops(settings)
     ]
 
     def finde(observation):
         for nach_titel, nach_isbn in tabellen:
             vorteil = advantage_for(
                 observation,
-                profile,
+                settings,
                 nach_titel.get,
                 contained=store.contained_isbns,
                 price_of_isbn=nach_isbn.get,

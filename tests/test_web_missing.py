@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import LinkOutcome
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
@@ -35,9 +35,9 @@ def client(data_dir: Path) -> TestClient:
 
 
 def eintrag(db: Store, titel: str, **quellen: str) -> int:
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title=titel, author="Wer Auch Immer", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     for quelle, ausgang in quellen.items():
         db.put_book_source(
             buch.id,
@@ -51,7 +51,7 @@ def eintrag(db: Store, titel: str, **quellen: str) -> int:
 
 
 def eintraege(db: Store):
-    return {e.book_id: e for e in watchlist.entries(db, load_profile())}
+    return {e.book_id: e for e in watchlist.entries(db, load_settings())}
 
 
 def test_all_sources_silent_is_a_question(db: Store) -> None:
@@ -78,9 +78,9 @@ def test_an_entry_nobody_has_looked_at_yet_is_no_question(db: Store) -> None:
 
 
 def test_a_paused_entry_says_nothing(db: Store) -> None:
-    profile = load_profile()
+    settings = load_settings()
     buch_id = eintrag(db, "Hardwired", beam=str(LinkOutcome.NOT_FOUND))
-    db.deactivate_relation(profile.slug, buch_id, str(RelationKind.WATCHING), now=NOW)
+    db.deactivate_relation(settings.slug, buch_id, str(RelationKind.WATCHING), now=NOW)
 
     assert not eintraege(db)[buch_id].missing
 
@@ -144,9 +144,9 @@ def test_after_a_rename_the_hint_comes_back(client: TestClient, db: Store) -> No
 
 
 def test_the_note_survives_a_dismissal(client: TestClient, db: Store) -> None:
-    profile = load_profile()
+    settings = load_settings()
     buch_id = eintrag(db, "Hardware", beam=str(LinkOutcome.NOT_FOUND))
-    db.put_relation(profile.slug, buch_id, str(RelationKind.WATCHING), now=NOW,
+    db.put_relation(settings.slug, buch_id, str(RelationKind.WATCHING), now=NOW,
                     note="Cyberpunk-Actioner.")
 
     client.post(f"/watchlist/{buch_id}/fehlt", data={"title": "Hardware"})

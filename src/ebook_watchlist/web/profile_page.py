@@ -12,7 +12,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from ..config import Profile
+from ..config import Settings
 from ..rating import (
     LESEPROFIL_PATH,
     RatingUnavailable,
@@ -123,8 +123,8 @@ def _money(cents: int) -> str:
     return f"{cents / 100:.2f} €".replace(".", ",")
 
 
-def build(store: Store, profile: Profile) -> Overview:
-    rows = store.interests(profile.slug, active_only=False)
+def build(store: Store, settings: Settings) -> Overview:
+    rows = store.interests(settings.slug, active_only=False)
 
     def collect(key: InterestKey) -> tuple[Interest, ...]:
         return tuple(
@@ -155,7 +155,7 @@ def build(store: Store, profile: Profile) -> Overview:
             label=label,
             books=tuple(
                 Held(book_id=buch.id, title=buch.title, author=buch.author)
-                for row in store.relations(profile.slug, kind=kind)
+                for row in store.relations(settings.slug, kind=kind)
                 if (buch := store.book(row.book_id)) is not None
             ),
         )
@@ -179,12 +179,12 @@ def build(store: Store, profile: Profile) -> Overview:
         authors=collect(InterestKey.AUTHOR),
         themen=collect(InterestKey.THEMA),
         counts=counts,
-        strong_deal=_money(profile.strong_deal_max_cents),
-        deal=_money(profile.deal_max_cents),
-        min_discount=profile.min_discount_pct,
-        sweep_weekday=_WEEKDAYS[profile.extended_sweep_weekday % 7],
-        last_sweep=store.get_state(profile.slug, EXTENDED_SWEEP_KEY),
-        no_gos=tuple(profile.no_gos),
+        strong_deal=_money(settings.strong_deal_max_cents),
+        deal=_money(settings.deal_max_cents),
+        min_discount=settings.min_discount_pct,
+        sweep_weekday=_WEEKDAYS[settings.extended_sweep_weekday % 7],
+        last_sweep=store.get_state(settings.slug, EXTENDED_SWEEP_KEY),
+        no_gos=tuple(settings.no_gos),
         leseprofil=leseprofil,
         profile_version=version,
         leseprofil_path=str(LESEPROFIL_PATH.name),

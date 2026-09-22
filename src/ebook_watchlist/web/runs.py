@@ -11,7 +11,7 @@ different piece of evidence:
   processes ever touch it (the web process must never hold it). So we do not
   ask: we start the child and let it bounce off the lock itself, which it does
   by exiting 0 without writing a run row. That is race-free by construction.
-- **Did the Run get off the ground at all?** A bad Profile makes the Run exit
+- **Did the Run get off the ground at all?** Bad settings make the Run exit
   before it writes anything to the journal. The journal therefore cannot report
   it; the child's own exit code and output can, so a launch is remembered until
   a run row supersedes it.

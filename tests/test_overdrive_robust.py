@@ -16,7 +16,7 @@ import json
 import pytest
 
 from conftest import overdrive_fixture as fixture
-from ebook_watchlist.config import Profile, WatchlistEntry
+from ebook_watchlist.config import Settings, WatchlistEntry
 from ebook_watchlist.sources import registry
 from ebook_watchlist.sources.base import SourceStructureError
 from ebook_watchlist.sources.overdrive import parse
@@ -150,8 +150,8 @@ def test_a_short_page_ends_the_search() -> None:
 # --- die Registrierung -------------------------------------------------------
 
 
-def profil(**sources) -> Profile:
-    return Profile(slug="t", name="T", sources=sources)
+def profil(**sources) -> Settings:
+    return Settings(slug="t", name="T", sources=sources)
 
 
 def test_overdrive_is_a_library_not_a_shop() -> None:

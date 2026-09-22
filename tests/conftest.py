@@ -214,7 +214,7 @@ def keine_belege_von_draussen(monkeypatch: pytest.MonkeyPatch) -> None:
     Tests ohne Quellen — wer sie prüfen will, setzt seine eigenen ein."""
     from ebook_watchlist.web import book
 
-    monkeypatch.setattr(book, "evidence_sources", lambda profile, store: [])
+    monkeypatch.setattr(book, "evidence_sources", lambda settings, store: [])
 
 
 @pytest.fixture(autouse=True)

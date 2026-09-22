@@ -20,7 +20,14 @@ from filelock import FileLock, Timeout
 from . import gate, paths
 from .bundle_deal import advantage_finder
 from .cleaning import clean_blurb
-from .config import ConfigError, Profile, load_dismissals, load_owned, load_profile, load_watchlist
+from .config import (
+    ConfigError,
+    Settings,
+    load_dismissals,
+    load_owned,
+    load_settings,
+    load_watchlist,
+)
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
 from .covers import CoverStore, fetch_for_books, fetch_for_candidates
@@ -165,14 +172,14 @@ def _partition_enabled(sources, store: Store) -> tuple[list, list[str]]:
 
 
 def _collect(
-    sources, profile, watchlist, context: RunContext
+    sources, settings, watchlist, context: RunContext
 ) -> tuple[list[Observation], list[SourceFailure]]:
     """Poll every Source. One failing Source does not stop the others (ADR 7)."""
     observations: list[Observation] = []
     failures: list[SourceFailure] = []
     for source in sources:
         try:
-            observations.extend(source.collect(profile, watchlist, context))
+            observations.extend(source.collect(settings, watchlist, context))
         except Exception as exc:  # noqa: BLE001 - deliberate: isolate one Source
             failures.append(
                 SourceFailure(source=source.name, message=f"{type(exc).__name__}: {exc}")
@@ -189,7 +196,7 @@ def _cleaned(observation: Observation) -> Observation:
     return replace(observation, blurb=blurb)
 
 
-def _ask_the_library(store: Store, client: HttpClient, profile: Profile) -> None:
+def _ask_the_library(store: Store, client: HttpClient, settings: Settings) -> None:
     """Die DNB nach dem fragen, was keine Quelle sagt (Ticket 42).
 
     Einmal je ISBN und höchstens ``dnb_budget`` je Lauf. Der Rückstand von
@@ -206,7 +213,7 @@ def _ask_the_library(store: Store, client: HttpClient, profile: Profile) -> None
     """
     from .dnb import Dnb
 
-    offen = store.isbns_without_dnb(profile.slug, profile.dnb_budget)
+    offen = store.isbns_without_dnb(settings.slug, settings.dnb_budget)
     if not offen:
         _series_from_dnb(store)
         return
@@ -242,7 +249,7 @@ def _series_from_dnb(store: Store) -> None:
         print(f"DNB: {reihen} Reihen übernommen")
 
 
-def _without_foreign_languages(store: Store, deltas, profile: Profile) -> list:
+def _without_foreign_languages(store: Store, deltas, settings: Settings) -> list:
     """Was die DNB ausdruecklich in einer fremden Sprache fuehrt, faellt weg (#10).
 
     Dieselbe Regel wie im Stapel, aus einer Stelle (`language.is_foreign`):
@@ -251,13 +258,13 @@ def _without_foreign_languages(store: Store, deltas, profile: Profile) -> list:
     from .language import is_foreign, language_finder
 
     sprache_von = language_finder(store)
-    bleibt = [d for d in deltas if not is_foreign(d.current, profile, sprache_von)]
+    bleibt = [d for d in deltas if not is_foreign(d.current, settings, sprache_von)]
     if weg := len(deltas) - len(bleibt):
         print(f"Sprache: {weg} Funde in anderen Sprachen übergangen")
     return bleibt
 
 
-def _apply_gate(store: Store, deltas, profile: Profile, now: datetime, sources=()):
+def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
     """Entdeckungen gegen das Leseprofil pruefen (ADR 19).
 
     Ohne Schluessel gibt es kein Tor — dann bleibt alles unbewertet und wird
@@ -269,7 +276,7 @@ def _apply_gate(store: Store, deltas, profile: Profile, now: datetime, sources=(
     Es sind hoechstens so viele Anfragen wie das Budget Buecher zulaesst, und
     es sind dieselben, die der Rueckstands-Schritt sonst spaeter stellt.
     """
-    rater = build_rater(profile.rating_model)
+    rater = build_rater(settings.rating_model)
     if rater is None:
         return deltas, gate.unrated_report(deltas)
     try:
@@ -284,11 +291,11 @@ def _apply_gate(store: Store, deltas, profile: Profile, now: datetime, sources=(
         rater=rater,
         profile_version=version,
         threshold=DEFAULT_THRESHOLD,
-        budget=profile.rating_budget,
-        batch_size=profile.rating_batch_size,
+        budget=settings.rating_budget,
+        batch_size=settings.rating_batch_size,
         now=now,
         evidence=(
-            lambda observations: gather_evidence(store, profile, observations, sources)
+            lambda observations: gather_evidence(store, settings, observations, sources)
         )
         if sources
         else None,
@@ -324,14 +331,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["EBW_DATA_DIR"] = str(args.data_dir)
 
     try:
-        profile = load_profile()
+        settings = load_settings()
         # Die Watchlist-Datei ist Saatgut (ADR 10) und wird nur noch fuer den
         # Import gebraucht. Sie weiterhin bei jedem Lauf zu verlangen hiesse,
         # dass "nur noch Saatgut" nicht stimmt: wer sie nach dem Import
         # loescht, koennte gar nicht mehr laufen.
         watchlist = load_watchlist() if args.command == "seed" else []
-        client = HttpClient(user_agent=build_user_agent(profile.contact))
-        sources = build_sources(profile, client)
+        client = HttpClient(user_agent=build_user_agent(settings.contact))
+        sources = build_sources(settings, client)
     except ConfigError as exc:
         print(f"config error: {exc}", file=sys.stderr)
         return EXIT_CONFIG_ERROR
@@ -350,17 +357,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "sources":
             return _sources(sources, enable=args.enable, disable=args.disable)
         if args.command == "seed":
-            return _seed(profile, watchlist)
+            return _seed(settings, watchlist)
         if args.command == "dismissals":
-            return _dismissals(profile, sources)
+            return _dismissals(settings, sources)
         if args.command == "rate":
-            return _rate(profile, args.anzahl, sources, client)
-        if zu_frueh := _too_soon(profile, datetime.now(), _gap(args, profile)):
+            return _rate(settings, args.anzahl, sources, client)
+        if zu_frueh := _too_soon(settings, datetime.now(), _gap(args, settings)):
             print(zu_frueh)
             return EXIT_OK
         try:
             return _run(
-                profile,
+                settings,
                 watchlist,
                 sources,
                 client=client,
@@ -376,7 +383,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         lock.release()
 
 
-def _gap(args, profile) -> float:
+def _gap(args, settings) -> float:
     """Wie viele Stunden dieser Aufruf abwarten muss.
 
     Die Taktung steckt nicht im Wirt, sondern hier: das Journal weiss, wann
@@ -393,10 +400,10 @@ def _gap(args, profile) -> float:
     """
     if args.fruehestens_nach is not None:
         return args.fruehestens_nach
-    return profile.run_every_hours if args.trigger == "cron" else 0
+    return settings.run_every_hours if args.trigger == "cron" else 0
 
 
-def _too_soon(profile, now: datetime, stunden: float) -> str:
+def _too_soon(settings, now: datetime, stunden: float) -> str:
     """Ob seit dem letzten Rundgang zu wenig Zeit vergangen ist.
 
     Zurück kommt der Satz, der das erklärt — leer heißt: los.
@@ -415,7 +422,7 @@ def _too_soon(profile, now: datetime, stunden: float) -> str:
     letzter = next(
         (
             run
-            for run in Store(paths.db_path()).recent_runs(profile.slug, limit=20)
+            for run in Store(paths.db_path()).recent_runs(settings.slug, limit=20)
             if run.trigger != ENTRY_TRIGGER
         ),
         None,
@@ -430,7 +437,7 @@ def _too_soon(profile, now: datetime, stunden: float) -> str:
     )
 
 
-def _dismissals(profile, sources) -> int:
+def _dismissals(settings, sources) -> int:
     """Die übrig gebliebenen Produktnummern zu Beziehungen machen (Ticket 17).
 
     Bewusst ein eigener Unterbefehl und kein Lauf: eine Handvoll Nummern einmal
@@ -449,7 +456,7 @@ def _dismissals(profile, sources) -> int:
         store,
         active,
         load_dismissals(),
-        profile_slug=profile.slug,
+        profile_slug=settings.slug,
         now=datetime.now(),
         paused=paused,
     )
@@ -515,7 +522,7 @@ def _record_foreign_ratings(store: Store, observations: Sequence[Observation]) -
 
 
 def _fetch_suggestion_covers(
-    store: Store, profile: Profile, client: HttpClient
+    store: Store, settings: Settings, client: HttpClient
 ) -> None:
     """Titelbilder fuer den Stapel — genau fuer die, die stehen bleiben.
 
@@ -533,10 +540,10 @@ def _fetch_suggestion_covers(
     from .web import triage
 
     covers = CoverStore(paths.covers_dir())
-    keys = {item.key for item in triage.pending(store, profile, limit=10_000).items}
+    keys = {item.key for item in triage.pending(store, settings, limit=10_000).items}
     offen = [
         observation.cover_url
-        for observation in store.latest_discoveries(profile.slug)
+        for observation in store.latest_discoveries(settings.slug)
         if f"{observation.source}:{observation.source_item_id}" in keys
         and observation.cover_url
     ]
@@ -557,7 +564,7 @@ def _fetch_suggestion_covers(
     print(f"  {geholt} geholt")
 
 
-def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
+def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int:
     """Den Rückstand beurteilen, ohne eine Quelle zu fragen (Ticket 19).
 
     Das Tor im Lauf sieht nur **Erstsichtungen**. Was einmal im Snapshot steht,
@@ -580,7 +587,7 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
     from .web import triage
 
     store = Store(paths.db_path())
-    rater = build_rater(profile.rating_model)
+    rater = build_rater(settings.rating_model)
     if rater is None:
         print(
             "Kein Bewerter: weder ANTHROPIC_API_KEY noch eine angemeldete "
@@ -593,11 +600,11 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
     # sortiert, Unbeurteiltes steht hinten. Auf ``wieviele`` gekuerzt wird
     # deshalb erst **nach** dem Aussortieren — sonst bekaeme dieser Weg genau
     # die Buecher, die schon ein Urteil haben, und nie die offenen.
-    stapel = triage.pending(store, profile, limit=10_000).items
+    stapel = triage.pending(store, settings, limit=10_000).items
     keys = {item.key for item in stapel}
     beobachtungen = [
         observation
-        for observation in store.latest_discoveries(profile.slug)
+        for observation in store.latest_discoveries(settings.slug)
         if f"{observation.source}:{observation.source_item_id}" in keys
     ]
 
@@ -615,13 +622,13 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
     ]
     if not beobachtungen:
         print("Nichts offen — jeder Vorschlag im Stapel hat ein Urteil.")
-        _fetch_suggestion_covers(store, profile, client)
+        _fetch_suggestion_covers(store, settings, client)
         return EXIT_OK
     beobachtungen = beobachtungen[:wieviele]
 
-    beobachtungen = gather_evidence(store, profile, beobachtungen, sources)
-    print(f"{len(beobachtungen)} Vorschläge, Bündel zu {profile.rating_batch_size} …")
-    urteile = rate_in_batches(rater, beobachtungen, size=profile.rating_batch_size)
+    beobachtungen = gather_evidence(store, settings, beobachtungen, sources)
+    print(f"{len(beobachtungen)} Vorschläge, Bündel zu {settings.rating_batch_size} …")
+    urteile = rate_in_batches(rater, beobachtungen, size=settings.rating_batch_size)
 
     now = datetime.now()
     verteilung: dict[int, int] = {}
@@ -662,18 +669,18 @@ def _rate(profile: Profile, wieviele: int, sources, client: HttpClient) -> int:
     )
     print(f"\n  Verteilung: {gezaehlt or 'keine'}")
 
-    _fetch_suggestion_covers(store, profile, client)
+    _fetch_suggestion_covers(store, settings, client)
     return EXIT_OK
 
 
-def _seed(profile, watchlist) -> int:
+def _seed(settings, watchlist) -> int:
     """Die YAML-Dateien in die Datenbank überführen (Ticket 05).
 
     Wiederholbar: ein zweiter Aufruf legt nichts doppelt an und setzt nichts
     zurück, was inzwischen woanders geändert wurde.
     """
     store = Store(paths.db_path())
-    report = seed(store, profile, watchlist, owned=load_owned())
+    report = seed(store, settings, watchlist, owned=load_owned())
 
     print(f"  {report.books:>4}  Bücher neu angelegt")
     print(f"  {report.relations:>4}  Beziehungen")
@@ -761,25 +768,25 @@ def _doctor(sources) -> int:
     return EXIT_SOURCE_FAILURE if failures else EXIT_OK
 
 
-def _should_sweep_extended(profile, store: Store, now: datetime) -> bool:
+def _should_sweep_extended(settings, store: Store, now: datetime) -> bool:
     """The weekly long tail, on the configured day.
 
     A Run that never happened must not cost a whole week, so a sweep that is
     more than seven days overdue happens on the next Run whatever day it is —
     the same schedule-statelessness the diff has (ADR 4).
     """
-    if not profile.extended_authors:
+    if not settings.extended_authors:
         return False
-    last = store.get_state(profile.slug, EXTENDED_SWEEP_KEY)
+    last = store.get_state(settings.slug, EXTENDED_SWEEP_KEY)
     if last is None:
         return True
     if now - last >= EXTENDED_SWEEP_OVERDUE:
         return True
-    return now.weekday() == profile.extended_sweep_weekday and last.date() != now.date()
+    return now.weekday() == settings.extended_sweep_weekday and last.date() != now.date()
 
 
 def _run(
-    profile,
+    settings,
     watchlist,
     sources,
     *,
@@ -793,14 +800,14 @@ def _run(
     # Die Konfiguration kommt aus der Datenbank; YAML ist Saatgut (ADR 10).
     # Kein stiller Rueckfall: eine leere Datenbank heisst "noch nicht
     # importiert", und das gehoert gesagt.
-    configured = load_configuration(store, profile)
-    profile = configured.profile
+    configured = load_configuration(store, settings)
+    settings = configured.settings
     watchlist = configured.watchlist
 
     # Signing the row with our pid is what lets anyone else — the Dashboard's
     # "Run now" panel, above all — tell a Run still working from one that was
     # killed before it could write an ending (Ticket 10).
-    run_id = store.start_run(profile.slug, trigger, started_at, pid=os.getpid())
+    run_id = store.start_run(settings.slug, trigger, started_at, pid=os.getpid())
 
     sources, paused = _partition_enabled(sources, store)
     for name in paused:
@@ -810,14 +817,14 @@ def _run(
     if not skip_probes:
         sources, probe_failures = _probe(sources, store, started_at)
 
-    sweep_extended = _should_sweep_extended(profile, store, started_at)
+    sweep_extended = _should_sweep_extended(settings, store, started_at)
     context = RunContext(
-        profile_slug=profile.slug,
+        profile_slug=settings.slug,
         store=store,
         now=started_at,
         # Aus den Beziehungen, nicht aus der YAML: eine Ablehnung gilt dem Buch
         # und damit jeder Quelle, nicht der Nummer eines Shops (Ticket 17).
-        dismissed=dismissed_books(store, profile.slug),
+        dismissed=dismissed_books(store, settings.slug),
         sweep_extended=sweep_extended,
         interests={
             (row.key, row.value): row.id
@@ -825,17 +832,17 @@ def _run(
             for row in table.values()
         },
     )
-    observations, failures = _collect(sources, profile, watchlist, context)
+    observations, failures = _collect(sources, settings, watchlist, context)
     failures = [*probe_failures, *failures]
     if sweep_extended and not failures:
-        store.set_state(profile.slug, EXTENDED_SWEEP_KEY, started_at)
+        store.set_state(settings.slug, EXTENDED_SWEEP_KEY, started_at)
     # Ein Watchlist-Eintrag kommt ohne ISBN aus der YAML; die Beobachtung
     # bringt sie mit. Erst dadurch bekommt das Buch die Identitaet, an der zwei
     # Quellen sich treffen koennen (ADR 18).
     for observation in observations:
         if observation.book_id and observation.isbn:
             store.learn_isbn(observation.book_id, observation.isbn)
-    previous = store.latest_observations(profile.slug, keys_of(observations))
+    previous = store.latest_observations(settings.slug, keys_of(observations))
     # Angesaet ist je *Quelle*: ein Interesse, das beam kennt, ist der Onleihe
     # deswegen nicht vertraut. Vorher genuegte "irgendeine Quelle", und die
     # zweite Quelle haette dieselbe Backlist noch einmal gemeldet.
@@ -846,14 +853,14 @@ def _run(
     }
     # Einmal gebaut, von Vergleich und Tagesbericht benutzt: sonst meldet der
     # Stapel einen Buendelvorteil, den der Tagesbericht nicht kennt.
-    buendelvorteil = advantage_finder(store, profile)
+    buendelvorteil = advantage_finder(store, settings)
     deltas = suppress_unseeded_interests(
-        compute_deltas(observations, previous, profile, buendelvorteil),
+        compute_deltas(observations, previous, settings, buendelvorteil),
         context.origin,
         seeded,
     )
 
-    store.append(run_id, profile.slug, observations, started_at)
+    store.append(run_id, settings.slug, observations, started_at)
 
     # Erst die Geschichte, dann das Beiwerk. Vorher standen die Titelbilder
     # davor, und ein 403 auf ein Bild riss den Lauf ab, bevor eine einzige
@@ -861,37 +868,37 @@ def _run(
     # weiter unten: ein Ausfall kostet nie Geschichte.
     fetch_for_books(store, client, observations)
     _record_foreign_ratings(store, observations)
-    fetch_for_candidates(store, profile.slug, client)
-    _ask_the_library(store, client, profile)
+    fetch_for_candidates(store, settings.slug, client)
+    _ask_the_library(store, client, settings)
 
     # Hinter der DNB-Abfrage, denn erst jetzt ist die Sprache neuer Funde
     # bekannt — und vor dem Tor, damit ein fremdsprachiger Fund kein Urteil
     # kostet (#10).
-    deltas = _without_foreign_languages(store, deltas, profile)
+    deltas = _without_foreign_languages(store, deltas, settings)
 
     # Das Tor sitzt hinter dem Snapshot: ein Ausfall kostet ein Urteil, nie
     # Geschichte. Und hinter der Preisregel: ein Buch zu bewerten, das ohnehin
     # niemand zu sehen bekommt, waere Verschwendung (ADR 19).
-    deltas, gate_report = _apply_gate(store, deltas, profile, started_at, sources)
+    deltas, gate_report = _apply_gate(store, deltas, settings, started_at, sources)
 
     # Erst hinter dem Tor, denn erst dann steht fest, was im Stapel bleibt.
     # Bis hierher wurden Bilder fuer Funde nur beim Beurteilen des Rueckstands
     # geholt — das Tor im Lauf beurteilt aber selbst, und was es durchliess,
     # stand danach ohne Bild da.
-    _fetch_suggestion_covers(store, profile, client)
+    _fetch_suggestion_covers(store, settings, client)
 
     for source_name, interest_id in context.swept:
         store.mark_interest_seeded(interest_id, source_name, now=started_at)
 
-    last_run = store.last_finished_run(profile.slug, run_id)
+    last_run = store.last_finished_run(settings.slug, run_id)
     digest = build_digest(
-        profile_name=profile.name,
+        profile_name=settings.name,
         generated_at=started_at,
         since=last_run.started_at if last_run else None,
         deltas=deltas,
         failures=failures,
         attention=context.attention,
-        profile=profile,
+        settings=settings,
         judgements=gate_report.judgements,
         gate=GateNote(
             held_back=gate_report.held_back,

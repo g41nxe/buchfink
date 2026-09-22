@@ -8,10 +8,10 @@ from __future__ import annotations
 import pytest
 
 from ebook_watchlist.bundle_deal import advantage_for
-from ebook_watchlist.config import Profile
+from ebook_watchlist.config import Settings
 from ebook_watchlist.models import MatchReason, Observation
 
-PROFIL = Profile(slug="test", name="Test", contact="test@example.invalid")
+PROFIL = Settings(slug="test", name="Test", contact="test@example.invalid")
 
 #: Die echten Preise aus dem Bestand, in Cent.
 PREISE = {
@@ -143,7 +143,7 @@ def test_the_digest_says_why_the_bundle_is_there() -> None:
         since=None,
         deltas=[Delta(DeltaKind.FIRST_SEEN, beobachtung, None)],
         failures=[],
-        profile=PROFIL,
+        settings=PROFIL,
         advantage_of=lambda o: advantage_for(o, PROFIL, preis),
     )
 

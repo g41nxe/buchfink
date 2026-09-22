@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from ebook_watchlist.config import Profile
+from ebook_watchlist.config import Settings
 from ebook_watchlist.diff import compare, compute_deltas, suppress_unseeded_interests
 from ebook_watchlist.models import Availability, DeltaKind, MatchReason, Observation
 
@@ -99,7 +99,7 @@ def test_missing_field_on_one_side_is_not_a_delta() -> None:
 
 # --- a watchlist title that is already cheap ------------------------------
 
-PROFILE = Profile(slug="t", name="T")  # Strong Deal unter 5,00 EUR
+PROFILE = Settings(slug="t", name="T")  # Strong Deal unter 5,00 EUR
 
 
 def test_an_already_cheap_watchlist_title_is_reported_on_sight() -> None:

@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..config import Profile
+from ..config import Settings
 from ..deals import is_strong_deal
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
@@ -414,7 +414,7 @@ def _judgement(ratings: dict, observations: Sequence[Observation], book_id: int)
 
 def entries(
     store: Store,
-    profile: Profile,
+    settings: Settings,
     *,
     include_paused: bool = True,
     sort: str | None = None,
@@ -424,7 +424,7 @@ def entries(
     ``sort`` ist der Schluessel aus der Adresse; was ihn nicht trifft, bekommt
     die Voreinstellung (:mod:`.sorting`).
     """
-    profile_slug = profile.slug
+    profile_slug = settings.slug
     relations = store.relations(
         profile_slug, kind=str(RelationKind.WATCHING), active_only=not include_paused
     )
@@ -473,8 +473,8 @@ def entries(
                 matched_title=_details(link).get("matched_title"),
                 matched_author=_details(link).get("matched_author"),
                 reason=_details(link).get("reason", ""),
-                category=registry.category(profile, link.source),
-                display=registry.label(profile, link.source),
+                category=registry.category(settings, link.source),
+                display=registry.label(settings, link.source),
                 candidates=_candidates(_details(link), link.url, abgelehnt=False),
                 rejected=_candidates(_details(link), link.url, abgelehnt=True),
             )
@@ -508,7 +508,7 @@ def entries(
                         ),
                         None,
                     ),
-                    profile,
+                    settings,
                 ),
             )
         )

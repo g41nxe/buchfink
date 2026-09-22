@@ -12,14 +12,14 @@ import sys
 from dataclasses import replace
 from datetime import datetime
 
-from .config import Profile
+from .config import Settings
 from .dnb import Record
 from .http import RateLimited
 from .models import Observation
 from .store import ENTRY_TRIGGER, Store
 
 
-def gather(store: Store, profile: Profile, observations, sources):
+def gather(store: Store, settings: Settings, observations, sources):
     """Was der Bewerter zu sehen bekommt — zusammengetragen unmittelbar davor.
 
     Nur fuer die Buecher, die gleich ein Urteil bekommen; alles hier kostet
@@ -30,7 +30,7 @@ def gather(store: Store, profile: Profile, observations, sources):
     Schlagwoerter des Verlags). Die DNB wird hier nicht gefragt — das tut der
     Lauf an seiner eigenen Stelle, mit ihrem eigenen Budget.
     """
-    observations = _with_details(store, profile, observations, sources)
+    observations = _with_details(store, settings, observations, sources)
     dnb = store.dnb_facts(o.isbn for o in observations if o.isbn)
     belegt = []
     for observation in observations:
@@ -48,7 +48,7 @@ def gather(store: Store, profile: Profile, observations, sources):
     return belegt
 
 
-def _with_details(store: Store, profile: Profile, observations, sources):
+def _with_details(store: Store, settings: Settings, observations, sources):
     """Die Detailseite holen — eine Anfrage je Buch, und nur hier.
 
     Fuer den ganzen Klappentext, die Schlagwoerter und die Leseprobe. Die
@@ -81,7 +81,7 @@ def _with_details(store: Store, profile: Profile, observations, sources):
     # genau das — frueher fertig als der Rundgang, der sie angestossen hat,
     # und die Startseite meldete "zuletzt geprueft … 0 Aenderungen"
     # (dieselbe Unterscheidung wie beim engen Lauf, Ticket 51).
-    run_id = store.start_run(profile.slug, ENTRY_TRIGGER, now, pid=os.getpid())
+    run_id = store.start_run(settings.slug, ENTRY_TRIGGER, now, pid=os.getpid())
     geholt: dict[tuple[str, str], Observation] = {}
     frisch: list[Observation] = []
     for observation in offen:
@@ -126,6 +126,6 @@ def _with_details(store: Store, profile: Profile, observations, sources):
             frisch.append(replace(voller, observed_at=now))
 
     if frisch:
-        store.append(run_id, profile.slug, frisch, now)
+        store.append(run_id, settings.slug, frisch, now)
     store.finish_run(run_id, status="ok", delta_count=0, finished_at=datetime.now())
     return [geholt.get(o.key, o) for o in observations]

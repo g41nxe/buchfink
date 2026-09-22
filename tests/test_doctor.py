@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from ebook_watchlist.config import ConfigError, Profile, load_profile
+from ebook_watchlist.config import ConfigError, Settings, load_settings
 from ebook_watchlist.run import (
     EXIT_OK,
     EXIT_SOURCE_FAILURE,
@@ -172,9 +172,9 @@ def test_a_plain_list_of_authors_is_all_core(data_dir: Path) -> None:
         "slug: t\nname: T\nreference_authors: [A, B]\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    profile = load_profile()
-    assert profile.reference_authors == ["A", "B"]
-    assert profile.extended_authors == []
+    settings = load_settings()
+    assert settings.reference_authors == ["A", "B"]
+    assert settings.extended_authors == []
 
 
 def test_authors_can_be_split_into_core_and_extended(data_dir: Path) -> None:
@@ -183,10 +183,10 @@ def test_authors_can_be_split_into_core_and_extended(data_dir: Path) -> None:
         "extended_sweep_weekday: 0\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    profile = load_profile()
-    assert profile.reference_authors == ["A"]
-    assert profile.extended_authors == ["B"]
-    assert profile.extended_sweep_weekday == 0
+    settings = load_settings()
+    assert settings.reference_authors == ["A"]
+    assert settings.extended_authors == ["B"]
+    assert settings.extended_sweep_weekday == 0
 
 
 def test_an_unknown_author_group_is_rejected(data_dir: Path) -> None:
@@ -195,7 +195,7 @@ def test_an_unknown_author_group_is_rejected(data_dir: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="unknown key"):
-        load_profile()
+        load_settings()
 
 
 def test_an_impossible_weekday_is_rejected(data_dir: Path) -> None:
@@ -204,18 +204,18 @@ def test_an_impossible_weekday_is_rejected(data_dir: Path) -> None:
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="0 \\(Monday\\) to 6"):
-        load_profile()
+        load_settings()
 
 
 def test_only_the_core_list_is_swept_by_default() -> None:
-    profile = Profile(slug="t", name="T", reference_authors=["A"], extended_authors=["B"])
-    assert profile.authors_to_sweep(include_extended=False) == ["A"]
-    assert profile.authors_to_sweep(include_extended=True) == ["A", "B"]
+    settings = Settings(slug="t", name="T", reference_authors=["A"], extended_authors=["B"])
+    assert settings.authors_to_sweep(include_extended=False) == ["A"]
+    assert settings.authors_to_sweep(include_extended=True) == ["A", "B"]
 
 
 def test_an_author_in_both_lists_is_swept_once() -> None:
-    profile = Profile(slug="t", name="T", reference_authors=["A"], extended_authors=["A", "B"])
-    assert profile.authors_to_sweep(include_extended=True) == ["A", "B"]
+    settings = Settings(slug="t", name="T", reference_authors=["A"], extended_authors=["A", "B"])
+    assert settings.authors_to_sweep(include_extended=True) == ["A", "B"]
 
 
 # --- when the weekly sweep happens ----------------------------------------
@@ -225,8 +225,8 @@ SUNDAY = datetime(2026, 9, 6, 6, 0)
 MONDAY = datetime(2026, 9, 7, 6, 0)
 
 
-def profile_with_extended(weekday: int = 6) -> Profile:
-    return Profile(
+def profile_with_extended(weekday: int = 6) -> Settings:
+    return Settings(
         slug="t",
         name="T",
         reference_authors=["A"],
@@ -237,7 +237,7 @@ def profile_with_extended(weekday: int = 6) -> Profile:
 
 def test_nothing_to_sweep_means_no_sweep(tmp_path: Path) -> None:
     store = Store(tmp_path / "s.db")
-    plain = Profile(slug="t", name="T", reference_authors=["A"])
+    plain = Settings(slug="t", name="T", reference_authors=["A"])
     assert not _should_sweep_extended(plain, store, SUNDAY)
 
 

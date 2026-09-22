@@ -235,14 +235,14 @@ def test_the_run_asks_at_most_the_budget(db: Store, monkeypatch) -> None:
     """Der Rückstand wird über mehrere Läufe abgearbeitet, nicht an einem Tag."""
     from dataclasses import replace
 
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.run import _ask_the_library
 
     for nummer in range(5):
         gesehen(db, f"978000000000{nummer}", nummer=str(nummer))
     client = Bibliothek()
 
-    _ask_the_library(db, client, replace(load_profile(), dnb_budget=2))
+    _ask_the_library(db, client, replace(load_settings(), dnb_budget=2))
 
     assert len(client.gefragt) == 2
 
@@ -250,12 +250,12 @@ def test_the_run_asks_at_most_the_budget(db: Store, monkeypatch) -> None:
 def test_the_run_records_what_it_learned(db: Store) -> None:
     from dataclasses import replace
 
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.run import _ask_the_library
 
     gesehen(db, "9783644025028")
 
-    _ask_the_library(db, Bibliothek(MIT_BAND), replace(load_profile(), dnb_budget=5))
+    _ask_the_library(db, Bibliothek(MIT_BAND), replace(load_settings(), dnb_budget=5))
 
     assert db.contained_isbns("9783644025028") == ("9783644200418",)
     assert db.isbns_without_dnb(SLUG, 10) == []
@@ -266,7 +266,7 @@ def test_a_throttled_library_stops_the_rest(db: Store) -> None:
     Shop."""
     from dataclasses import replace
 
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.http import RateLimited
     from ebook_watchlist.run import _ask_the_library
 
@@ -274,7 +274,7 @@ def test_a_throttled_library_stops_the_rest(db: Store) -> None:
         gesehen(db, f"978000000000{nummer}", nummer=str(nummer))
     client = Bibliothek(RateLimited("429"), MIT_BAND, MIT_BAND)
 
-    _ask_the_library(db, client, replace(load_profile(), dnb_budget=5))
+    _ask_the_library(db, client, replace(load_settings(), dnb_budget=5))
 
     assert len(client.gefragt) == 1
 
@@ -284,7 +284,7 @@ def test_one_broken_answer_does_not_stop_the_others(db: Store) -> None:
     er nur diese eine Auskunft kosten darf."""
     from dataclasses import replace
 
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.http import NotFound
     from ebook_watchlist.run import _ask_the_library
 
@@ -292,7 +292,7 @@ def test_one_broken_answer_does_not_stop_the_others(db: Store) -> None:
         gesehen(db, f"978000000000{nummer}", nummer=str(nummer))
     client = Bibliothek(NotFound("weg"), MIT_BAND, MIT_BAND)
 
-    _ask_the_library(db, client, replace(load_profile(), dnb_budget=5))
+    _ask_the_library(db, client, replace(load_settings(), dnb_budget=5))
 
     assert len(client.gefragt) == 3
 

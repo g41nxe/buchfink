@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import LinkOutcome, MatchReason, Observation
 from ebook_watchlist.ratings import BY_MODEL
 from ebook_watchlist.relations import RelationKind
@@ -315,7 +315,7 @@ def test_entries_put_the_questions_first(db: Store) -> None:
     db.put_relation("test", asking.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(asking.id, "beam", outcome=str(LinkOutcome.UNSURE), resolved_at=NOW)
 
-    rows = view.entries(db, load_profile())
+    rows = view.entries(db, load_settings())
 
     assert rows[0].book_id == asking.id
     assert rows[0].needs_attention
@@ -323,7 +323,7 @@ def test_entries_put_the_questions_first(db: Store) -> None:
 
 
 def test_an_entry_shows_the_last_price_it_was_seen_at(db: Store) -> None:
-    rows = {row.title: row for row in view.entries(db, load_profile())}
+    rows = {row.title: row for row in view.entries(db, load_settings())}
     schwarm = rows.get("Der Schwarm")
     if schwarm is not None and schwarm.latest is not None:
         assert schwarm.price is not None
@@ -345,15 +345,15 @@ def test_one_library_lending_it_out_does_not_hide_the_other_one_having_it(
     es da, hat die Leserin es da."""
     from ebook_watchlist.models import Availability, MatchReason, Observation
 
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Dark Matter", author="Crouch", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
 
     def sichtung(quelle: str, verfuegbarkeit: Availability) -> None:
-        run_id = db.start_run(profile.slug, "cli", NOW)
+        run_id = db.start_run(settings.slug, "cli", NOW)
         db.append(
             run_id,
-            profile.slug,
+            settings.slug,
             [
                 Observation(
                     source=quelle,
@@ -372,7 +372,7 @@ def test_one_library_lending_it_out_does_not_hide_the_other_one_having_it(
     # Zuletzt eingefuegt, also frueher der Gewinner.
     sichtung("overdrive", Availability.UNAVAILABLE)
 
-    zeile = next(e for e in view.entries(db, profile) if e.book_id == buch.id)
+    zeile = next(e for e in view.entries(db, settings) if e.book_id == buch.id)
 
     assert zeile.availability == "ausleihbar"
     assert zeile.borrowable
@@ -383,16 +383,16 @@ def test_a_library_without_a_price_does_not_erase_the_shop_price(db: Store) -> N
     stand in der Zeile nichts — obwohl der Shop einen genannt hatte."""
     from ebook_watchlist.models import Availability, MatchReason, Observation
 
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Ein Buch", author="Wer", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
 
     quellen = (("beam", 499, None), ("overdrive", None, Availability.UNKNOWN))
     for quelle, preis, verfuegbar in quellen:
-        run_id = db.start_run(profile.slug, "cli", NOW)
+        run_id = db.start_run(settings.slug, "cli", NOW)
         db.append(
             run_id,
-            profile.slug,
+            settings.slug,
             [
                 Observation(
                     source=quelle,
@@ -408,7 +408,7 @@ def test_a_library_without_a_price_does_not_erase_the_shop_price(db: Store) -> N
             NOW,
         )
 
-    zeile = next(e for e in view.entries(db, profile) if e.book_id == buch.id)
+    zeile = next(e for e in view.entries(db, settings) if e.book_id == buch.id)
 
     assert zeile.price == "4,99 €"
 
@@ -490,7 +490,7 @@ def test_the_row_carries_the_judgement_of_the_gate(client: TestClient, db: Store
                   reason="Passt zum Profil.", profile_version=3, now=NOW,
                   origin=BY_MODEL, pitch="Ein Forscher, 1977 tief in einer Mine.")
 
-    eintrag = next(e for e in view.entries(db, load_profile()) if e.book_id == book.id)
+    eintrag = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
 
     assert eintrag.stars == 4
     assert eintrag.pitch == "Ein Forscher, 1977 tief in einer Mine."
@@ -499,7 +499,7 @@ def test_the_row_carries_the_judgement_of_the_gate(client: TestClient, db: Store
 
 def test_a_title_nobody_judged_shows_no_stars(db: Store) -> None:
     """Null Sterne waeren eine Aussage, "noch nicht bewertet" ist keine."""
-    eintrag = view.entries(db, load_profile())[0]
+    eintrag = view.entries(db, load_settings())[0]
 
     assert eintrag.stars is None
     assert eintrag.pitch is None

@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..config import Profile
+from ..config import Settings
 from ..relations import DONE_LABELS
 from ..store import Store
 from . import triage, watchlist
@@ -85,8 +85,8 @@ class HomeView:
         return self.status is None
 
 
-def build(store: Store, profile: Profile, *, now: datetime) -> HomeView:
-    entries = watchlist.entries(store, profile, include_paused=False)
+def build(store: Store, settings: Settings, *, now: datetime) -> HomeView:
+    entries = watchlist.entries(store, settings, include_paused=False)
     offers = [entry for entry in entries if entry.deal or entry.borrowable]
     # Preis nur beim Schnäppchen ein Kriterium: ein ausleihbarer Titel ohne
     # Shop-Preis darf nicht zwischen zwei Preisen einsortiert werden.
@@ -100,10 +100,10 @@ def build(store: Store, profile: Profile, *, now: datetime) -> HomeView:
     # Wie viele Zeilen je Spalte stehen, sagt das Profil (``home_offers``,
     # ``home_suggestions``): das haengt am Bildschirm der Leserin und nicht am
     # Werkzeug. Der Rest haengt am Verweis darunter.
-    pile = triage.pending(store, profile, limit=profile.home_suggestions)
+    pile = triage.pending(store, settings, limit=settings.home_suggestions)
     return HomeView(
-        status=_status(store, profile.slug, now),
-        offers=tuple(offers[:profile.home_offers]),
+        status=_status(store, settings.slug, now),
+        offers=tuple(offers[:settings.home_offers]),
         offers_total=len(offers),
         watchlist_total=len(entries),
         suggestions=pile.items,
@@ -143,7 +143,7 @@ def undo_for(store: Store, key: str, kind: str) -> Undo | None:
     return Undo(key, kind, book.title) if book is not None else None
 
 
-def undo(store: Store, profile: Profile, key: str, kind: str, *, now: datetime) -> bool:
+def undo(store: Store, settings: Settings, key: str, kind: str, *, now: datetime) -> bool:
     """Die Beziehung stilllegen, nicht löschen (ADR 18). Der Fund steht danach
     wieder im Stapel, weil nur aktive Beziehungen als Entscheidung zählen."""
     if kind not in DONE_LABELS:
@@ -151,7 +151,7 @@ def undo(store: Store, profile: Profile, key: str, kind: str, *, now: datetime) 
     book_id = _book_of(store, key)
     if book_id is None:
         return False
-    store.deactivate_relation(profile.slug, book_id, kind, now=now)
+    store.deactivate_relation(settings.slug, book_id, kind, now=now)
     return True
 
 

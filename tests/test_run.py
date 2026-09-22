@@ -164,7 +164,7 @@ def test_a_run_fetches_the_images_of_its_own_pile(
     monkeypatch.setattr(
         run_modul,
         "_fetch_suggestion_covers",
-        lambda store, profile, client: gerufen.append(profile.slug),
+        lambda store, settings, client: gerufen.append(settings.slug),
     )
 
     assert main([]) == EXIT_OK
@@ -222,14 +222,14 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
     from datetime import datetime
 
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.evidence import gather as _with_evidence
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.sources.fake import FakeSource
     from ebook_watchlist.store import ENTRY_TRIGGER, Store
 
-    store, profile = Store(paths.db_path()), load_profile()
-    rundgang = store.start_run(profile.slug, "cli", datetime.now())
+    store, settings = Store(paths.db_path()), load_settings()
+    rundgang = store.start_run(settings.slug, "cli", datetime.now())
     store.finish_run(rundgang, status="ok", delta_count=3, finished_at=datetime.now())
     angerissen = Observation(
         source="fake",
@@ -241,9 +241,9 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
     )
 
     quelle = FakeSource(data_dir / "fake-source.yaml")
-    _with_evidence(store, profile, [angerissen], [quelle])
+    _with_evidence(store, settings, [angerissen], [quelle])
 
-    laeufe = store.recent_runs(profile.slug)
+    laeufe = store.recent_runs(settings.slug)
     assert laeufe[0].id == rundgang, "das Nachladen gilt als letzter Lauf"
     assert all(lauf.trigger != ENTRY_TRIGGER for lauf in laeufe)
 
@@ -409,7 +409,7 @@ def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> No
 
     from ebook_watchlist import paths
     from ebook_watchlist import run as run_modul
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.dnb import Record
     from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
     from ebook_watchlist.store import Store
@@ -425,7 +425,7 @@ def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> No
 
     fund, gewollt = neu("1", MatchReason.GENRE_CATEGORY), neu("2", MatchReason.WATCHLIST)
 
-    bleibt = run_modul._without_foreign_languages(store, [fund, gewollt], load_profile())
+    bleibt = run_modul._without_foreign_languages(store, [fund, gewollt], load_settings())
 
     assert bleibt == [gewollt]
 
@@ -436,7 +436,7 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
     aus dem, was die DNB schon gesagt hat. Keine Anfrage an die DNB hier —
     gefragt wird sie an ihrer eigenen Stelle im Lauf, mit ihrem Budget."""
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.dnb import Record
     from ebook_watchlist.evidence import gather as _with_evidence
     from ebook_watchlist.models import MatchReason, Observation
@@ -444,7 +444,7 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
     from ebook_watchlist.store import Store
     from test_sample import KAPITEL, epub
 
-    store, profile = Store(paths.db_path()), load_profile()
+    store, settings = Store(paths.db_path()), load_settings()
     store.save_dnb(
         "9783641171421",
         Record(original_title="Dark Matter", keywords=("Quantenphysik", "Space Opera")),
@@ -478,7 +478,7 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
         blurb="Der ganze Klappentext.",
     )
 
-    (belegt,) = _with_evidence(store, profile, [fund], [Quelle()])
+    (belegt,) = _with_evidence(store, settings, [fund], [Quelle()])
 
     assert belegt.keywords == ("Space Opera", "Dune", "Quantenphysik")
     assert belegt.original_title == "Dark Matter"

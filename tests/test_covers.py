@@ -223,14 +223,14 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
     """Unter drei Sternen steht ein Vorschlag gar nicht mehr im Stapel — ein
     Bild dafuer zu holen waere eine Anfrage fuer etwas, das niemand sieht."""
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.rating import load_leseprofil
     from ebook_watchlist.ratings import BY_MODEL
     from ebook_watchlist.run import _fetch_suggestion_covers
     from ebook_watchlist.store import Store
 
-    store, profile = Store(paths.db_path()), load_profile()
+    store, settings = Store(paths.db_path()), load_settings()
 
     def fund(item_id: str) -> Observation:
         return Observation(
@@ -244,8 +244,8 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
             cover_url=f"https://example.invalid/{item_id}.jpg",
         )
 
-    run_id = store.start_run(profile.slug, "cli", NOW)
-    store.append(run_id, profile.slug, [fund("bleibt"), fund("faellt")], NOW)
+    run_id = store.start_run(settings.slug, "cli", NOW)
+    store.append(run_id, settings.slug, [fund("bleibt"), fund("faellt")], NOW)
     store.put_rating(
         "item:beam:faellt",
         stars=1,
@@ -258,7 +258,7 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
     )
 
     client = StubClient()
-    _fetch_suggestion_covers(store, profile, client)
+    _fetch_suggestion_covers(store, settings, client)
 
     assert client.calls == ["https://example.invalid/bleibt.jpg"]
     assert paths.covers_dir().joinpath(file_name(client.calls[0])).exists()
@@ -266,12 +266,12 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
 
 def test_a_suggestion_without_an_address_costs_nothing(data_dir: Path) -> None:
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.run import _fetch_suggestion_covers
     from ebook_watchlist.store import Store
 
-    store, profile = Store(paths.db_path()), load_profile()
+    store, settings = Store(paths.db_path()), load_settings()
     ohne = Observation(
         source="beam",
         source_item_id="1",
@@ -281,11 +281,11 @@ def test_a_suggestion_without_an_address_costs_nothing(data_dir: Path) -> None:
         price_cents=399,
         blurb="Ein Schiff, allein im Dunkeln.",
     )
-    run_id = store.start_run(profile.slug, "cli", NOW)
-    store.append(run_id, profile.slug, [ohne], NOW)
+    run_id = store.start_run(settings.slug, "cli", NOW)
+    store.append(run_id, settings.slug, [ohne], NOW)
 
     client = StubClient()
-    _fetch_suggestion_covers(store, profile, client)
+    _fetch_suggestion_covers(store, settings, client)
     assert client.calls == []
 
 
@@ -294,14 +294,14 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
     groessere Bild. Es dort fallen zu lassen hiesse, dieselbe Seite spaeter ein
     zweites Mal zu holen."""
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.evidence import gather as _with_evidence
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.sources.base import Item
     from ebook_watchlist.store import Store
 
     store = Store(paths.db_path())
-    profile = load_profile()
+    settings = load_settings()
 
     beobachtung = Observation(
         source="beam",
@@ -323,10 +323,10 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
                 cover_url="https://beam.invalid/gross_600x600.jpg",
             )
 
-    zurueck = _with_evidence(store, profile, [beobachtung], [Quelle()])
+    zurueck = _with_evidence(store, settings, [beobachtung], [Quelle()])
 
     assert zurueck[0].cover_url == "https://beam.invalid/gross_600x600.jpg"
-    gespeichert = store.latest_observations(profile.slug, [("beam", "7")])[("beam", "7")]
+    gespeichert = store.latest_observations(settings.slug, [("beam", "7")])[("beam", "7")]
     assert gespeichert.cover_url == "https://beam.invalid/gross_600x600.jpg"
 
 
@@ -336,15 +336,15 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
     Beobachtungen, und ein Kandidat ist keine. Dass es zu funktionieren schien,
     lag an Bildern, die beim Bauen der Entwuerfe von Hand im Ordner landeten."""
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.covers import fetch_for_candidates
     from ebook_watchlist.models import LinkOutcome
     from ebook_watchlist.relations import RelationKind
     from ebook_watchlist.store import Store
 
-    store, profile = Store(paths.db_path()), load_profile()
+    store, settings = Store(paths.db_path()), load_settings()
     buch = store.find_or_create_book(isbn=None, title="Dark Matter", author="Blake Crouch", now=NOW)
-    store.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    store.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     store.put_book_source(
         buch.id,
         "beam",
@@ -360,7 +360,7 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
     )
 
     client = StubClient()
-    fetch_for_candidates(store, profile.slug, client)
+    fetch_for_candidates(store, settings.slug, client)
 
     assert client.calls == ["https://example.invalid/mit.jpg"]
     assert paths.covers_dir().joinpath(file_name(client.calls[0])).exists()
@@ -368,20 +368,20 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
 
 def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
     from ebook_watchlist import paths
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.covers import CoverStore, fetch_for_candidates
     from ebook_watchlist.models import LinkOutcome
     from ebook_watchlist.relations import RelationKind
     from ebook_watchlist.store import Store
 
-    store, profile = Store(paths.db_path()), load_profile()
+    store, settings = Store(paths.db_path()), load_settings()
     url = "https://example.invalid/schon-da.jpg"
     covers = CoverStore(paths.covers_dir())
     covers.directory.mkdir(parents=True, exist_ok=True)
     covers.path(file_name(url)).write_bytes(b"x" * 5000)
 
     buch = store.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    store.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    store.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     store.put_book_source(
         buch.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
         reason="unklar",
@@ -389,7 +389,7 @@ def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
     )
 
     client = StubClient()
-    fetch_for_candidates(store, profile.slug, client)
+    fetch_for_candidates(store, settings.slug, client)
 
     assert client.calls == []
 
@@ -524,7 +524,7 @@ def test_the_narrow_run_fetches_the_candidate_images_too(
         def watch(self, entries, context):
             return []
 
-    monkeypatch.setattr(single, "build_sources", lambda profile, client: [Quelle()])
+    monkeypatch.setattr(single, "build_sources", lambda settings, client: [Quelle()])
     monkeypatch.setattr(
         single, "fetch_for_candidates", lambda store, slug, client: geholt.append(slug)
     )

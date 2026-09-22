@@ -15,7 +15,7 @@ from datetime import datetime
 
 from .. import paths
 from ..bundle_deal import BundleAdvantage, advantage_finder
-from ..config import Profile
+from ..config import Settings
 from ..covers import CoverStore, file_name
 from ..deals import is_strong_deal
 from ..diff import worth_announcing
@@ -162,7 +162,7 @@ def _cover_file(observation: Observation, covers: CoverStore | None = None) -> s
 
 def _suggestion(
     observation: Observation,
-    profile: Profile,
+    settings: Settings,
     judgement=None,
     bundle=None,
     covers: CoverStore | None = None,
@@ -178,9 +178,9 @@ def _suggestion(
         price_cents=observation.price_cents,
         thema=thema_name(observation.category),
         reason=observation.match_reason,
-        deal=is_strong_deal(observation.price_cents, profile),
-        source_label=registry.label(profile, observation.source),
-        source_category=registry.category(profile, observation.source),
+        deal=is_strong_deal(observation.price_cents, settings),
+        source_label=registry.label(settings, observation.source),
+        source_category=registry.category(settings, observation.source),
         why=why_shown(observation),
         why_short=short_why(observation),
         stars=judgement.stars if judgement else None,
@@ -194,7 +194,7 @@ def _suggestion(
 
 def pending(
     store: Store,
-    profile: Profile,
+    settings: Settings,
     *,
     reason: str | None = None,
     limit: int = PAGE_SIZE,
@@ -206,16 +206,16 @@ def pending(
     diese Quelle unter dieser Nummer führt — oder das dieselbe ISBN trägt. Der
     zweite Weg ist der Grund, warum eine Entscheidung bei *jeder* Quelle wirkt.
     """
-    decided_items = store.decided_items(profile.slug)
-    decided_isbns = set(store.books_with_relations(profile.slug))
-    found = store.latest_discoveries(profile.slug)
+    decided_items = store.decided_items(settings.slug)
+    decided_isbns = set(store.books_with_relations(settings.slug))
+    found = store.latest_discoveries(settings.slug)
     # Ein Zugriff für den ganzen Stapel, nicht einer je Zeile.
     judgements = store.ratings_for(subject_of(observation) for observation in found)
     # Einmal fuer den ganzen Stapel: Titel -> guenstigster bekannter Preis.
     # Der Buendelvorteil braucht die Preise *anderer* Buecher (ADR 24).
     # Eine Stelle rechnet den Buendelvorteil aus — dieselbe, die der
     # Tagesbericht benutzt (ADR 24).
-    buendelvorteil = advantage_finder(store, profile)
+    buendelvorteil = advantage_finder(store, settings)
     # Einmal fuer die ganze Seite: der Ordner der Titelbilder wird sonst je
     # Zeile neu aufgeloest.
     covers = CoverStore(paths.covers_dir())
@@ -236,14 +236,14 @@ def pending(
             continue
         # Vor der Preisregel und vor dem Urteil: ein Fund in fremder Sprache
         # ist kein Kandidat, gleich was er kostet oder wie er bewertet wurde.
-        if is_foreign(observation, profile, sprache_von):
+        if is_foreign(observation, settings, sprache_von):
             hidden_language += 1
             continue
         # Dieselbe Regel wie im Digest, aus einer Stelle: was dich nie
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
         # weder eine Anfrage für den Klappentext noch ein Urteil.
         vorteil = buendelvorteil(observation)
-        if not worth_announcing(observation, profile, bundle_advantage=vorteil):
+        if not worth_announcing(observation, settings, bundle_advantage=vorteil):
             hidden_priced += 1
             continue
         # Dieselbe Schwelle wie im Digest: was das Tor zurückhält, ist keine
@@ -256,7 +256,7 @@ def pending(
         if reason and str(observation.match_reason) != reason:
             continue
         items.append(
-            _suggestion(observation, profile, judgement, vorteil, covers)
+            _suggestion(observation, settings, judgement, vorteil, covers)
         )
 
     # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
@@ -277,7 +277,7 @@ def pending(
 
 def decide(
     store: Store,
-    profile: Profile,
+    settings: Settings,
     keys: list[str],
     kind: str,
     *,
@@ -303,7 +303,7 @@ def decide(
 
     by_key = {
         f"{observation.source}:{observation.source_item_id}": observation
-        for observation in store.latest_discoveries(profile.slug)
+        for observation in store.latest_discoveries(settings.slug)
     }
 
     decided = 0
@@ -318,7 +318,7 @@ def decide(
             series=observation.series,
             now=now,
         )
-        store.put_relation(profile.slug, book.id, kind, now=now)
+        store.put_relation(settings.slug, book.id, kind, now=now)
         store.put_book_source(
             book.id,
             observation.source,

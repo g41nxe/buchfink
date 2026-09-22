@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pytest
 
-from ebook_watchlist.config import OwnedBook, Profile, WatchlistEntry
+from ebook_watchlist.config import OwnedBook, Settings, WatchlistEntry
 from ebook_watchlist.ratings import BY_CONVERSATION, BY_READER, book_subject
 from ebook_watchlist.relations import (
     ConfigurationError,
@@ -25,8 +25,8 @@ from ebook_watchlist.store import Store
 NOW = datetime(2026, 9, 4, 20, 0)
 
 
-def profile(**overrides) -> Profile:
-    return Profile(slug="t", name="Test", **overrides)
+def settings(**overrides) -> Settings:
+    return Settings(slug="t", name="Test", **overrides)
 
 
 # --- Freitext ---------------------------------------------------------------
@@ -97,7 +97,7 @@ def test_the_known_details_pass() -> None:
 def test_the_watchlist_becomes_books_and_relations(store: Store) -> None:
     report = seed(
         store,
-        profile(),
+        settings(),
         [WatchlistEntry(title="Blindflug", author="Peter Watts")],
         now=NOW,
     )
@@ -114,7 +114,7 @@ def test_several_relations_hold_at_once(store: Store) -> None:
     nicht ausdrücken können."""
     seed(
         store,
-        profile(liked_books=["Cold Eternity - S.A. Barnes"]),
+        settings(liked_books=["Cold Eternity - S.A. Barnes"]),
         [WatchlistEntry(title="Cold Eternity", author="S.A. Barnes")],
         now=NOW,
     )
@@ -126,7 +126,7 @@ def test_several_relations_hold_at_once(store: Store) -> None:
 def test_a_relation_is_deactivated_not_deleted(store: Store) -> None:
     """Providence von der Watchlist zu nehmen zerstörte bisher die Tatsache,
     dass es je beobachtet wurde."""
-    seed(store, profile(), [WatchlistEntry(title="Providence", author="Max Barry")], now=NOW)
+    seed(store, settings(), [WatchlistEntry(title="Providence", author="Max Barry")], now=NOW)
     book = store.books()[0]
 
     store.deactivate_relation("t", book.id, str(RelationKind.WATCHING), now=NOW)
@@ -139,7 +139,7 @@ def test_a_relation_is_deactivated_not_deleted(store: Store) -> None:
 def test_authors_and_themes_become_interests(store: Store) -> None:
     report = seed(
         store,
-        profile(
+        settings(
             reference_authors=["Chris Carter"],
             extended_authors=["Dave Eggers"],
             genre_categories=["belletristik/krimi-thriller/psychothriller"],
@@ -159,7 +159,7 @@ def test_authors_and_themes_become_interests(store: Store) -> None:
 def test_an_author_on_both_lists_is_swept_daily_not_twice(store: Store) -> None:
     report = seed(
         store,
-        profile(reference_authors=["Chris Carter"], extended_authors=["Chris Carter"]),
+        settings(reference_authors=["Chris Carter"], extended_authors=["Chris Carter"]),
         [],
         now=NOW,
     )
@@ -169,7 +169,7 @@ def test_an_author_on_both_lists_is_swept_daily_not_twice(store: Store) -> None:
 def test_importing_twice_changes_nothing(store: Store) -> None:
     """Der Import ist wiederholbar — sonst wäre er einmalig und damit ein Risiko."""
     args = (
-        profile(reference_authors=["Chris Carter"], liked_books=["Cry Baby - Gillian Flynn"]),
+        settings(reference_authors=["Chris Carter"], liked_books=["Cry Baby - Gillian Flynn"]),
         [WatchlistEntry(title="Blindflug", author="Peter Watts")],
     )
     seed(store, *args, now=NOW)
@@ -180,7 +180,7 @@ def test_importing_twice_changes_nothing(store: Store) -> None:
 
 
 def test_a_second_import_does_not_revive_what_was_switched_off(store: Store) -> None:
-    args = (profile(), [WatchlistEntry(title="Providence", author="Max Barry", active=False)])
+    args = (settings(), [WatchlistEntry(title="Providence", author="Max Barry", active=False)])
     seed(store, *args, now=NOW)
     assert store.relations("t", kind=str(RelationKind.WATCHING)) == []
 
@@ -189,7 +189,7 @@ def test_a_second_import_keeps_what_the_reader_paused(store: Store) -> None:
     """Der Modulkopf verspricht es, ``put_relation`` hielt es nicht: es setzt
     ``active`` auch an einer bestehenden Zeile. Ein Eintrag, den die Leserin in
     der Oberfläche pausiert hatte, lief nach ``ebw seed`` wieder."""
-    args = (profile(), [WatchlistEntry(title="Providence", author="Max Barry")])
+    args = (settings(), [WatchlistEntry(title="Providence", author="Max Barry")])
     seed(store, *args, now=NOW)
     book = store.books()[0]
     store.deactivate_relation("t", book.id, str(RelationKind.WATCHING), now=NOW)
@@ -204,7 +204,7 @@ def test_a_second_import_keeps_a_lifted_restriction_lifted(store: Store) -> None
     Einschränkung, die die Leserin auf der Buchseite aufgehoben hatte, war
     wieder da."""
     args = (
-        profile(),
+        settings(),
         [WatchlistEntry(title="Providence", author="Max Barry", check_shop=False)],
     )
     seed(store, *args, now=NOW)
@@ -224,7 +224,7 @@ def test_each_interest_is_seeded_on_its_own(store: Store) -> None:
     """Der behobene Fehler: der alte Schlüssel liess 'category' bei Autor:innen
     leer, so dass alle Autor:innen sich eine Aussaat teilten — die erste säte
     still an, jede weitere meldete ihre ganze Backlist."""
-    seed(store, profile(reference_authors=["Chris Carter", "Jo Nesbø"]), [], now=NOW)
+    seed(store, settings(reference_authors=["Chris Carter", "Jo Nesbø"]), [], now=NOW)
     carter, nesbo = store.interests("t", key=str(InterestKey.AUTHOR))
 
     store.mark_interest_seeded(carter.id, "beam", now=NOW)
@@ -234,7 +234,7 @@ def test_each_interest_is_seeded_on_its_own(store: Store) -> None:
 
 
 def test_seeding_is_per_source(store: Store) -> None:
-    seed(store, profile(reference_authors=["Chris Carter"]), [], now=NOW)
+    seed(store, settings(reference_authors=["Chris Carter"]), [], now=NOW)
     carter = store.interests("t")[0]
 
     store.mark_interest_seeded(carter.id, "beam", now=NOW)
@@ -266,7 +266,7 @@ def test_a_restriction_names_the_kind_of_source_not_its_name(store: Store) -> No
     falsch gewesen. Wie eine Quelle heißt, sagt die Konfiguration."""
     seed(
         store,
-        profile(),
+        settings(),
         [WatchlistEntry(title="Providence", author="Max Barry", check_shop=False)],
         now=NOW,
     )
@@ -308,7 +308,7 @@ def test_owned_becomes_a_relation_and_a_machine_judgement(store: Store) -> None:
     Jetzt wird sie gelesen — aber als das, was sie ist."""
     report = seed(
         store,
-        profile(),
+        settings(),
         [],
         owned=[OwnedBook(title="Knochenbrecher", author="Chris Carter", stars=5, why="Hunter.")],
         now=NOW,
@@ -327,11 +327,11 @@ def test_owning_a_watched_book_stops_watching_it(store: Store) -> None:
     Der Import legte ``owned`` an und liess ``watching`` laufen — das Buch wurde
     weiter abgerufen und weiter gemeldet."""
     watchlist = [WatchlistEntry(title="Rosewater", author="Tade Thompson")]
-    seed(store, profile(), watchlist, now=NOW)
+    seed(store, settings(), watchlist, now=NOW)
 
     seed(
         store,
-        profile(),
+        settings(),
         watchlist,
         owned=[OwnedBook(title="Rosewater", author="Tade Thompson")],
         now=NOW,
@@ -350,7 +350,7 @@ def test_a_second_import_keeps_watching_that_the_reader_resumed(store: Store) ->
     gekauftes Buch wieder auf die Watchlist geholt, gilt das — auch nach dem
     nächsten Import."""
     args = (
-        profile(),
+        settings(),
         [WatchlistEntry(title="Rosewater", author="Tade Thompson")],
     )
     owned = [OwnedBook(title="Rosewater", author="Tade Thompson")]
@@ -368,7 +368,7 @@ def test_a_second_import_keeps_watching_that_the_reader_resumed(store: Store) ->
 def test_owned_stars_are_not_the_readers_own(store: Store) -> None:
     """Der ganze Zweck von Ticket 21: dreizehn Vorschläge wären sonst dauerhaft
     zu dreizehn Tatsachen geworden (ADR 17)."""
-    seed(store, profile(), [], owned=[OwnedBook(title="Views", stars=4)], now=NOW)
+    seed(store, settings(), [], owned=[OwnedBook(title="Views", stars=4)], now=NOW)
     book = store.books()[0]
 
     assert store.rating(book_subject(book.id), 1, origin=BY_READER) is None
@@ -379,7 +379,7 @@ def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store)
     an die Beziehung, wo die Leserin es beim Nachsehen findet."""
     seed(
         store,
-        profile(),
+        settings(),
         [],
         owned=[OwnedBook(title="Off-Line", stars=3, hinweis="Bitte gegenprüfen.")],
         now=NOW,
@@ -390,7 +390,7 @@ def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store)
 
 def test_an_entry_without_stars_gets_no_judgement(store: Store) -> None:
     """Kein Urteil ist etwas anderes als null Sterne."""
-    report = seed(store, profile(), [], owned=[OwnedBook(title="Nur ein Titel")], now=NOW)
+    report = seed(store, settings(), [], owned=[OwnedBook(title="Nur ein Titel")], now=NOW)
 
     assert report.ratings == 0
     book = store.books()[0]
@@ -399,8 +399,8 @@ def test_an_entry_without_stars_gets_no_judgement(store: Store) -> None:
 
 def test_importing_twice_leaves_one_judgement(store: Store) -> None:
     entries = [OwnedBook(title="Rosewater", author="Tade Thompson", stars=4, why="Wormwood.")]
-    seed(store, profile(), [], owned=entries, now=NOW)
-    seed(store, profile(), [], owned=entries, now=NOW)
+    seed(store, settings(), [], owned=entries, now=NOW)
+    seed(store, settings(), [], owned=entries, now=NOW)
 
     book = store.books()[0]
     assert len(store.ratings_for([book_subject(book.id)])) == 1

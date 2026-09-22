@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.ratings import BY_MODEL, subject_of
 from ebook_watchlist.run import main as run_main
@@ -273,7 +273,7 @@ def test_at_most_five_offers_are_shown_cheapest_first(db: Store) -> None:
             now,
         )
 
-    view = home.build(db, load_profile(), now=now)
+    view = home.build(db, load_settings(), now=now)
 
     assert [entry.title for entry in view.offers] == [f"Billig {n}" for n in range(5)]
     assert view.offers_total == 6
@@ -463,14 +463,14 @@ def test_another_profile_shows_another_number(data_dir: Path, db: Store) -> None
     """Zwei Zahlen im Profil, keine Konstante im Code."""
     from dataclasses import replace
 
-    from ebook_watchlist.config import load_profile
+    from ebook_watchlist.config import load_settings
     from ebook_watchlist.web import home as view
 
     for number in range(5):
         found(db, item_id=str(number), title=f"Fund {number}")
     finished_run(db, finished_at=datetime.now())
 
-    knapp = replace(load_profile(), home_suggestions=1)
+    knapp = replace(load_settings(), home_suggestions=1)
     seite = view.build(db, knapp, now=datetime.now())
 
     assert len(seite.suggestions) == 1

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from ebook_watchlist.config import Profile
+from ebook_watchlist.config import Settings
 from ebook_watchlist.deals import DEAL, STRONG_DEAL, deal_flags
 from ebook_watchlist.models import MatchReason, Observation
 
-PROFILE = Profile(slug="t", name="T")  # 5,00 € / 10,00 € / 25 %
+PROFILE = Settings(slug="t", name="T")  # 5,00 € / 10,00 € / 25 %
 
 
 def observation(price: int | None, original: int | None = None) -> Observation:
@@ -68,7 +68,7 @@ def test_no_price_no_flags() -> None:
 
 
 def test_thresholds_come_from_the_profile() -> None:
-    generous = Profile(
+    generous = Settings(
         slug="t", name="T", strong_deal_max_cents=1500, deal_max_cents=3000, min_discount_pct=10
     )
     assert deal_flags(observation(1499), None, generous) == (STRONG_DEAL,)

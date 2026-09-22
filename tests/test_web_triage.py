@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
@@ -193,7 +193,7 @@ def test_dismissing_suppresses_the_book_at_every_source(client: TestClient, db: 
 
     client.post("/vorschlaege/entscheiden", data={"kind": "dismissed", "keys": ["beam:7"]})
 
-    pile = view.pending(db, load_profile())
+    pile = view.pending(db, load_settings())
     assert all(item.isbn != isbn for item in pile.items)
 
 
@@ -380,7 +380,7 @@ def test_the_pile_counts_what_it_does_not_show(db: Store) -> None:
     for number in range(60):
         found(db, item_id=f"n{number}", title=f"Fund {number}")
 
-    pile = view.pending(db, load_profile(), limit=50)
+    pile = view.pending(db, load_settings(), limit=50)
 
     assert len(pile.items) == 50
     assert pile.total >= 60
@@ -516,7 +516,7 @@ def test_the_page_shows_ten_not_fifty(client: TestClient, db: Store) -> None:
     for number in range(15):
         found(db, item_id=f"n{number}", title=f"Fund {number}")
 
-    pile = view.pending(db, load_profile())
+    pile = view.pending(db, load_settings())
 
     assert len(pile.items) == view.PAGE_SIZE == 10
     assert pile.total >= 15
@@ -529,7 +529,7 @@ def test_the_best_stand_at_the_top(client: TestClient, db: Store) -> None:
     urteil(db, schwaecher, stars=3, pitch="Traegt eine Sache.")
     urteil(db, stark, stars=4, pitch="Genau die kaputte Stimme.")
 
-    titel = [item.title for item in view.pending(db, load_profile()).items]
+    titel = [item.title for item in view.pending(db, load_settings()).items]
 
     assert titel.index("Der stärkere Fund") < titel.index("Der schwaechere Fund")
 
@@ -540,7 +540,7 @@ def test_an_unjudged_find_sinks_below_the_judged(client: TestClient, db: Store) 
     bewertet = found(db, item_id="b", title="Mit Urteil")
     urteil(db, bewertet, stars=3, pitch="Traegt eine Sache.")
 
-    titel = [item.title for item in view.pending(db, load_profile()).items]
+    titel = [item.title for item in view.pending(db, load_settings()).items]
 
     assert titel.index("Mit Urteil") < titel.index("Ohne Urteil")
 
@@ -553,7 +553,7 @@ def test_what_the_gate_holds_back_is_not_a_task(client: TestClient, db: Store) -
     urteil(db, schwach, stars=2, pitch="Nur Genre-Naehe.")
     urteil(db, stark, stars=3, pitch="Traegt eine Sache ueberzeugend.")
 
-    pile = view.pending(db, load_profile())
+    pile = view.pending(db, load_settings())
     body = client.get("/vorschlaege").text
 
     assert [item.title for item in pile.items] == ["Starker Fund"]
@@ -566,7 +566,7 @@ def test_an_unjudged_find_is_never_hidden_as_weak(client: TestClient, db: Store)
     """ "Noch nicht beurteilt" ist etwas anderes als "passt nicht"."""
     found(db, item_id="a", title="Ohne Urteil")
 
-    pile = view.pending(db, load_profile())
+    pile = view.pending(db, load_settings())
 
     assert [item.title for item in pile.items] == ["Ohne Urteil"]
     assert pile.hidden_weak == 0
@@ -580,7 +580,7 @@ def test_the_page_uses_the_same_threshold_as_the_digest(client: TestClient, db: 
     knapp = found(db, item_id="a", title="Genau an der Schwelle")
     urteil(db, knapp, stars=DEFAULT_THRESHOLD, pitch="Gerade so.")
 
-    assert [i.title for i in view.pending(db, load_profile()).items] == ["Genau an der Schwelle"]
+    assert [i.title for i in view.pending(db, load_settings()).items] == ["Genau an der Schwelle"]
 
 
 def test_a_title_beginning_with_a_number_word_is_read_as_a_bundle(
@@ -592,7 +592,7 @@ def test_a_title_beginning_with_a_number_word_is_read_as_a_bundle(
     Grenze des Filters sichtbar bleibt."""
     found(db, item_id="a", title="Drei Sterne")
 
-    pile = view.pending(db, load_profile())
+    pile = view.pending(db, load_settings())
 
     assert pile.items == ()
     assert pile.hidden_junk == 1
@@ -711,7 +711,7 @@ def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -
     for nummer in range(5):
         found(db, item_id=str(nummer), title=f"Fund {nummer}", price=100 + nummer)
 
-    pile = view.pending(db, load_profile(), limit=2, sort="preis")
+    pile = view.pending(db, load_settings(), limit=2, sort="preis")
 
     assert [item.title for item in pile.items] == ["Fund 0", "Fund 1"]
     assert pile.total == 5

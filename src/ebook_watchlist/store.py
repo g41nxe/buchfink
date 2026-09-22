@@ -1,6 +1,6 @@
 """The Snapshot: an append-only SQLite log of Observations plus a Run journal (ADR 5).
 
-Phase 1 keys rows by the profile *slug* — the ``profile`` and ``watchlist_entry``
+Phase 1 keys rows by the settings *slug* — the ``settings`` and ``watchlist_entry``
 tables arrive in Phase 2 when the UI takes ownership of configuration (ADR 10).
 """
 
@@ -397,7 +397,7 @@ class SourceRow(Base):
     probe result, which used to be printed and thrown away, and a switch to
     pause a Source without editing a file.
 
-    Not keyed by profile: a Source is a shop or a library, and whether
+    Not keyed by settings: a Source is a shop or a library, and whether
     beam-shop's markup still parses is not a fact about a reader.
 
     Rows are never entered by hand; one appears when a Source first runs.

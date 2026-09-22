@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.dnb import Record
 from ebook_watchlist.language import is_foreign, language_finder
 from ebook_watchlist.models import MatchReason, Observation
@@ -33,13 +33,13 @@ def fund(isbn: str | None, grund: MatchReason = MatchReason.GENRE_CATEGORY) -> O
 def test_a_find_in_another_language_is_foreign(db: Store) -> None:
     db.save_dnb("9780000000001", Record(title="A Book", language="eng"), NOW)
 
-    assert is_foreign(fund("9780000000001"), load_profile(), language_finder(db))
+    assert is_foreign(fund("9780000000001"), load_settings(), language_finder(db))
 
 
 def test_a_german_find_is_not(db: Store) -> None:
     db.save_dnb("9783000000001", Record(title="Ein Buch", language="ger"), NOW)
 
-    assert not is_foreign(fund("9783000000001"), load_profile(), language_finder(db))
+    assert not is_foreign(fund("9783000000001"), load_settings(), language_finder(db))
 
 
 @pytest.mark.parametrize("wie", ["ohne ISBN", "nie gefragt", "DNB kennt es nicht",
@@ -56,14 +56,14 @@ def test_unknown_is_never_foreign(db: Store, wie: str) -> None:
     if wie == "ohne Sprachangabe":
         db.save_dnb("9789920000002", Record(title="A Book"), NOW)
 
-    assert not is_foreign(fund(isbn), load_profile(), language_finder(db))
+    assert not is_foreign(fund(isbn), load_settings(), language_finder(db))
 
 
 def test_a_watchlist_title_is_never_foreign(db: Store) -> None:
     """Was die Leserin selbst auf die Liste setzt, bleibt dort."""
     db.save_dnb("9780000000001", Record(title="A Book", language="eng"), NOW)
 
-    assert not is_foreign(fund("9780000000001", MatchReason.WATCHLIST), load_profile(),
+    assert not is_foreign(fund("9780000000001", MatchReason.WATCHLIST), load_settings(),
                           language_finder(db))
 
 
@@ -74,7 +74,7 @@ def test_the_codes_for_unknown_are_not_foreign(db: Store, code: str) -> None:
     zweisprachige Ausgabe traegt ``mul``."""
     db.save_dnb("9780000000003", Record(title="Zweisprachig", language=code), NOW)
 
-    assert not is_foreign(fund("9780000000003"), load_profile(), language_finder(db))
+    assert not is_foreign(fund("9780000000003"), load_settings(), language_finder(db))
 
 
 # --- die Registrierungsgruppe der ISBN (#32) --------------------------------
@@ -84,13 +84,13 @@ def test_a_hungarian_isbn_is_foreign_even_without_a_dnb_record(db: Store) -> Non
     """Der Fall, der das Ticket ausgeloest hat: *Wayward Pines* mit ungarischem
     Klappentext. Die DNB kennt die Nummer nicht — sie erfasst deutsche
     Veroeffentlichungen —, aber die Gruppe 978-615 sagt Ungarn."""
-    assert is_foreign(fund("9786155522017"), load_profile(), language_finder(db))
+    assert is_foreign(fund("9786155522017"), load_settings(), language_finder(db))
 
 
 def test_an_unknown_group_stays_silent(db: Store) -> None:
     """Gruppe 992 steht in keiner Tabelle. Behaupten ist schlimmer als
     schweigen: der Fund bleibt im Stapel."""
-    assert not is_foreign(fund("9789920000001"), load_profile(), language_finder(db))
+    assert not is_foreign(fund("9789920000001"), load_settings(), language_finder(db))
 
 
 def test_the_dnb_outranks_the_group(db: Store) -> None:
@@ -98,7 +98,7 @@ def test_the_dnb_outranks_the_group(db: Store) -> None:
     in der Hand, die Gruppe kennt nur den Verlag."""
     db.save_dnb("9789630000001", Record(title="Ein Buch", language="ger"), NOW)
 
-    assert not is_foreign(fund("9789630000001"), load_profile(), language_finder(db))
+    assert not is_foreign(fund("9789630000001"), load_settings(), language_finder(db))
 
 
 def test_the_group_only_speaks_where_the_dnb_is_silent(db: Store) -> None:
@@ -106,11 +106,11 @@ def test_the_group_only_speaks_where_the_dnb_is_silent(db: Store) -> None:
     #10, und daran aendert die Gruppe nichts."""
     db.save_dnb("9783000000099", Record(title="A Book", language="eng"), NOW)
 
-    assert is_foreign(fund("9783000000099"), load_profile(), language_finder(db))
+    assert is_foreign(fund("9783000000099"), load_settings(), language_finder(db))
 
 
 def test_a_watchlist_title_stays_whatever_its_isbn_says(db: Store) -> None:
     """Was die Leserin selbst auf die Liste setzt, bleibt dort."""
     assert not is_foreign(
-        fund("9786155522017", MatchReason.WATCHLIST), load_profile(), language_finder(db)
+        fund("9786155522017", MatchReason.WATCHLIST), load_settings(), language_finder(db)
     )

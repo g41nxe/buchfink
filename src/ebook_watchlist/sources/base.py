@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from ..config import Profile, WatchlistEntry
+from ..config import Settings, WatchlistEntry
 from ..dismissals import Dismissed
 from ..matching import Confidence, Resolution
 from ..models import Attention, LinkOutcome, Observation
@@ -210,7 +210,7 @@ class Source(ABC):
 
     @abstractmethod
     def collect(
-        self, profile: Profile, watchlist: Sequence[WatchlistEntry], context: RunContext
+        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
     ) -> list[Observation]:
         """Everything this Source has to say this Run."""
 
@@ -315,7 +315,7 @@ class LibrarySource(ResolvingSource):
         return entry.check_library
 
     def collect(
-        self, profile: Profile, watchlist: Sequence[WatchlistEntry], context: RunContext
+        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
     ) -> list[Observation]:
         return self.watch(watchlist, context)
 
@@ -338,7 +338,7 @@ class ShopSource(ResolvingSource):
         return []
 
     def collect(
-        self, profile: Profile, watchlist: Sequence[WatchlistEntry], context: RunContext
+        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
     ) -> list[Observation]:
         observations = self.watch(watchlist, context)
 
@@ -357,12 +357,12 @@ class ShopSource(ResolvingSource):
                 if interest_id is not None:
                     context.origin[(self.name, item_id)] = interest_id
 
-        for author in profile.authors_to_sweep(context.sweep_extended):
+        for author in settings.authors_to_sweep(context.sweep_extended):
             interest_id = context.interests.get(("author", author))
             if interest_id is not None:
                 context.swept.add((self.name, interest_id))
             take(self.by_author(author), interest_id)
-        for category in profile.genre_categories:
+        for category in settings.genre_categories:
             interest_id = context.interests.get(("thema", category))
             if interest_id is not None:
                 context.swept.add((self.name, interest_id))

@@ -1,4 +1,4 @@
-"""Builds the Sources a Profile asks for.
+"""Builds the Sources the settings ask for.
 
 ``profile.yaml`` names them::
 
@@ -18,7 +18,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .. import paths
-from ..config import ConfigError, Profile
+from ..config import ConfigError, Settings
 from ..http import HttpClient
 from .base import Source
 from .beam import BeamSource
@@ -107,14 +107,14 @@ CATEGORY_ORDER: tuple[str, ...] = ("library", "shop")
 DISPLAY: dict[str, str] = {"onleihe": "Onleihe", "overdrive": "OverDrive"}
 
 
-def category(profile: Profile, name: str) -> str:
+def category(settings: Settings, name: str) -> str:
     """``"library"`` oder ``"shop"`` fuer eine konfigurierte Quelle."""
-    options = profile.sources.get(name) or {}
+    options = settings.sources.get(name) or {}
     kind = options.get("kind", name) if isinstance(options, dict) else name
     return KINDS.get(kind, "shop")
 
 
-def label(profile: Profile, name: str) -> str:
+def label(settings: Settings, name: str) -> str:
     """Wie die Quelle der Leserin gegenueber heisst.
 
     Drei Stufen, in dieser Reihenfolge (#14):
@@ -128,15 +128,15 @@ def label(profile: Profile, name: str) -> str:
        gibt, ist das kein Verlust, und "beam" war nie ein Wort fuer die
        Leserin (Ticket 14).
     """
-    options = profile.sources.get(name) or {}
+    options = settings.sources.get(name) or {}
     if eigener := DISPLAY.get(name):
         return eigener
     if isinstance(options, dict) and (aus_der_einrichtung := options.get("name")):
         return str(aus_der_einrichtung)
-    return LIBRARY if category(profile, name) == "library" else SHOP
+    return LIBRARY if category(settings, name) == "library" else SHOP
 
 
-def shops(profile: Profile) -> list[str]:
+def shops(settings: Settings) -> list[str]:
     """Die Namen der Quellen, bei denen man kaufen kann.
 
     Gefragt, statt ``"beam"`` hinzuschreiben: der Quellenname ist Konfiguration,
@@ -144,7 +144,7 @@ def shops(profile: Profile) -> list[str]:
     (Ticket 05, Review). Wer Preise vergleicht, meint *einen Shop*, nicht
     diesen.
     """
-    return [name for name in profile.sources if category(profile, name) == "shop"]
+    return [name for name in settings.sources if category(settings, name) == "shop"]
 
 
 _BUILDERS: dict[str, Callable[[str, dict, HttpClient], Source]] = {
@@ -155,12 +155,12 @@ _BUILDERS: dict[str, Callable[[str, dict, HttpClient], Source]] = {
 }
 
 
-def build_sources(profile: Profile, client: HttpClient) -> list[Source]:
-    if not profile.sources:
+def build_sources(settings: Settings, client: HttpClient) -> list[Source]:
+    if not settings.sources:
         raise ConfigError("profile.yaml: no 'sources' configured — nothing to check")
 
     sources: list[Source] = []
-    for name, options in profile.sources.items():
+    for name, options in settings.sources.items():
         options = options or {}
         if not isinstance(options, dict):
             raise ConfigError(f"profile.yaml: options for source {name!r} must be a mapping")

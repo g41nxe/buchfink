@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import Profile, load_profile
+from ebook_watchlist.config import Settings, load_settings
 from ebook_watchlist.models import Availability, LinkOutcome, MatchReason, Observation
 from ebook_watchlist.rating import Rating, RatingUnavailable
 from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
@@ -191,7 +191,7 @@ def test_unchanged_prices_do_not_fill_the_list(db: Store) -> None:
         sighting(db, book.id, when=NOW + timedelta(days=day), price=999)
     sighting(db, book.id, when=NOW + timedelta(days=5), price=499)
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     points = view.price_points(page.history)
 
     assert [point.price for point in points] == ["9,99 €", "4,99 €"]
@@ -203,7 +203,7 @@ def test_the_full_history_is_still_there(db: Store) -> None:
     for day in range(3):
         sighting(db, book.id, when=NOW + timedelta(days=day), price=999)
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     assert len(page.history) >= 3
 
 
@@ -217,7 +217,7 @@ def test_the_table_shows_the_last_five_sightings_and_says_so(
     for day in range(8):
         sighting(db, book.id, when=NOW + timedelta(days=day), price=900 + day)
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     assert len(page.recent_history) == 5
     assert page.hidden_history == 3
     # Die neuesten fuenf, nicht die aeltesten.
@@ -238,7 +238,7 @@ def test_the_newest_sighting_comes_first(db: Store) -> None:
     sighting(db, book.id, when=NOW, price=999)
     sighting(db, book.id, when=NOW + timedelta(days=1), price=499)
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     assert page.history[0].price == "4,99 €"
 
 
@@ -246,7 +246,7 @@ def test_a_bargain_is_marked_in_the_history(db: Store) -> None:
     book = db.books()[0]
     sighting(db, book.id, when=NOW, price=399)
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     assert page.history[0].deal is True
 
 
@@ -272,7 +272,7 @@ def test_a_source_that_agrees_on_the_title_says_nothing(db: Store) -> None:
     book = db.books()[0]
     sighting(db, book.id, when=NOW, title=book.title)
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     assert page.history[0].other_title is None
 
 
@@ -280,7 +280,7 @@ def test_a_source_that_disagrees_is_recorded(db: Store) -> None:
     book = db.books()[0]
     sighting(db, book.id, when=NOW, title="Ganz anderer Titel")
 
-    page = view.build(db, load_profile(), book.id)
+    page = view.build(db, load_settings(), book.id)
     assert page.history[0].other_title == "Ganz anderer Titel"
 
 
@@ -530,15 +530,15 @@ def test_the_head_carries_price_and_availability(client: TestClient, db: Store) 
     700 Pixel unter dem Titel. Wer die Seite öffnet, will genau das wissen."""
     from ebook_watchlist.models import MatchReason, Observation
 
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Das Knochenband", author="MacBride", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     # Ohne Zuordnung keine Kachel: die Kachel *ist* die Quelle, nicht die
     # Beobachtung.
     db.put_book_source(buch.id, "beam", outcome="linked", url="https://beam.invalid/1",
                        resolved_at=NOW, reason="")
-    run_id = db.start_run(profile.slug, "cli", NOW)
-    db.append(run_id, profile.slug, [
+    run_id = db.start_run(settings.slug, "cli", NOW)
+    db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="1", title="Das Knochenband",
                     author="MacBride", match_reason=MatchReason.WATCHLIST,
                     price_cents=299, book_id=buch.id, blurb="Ein abgründiger Fall."),
@@ -556,18 +556,18 @@ def test_the_blurb_lives_on_the_book_not_in_every_observation(db: Store) -> None
     täglich neu, rund zehn Megabyte im Jahr für denselben Text (Ticket 52)."""
     from ebook_watchlist.models import MatchReason, Observation
 
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
-    run_id = db.start_run(profile.slug, "cli", NOW)
-    db.append(run_id, profile.slug, [
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    run_id = db.start_run(settings.slug, "cli", NOW)
+    db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="1", title="Egal", author="Wer",
                     match_reason=MatchReason.WATCHLIST, price_cents=299,
                     book_id=buch.id, blurb="Ein langer Text."),
     ], NOW)
 
     assert db.book(buch.id).blurb == "Ein langer Text."
-    beobachtet = db.observations_for_book(profile.slug, buch.id)
+    beobachtet = db.observations_for_book(settings.slug, buch.id)
     assert [o.blurb for o in beobachtet] == [None]
 
 
@@ -576,15 +576,15 @@ def test_a_discovery_keeps_its_blurb_in_the_observation(db: Store) -> None:
     liest ihren Klappentext genau dort."""
     from ebook_watchlist.models import MatchReason, Observation
 
-    profile = load_profile()
-    run_id = db.start_run(profile.slug, "cli", NOW)
-    db.append(run_id, profile.slug, [
+    settings = load_settings()
+    run_id = db.start_run(settings.slug, "cli", NOW)
+    db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="9", title="Ein Fund", author="Wer",
                     match_reason=MatchReason.GENRE_CATEGORY, price_cents=399,
                     blurb="Ein Schiff, allein im Dunkeln."),
     ], NOW)
 
-    fund = db.latest_discoveries(profile.slug)[0]
+    fund = db.latest_discoveries(settings.slug)[0]
     assert fund.blurb == "Ein Schiff, allein im Dunkeln."
 
 
@@ -593,12 +593,12 @@ def test_the_longer_blurb_wins(db: Store) -> None:
     ganzen Text — welche zuerst kommt, entscheidet der Zufall des Laufs."""
     from ebook_watchlist.models import MatchReason, Observation
 
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    run_id = db.start_run(profile.slug, "cli", NOW)
+    run_id = db.start_run(settings.slug, "cli", NOW)
 
     def schreibe(text: str) -> None:
-        db.append(run_id, profile.slug, [
+        db.append(run_id, settings.slug, [
             Observation(source="beam", source_item_id="1", title="Egal", author="Wer",
                         match_reason=MatchReason.WATCHLIST, book_id=buch.id, blurb=text),
         ], NOW)
@@ -621,10 +621,10 @@ def test_two_houses_are_still_settled_by_length(db: Store) -> None:
     Versehen."""
     from ebook_watchlist.models import MatchReason, Observation
 
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    run_id = db.start_run(profile.slug, "cli", NOW)
-    db.append(run_id, profile.slug, [
+    run_id = db.start_run(settings.slug, "cli", NOW)
+    db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="1", title="Egal", author="Wer",
                     match_reason=MatchReason.WATCHLIST, book_id=buch.id,
                     blurb="Der Text des Shops."),
@@ -640,9 +640,9 @@ def test_the_title_can_be_corrected_from_the_book_page(client: TestClient, db: S
     """Bis hierher gab es das Umbenennen nur auf der Watchlist, und dort nur,
     wenn keine Quelle den Titel fand (ADR 27). Es ist aber eine Eigenschaft
     dieses Buchs."""
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Dunkle Gefilde", author="Morgan", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(buch.id, "beam", outcome="not_found", url=None, resolved_at=NOW, reason="")
 
     client.post(f"/book/{buch.id}/bearbeiten",
@@ -657,15 +657,15 @@ def test_editing_the_title_leaves_the_note_alone(client: TestClient, db: Store) 
     """Die Notiz geht in keine Entscheidung ein und kommt aus `notes:` in der
     Watchlist-Datei — das Formular fasst sie deshalb nicht an. Fasste es sie
     doch an, loeschte jedes Berichtigen sie still mit."""
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
-    db.set_relation_details(profile.slug, buch.id, str(RelationKind.WATCHING),
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.set_relation_details(settings.slug, buch.id, str(RelationKind.WATCHING),
                             {"note": 'Band 1, Originaltitel "Market Forces".'}, now=NOW)
 
     client.post(f"/book/{buch.id}/bearbeiten", data={"title": "Anders", "author": "Wer"})
 
-    assert view.build(db, profile, buch.id).note == 'Band 1, Originaltitel "Market Forces".'
+    assert view.build(db, settings, buch.id).note == 'Band 1, Originaltitel "Market Forces".'
 
 
 # --- ein Urteil nachholen (Ticket 55) ---------------------------------------
@@ -746,7 +746,7 @@ def test_the_button_gathers_the_same_evidence_as_the_run(
             return Item(source_item_id=source_item_id, title="Ein Buch",
                         keywords=("Space Opera",))
 
-    monkeypatch.setattr(view, "evidence_sources", lambda profile, store: [Quelle()])
+    monkeypatch.setattr(view, "evidence_sources", lambda settings, store: [Quelle()])
 
     urteil_abwarten(client, f"/book/{buch.id}")
 
@@ -886,7 +886,7 @@ def test_a_running_run_is_named_in_the_head(client: TestClient, db: Store) -> No
 
     # Jetzt und mit lebendem Prozess: ein Lauf von vor Tagen gilt zu Recht als
     # abgebrochen, nicht als unterwegs.
-    db.start_run(load_profile().slug, "cli", datetime.now(), pid=os.getpid())
+    db.start_run(load_settings().slug, "cli", datetime.now(), pid=os.getpid())
 
     assert "Ein Lauf ist gerade unterwegs" in client.get(f"/book/{buch.id}").text
 
@@ -971,9 +971,9 @@ def test_the_axes_stand_as_marks_above_the_reason(client: TestClient, db: Store)
 # --- je Quellenart eine Kachel (#33) ----------------------------------------
 
 
-def drei_quellen() -> Profile:
+def drei_quellen() -> Settings:
     """Zwei Bibliotheken und ein Shop — der Fall, fuer den der Kopf gebaut wird."""
-    return Profile(slug="test", name="Testprofil",
+    return Settings(slug="test", name="Testprofil",
                    sources={"onleihe": {}, "overdrive": {}, "beam": {}})
 
 
@@ -1030,7 +1030,7 @@ def test_the_shop_tile_names_the_cheapest(db: Store) -> None:
 
     laden = view.build(
         db,
-        Profile(slug="test", name="Testprofil", sources={"beam": {}, "fake": {}}),
+        Settings(slug="test", name="Testprofil", sources={"beam": {}, "fake": {}}),
         book.id,
     ).categories[0]
 
@@ -1182,7 +1182,7 @@ def test_the_judgement_of_a_title_without_a_find_hangs_on_the_book(
                              profile_version=1, pitch="Sieben Schwestern."))
     monkeypatch.setattr(view, "build_rater", lambda model: rater)
 
-    grund = view.rate(db, load_profile(), buch.id, now=NOW)
+    grund = view.rate(db, load_settings(), buch.id, now=NOW)
 
     assert grund == ""
     schluessel = book_subject(buch.id)
@@ -1201,6 +1201,6 @@ def test_a_find_is_preferred_over_the_bare_title(
     rater = StubRater(Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1))
     monkeypatch.setattr(view, "build_rater", lambda model: rater)
 
-    view.rate(db, load_profile(), buch.id, now=NOW)
+    view.rate(db, load_settings(), buch.id, now=NOW)
 
     assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].stars == 4

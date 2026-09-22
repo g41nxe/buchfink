@@ -15,7 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
-from ebook_watchlist.config import load_profile
+from ebook_watchlist.config import load_settings
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, watchlist
@@ -34,19 +34,19 @@ def client(data_dir: Path) -> TestClient:
 
 
 def beobachtet(db: Store, titel: str = "Kugelblitz") -> int:
-    profile = load_profile()
+    settings = load_settings()
     buch = db.find_or_create_book(isbn=None, title=titel, author="Cixin Liu", now=NOW)
-    db.put_relation(profile.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     return buch.id
 
 
 def titel(db: Store) -> list[str]:
-    return [e.title for e in watchlist.entries(db, load_profile())]
+    return [e.title for e in watchlist.entries(db, load_settings())]
 
 
 def arten(db: Store, buch_id: int) -> dict[str, bool]:
     return {
-        row.kind: row.active for row in db.relations_of(load_profile().slug, buch_id)
+        row.kind: row.active for row in db.relations_of(load_settings().slug, buch_id)
     }
 
 

@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, replace
 
-from .config import Profile, WatchlistEntry
+from .config import Settings, WatchlistEntry
 from .relations import InterestKey, RelationKind
 from .store import InterestRow, Store
 
@@ -32,7 +32,7 @@ class NotSeeded(Exception):
 class Configured:
     """Was ein Lauf braucht — Profil, Watchlist, und wer welches Interesse ist."""
 
-    profile: Profile
+    settings: Settings
     watchlist: list[WatchlistEntry]
     #: Interesse-Zeilen nach Wert, damit die Aussaat sie wiederfindet.
     author_interests: dict[str, InterestRow]
@@ -50,7 +50,7 @@ def _details(row) -> dict:
         return {}
 
 
-def load(store: Store, settings: Profile) -> Configured:
+def load(store: Store, settings: Settings) -> Configured:
     """Die Konfiguration dieses Profils, aus der Datenbank.
 
     ``settings`` liefert nur, was dort nicht steht: Schwellwerte, Quellen,
@@ -91,7 +91,7 @@ def load(store: Store, settings: Profile) -> Configured:
             "einmalig 'python -m ebook_watchlist.run seed' aufrufen"
         )
 
-    profile = replace(
+    settings = replace(
         settings,
         reference_authors=core,
         extended_authors=extended,
@@ -103,7 +103,7 @@ def load(store: Store, settings: Profile) -> Configured:
         disliked_books=[],
     )
     return Configured(
-        profile=profile,
+        settings=settings,
         watchlist=watchlist,
         author_interests=authors,
         thema_interests=themen,
