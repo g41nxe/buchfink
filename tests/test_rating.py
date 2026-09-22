@@ -28,9 +28,12 @@ from ebook_watchlist.rating import (
     load_rating_scheme,
     parse_answer,
     parse_many,
+    pitch_prompt,
+    pitch_trouble,
     prompt_for,
     prompt_for_many,
     rate_in_batches,
+    with_better_pitch,
 )
 from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
 from ebook_watchlist.store import Store
@@ -1445,3 +1448,134 @@ def test_the_axes_are_stored_with_the_judgement(store: Store) -> None:
     zeile = store.ratings_for(["isbn:9783104911854"])[("isbn:9783104911854", BY_MODEL)]
 
     assert (zeile.hits, zeile.misses) == (("Katz und Maus",), ("Tempo",))
+
+
+# --- Der Pitch und seine eine Nachfrage (#29) -------------------------------
+
+
+def test_a_pitch_that_talks_about_the_profile_is_trouble() -> None:
+    """Die Schablone, die achtzehn von 132 Pitches woertlich benutzten."""
+    trouble = pitch_trouble(
+        "Melancholischer Horror an einer Bruecke — atmosphaerisch, wo das Profil "
+        "eine beschaedigte Stimme verlangt.",
+        SCHEMA,
+    )
+
+    assert trouble is not None
+    assert "Profil" in trouble
+
+
+def test_an_axis_name_is_not_trouble() -> None:
+    """"Enge" und "Tempo" sind Achsennamen *und* gewoehnliche Woerter.
+
+    Der beste Pitch im Bestand enthaelt beide. Eine Probe, die gute Saetze
+    verwirft, waere schlechter als keine — deshalb prueft sie das nicht.
+    """
+    gut = (
+        "Ein Trupp Soldaten steigt in die Tunnel unter einem Geisterdorf — "
+        "Enge, Dreck und ein Gegner, der zurueckschlaegt."
+    )
+
+    assert pitch_trouble(gut, SCHEMA) is None
+
+
+def test_a_pitch_naming_its_own_stars_is_trouble() -> None:
+    assert pitch_trouble("Trifft das Genre — drei von fuenf Sternen.", SCHEMA)
+
+
+def test_a_pitch_over_the_limit_is_trouble() -> None:
+    assert pitch_trouble("x" * (SCHEMA.pitch_max + 1), SCHEMA)
+
+
+def test_an_empty_pitch_is_not_trouble() -> None:
+    """Ein fehlender Pitch kostet nichts — daran aendert die Probe nichts."""
+    assert pitch_trouble("", SCHEMA) is None
+
+
+def test_a_bad_pitch_is_asked_once_and_replaced() -> None:
+    gefragt = []
+
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        gefragt.append(prompt)
+        return '"Eine Glocke laeutet von selbst — bis dahin: Tuchmacher."'
+
+    schlecht = Rating(
+        stars=1, reason="…", confidence="teils", profile_version=1,
+        pitch="Dark Fantasy — freundlich, wo das Profil Haerte verlangt.",
+    )
+
+    besser = with_better_pitch(schlecht, discovery(), ask, SCHEMA)
+
+    assert len(gefragt) == 1
+    assert besser.pitch == "Eine Glocke laeutet von selbst — bis dahin: Tuchmacher."
+    # Das Urteil bleibt unberuehrt: geprueft wurde ein Satz, nicht die Sterne.
+    assert (besser.stars, besser.reason, besser.confidence) == (1, "…", "teils")
+
+
+def test_a_good_pitch_costs_no_second_call() -> None:
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        raise AssertionError("haette nicht fragen duerfen")
+
+    gut = Rating(
+        stars=4, reason="…", confidence="belegt", profile_version=1,
+        pitch="Ein Anruf zwingt ihn dorthin zurueck, wo es passierte.",
+    )
+
+    assert with_better_pitch(gut, discovery(), ask, SCHEMA) is gut
+
+
+def test_the_second_pitch_stands_even_if_it_still_breaks_the_rule() -> None:
+    """Lieber ein schwacher Satz als eine leere Zeile.
+
+    Das Verfahren sagt selbst "es gibt immer einen Pitch", und in der Liste
+    steht sonst gar nichts ueber das Buch.
+    """
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        return "Wieder etwas, wo das Profil etwas anderes verlangt."
+
+    schlecht = Rating(
+        stars=1, reason="…", confidence="teils", profile_version=1,
+        pitch="Erster Versuch, wo das Profil Haerte verlangt.",
+    )
+
+    assert "Profil" in with_better_pitch(schlecht, discovery(), ask, SCHEMA).pitch
+
+
+def test_a_failed_second_call_leaves_the_first_pitch_standing() -> None:
+    """Nie zumachen (ADR 7): eine misslungene Nachfrage kostet nichts."""
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        raise RatingUnavailable("Modell nicht erreichbar")
+
+    schlecht = Rating(
+        stars=1, reason="…", confidence="teils", profile_version=1,
+        pitch="Erster Versuch, wo das Profil Haerte verlangt.",
+    )
+
+    assert with_better_pitch(schlecht, discovery(), ask, SCHEMA).pitch.startswith(
+        "Erster Versuch"
+    )
+
+
+def test_the_retry_carries_neither_profile_nor_star_table() -> None:
+    """Der teure Teil eines Prompts ist der, den man weglaesst."""
+    prompt = pitch_prompt(discovery(), SCHEMA, "Alter Satz", "er redet vom Profil")
+
+    assert "LESEPROFIL" not in prompt
+    assert SCHEMA.text not in prompt
+    assert "Ein Fund" in prompt
+    assert "Alter Satz" in prompt
+
+
+def test_the_rater_only_sees_the_sections_meant_for_it() -> None:
+    """`prompt_text` gab es samt Funktion und Tests — benutzt wurde es nicht.
+
+    Beide Prompts schickten die ganze Datei, also auch die Gegenprobe, die von
+    der Pflege des Profils handelt und nicht vom Urteil ueber ein Buch. 22 %
+    des Verfahrens im Prompt waren Anweisungen fuer etwas anderes (#29).
+    """
+    schema = load_rating_scheme()
+
+    prompt = prompt_for(discovery(), LESEPROFIL, schema)
+
+    assert schema.prompt_text in prompt
+    assert "GEGENPROBE" not in prompt

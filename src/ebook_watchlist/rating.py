@@ -20,11 +20,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Collection, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Collection, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 
@@ -206,6 +207,13 @@ class Scheme:
     confidences: tuple[str, ...]
     #: Ab dieser Stärke darf ein Urteil ein Buch zurückhalten.
     withhold_from: str
+    #: Wie lang ein Pitch höchstens sein darf. Steht im Dokument, nicht hier —
+    #: sonst gäbe es die Zahl zweimal (#29).
+    pitch_max: int = 200
+    #: Nur der Pitch-Abschnitt. Die Nachfrage nach einem besseren Satz braucht
+    #: weder Leseprofil noch Sternetabelle — und der billigste Teil eines
+    #: Prompts ist der, den man weglässt (#29).
+    pitch_rules: str = ""
 
     @property
     def may_withhold(self) -> frozenset[str]:
@@ -264,6 +272,8 @@ def load_rating_scheme(path: Path | None = None) -> Scheme:
             max_stars=int(sterne["bis"]),
             confidences=tuple(str(entry["wert"]) for entry in confidence["werte"]),
             withhold_from=str(confidence["darf_zurueckhalten_ab"]),
+            pitch_max=int(data["pitch"]["hoechstens_zeichen"]),
+            pitch_rules=_render({"pitch": data["pitch"]}),
         )
     except (yaml.YAMLError, KeyError, TypeError, ValueError) as exc:
         raise RatingUnavailable(f"Bewertungsschema unbrauchbar: {exc}") from exc
@@ -356,7 +366,7 @@ def prompt_for(observation: Observation, leseprofil: str, scheme: Scheme) -> str
     return (
         "Du bewertest ein Buch. Das VERFAHREN sagt, wie zu urteilen ist; das "
         "LESEPROFIL sagt, wonach. Halte dich an beides.\n\n"
-        f"--- VERFAHREN ---\n{scheme.text}\n--- ENDE VERFAHREN ---\n\n"
+        f"--- VERFAHREN ---\n{scheme.prompt_text}\n--- ENDE VERFAHREN ---\n\n"
         f"--- LESEPROFIL ---\n{leseprofil}\n--- ENDE LESEPROFIL ---\n\n"
         f"--- BUCH ---\n" + "\n".join(facts) + "\n--- ENDE BUCH ---\n\n"
         "Antworte ausschließlich mit JSON in genau dieser Form:\n"
@@ -386,7 +396,7 @@ def prompt_for_many(
         "urteilen ist; das LESEPROFIL sagt, wonach. Halte dich an beides. "
         "Beurteile jedes Buch für sich; die Reihenfolge sagt nichts über seine "
         "Passung.\n\n"
-        f"--- VERFAHREN ---\n{scheme.text}\n--- ENDE VERFAHREN ---\n\n"
+        f"--- VERFAHREN ---\n{scheme.prompt_text}\n--- ENDE VERFAHREN ---\n\n"
         f"--- LESEPROFIL ---\n{leseprofil}\n--- ENDE LESEPROFIL ---\n\n"
         + "\n\n".join(blocks)
         + "\n--- ENDE BÜCHER ---\n\n"
@@ -565,6 +575,92 @@ def parse_answer(
     )
 
 
+#: Eine Sternzahl im Pitch — die steht daneben und gehört nicht in den Satz.
+#: ``fuenf`` steht mit drin, weil ein Modell gelegentlich ohne Umlaut schreibt.
+_PITCH_STARS = re.compile(
+    r"\b(null|eins?|zwei|drei|vier|f(ue|[uü])nf|[0-5])\s+(von\s+f(ue|[uü])nf|Stern)", re.I
+)
+#: Das Wort, an dem die Schablone haengt: "…, wo das Profil Härte verlangt".
+_PITCH_PROFILE = re.compile(r"\bprofil", re.I)
+
+
+def pitch_trouble(pitch: str, scheme: Scheme) -> str | None:
+    """Woran ein Pitch gegen das Verfahren verstößt — oder ``None`` (#29).
+
+    Nur, was sich eindeutig erkennen lässt. Achsennamen stehen bewusst nicht
+    darunter, obwohl das Verfahren sie verbietet: "Enge" und "Tempo" sind
+    Namen *und* gewöhnliche Wörter, und der beste Pitch im ganzen Bestand
+    enthielt beide. Eine Probe, die gute Sätze verwirft, ist schlechter als
+    keine.
+
+    Gemessen an 132 Urteilen traf "Profil" einunddreißig, eine Sternzahl und
+    die Länge keines — die beiden letzten sind Wächter, nicht Fallen.
+    """
+    if not pitch:
+        return None
+    if _PITCH_PROFILE.search(pitch):
+        return "er redet vom Profil statt vom Buch"
+    if _PITCH_STARS.search(pitch):
+        return "er nennt eine Sternzahl, und die steht schon daneben"
+    if len(pitch) > scheme.pitch_max:
+        return f"er ist {len(pitch)} Zeichen lang, erlaubt sind {scheme.pitch_max}"
+    return None
+
+
+def pitch_prompt(observation: Observation, scheme: Scheme, pitch: str, trouble: str) -> str:
+    """Die Nachfrage nach einem besseren Satz.
+
+    Ohne Leseprofil und ohne Sternetabelle: das Urteil steht ja schon, und
+    gebraucht wird nur ein Satz über dieses Buch. Der teure Teil eines
+    Prompts ist damit weg.
+    """
+    return (
+        "Du hast dieses Buch schon beurteilt. Nur der eine Satz für die "
+        "Leserin — der Pitch — muss neu, denn " + trouble + ".\n\n"
+        f"--- SO SOLL ER SEIN ---\n{scheme.pitch_rules}\n--- ENDE ---\n\n"
+        "--- BUCH ---\n" + "\n".join(_facts(observation)) + "\n--- ENDE BUCH ---\n\n"
+        f"Dein bisheriger Satz war:\n{pitch}\n\n"
+        "Antworte mit dem neuen Satz und sonst nichts — keine "
+        "Anführungszeichen, keine Erklärung, kein JSON."
+    )
+
+
+def _one_line(text: str) -> str:
+    """Die erste Zeile mit Inhalt, ohne Anführungszeichen drumherum."""
+    for line in text.splitlines():
+        line = line.strip().strip('"').strip("'").strip()
+        if line:
+            return line
+    return ""
+
+
+def with_better_pitch(
+    rating: Rating,
+    observation: Observation,
+    ask: Callable[[str, int], str],
+    scheme: Scheme,
+) -> Rating:
+    """Einmal nachfragen, wenn der Pitch gegen das Verfahren verstößt (#29).
+
+    **Genau einmal, und was zurückkommt, gilt** — auch wenn es wieder
+    verstößt. Lieber ein schwacher Satz als eine leere Zeile: das Verfahren
+    sagt selbst "es gibt immer einen Pitch", und in der Liste steht sonst
+    nichts über das Buch. Aus demselben Grund kostet ein misslungener zweiter
+    Versuch nichts: dann bleibt der erste stehen (ADR 7).
+
+    Sterne und Begründung werden nicht angefasst. Sie waren in Ordnung — die
+    Probe gilt einem Satz, nicht dem Urteil.
+    """
+    trouble = pitch_trouble(rating.pitch, scheme)
+    if trouble is None:
+        return rating
+    try:
+        neu = _one_line(ask(pitch_prompt(observation, scheme, rating.pitch, trouble), 200))
+    except RatingUnavailable:
+        return rating
+    return replace(rating, pitch=neu) if neu else rating
+
+
 class Rater(Protocol):
     """Was der Lauf braucht. Absichtlich klein, damit ein Stub genügt."""
 
@@ -634,7 +730,7 @@ class ModelRater:
             self.session = requests.Session()
 
     def rate(self, observation: Observation) -> Rating:
-        return parse_answer(
+        rating = parse_answer(
             self.ask(prompt_for(observation, self.leseprofil, self.scheme)),
             self.version,
             self.scheme,
@@ -642,6 +738,7 @@ class ModelRater:
             had_sample=bool(observation.sample),
             publisher=observation.publisher,
         )
+        return with_better_pitch(rating, observation, self.ask, self.scheme)
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
         """Eine Frage, eine Antwort — ohne Leseprofil und ohne Schema.
@@ -729,7 +826,7 @@ class ClaudeCodeRater:
 
     def rate(self, observation: Observation) -> Rating:
         prompt = prompt_for(observation, self.leseprofil, self.scheme)
-        return parse_answer(
+        rating = parse_answer(
             self._ask(prompt),
             self.version,
             self.scheme,
@@ -737,6 +834,7 @@ class ClaudeCodeRater:
             had_sample=bool(observation.sample),
             publisher=observation.publisher,
         )
+        return with_better_pitch(rating, observation, self.ask, self.scheme)
 
     def rate_many(
         self, observations: Sequence[Observation]
@@ -751,7 +849,16 @@ class ClaudeCodeRater:
         if not observations:
             return {}
         answer = self._ask(prompt_for_many(observations, self.leseprofil, self.scheme))
-        return parse_many(answer, observations, self.version, self.scheme, axes=self.axes)
+        ratings = parse_many(answer, observations, self.version, self.scheme, axes=self.axes)
+        # Die Nachfrage gilt je Buch, nicht je Buendel: sie kostet einen
+        # kurzen Aufruf fuer den einen Satz, und nur dort, wo er verstoesst.
+        zu_buch = {(o.source, o.source_item_id): o for o in observations}
+        return {
+            key: with_better_pitch(rating, zu_buch[key], self.ask, self.scheme)
+            if key in zu_buch
+            else rating
+            for key, rating in ratings.items()
+        }
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
         """Siehe :meth:`ModelRater.ask` — derselbe Weg, andere Leitung.

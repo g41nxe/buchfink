@@ -228,44 +228,62 @@ achsen: |
 pitch:
 
   laenge: ein bis zwei Sätze, höchstens 200 Zeichen
+  # Dieselbe Zahl, maschinenlesbar: der Code prüft dagegen, statt sie ein
+  # zweites Mal in Python zu tragen (#29).
+  hoechstens_zeichen: 200
 
+  # Die Regeln stehen bewusst als Anweisungen und nicht als Verbote: ein
+  # ausgeschriebenes Gegenbeispiel pflanzt genau das Muster ein, das es
+  # verhindern soll, und eine Wand aus "nicht" verschiebt die Aufmerksamkeit
+  # auf das Falsche. Was hier verboten bleibt, ist kurz gehalten (#29).
   regeln: |
-    Der Pitch ist NICHT die Begründung. Die Begründung ist ein Protokoll zum
-    Nachprüfen; der Pitch ist der Satz, der die Leserin hinsehen lässt. Er
-    steht im Digest und in der Vorschlagsliste, wo sie überfliegt.
+    Der Pitch ist der Satz, der die Leserin hinsehen lässt. Er steht in der
+    Vorschlagsliste, auf der Startseite und in der Watchlist-Zeile — überall
+    dort, wo sie überfliegt, und dort steht sonst nichts. Er ist also die
+    einzige Prosa zu diesem Buch und darf sagen, wovon es handelt.
 
-    NICHT DEN KLAPPENTEXT WIEDERHOLEN. Der steht daneben und sagt, WOVON das
-    Buch handelt. Der Pitch sagt, warum es FÜR SIE in Frage kommt — die
-    Verbindung, nicht die Zusammenfassung.
+    ZWEI HÄLFTEN, BEIDE AM BUCH. Zuerst, was das Buch ist; dann die eine
+    Beobachtung, die den Ausschlag gibt — was trägt, oder was im Weg steht.
 
-    ES GIBT IMMER EINEN PITCH. Auch bei null Sternen. Ein Buch, das nicht
-    passt, bekommt keinen leeren Pitch, sondern einen, der in einem Satz sagt,
-    WAS es ist und WORAN es scheitert. "Nichts zu sagen" ist keine zulässige
-    Antwort — dann steht auf der Seite eine Lücke statt einer Auskunft.
+    WÄHLE AUS, FASSE NICHT ZUSAMMEN. Ein Bild, an dem dieses Buch hängt, statt
+    einer Inhaltsangabe: die Tunnel unter dem Geisterdorf, die läutende Glocke,
+    der Anruf, der ihn zurückzwingt.
 
-    NICHTS ERFINDEN UND NICHTS SCHÖNREDEN. Dieselbe Grundlage wie die Sterne.
-    Ein Pitch, der zu einem Stern klingt wie zu fünf, ist wertlos: bei wenigen
-    Sternen benennt er die Absage, bei vielen den Grund hinzusehen.
+    SCHREIB IN DIE ZWEITE HÄLFTE, WAS IM BUCH ES AUSMACHT. "Erklärt Tuchmacher
+    und Besucherbergwerk, bevor etwas passiert" ist eine Beobachtung, die sich
+    nachprüfen lässt. Nenne dafür weder das Profil noch eines seiner Kriterien
+    — die Sterne daneben sagen das Urteil bereits.
 
-    NICHT SPOILERN. Ein Pitch, der die Wendung verrät, kostet ihr das Buch.
+    DIE PROBE: Lies die zweite Hälfte, ohne das Buch zu kennen. Könnte
+    derselbe Satz unter einem beliebigen anderen Buch stehen, ist er falsch
+    und gehört ersetzt durch etwas, das nur zu diesem passt.
 
-    Keine Sternzahl und kein Achsenname im Pitch — die stehen daneben.
+    VARIIERE DEN BAU. Die Beispiele unten zeigen zwei Fügungen; es gibt mehr.
+    Zwanzig Pitches hintereinander mit demselben Gedankenstrich an derselben
+    Stelle sind ein Formular, keine Sätze.
 
-  # Zwei Beispiele, weil der Pitch beides können muss: zusagen und absagen.
+    ES GIBT IMMER EINEN PITCH, auch bei null Sternen — sonst steht auf der
+    Seite eine Lücke statt einer Auskunft.
+
+    Nüchtern bleiben: beschreiben ist nicht loben. Ein Pitch, der zu einem
+    Stern klingt wie zu fünf, ist wertlos. Nichts erfinden, nichts spoilern,
+    keine Sternzahl, keinen Achsennamen.
+
+  # Zwei Beispiele, bewusst verschieden gebaut: eines mit Gedankenstrich,
+  # eines mit zwei Sätzen. Gleich gebaute Vorbilder lehren die Form statt der
+  # Sache — genau daran ist die vorige Fassung gescheitert (#29).
   gut: |
-    Bei vielen Sternen — der Grund hinzusehen:
-    "Ein Profiler, der an seinen eigenen Fällen zerbricht, und eine Jagd, die
-    auf Seite eins beginnt."
+    Was trägt, am Buch gezeigt:
+    "Ein Mann, der über Vermisste berichtet, weil er seinen Bruder verlor —
+    und dann ein Anruf, der ihn dorthin zurückzwingt, wo es passierte."
 
-    Bei wenigen Sternen — die Absage, benannt statt verschwiegen:
-    "Landhausrätsel mit Nebel und Maskenball — freundlich, wo das Profil
-    dreckig und kompromisslos verlangt."
+    Was im Weg steht, ebenso am Buch gezeigt:
+    "Heimatkundliche Dark Fantasy um eine Glocke, die von selbst läutet. Bis
+    etwas geschieht, sind Tuchmacher und Besucherbergwerk abgehandelt."
 
   schlecht:
     - text: Ein packender Thriller, der von der ersten bis zur letzten Seite fesselt.
-      warum: Klingt zu jedem Buch. Sagt nichts über diese Leserin.
-    - text: Ein Serienmörder terrorisiert Los Angeles, bis Detective Hunter ihm auf die Spur kommt.
-      warum: Das ist der Klappentext. Der steht schon daneben.
+      warum: Klingt zu jedem Buch. Sagt nichts über dieses.
     - text: Trifft die Achse "Die Figur trägt alles" mit vier von fünf Sternen.
       warum: Das ist die Begründung, nicht der Pitch. Und beides steht daneben.
 
