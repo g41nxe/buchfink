@@ -829,19 +829,25 @@ def test_a_refusal_from_the_model_is_named_not_swallowed(
     assert "Das alte Urteil." in body
 
 
-def test_a_book_nobody_has_seen_yet_cannot_be_judged(
+def test_a_book_nobody_has_seen_yet_is_judged_on_its_bare_title(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Das Urteil haengt am Fund. Ohne Fund gibt es nichts, woran es haengen
-    koennte — und kein Modellaufruf wird verschwendet."""
+    """Bis #38 hiess es hier "Noch kein Fund — es gibt nichts zu beurteilen".
+    Doch etwas gibt es: Titel und Autor:in. Das Urteil darauf ist duenn, und
+    es haengt am Buch statt an einem Fund, den es nicht gibt."""
+    from ebook_watchlist.ratings import book_subject
+
     buch = db.find_or_create_book(isbn=None, title="Nie gesehen", now=NOW)
-    rater = StubRater(Rating(stars=5, reason="Egal.", confidence="belegt", profile_version=1))
+    rater = StubRater(Rating(stars=5, reason="Klingt gut.", confidence="duenn",
+                             profile_version=1))
     monkeypatch.setattr(view, "build_rater", lambda model: rater)
 
     body = urteil_abwarten(client, f"/book/{buch.id}")
 
-    assert rater.asked == []
-    assert "Noch kein Fund" in body
+    assert [o.title for o in rater.asked] == ["Nie gesehen"]
+    schluessel = book_subject(buch.id)
+    assert db.ratings_for([schluessel])[(schluessel, BY_MODEL)].stars == 5
+    assert "Klingt gut." in body
 
 
 def test_the_button_stays_once_a_judgement_stands(client: TestClient, db: Store) -> None:
@@ -1151,3 +1157,40 @@ def test_a_borrowable_library_beats_a_lent_out_one(db: Store) -> None:
     bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
 
     assert bibliothek.best is not None and bibliothek.best.name == "overdrive"
+
+
+# --- ein Titel ohne Fund (#38) ----------------------------------------------
+
+
+def test_the_judgement_of_a_title_without_a_find_hangs_on_the_book(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ebook_watchlist.ratings import book_subject
+
+    buch = db.books()[0]
+    rater = StubRater(Rating(stars=3, reason="Klingt passend.", confidence="duenn",
+                             profile_version=1, pitch="Sieben Schwestern."))
+    monkeypatch.setattr(view, "build_rater", lambda model: rater)
+
+    grund = view.rate(db, load_profile(), buch.id, now=NOW)
+
+    assert grund == ""
+    schluessel = book_subject(buch.id)
+    assert db.ratings_for([schluessel])[(schluessel, BY_MODEL)].stars == 3
+    # Gefragt wurde ueber Titel und Autor:in — mehr gibt es nicht.
+    assert rater.asked[0].title == buch.title
+
+
+def test_a_find_is_preferred_over_the_bare_title(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sobald es einen Fund gibt, urteilt das Werkzeug ueber den — er traegt
+    Preis, Verfuegbarkeit und Klappentext."""
+    buch = db.books()[0]
+    sighting(db, buch.id, when=NOW, price=999)
+    rater = StubRater(Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1))
+    monkeypatch.setattr(view, "build_rater", lambda model: rater)
+
+    view.rate(db, load_profile(), buch.id, now=NOW)
+
+    assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].stars == 4

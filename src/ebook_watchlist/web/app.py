@@ -415,6 +415,12 @@ def create_app() -> FastAPI:
             now=datetime.now(),
         )
         rechecker.start(book_id)
+        # Und gleich ein Urteil dazu (#38): bis dahin stand ein neuer Titel
+        # fuer immer ohne da — das Tor beurteilt nur Funde, und ein
+        # Watchlist-Titel ist keiner. Es ruht auf Titel und Autor:in, denn
+        # mehr gibt es in dieser Sekunde nicht; ein belegteres holt die
+        # Leserin mit "neu beurteilen".
+        urteiler.start(("book", book_id))
         return RedirectResponse("/watchlist", status_code=303)
 
     @app.post("/watchlist/{book_id}/active")

@@ -15,7 +15,7 @@ from ..config import Profile
 from ..deals import is_strong_deal
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
-from ..ratings import BY_MODEL, subject_of
+from ..ratings import BY_MODEL, book_subject, subject_of
 from ..relations import DONE_LABELS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
@@ -388,16 +388,18 @@ def _candidates(details: dict, url: str | None, *, abgelehnt: bool) -> tuple:
     return tuple(aus)
 
 
-def _judgement(ratings: dict, observations: Sequence[Observation]):
-    """Das juengste Maschinenurteil zu einem Buch, ueber alle seine Funde.
+def _judgement(ratings: dict, observations: Sequence[Observation], book_id: int):
+    """Das juengste Maschinenurteil zu einem Buch, ueber alle seine Schluessel.
 
     Ein Buch kann bei mehreren Quellen stehen, und jeder Fund traegt seinen
-    eigenen Schluessel. Das juengste gilt: es beruht auf dem, was zuletzt
-    bekannt war.
+    eigenen Schluessel; ein Titel ohne Fund traegt seinen am Buch (#38). Das
+    juengste gilt: es beruht auf dem, was zuletzt bekannt war.
     """
+    schluessel = [subject_of(observation) for observation in observations]
+    schluessel.append(book_subject(book_id))
     gefunden = None
-    for observation in observations:
-        row = ratings.get((subject_of(observation), BY_MODEL))
+    for eins in schluessel:
+        row = ratings.get((eins, BY_MODEL))
         if row is None:
             continue
         if gefunden is None or (row.rated_at or _EPOCH) > (gefunden.rated_at or _EPOCH):
@@ -432,9 +434,16 @@ def entries(
     # an der Produktnummer. Ein Zugriff fuer die ganze Liste, nicht einer je
     # Zeile — dieselbe Regel wie im Stapel.
     urteile = store.ratings_for(
-        subject_of(observation)
-        for beobachtungen in latest.values()
-        for observation in beobachtungen
+        [
+            *(
+                subject_of(observation)
+                for beobachtungen in latest.values()
+                for observation in beobachtungen
+            ),
+            # Ein Titel ohne Fund traegt sein Urteil am Buch (#38): beim
+            # Hinzufuegen gibt es keinen Fund, an dem es haengen koennte.
+            *(book_subject(book_id) for book_id in book_ids),
+        ]
     )
 
     rows = []
@@ -458,7 +467,7 @@ def entries(
             )
             for link in quellen.get(book.id, ())
         )
-        urteil = _judgement(urteile, latest.get(book.id, ()))
+        urteil = _judgement(urteile, latest.get(book.id, ()), book.id)
         rows.append(
             Entry(
                 book_id=book.id,

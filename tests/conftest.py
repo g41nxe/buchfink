@@ -186,6 +186,29 @@ def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.fixture(autouse=True)
+def kein_bewerter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kein Test ruft das Modell.
+
+    Die Socket-Sperre oben reicht dafuer nicht: ohne API-Schluessel laeuft der
+    Bewerter ueber die angemeldete Claude-Code-Installation, also ueber einen
+    **Unterprozess** — und der geht an `socket.connect` vorbei. Aufgefallen ist
+    es, als das Hinzufuegen eines Watchlist-Titels ein Urteil anstiess (#38):
+    der Testlauf dauerte danach zwanzig Minuten statt siebzig Sekunden, und
+    jede dieser Minuten war ein echter Aufruf.
+
+    Voreingestellt gibt es also keinen Bewerter — derselbe Zustand wie auf
+    einem Rechner ohne Schluessel, und er ist ausdruecklich erlaubt. Wer das
+    Urteilen pruefen will, setzt seine eigene Attrappe; sie kommt nach dieser
+    Fixture und gewinnt.
+    """
+    from ebook_watchlist import run
+    from ebook_watchlist.web import book
+
+    monkeypatch.setattr(book, "build_rater", lambda model=None: None)
+    monkeypatch.setattr(run, "build_rater", lambda model=None: None)
+
+
+@pytest.fixture(autouse=True)
 def keine_belege_von_draussen(monkeypatch: pytest.MonkeyPatch) -> None:
     """Der Knopf "neu beurteilen" holt Detailseite und Leseprobe (#17). In
     Tests ohne Quellen — wer sie prüfen will, setzt seine eigenen ein."""

@@ -17,7 +17,7 @@ from ..config import Profile
 from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
 from ..http import HttpClient, build_user_agent
-from ..models import Availability, MatchReason
+from ..models import Availability, MatchReason, Observation
 from ..rating import RatingUnavailable, build_rater, confidence_label, load_leseprofil
 from ..ratings import (
     BY_CONVERSATION,
@@ -655,16 +655,50 @@ def rate(store: Store, profile: Profile, book_id: int, *, now: datetime) -> str:
 
     Zurück kommt der Grund, warum es nicht ging — leer heißt: das Urteil steht.
     """
+    book = store.book(book_id)
+    if book is None:  # pragma: no cover - nur bei geloeschtem Buch
+        return "Dieses Buch gibt es nicht mehr."
+
     seen = store.observations_for_book(profile.slug, book_id)
     if not seen:
-        return "Noch kein Fund zu diesem Buch — es gibt nichts zu beurteilen."
+        # Noch kein Fund: ein frisch eingetragener Watchlist-Titel ist bei
+        # keiner Quelle aufgeloest (#38). Beurteilt wird dann, was dasteht —
+        # Titel und Autor:in —, und das Urteil haengt am *Buch*, weil es
+        # keinen Fund gibt, an dem es haengen koennte (ADR 18). Ohne Belege
+        # bleibt es duenn; ein besseres holt die Leserin spaeter mit
+        # "neu beurteilen", stillschweigend ersetzt wird es nie.
+        return rate_observation(
+            store,
+            profile,
+            _as_find(book),
+            now=now,
+            via=VIA_BOOK_PAGE,
+            subject=book_subject(book_id),
+            with_evidence=False,
+        )
 
     # Das Urteil hängt am Fund, nicht am Buch (ADR 18): am jüngsten, denn er
     # trägt den aktuellen Preis und die aktuelle Verfügbarkeit.
-    book = store.book(book_id)
     return rate_observation(
-        store, profile, seen[0], now=now, via=VIA_BOOK_PAGE,
-        blurb=book.blurb if book is not None else None,
+        store, profile, seen[0], now=now, via=VIA_BOOK_PAGE, blurb=book.blurb
+    )
+
+
+def _as_find(book) -> Observation:
+    """Das Buch als Beobachtung, damit der Bewerter es lesen kann.
+
+    Kein Fund, nur seine Form: der Bewerter nimmt eine Beobachtung entgegen,
+    und was hier dasteht, ist alles, was ueber den Titel bekannt ist.
+    """
+    return Observation(
+        source="watchlist",
+        source_item_id=str(book.id),
+        title=book.title,
+        author=book.author,
+        isbn=book.isbn,
+        blurb=book.blurb,
+        match_reason=MatchReason.WATCHLIST,
+        book_id=book.id,
     )
 
 
@@ -682,6 +716,8 @@ def rate_observation(
     now: datetime,
     via: str,
     blurb: str | None = None,
+    subject: str | None = None,
+    with_evidence: bool = True,
 ) -> str:
     """Einen Fund beurteilen lassen und das Urteil speichern — für Buch- und Fundseite.
 
@@ -704,9 +740,12 @@ def rate_observation(
     # ohne Leseprobe kommt ein Urteil nie ueber "teils" hinaus, und dasselbe
     # Buch bekaeme hier ein schwaecheres als im Lauf. Es laeuft ohnehin im
     # Hintergrund (#15); zwei Anfragen mehr fallen in der Minute nicht auf.
-    observation = gather_evidence(
-        store, profile, [observation], evidence_sources(profile, store)
-    )[0]
+    # Ohne Fund gibt es nichts nachzuladen: keine Quelle kennt den Titel, und
+    # eine Anfrage danach waere eine Anfrage ins Leere (#38).
+    if with_evidence:
+        observation = gather_evidence(
+            store, profile, [observation], evidence_sources(profile, store)
+        )[0]
     duenn = not observation.blurb or is_truncated(observation.blurb)
     if duenn and blurb:
         observation = replace(observation, blurb=blurb)
@@ -719,7 +758,7 @@ def rate_observation(
         return str(exc)
 
     store.put_rating(
-        subject_of(observation),
+        subject or subject_of(observation),
         stars=rating.stars,
         confidence=rating.confidence,
         reason=rating.reason,
