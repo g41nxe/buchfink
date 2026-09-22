@@ -9,6 +9,7 @@ faellt still aus.
 
 from __future__ import annotations
 
+import re
 import xml.dom.minidom
 from pathlib import Path
 
@@ -20,3 +21,39 @@ ASSETS = Path(__file__).resolve().parents[1] / "src" / "ebook_watchlist" / "web"
 @pytest.mark.parametrize("svg", sorted(ASSETS.glob("*.svg")), ids=lambda p: p.name)
 def test_every_delivered_svg_is_well_formed(svg: Path) -> None:
     xml.dom.minidom.parseString(svg.read_bytes().decode("utf-8"))
+
+
+# --- Hell und Dunkel (#19) ---------------------------------------------------
+
+APP_CSS = ASSETS / "app.css"
+
+
+def test_the_palette_is_not_behind_a_media_query() -> None:
+    """Der Wachhund dieses Tickets.
+
+    Eine Regel unter ``@media (prefers-color-scheme: dark)`` laesst sich von
+    keinem Knopf uebersteuern — sie ist genau der Grund, warum es vor #19
+    keinen Umschalter gab. Wer die Palette dorthin zuruecklegt, nimmt dem
+    Schalter still die Wirkung, und die Seite sieht dabei richtig aus, solange
+    man nicht klickt.
+    """
+    ohne_kommentare = re.sub(r"/\*.*?\*/", "", APP_CSS.read_text(encoding="utf-8"), flags=re.S)
+
+    assert "prefers-color-scheme" not in ohne_kommentare
+
+
+def test_every_colour_carries_both_values() -> None:
+    """Eine Farbe, die nur hell definiert ist, bleibt im Dunkeln stehen.
+
+    Frueher standen die dunklen Werte in einem zweiten Block, und eine neue
+    Farbe dort zu vergessen war ein stiller Fehler. Jetzt traegt jede Zeile
+    beide Werte, und diese Probe sagt es, wenn eine es nicht tut.
+    """
+    text = APP_CSS.read_text(encoding="utf-8")
+    theme = text[text.index("@theme {") : text.index("/* Hell und Dunkel")]
+    ohne_dunkel = [
+        zeile.strip()
+        for zeile in theme.splitlines()
+        if zeile.strip().startswith("--color-") and "light-dark(" not in zeile
+    ]
+    assert ohne_dunkel == []

@@ -87,7 +87,7 @@ Colours, spacing and type scale live in the Tailwind theme. The prototype's
 custom properties were a stand-in for exactly that and are replaced rather than
 kept alongside — two token systems is worse than either.
 
-Dark mode stays media-query driven, as it is today.
+Dark mode stays media-query driven, as it is today. *(Zurückgenommen — siehe Nachtrag unten.)*
 
 ### Icons stay an inline SVG sprite
 
@@ -110,3 +110,35 @@ template and icons are referenced by id.
   ephemeral view state by the rule above; the moment application state starts
   living in Alpine rather than the database, this decision has been misused.
 - The prototype's hand-written CSS is a throwaway and does not migrate.
+
+## Nachtrag (22.09.2026, #19): Dunkel ist eine Wahl, keine Messung
+
+Oben stand „Dark mode stays media-query driven, as it is today." Das galt
+zwei Monate und hatte eine Folge, die erst auffiel, als jemand einen Knopf
+wollte: **eine Regel unter `@media (prefers-color-scheme: dark)` lässt sich
+nicht wegklicken.** Wer die Anwendung dunkel will, während sein System hell
+steht, hatte keine Möglichkeit — und ein Schalter hätte sie ihm auch nicht
+geben können, ohne die Palette an eine andere Bedingung zu hängen.
+
+Jetzt gilt: **die Palette hängt an `color-scheme`, nicht an der Medienabfrage.**
+Jede Farbe trägt beide Werte in einem `light-dark()`, und welcher gilt,
+entscheidet ein Attribut am Wurzelelement — ohne Attribut steht
+`color-scheme: light dark`, also weiterhin „dem System folgen" als
+Voreinstellung.
+
+Zwei Gewinne, die nicht der Anlass waren:
+
+- Die dunklen Werte standen vorher **zweimal** da, in einem eigenen Block mit
+  denselben dreizehn Namen. Eine neue Farbe dort zu vergessen war ein stiller
+  Fehler. Jetzt steht jede Farbe einmal, und ein Test hält es fest.
+- `color-scheme` färbt auch, was der Browser selbst zeichnet: Auswahlfelder,
+  Bildlaufleisten, Datumswähler. Das Sortierfeld aus #37 folgt der Wahl,
+  ohne dass eine Zeile dafür geschrieben wurde.
+
+`light-dark()` setzt Chrome/Edge 123, Safari 17.5 und Firefox 120 voraus
+(alle Frühjahr 2024). Das Werkzeug läuft im eigenen Netz auf den eigenen
+Geräten; ein älterer Browser bekäme die hellen Werte und eine lesbare Seite.
+
+Die Wahl selbst gehört zu Alpine und in den Browserspeicher, nicht in die
+Datenbank: sie ist keine Aussage über den Geschmack der Leserin, sondern
+darüber, wie hell das Zimmer gerade ist.

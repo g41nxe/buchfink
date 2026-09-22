@@ -14,8 +14,24 @@
 #}
 <script src="{{ url_for('static', path='vendor/htmx.min.js') }}" defer></script>
 <script src="{{ url_for('static', path='vendor/alpine.min.js') }}" defer></script>
+{# Die einzige Stelle ohne `defer`, und sie muss es sein: die gewaehlte Farbe
+   gehoert auf das Wurzelelement, *bevor* das erste Bild steht. Ein Skript, das
+   nach dem Zeichnen umschaltet, laesst die falsche Farbe aufblitzen — und
+   gerade wer dunkel gewaehlt hat, bekaeme jedes Mal eine weisse Seite ins
+   Gesicht. Die beiden Bibliotheken darueber laden zu spaet dafuer (#19).
+
+   Ohne Eintrag geschieht nichts, und dann gilt `color-scheme: light dark`:
+   dem System folgen ist die Voreinstellung, nicht ein dritter Sonderfall. #}
+<script>
+  try {
+    var gewaehlt = localStorage.getItem("theme");
+    if (gewaehlt === "light" || gewaehlt === "dark") {
+      document.documentElement.dataset.theme = gewaehlt;
+    }
+  } catch (e) {}
+</script>
 </head>
-<body class="m-0 font-sans text-base antialiased">
+<body class="m-0 flex min-h-screen flex-col font-sans text-base antialiased">
 
 {# Ein Sprite statt einer Icon-Schrift: keine Fremdanfrage, kein Nachladen,
    und die Icons erben Farbe und Groesse vom Text (ADR 20). #}
@@ -170,9 +186,27 @@
    steht (`max-w-prose`, rund 65 Zeichen) — sonst liefe ein Absatz hier auf 130
    Zeichen je Zeile. Die Kopfzeile traegt dieselbe Breite, damit die linke
    Kante durchgeht. #}
-<main class="mx-auto max-w-5xl px-6 pt-8 pb-24">
+<main class="mx-auto w-full max-w-5xl flex-1 px-6 pt-8 pb-24">
 {% block content %}{% endblock %}
 </main>
+
+{% from "_farbschema.html" import farbschema %}
+{# Der Fussbereich traegt, was zur Anwendung gehoert und zu keiner Seite. Bis
+   #19 gab es ihn nicht, und der Farbschalter haette in die Kopfzeile gemusst —
+   dort ist bei 375 px kein Platz mehr: die Navigation misst mit ihren fuenf
+   Punkten und dem CWA-Verweis bereits mehr als der Container hergibt. Unten
+   ist Platz, und ein Schalter, den man einmal im Leben drueckt, gehoert nicht
+   dorthin, wo man jeden Tag hinsieht. #}
+<footer class="mt-8 border-t border-rule">
+  <div class="mx-auto flex max-w-5xl items-center justify-between gap-3
+              px-6 py-4 text-xs text-soft sm:py-5">
+    {# Auf dem Telefon nicht: die Zeile umbrach dort auf eine eigene Reihe und
+       machte den Fussbereich 116 px hoch — fuer einen Satz, der in der
+       Kopfzeile ohnehin steht, sobald der Bildschirm ihn traegt. #}
+    <span class="hidden sm:inline">Buchfink — weniger suchen, mehr lesen.</span>
+    {{ farbschema() }}
+  </div>
+</footer>
 
 </body>
 </html>

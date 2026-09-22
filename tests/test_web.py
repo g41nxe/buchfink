@@ -329,3 +329,44 @@ def test_the_cwa_link_appears_only_when_an_address_is_configured(
     # Eine fremde Anwendung oeffnet in einem neuen Tab, und `noopener` gehoert
     # dazu, damit sie kein `window.opener` auf Buchfink bekommt.
     assert 'target="_blank" rel="noopener"' in mit
+
+
+# --- Hell und Dunkel (#19) ---------------------------------------------------
+
+
+@pytest.mark.parametrize("pfad", ["/", "/watchlist", "/vorschlaege", "/profil", "/uebersicht"])
+def test_every_page_carries_the_colour_switch(client: TestClient, pfad: str) -> None:
+    """Der Schalter steht im Fussbereich, und den traegt `base.html` — also
+    jede Seite. Eine Einstellung, die nur an einer Stelle erreichbar ist, muss
+    man suchen."""
+    body = client.get(pfad).text
+
+    assert "<footer" in body
+    for wort in ("System", "Hell", "Dunkel"):
+        assert f">{wort}</button>" in body
+
+
+def test_the_colour_is_set_before_the_first_paint(client: TestClient) -> None:
+    """Sonst blitzt die falsche Farbe auf.
+
+    Das Skript steht im Kopf und ohne `defer` — die beiden Bibliotheken laden
+    mit `defer` und sind dafuer zu spaet. Wer das aendert, sieht beim naechsten
+    Aufruf eine weisse Seite, bevor die dunkle kommt.
+    """
+    kopf = client.get("/").text.split("</head>")[0]
+    # Der eine Skriptblock ohne Quelle: die beiden Bibliotheken stehen als
+    # `<script src=... defer>` daneben.
+    inline = kopf[kopf.index("<script>") : kopf.index("</script>", kopf.index("<script>"))]
+
+    assert 'localStorage.getItem("theme")' in inline
+    assert "dataset.theme" in inline
+    assert "defer" not in inline
+
+
+def test_the_server_never_decides_the_colour(client: TestClient) -> None:
+    """Ein Farbschema geht den Server nichts an (ADR 20): kein Feld im Profil,
+    keine Route, kein Attribut im ausgelieferten HTML."""
+    body = client.get("/").text
+
+    assert "<html lang=\"de\">" in body
+    assert "data-theme=" not in body

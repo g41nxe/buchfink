@@ -22,63 +22,59 @@
      groesserem Abstand, auf dem Telefon in kleinerer Schrift — ein Pixel
      schadet an keiner der beiden Stellen (#22). */
   --text-xs: 0.8125rem;
-  --color-paper: oklch(0.98 0.006 85);
-  --color-card: oklch(0.995 0.004 85);
+  --color-paper: light-dark(oklch(0.98 0.006 85), oklch(0.17 0.008 285));
+  --color-card: light-dark(oklch(0.995 0.004 85), oklch(0.21 0.008 285));
   /* Zwei Toene fuer Text, mehr nicht: `ink` ist der Inhalt — Titel, Absaetze,
      Tabellenwerte —, `soft` alles, was ueber ihn spricht: Autor:in,
      Zeitpunkte, Hinweise. Wer einen dritten Ton mischt (`text-ink/80`), macht
      ihn nur im Hellen weicher; im Dunkeln liegt derselbe Wert zwischen den
      beiden und wirkt wie ein Fehler. Es gab vier davon, auf sechs Seiten
      verteilt. */
-  --color-ink: oklch(0.26 0.012 60);
-  --color-soft: oklch(0.52 0.012 60);
-  --color-rule: oklch(0.91 0.012 80);
-  --color-hair: oklch(0.95 0.008 80);
+  --color-ink: light-dark(oklch(0.26 0.012 60), oklch(0.92 0.006 85));
+  --color-soft: light-dark(oklch(0.52 0.012 60), oklch(0.65 0.008 85));
+  --color-rule: light-dark(oklch(0.91 0.012 80), oklch(0.30 0.008 285));
+  --color-hair: light-dark(oklch(0.95 0.008 80), oklch(0.25 0.008 285));
 
   /* Autor:in - der Kanal, den die Leserin selbst gewaehlt hat. */
-  --color-accent: oklch(0.45 0.06 185);
-  --color-accent-bg: oklch(0.95 0.02 185);
+  --color-accent: light-dark(oklch(0.45 0.06 185), oklch(0.75 0.06 185));
+  --color-accent-bg: light-dark(oklch(0.95 0.02 185), oklch(0.27 0.03 185));
   /* Thema - das Regal, dem noch niemand zugestimmt hat. */
-  --color-amber: oklch(0.52 0.09 75);
-  --color-amber-bg: oklch(0.95 0.03 80);
+  --color-amber: light-dark(oklch(0.52 0.09 75), oklch(0.76 0.08 80));
+  --color-amber-bg: light-dark(oklch(0.95 0.03 80), oklch(0.27 0.03 80));
 
-  --color-danger: oklch(0.45 0.13 25);
-  --color-gold: oklch(0.68 0.11 85);
+  --color-danger: light-dark(oklch(0.45 0.13 25), oklch(0.72 0.09 25));
+  --color-gold: light-dark(oklch(0.68 0.11 85), oklch(0.78 0.10 85));
 
   --font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
 
-  --shadow-sheet: 0 1px 2px oklch(0.26 0.012 60 / 0.05),
-                  0 10px 30px -14px oklch(0.26 0.012 60 / 0.28);
+  --shadow-sheet:
+    0 1px 2px light-dark(oklch(0.26 0.012 60 / 0.05), oklch(0 0 0 / 0.5)),
+    0 10px 30px -14px light-dark(oklch(0.26 0.012 60 / 0.28), oklch(0 0 0 / 0.8));
 }
 
-/* Dunkelmodus ueber die Medienabfrage, wie bisher (ADR 20). Nur die Rollen
-   tauschen; keine Farbe ist ausschliesslich hier definiert.
+/* Hell und Dunkel, dreimal beantwortbar (#19, ADR 20).
 
-   `:root`, nicht `@theme`: Tailwind v4 kennt kein `@theme` innerhalb einer
-   Medienabfrage. Es zieht die Deklarationen in den einen `:root`-Block hoch
-   und wirft die Bedingung weg — der dunkle Block ueberschrieb damit den hellen,
-   und die Anwendung lief in jeder Einstellung dunkel, ohne dass irgendwo eine
-   Medienabfrage uebrig blieb. Die Hilfsklassen loesen ohnehin ueber
-   `var(--color-paper)` auf, also genuegt es, die Eigenschaften zu ueberschreiben. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper: oklch(0.17 0.008 285);
-    --color-card: oklch(0.21 0.008 285);
-    --color-ink: oklch(0.92 0.006 85);
-    --color-soft: oklch(0.65 0.008 85);
-    --color-rule: oklch(0.30 0.008 285);
-    --color-hair: oklch(0.25 0.008 285);
+   Die Farben stehen jetzt **einmal**: `light-dark()` traegt beide Werte, und
+   welcher gilt, entscheidet `color-scheme`. Vorher stand die dunkle Palette in
+   einem zweiten Block unter `@media (prefers-color-scheme: dark)` — dieselben
+   dreizehn Namen ein zweites Mal, und ein Knopf haette sie nie uebersteuern
+   koennen: eine Medienabfrage laesst sich nicht wegklicken.
 
-    --color-accent: oklch(0.75 0.06 185);
-    --color-accent-bg: oklch(0.27 0.03 185);
-    --color-amber: oklch(0.76 0.08 80);
-    --color-amber-bg: oklch(0.27 0.03 80);
+   `color-scheme` tut dabei mehr, als die Funktion aufzuloesen: es faerbt auch,
+   was der Browser selbst zeichnet — Auswahlfelder, Bildlaufleisten, den
+   Datumswaehler. Die drei Zustaende sind damit drei Zeilen.
 
-    --color-danger: oklch(0.72 0.09 25);
-    --color-gold: oklch(0.78 0.10 85);
+   Die Voreinstellung bleibt "dem System folgen": ohne Attribut steht
+   `light dark` da, und das Telefon schaltet abends weiter von selbst um.
 
-    --shadow-sheet: 0 1px 2px oklch(0 0 0 / 0.5), 0 10px 30px -14px oklch(0 0 0 / 0.8);
-  }
+   `light-dark()` setzt Chrome/Edge 123, Safari 17.5 und Firefox 120 voraus
+   (alle Fruehjahr 2024). Ein aelterer Browser bekaeme die hellen Werte und
+   eine lesbare Seite — keinen Ausfall. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @layer base {
@@ -319,19 +315,11 @@
   opacity: 0.18;
 }
 
-/* Der Schatten laesst sich nicht ueber eine Eigenschaft tauschen: Tailwind
+/* Der Schatten brauchte hier frueher einen eigenen dunklen Block: Tailwind
    loest `--shadow-*` beim Bauen auf und schreibt den Wert fest in
-   `.shadow-sheet`; `--shadow-sheet` selbst steht am Ende gar nicht im
-   Stylesheet. Der dunkle Wert wird deshalb ausgeschrieben — ausserhalb jeder
-   Ebene, wie der Rahmen oben, sonst verliert er gegen `utilities`. Die Form
-   mit `var(--tw-shadow-color, ...)` ist die, die Tailwind selbst erzeugt,
-   damit `shadow-<farbe>` weiter funktioniert. */
-@media (prefers-color-scheme: dark) {
-  .shadow-sheet {
-    --tw-shadow: 0 1px 2px var(--tw-shadow-color, oklch(0 0 0 / 0.5)),
-                 0 10px 30px -14px var(--tw-shadow-color, oklch(0 0 0 / 0.8));
-  }
-}
+   `.shadow-sheet`, sodass ein Tausch ueber die Eigenschaft nicht ankam. Seit
+   die beiden Farben als `light-dark()` in `--shadow-sheet` stehen, reist der
+   Tausch in der geschriebenen Regel mit, und der Block hier entfaellt (#19). */
 
 /* Ein Fokusring fuer alles, was Fokus bekommen kann. Vorher gab es genau eine
    Regel dafuer und sechs Eingabefelder mit `focus:border-accent`; Knoepfe,
