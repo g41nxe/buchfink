@@ -191,9 +191,14 @@ def reject_all(store: Store, book_id: int, source: str, now) -> None:
     if not urls and row.url:
         # Zeilen aus der Zeit vor der Kandidatenliste tragen nur den Sieger.
         urls = [row.url]
-    store.reject_candidates(book_id, source, urls, now=now)
+    store.reject_candidates(book_id, source, urls)
 
 
 def restore(store: Store, book_id: int, source: str, now) -> None:
-    """Eine Ablehnung zurücknehmen."""
-    store.restore_candidates(book_id, source, now=now)
+    """Eine Ablehnung zurücknehmen.
+
+    ``now`` bleibt in der Signatur, weil alle Entscheidungen dieser Seite
+    denselben Zeitpunkt hereinreichen — gebraucht wird er hier nicht mehr
+    (#39).
+    """
+    store.restore_candidates(book_id, source)

@@ -104,7 +104,7 @@ def test_none_of_them_rejects_the_whole_group(client: TestClient, db: Store) -> 
 def test_a_rejection_can_be_taken_back(client: TestClient, db: Store) -> None:
     """Ein Irrtum beim Wegklicken darf nicht dauerhaft sein (ADR 18)."""
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
-    db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"], now=NOW)
+    db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"])
 
     client.post(
         f"/watchlist/{buch_id}/zuordnen",
@@ -119,8 +119,8 @@ def test_a_rejection_can_be_taken_back(client: TestClient, db: Store) -> None:
 def test_rejecting_twice_records_it_once(db: Store) -> None:
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
 
-    db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"], now=NOW)
-    db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"], now=NOW)
+    db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"])
+    db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"])
 
     zeile = db.get_book_source(buch_id, "beam")
     assert json.loads(zeile.details)["rejected"] == ["https://beam.invalid/1"]

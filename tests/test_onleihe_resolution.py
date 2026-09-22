@@ -192,6 +192,53 @@ def test_a_stale_miss_gets_another_chance(context: RunContext) -> None:
     assert len(onleihe.client.requests) == 2  # type: ignore[attr-defined]
 
 
+def test_the_stored_candidates_carry_their_cover(context: RunContext) -> None:
+    """Die Naht von der Aufloesung bis in die Zeile (#39).
+
+    Die Auswahl bei einer unklaren Zuordnung zeigt Bilder (Ticket 41). Ob die
+    Adresse dort ankommt, pruefte bisher niemand: die Tests hoerten am Parser
+    auf und setzten erst bei handgeschriebenem JSON wieder an. Als spaeter
+    Kandidaten ohne Bild auffielen, war deshalb nicht zu sagen, ob der Weg
+    kaputt ist oder die Zeilen nur aelter sind als die Funktion.
+    """
+    import json
+
+    onleihe = source(fixture("search-hits.html"))
+    entry = WatchlistEntry(title="Die sieben Schwestern", author="Lucinda Riley")
+
+    onleihe.linked_entry(entry, context)
+
+    zeile = context.store.get_book_source(context.book_for(entry), "onleihe")
+    kandidaten = json.loads(zeile.details or "{}").get("candidates") or []
+    assert kandidaten, "die Aufloesung hat keine Kandidaten festgehalten"
+    assert all(k["cover_url"] for k in kandidaten)
+
+
+def test_rejecting_candidates_does_not_move_the_retry_window(context: RunContext) -> None:
+    """Ein Klick der Leserin verschiebt keinen Zeitpunkt, der die Aufloesung
+    meint (#39).
+
+    Bis hierher setzte jedes "Nichts passt" ``resolved_at`` auf jetzt — und
+    damit die naechste Suche um weitere sieben Tage nach hinten. Gerade dann
+    also, wenn die bisherigen Treffer nachweislich falsch waren.
+    """
+    onleihe = source(fixture("search-no-hits.html"))
+    entry = WatchlistEntry(title="Project Hail Mary", author="Andy Weir")
+    onleihe.linked_entry(entry, context)
+
+    # Drei Tage spaeter lehnt die Leserin ab, was ihr vorgelegt wurde.
+    context.store.reject_candidates(
+        context.book_for(entry), "onleihe", ["https://example.invalid/1"]
+    )
+
+    # Sieben Tage nach der *Aufloesung* wird wieder gesucht, nicht sieben Tage
+    # nach der Ablehnung.
+    context.now = NOW + RESOLUTION_RETRY_AFTER + timedelta(seconds=1)
+    onleihe.linked_entry(entry, context)
+
+    assert len(onleihe.client.requests) == 2  # type: ignore[attr-defined]
+
+
 def test_editing_the_entry_forces_a_fresh_lookup(context: RunContext) -> None:
     """Resolutions are keyed on title+author, so correcting either re-resolves."""
     onleihe = source(fixture("search-no-hits.html"))

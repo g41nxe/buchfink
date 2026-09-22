@@ -1328,15 +1328,19 @@ class Store:
                 session.expunge(row)
             return rows
 
-    def reject_candidates(
-        self, book_id: int, source: str, urls: Iterable[str], *, now: datetime
-    ) -> None:
+    def reject_candidates(self, book_id: int, source: str, urls: Iterable[str]) -> None:
         """Alle gezeigten Kandidaten ablehnen — „keiner davon" (Ticket 41).
 
         Festgehalten werden die **Adressen**, nicht bloss die Tatsache: dieselben
         Kandidaten werden nicht noch einmal vorgelegt, ein **neuer** schon.
         Einen einzelnen abzulehnen gibt es nicht mehr — waehlt man den
         richtigen, sind die anderen ohnehin erledigt.
+
+        ``resolved_at`` bleibt unberuehrt (#39): die Spalte sagt, wann zuletzt
+        *gesucht* wurde, und daran haengt das Wiederholfenster von sieben
+        Tagen. Sie hier auf jetzt zu setzen schob jede Ablehnung die naechste
+        Suche um eine weitere Woche — ausgerechnet in dem Fall, in dem die
+        bisherigen Treffer nachweislich falsch waren.
         """
         with self.session() as session:
             row = session.get(BookSourceRow, (book_id, source))
@@ -1349,10 +1353,9 @@ class Store:
                     abgelehnt.append(url)
             details['rejected'] = abgelehnt
             row.details = json.dumps(details, ensure_ascii=False)
-            row.resolved_at = now
             session.commit()
 
-    def restore_candidates(self, book_id: int, source: str, *, now: datetime) -> None:
+    def restore_candidates(self, book_id: int, source: str) -> None:
         """Eine Ablehnung zuruecknehmen — ein Irrtum beim Wegklicken darf nicht
         dauerhaft sein (ADR 18)."""
         with self.session() as session:
@@ -1362,32 +1365,6 @@ class Store:
             details = json.loads(row.details or '{}')
             details['rejected'] = []
             row.details = json.dumps(details, ensure_ascii=False)
-            row.resolved_at = now
-            session.commit()
-
-    def reject_candidate(
-        self, book_id: int, source: str, url: str, *, now: datetime, undo: bool = False
-    ) -> None:
-        """Einen Kandidaten ablehnen — oder die Ablehnung zuruecknehmen.
-
-        Festgehalten wird die Adresse, nicht bloss die Tatsache: derselbe
-        Kandidat wird nicht noch einmal vorgelegt, ein **neuer** schon. Und
-        umkehrbar, weil ein Irrtum beim Wegklicken sonst dauerhaft waere
-        (ADR 18, Ticket 41).
-        """
-        with self.session() as session:
-            row = session.get(BookSourceRow, (book_id, source))
-            if row is None:
-                return
-            details = json.loads(row.details or "{}")
-            abgelehnt = list(details.get("rejected") or [])
-            if undo:
-                abgelehnt = [eintrag for eintrag in abgelehnt if eintrag != url]
-            elif url not in abgelehnt:
-                abgelehnt.append(url)
-            details["rejected"] = abgelehnt
-            row.details = json.dumps(details, ensure_ascii=False)
-            row.resolved_at = now
             session.commit()
 
     def put_book_source(
