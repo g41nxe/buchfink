@@ -68,8 +68,9 @@ uv sync
 mkdir -p data && cp examples/*.yaml data/
 ```
 
-`data/profile.yaml` und `data/watchlist.yaml` anpassen, dann die Datenbank
-füllen und einen ersten Lauf fahren:
+`data/settings.yaml` (Quellen, Schwellwerte), `data/seed.yaml` (Autor:innen
+und Themen) und `data/watchlist.yaml` anpassen, dann die Datenbank füllen und
+einen ersten Lauf fahren:
 
 ```bash
 uv run python -m ebook_watchlist.run seed

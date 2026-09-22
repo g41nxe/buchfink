@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from ebook_watchlist.config import ConfigError, Settings, load_settings
+from ebook_watchlist.config import ConfigError, Settings, load_seed, load_settings
 from ebook_watchlist.run import (
     EXIT_OK,
     EXIT_SOURCE_FAILURE,
@@ -37,7 +37,7 @@ sources:
 
 @pytest.fixture
 def two_sources(data_dir: Path) -> Path:
-    (data_dir / "profile.yaml").write_text(textwrap.dedent(TWO_SOURCES).lstrip(), encoding="utf-8")
+    (data_dir / "settings.yaml").write_text(textwrap.dedent(TWO_SOURCES).lstrip(), encoding="utf-8")
     (data_dir / "broken.yaml").write_text("not: a list\n", encoding="utf-8")
     return data_dir
 
@@ -168,38 +168,36 @@ def test_probes_can_be_skipped(two_sources: Path, capsys: pytest.CaptureFixture[
 
 
 def test_a_plain_list_of_authors_is_all_core(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
-        "slug: t\nname: T\nreference_authors: [A, B]\nsources: {fake: {fixture: f.yaml}}\n",
-        encoding="utf-8",
-    )
-    settings = load_settings()
-    assert settings.reference_authors == ["A", "B"]
-    assert settings.extended_authors == []
+    """Die Autor:innen stehen im Saatgut, nicht in den Einstellungen (#36)."""
+    (data_dir / "seed.yaml").write_text("reference_authors: [A, B]\n", encoding="utf-8")
+
+    seed = load_seed()
+
+    assert seed.reference_authors == ["A", "B"]
+    assert seed.extended_authors == []
 
 
 def test_authors_can_be_split_into_core_and_extended(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
-        "slug: t\nname: T\nreference_authors:\n  core: [A]\n  extended: [B]\n"
-        "extended_sweep_weekday: 0\nsources: {fake: {fixture: f.yaml}}\n",
-        encoding="utf-8",
+    (data_dir / "seed.yaml").write_text(
+        "reference_authors:\n  core: [A]\n  extended: [B]\n", encoding="utf-8"
     )
-    settings = load_settings()
-    assert settings.reference_authors == ["A"]
-    assert settings.extended_authors == ["B"]
-    assert settings.extended_sweep_weekday == 0
+
+    seed = load_seed()
+
+    assert seed.reference_authors == ["A"]
+    assert seed.extended_authors == ["B"]
 
 
 def test_an_unknown_author_group_is_rejected(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
-        "slug: t\nname: T\nreference_authors:\n  kern: [A]\nsources: {fake: {fixture: f.yaml}}\n",
-        encoding="utf-8",
+    (data_dir / "seed.yaml").write_text(
+        "reference_authors:\n  kern: [A]\n", encoding="utf-8"
     )
     with pytest.raises(ConfigError, match="unknown key"):
-        load_settings()
+        load_seed()
 
 
 def test_an_impossible_weekday_is_rejected(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nextended_sweep_weekday: 9\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )

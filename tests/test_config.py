@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from ebook_watchlist.config import ConfigError, load_settings, load_watchlist
+from ebook_watchlist.config import (
+    ConfigError,
+    load_seed,
+    load_settings,
+    load_watchlist,
+)
 
 
 def test_loads_profile_with_defaults(data_dir: Path) -> None:
@@ -25,7 +30,7 @@ def test_loads_watchlist(data_dir: Path) -> None:
 
 def test_missing_profile_fails_loudly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("EBW_DATA_DIR", str(tmp_path))
-    with pytest.raises(ConfigError, match="profile.yaml not found"):
+    with pytest.raises(ConfigError, match="settings.yaml not found"):
         load_settings()
 
 
@@ -36,19 +41,19 @@ def test_empty_watchlist_file_fails_loudly(data_dir: Path) -> None:
 
 
 def test_broken_yaml_fails_loudly(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text("slug: [unclosed", encoding="utf-8")
+    (data_dir / "settings.yaml").write_text("slug: [unclosed", encoding="utf-8")
     with pytest.raises(ConfigError, match="not valid YAML"):
         load_settings()
 
 
 def test_missing_required_field_fails_loudly(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text("name: Ohne Slug\n", encoding="utf-8")
+    (data_dir / "settings.yaml").write_text("name: Ohne Slug\n", encoding="utf-8")
     with pytest.raises(ConfigError, match="'slug'"):
         load_settings()
 
 
 def test_inverted_deal_thresholds_rejected(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nstrong_deal_max_cents: 2000\ndeal_max_cents: 1000\n",
         encoding="utf-8",
     )
@@ -73,7 +78,7 @@ def test_shipped_examples_load(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_a_zero_discount_threshold_is_allowed(data_dir: Path) -> None:
     """"Any drop inside the band counts" is a real setting, not a mistake."""
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nmin_discount_pct: 0\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
@@ -82,7 +87,7 @@ def test_a_zero_discount_threshold_is_allowed(data_dir: Path) -> None:
 
 def test_a_discount_threshold_of_a_hundred_percent_is_rejected(data_dir: Path) -> None:
     """Nothing can ever be 100% below its old price."""
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nmin_discount_pct: 100\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
@@ -91,7 +96,7 @@ def test_a_discount_threshold_of_a_hundred_percent_is_rejected(data_dir: Path) -
 
 
 def test_the_price_ceilings_still_have_to_be_positive(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nstrong_deal_max_cents: 0\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
@@ -103,7 +108,7 @@ def test_the_rating_budget_is_configurable(data_dir: Path) -> None:
     """Wie viele Urteile ein Lauf einholt, entscheidet die Konfiguration —
     im Zweifel weniger (ADR 19, Ticket 20)."""
     assert load_settings().rating_budget == 40
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nrating_budget: 5\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
@@ -113,7 +118,7 @@ def test_the_rating_budget_is_configurable(data_dir: Path) -> None:
 def test_a_budget_of_zero_is_rejected(data_dir: Path) -> None:
     """Kein Budget heißt "kein Tor" — dafür lässt man den Schlüssel weg,
     statt eine Null zu konfigurieren, die wie eine Panne aussieht."""
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nrating_budget: 0\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
@@ -121,19 +126,46 @@ def test_a_budget_of_zero_is_rejected(data_dir: Path) -> None:
         load_settings()
 
 
-def test_liked_books_are_kept_even_though_nothing_reads_them_yet(data_dir: Path) -> None:
-    """Dormant like no_gos: the seed for judging whether a discovered title fits
-    the reader, and the list only gets sharper the longer it is kept."""
-    (data_dir / "profile.yaml").write_text(
-        "slug: t\nname: T\nliked_books:\n  - Cry Baby - Gillian Flynn\n"
-        "sources: {fake: {fixture: f.yaml}}\n",
+def test_the_seed_carries_the_book_lists(data_dir: Path) -> None:
+    """Rohstoff fuer das Urteil darueber, ob ein *gefundener* Titel zur Leserin
+    passt und nicht bloss zu ihrem Regal (ADR 13) — und seit #36 getrennt von
+    den Einstellungen, weil es nach dem Import nicht mehr gilt."""
+    (data_dir / "seed.yaml").write_text(
+        "liked_books:\n  - Cry Baby - Gillian Flynn\n", encoding="utf-8"
+    )
+    assert load_seed().liked_books == ["Cry Baby - Gillian Flynn"]
+
+
+def test_a_seed_key_left_in_the_settings_is_an_error(data_dir: Path) -> None:
+    """Wer von Hand umzieht und eine Zeile vergisst, soll es sofort hoeren.
+
+    Sie zu uebergehen hiesse, genau den Zustand wiederherzustellen, den #36
+    beendet hat: ein Feld, das dasteht, gelesen aussieht und nichts tut.
+    """
+    (data_dir / "settings.yaml").write_text(
+        "slug: t\nname: T\nreference_authors: [A]\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
-    assert load_settings().liked_books == ["Cry Baby - Gillian Flynn"]
+    with pytest.raises(ConfigError, match="gehoert nach seed.yaml"):
+        load_settings()
 
 
-def test_no_liked_books_is_simply_an_empty_list(data_dir: Path) -> None:
-    assert load_settings().liked_books == []
+def test_a_missing_seed_file_is_not_an_error(data_dir: Path) -> None:
+    """Nach dem Import braucht niemand sie mehr, und wer sie wegraeumt, hat
+    recht. Ein leerer Import meldet sich ohnehin selbst (``NotSeeded``)."""
+    (data_dir / "seed.yaml").unlink()
+
+    assert load_seed().is_empty
+
+
+def test_the_settings_do_not_carry_the_book_lists_any_more(data_dir: Path) -> None:
+    """Sie standen dort neben `rating_budget` und sahen aus wie Einstellungen,
+    obwohl `configuration.load` sie bei jedem Lauf leerte (#36)."""
+    settings = load_settings()
+
+    assert not hasattr(settings, "liked_books")
+    assert not hasattr(settings, "disliked_books")
+    assert not hasattr(settings, "no_gos")
 
 
 def test_the_cadence_comes_from_the_profile(data_dir: Path) -> None:
@@ -141,7 +173,7 @@ def test_the_cadence_comes_from_the_profile(data_dir: Path) -> None:
     Journal weiss, wann zuletzt gelaufen wurde, die Kadenz sagt, ab wann
     wieder."""
     assert load_settings().run_every_hours == 20
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nrun_every_hours: 6\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",
     )
@@ -156,7 +188,7 @@ def test_german_is_the_default_language(data_dir: Path) -> None:
 
 
 def test_the_languages_can_be_set(data_dir: Path) -> None:
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nlanguages: [ger, eng]\n", encoding="utf-8"
     )
     assert load_settings().languages == ("ger", "eng")
@@ -165,7 +197,7 @@ def test_the_languages_can_be_set(data_dir: Path) -> None:
 def test_a_language_is_a_dnb_code(data_dir: Path) -> None:
     """Die DNB liefert ISO 639-2 — ``ger``, nicht ``de`` und nicht "Deutsch".
     Ein falscher Code filterte sonst still jeden Fund heraus."""
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nlanguages: [de]\n", encoding="utf-8"
     )
     with pytest.raises(ConfigError, match="languages"):
@@ -190,7 +222,7 @@ def test_two_sources_with_the_same_name_fail_loudly(data_dir: Path) -> None:
     """Eine Kollision, die niemand bemerkt, ist die teuerste (#14): zwei Zeilen
     "Bibliothek" in den Quellen, und welche welche ist, steht nirgends. Der
     Fehler steckt in der Datei, also faellt er beim Lesen auf."""
-    (data_dir / "profile.yaml").write_text(GLEICHNAMIG, encoding="utf-8")
+    (data_dir / "settings.yaml").write_text(GLEICHNAMIG, encoding="utf-8")
 
     with pytest.raises(ConfigError, match="Bibliothek"):
         load_settings()
@@ -198,7 +230,7 @@ def test_two_sources_with_the_same_name_fail_loudly(data_dir: Path) -> None:
 
 def test_a_second_source_with_its_own_name_is_fine(data_dir: Path) -> None:
     """Wer der zweiten einen Namen gibt, loest den Widerspruch auf."""
-    (data_dir / "profile.yaml").write_text(
+    (data_dir / "settings.yaml").write_text(
         GLEICHNAMIG.replace("  hamburg:", "  hamburg:\n    name: Buecherhallen"),
         encoding="utf-8",
     )

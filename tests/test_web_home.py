@@ -109,7 +109,7 @@ def test_the_empty_state_greets_with_the_hero(client: TestClient) -> None:
 def test_a_broken_configuration_is_reported_on_the_start_page_too(
     client: TestClient, data_dir: Path
 ) -> None:
-    (data_dir / "profile.yaml").unlink()
+    (data_dir / "settings.yaml").unlink()
 
     response = client.get("/")
 

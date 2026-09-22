@@ -9,11 +9,24 @@ Hinter jedem Namen steht deshalb sein deutsches Wort — genau eines
 ### Profile
 *deutsch: Profil*
 
-A reader's taste definition: Reference Authors (a whitelist), Genre Categories,
-deal thresholds (`strong_deal_max_cents`, `deal_max_cents`, `min_discount_pct`),
-and no-gos (dormant in v1). A first-class, keyed entity. v1 runs with a single
-profile, but nothing hard-codes that — the data model and code support multiple
-profiles.
+A reader, as a keyed entity: everything in the database hangs off one `slug`.
+v1 runs with a single profile, but nothing hard-codes that.
+
+Its content lives in three places, and they carry three different words (#36).
+Calling all three "the profile" is what let one file hold settings that take
+effect at once beside fields that had stopped meaning anything:
+
+- **Settings** (*Einstellungen*) — `data/settings.yaml`, below;
+- **Seed** (*Saatgut*) — `data/seed.yaml`, see *Seed file*;
+- **Reading Profile** (*Leseprofil*) — `docs/leseprofil.yaml`, see below.
+
+### Settings
+*deutsch: Einstellungen*
+
+What the run needs: sources, cadence, budgets, deal thresholds, languages. Read
+on every request, so a change takes effect at once. It holds no authors, no
+themes and no book lists — what of those applies lives in the database, and
+what seeded it in `seed.yaml`.
 
 ### Watchlist
 *deutsch: Watchlist*
@@ -156,7 +169,8 @@ Genre Categories — a low-confidence suggestion).
 ### Genre Category
 *deutsch: Thema*
 
-A Shop Source category path listed in `profile.yaml`'s `genre_categories`. v1
+A Shop Source category path — an Interest in the database, seeded once from
+`seed.yaml`'s `genre_categories` (#36). v1
 genre discovery trusts the shop's own shelving: new arrivals in this small
 curated set are surfaced as suggestions. Dismissed suggestions
 (`source_item_id`) never resurface.
@@ -394,7 +408,8 @@ wrong:
 | --- | --- |
 | `watchlist.yaml` | **Seed.** Imported once into Book Relations of kind `watching`; the database is the truth afterwards and edits happen through the UI. |
 | `owned.yaml`, `dismissed.yaml` | **Seed.** Imported once into Relations and Ratings. |
-| `profile.yaml` | **Live configuration, not seed.** There is no profile table; `load_profile()` reads the file on every request. Thresholds, the rating model, the sweep weekday, Reference Authors and Genre Categories all come from it at runtime. Its Interests are *additionally* seeded into the `interest` table, so those two exist in both places. |
+| `settings.yaml` | **Live configuration, not seed.** There is no settings table; `load_settings()` reads the file on every request. Thresholds, the rating model, the sweep weekday and the sources all come from it at runtime. |
+| `seed.yaml` | **Seed.** Imported once into Interests and Relations. Until #36 these fields sat in `profile.yaml` next to the live ones and looked exactly like them, although `configuration.load` overwrote them from the database on every run. |
 
 Separate from all of these, and not in the data directory at all: the Reading
 Profile and the Rating Scheme live under `docs/` and are read relative to the

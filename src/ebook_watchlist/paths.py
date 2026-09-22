@@ -18,8 +18,19 @@ def data_dir() -> Path:
     return root.resolve()
 
 
-def profile_path() -> Path:
-    return data_dir() / "profile.yaml"
+def settings_path() -> Path:
+    """Was der Betrieb braucht: Quellen, Kadenz, Budgets, Schwellwerte (#36)."""
+    return data_dir() / "settings.yaml"
+
+
+def seed_path() -> Path:
+    """Das Saatgut — gelesen allein von ``run seed`` (#36).
+
+    Getrennt von den Einstellungen, weil es nach dem Import nicht mehr gilt:
+    was dann zaehlt, steht in der Datenbank. Eine Datei, die man bearbeiten
+    kann, ohne dass etwas geschieht, soll wenigstens so heissen.
+    """
+    return data_dir() / "seed.yaml"
 
 
 def watchlist_path() -> Path:

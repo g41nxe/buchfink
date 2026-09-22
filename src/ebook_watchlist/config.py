@@ -1,4 +1,4 @@
-"""Phase 1 configuration: ``profile.yaml`` and ``watchlist.yaml`` are the source
+"""Phase 1 configuration: ``settings.yaml`` and ``watchlist.yaml`` are the source
 of truth (ADR 10). Anything missing or malformed fails loudly — a silently empty
 watchlist looks exactly like "no deals today"."""
 
@@ -19,6 +19,18 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class Settings:
+    """Was der Betrieb braucht — der Inhalt von ``settings.yaml`` (#36).
+
+    Drei Felder stehen hier, ohne aus der Datei zu kommen:
+    ``reference_authors``, ``extended_authors`` und ``genre_categories``.
+    :func:`configuration.load` fuellt sie aus der Datenbank, weil dort steht,
+    was gilt (ADR 18). Die Datei nannte sie bis #36 ebenfalls — und das war der
+    Schaden: wer sie dort aenderte, aenderte nichts, und man sah es den Feldern
+    nicht an, weil sie neben `rating_budget` und `sources` standen.
+
+    Was einmalig zur Erstbefuellung dient, steht in :class:`Seed`.
+    """
+
     slug: str
     name: str
     strong_deal_max_cents: int = 500
@@ -55,24 +67,17 @@ class Settings:
     #: Zwanzig und nicht vierundzwanzig: sonst schöbe sich der tägliche Lauf um
     #: jede angebrochene Minute nach hinten, bis er einen Tag überspringt.
     run_every_hours: int = 20
-    #: Swept every Run.
+    #: Bei jedem Lauf durchgesehen. Aus der **Datenbank**, nicht aus der Datei
+    #: (#36): ``settings.yaml`` nennt keine Autor:innen, ``seed.yaml`` nur die
+    #: zur Erstbefuellung.
     reference_authors: list[str] = field(default_factory=list)
-    #: Swept once a week — the long tail, where a missed day costs nothing.
+    #: Einmal die Woche — der lange Schwanz, wo ein versaeumter Tag nichts
+    #: kostet. Ebenfalls aus der Datenbank.
     extended_authors: list[str] = field(default_factory=list)
     #: Monday is 0. The day the extended list is swept on.
     extended_sweep_weekday: int = 6
+    #: Ebenfalls aus der Datenbank (#36).
     genre_categories: list[str] = field(default_factory=list)
-    no_gos: list[str] = field(default_factory=list)
-    #: Books the reader named as good. Dormant like ``no_gos`` — nothing reads
-    #: these yet. They are the raw material for judging whether a *discovered*
-    #: title fits the reader rather than merely their shelves (ADR 13), and the
-    #: profile only sharpens as the list grows, so they are worth keeping from
-    #: the first day.
-    liked_books: list[str] = field(default_factory=list)
-    #: Die Gegenprobe. Ein Profil, das nur aus Zustimmung gebaut ist, weiß
-    #: nicht, wo seine Grenze verläuft — am wertvollsten ist hier ein Buch, das
-    #: auf dem Papier gepasst hätte (ADR 17). Ebenfalls dormant.
-    disliked_books: list[str] = field(default_factory=list)
     #: In welchen Sprachen ein Fund in Frage kommt, als Code der DNB (ISO
     #: 639-2: ``ger``, ``eng``, ``fre``). Ein Fund, den die DNB ausdruecklich
     #: in einer anderen Sprache fuehrt, kommt nicht in den Stapel und kostet
@@ -88,6 +93,69 @@ class Settings:
             return list(self.reference_authors)
         extra = [a for a in self.extended_authors if a not in self.reference_authors]
         return [*self.reference_authors, *extra]
+
+
+@dataclass(frozen=True, slots=True)
+class Seed:
+    """Das Saatgut — der Inhalt von ``seed.yaml`` (#36).
+
+    Was hier steht, gilt **einmal**: :func:`seed.sow` traegt es in die
+    Datenbank, und von da an ist die Datenbank die Wahrheit (ADR 18). Wer die
+    Datei danach aendert, aendert nichts — deshalb liegt sie getrennt von den
+    Einstellungen und heisst, was sie ist.
+
+    Genau das war der Schaden, um den es in #36 ging: dieselben Felder standen
+    in ``profile.yaml`` neben `rating_budget` und `sources` und sahen aus, als
+    wuerden sie gelesen.
+    """
+
+    reference_authors: list[str] = field(default_factory=list)
+    extended_authors: list[str] = field(default_factory=list)
+    genre_categories: list[str] = field(default_factory=list)
+    #: Buecher, die gefallen haben. Rohstoff fuer das Urteil darueber, ob ein
+    #: *gefundener* Titel zur Leserin passt und nicht bloss zu ihrem Regal
+    #: (ADR 13) — sie werden beim Import zu Beziehungen.
+    liked_books: list[str] = field(default_factory=list)
+    #: Die Gegenprobe. Ein Profil, das nur aus Zustimmung gebaut ist, weiss
+    #: nicht, wo seine Grenze verlaeuft — am wertvollsten ist hier ein Buch,
+    #: das auf dem Papier gepasst haette (ADR 17).
+    disliked_books: list[str] = field(default_factory=list)
+
+    @property
+    def is_empty(self) -> bool:
+        return not any(
+            (
+                self.reference_authors,
+                self.extended_authors,
+                self.genre_categories,
+                self.liked_books,
+                self.disliked_books,
+            )
+        )
+
+
+def load_seed(path: Path | None = None) -> Seed:
+    """Das Saatgut, wenn es eines gibt.
+
+    Eine fehlende Datei ist kein Fehler: nach dem Import braucht niemand sie
+    mehr, und wer sie wegraeumt, hat recht. Ein *leerer* Import meldet sich
+    ohnehin selbst (``NotSeeded``).
+    """
+    target = path or paths.seed_path()
+    if not target.exists():
+        return Seed()
+    data = _load_yaml(target, "seed.yaml")
+    if not isinstance(data, dict):
+        raise ConfigError(f"seed.yaml at {target} must be a mapping")
+    what = "seed.yaml"
+    core_authors, extended_authors = _reference_authors(data, what)
+    return Seed(
+        reference_authors=core_authors,
+        extended_authors=extended_authors,
+        genre_categories=_str_list(data, "genre_categories", what),
+        liked_books=_str_list(data, "liked_books", what),
+        disliked_books=_str_list(data, "disliked_books", what),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,13 +285,18 @@ def _reference_authors(data: dict[str, Any], what: str) -> tuple[list[str], list
 
 
 def load_settings(path: Path | None = None) -> Settings:
-    path = path or paths.profile_path()
-    data = _load_yaml(path, "profile.yaml")
-    if not isinstance(data, dict):
-        raise ConfigError(f"profile.yaml at {path} must be a mapping")
+    """Was der Betrieb braucht, aus ``settings.yaml`` (#36).
 
-    what = "profile.yaml"
-    core_authors, extended_authors = _reference_authors(data, what)
+    Autor:innen, Themen und Buchlisten stehen hier **nicht**: was davon gilt,
+    steht in der Datenbank, und was einmalig hineinging, in ``seed.yaml``.
+    """
+    path = path or paths.settings_path()
+    data = _load_yaml(path, "settings.yaml")
+    if not isinstance(data, dict):
+        raise ConfigError(f"settings.yaml at {path} must be a mapping")
+
+    what = "settings.yaml"
+    _reject_seed_keys(data)
     weekday = data.get("extended_sweep_weekday", 6)
     if not isinstance(weekday, int) or isinstance(weekday, bool) or not 0 <= weekday <= 6:
         raise ConfigError(
@@ -243,26 +316,46 @@ def load_settings(path: Path | None = None) -> Settings:
         home_offers=_positive_int(data, "home_offers", 5, what),
         home_suggestions=_positive_int(data, "home_suggestions", 3, what),
         run_every_hours=_positive_int(data, "run_every_hours", 20, what),
-        reference_authors=core_authors,
-        extended_authors=extended_authors,
         extended_sweep_weekday=weekday,
-        genre_categories=_str_list(data, "genre_categories", what),
-        no_gos=_str_list(data, "no_gos", what),
-        liked_books=_str_list(data, "liked_books", what),
-        disliked_books=_str_list(data, "disliked_books", what),
         languages=_languages(data, what),
         sources=data.get("sources") or {},
         contact=str(data["contact"]) if data.get("contact") else None,
     )
     if settings.strong_deal_max_cents >= settings.deal_max_cents:
         raise ConfigError(
-            "profile.yaml: strong_deal_max_cents must be below deal_max_cents "
+            "settings.yaml: strong_deal_max_cents must be below deal_max_cents "
             f"({settings.strong_deal_max_cents} >= {settings.deal_max_cents})"
         )
     if not isinstance(settings.sources, dict):
-        raise ConfigError("profile.yaml: 'sources' must be a mapping of source name to options")
+        raise ConfigError("settings.yaml: 'sources' must be a mapping of source name to options")
     _check_source_names(settings)
     return settings
+
+
+#: Was in ``seed.yaml`` gehoert und frueher hier stand (#36).
+_SEED_KEYS = (
+    "reference_authors",
+    "extended_authors",
+    "genre_categories",
+    "liked_books",
+    "disliked_books",
+)
+
+
+def _reject_seed_keys(data: dict[str, Any]) -> None:
+    """Ein Saatgut-Schluessel in den Einstellungen ist ein Fehler, kein Rest.
+
+    Ihn zu uebergehen hiesse, genau den Zustand wiederherzustellen, den #36
+    beendet hat: ein Feld, das dasteht, gelesen aussieht und nichts tut. Wer
+    von Hand umzieht und eine Zeile vergisst, soll es beim naechsten Aufruf
+    hoeren statt in einem Monat zu bemerken, dass eine Autor:in fehlt.
+    """
+    uebrig = [name for name in _SEED_KEYS if name in data]
+    if uebrig:
+        raise ConfigError(
+            f"settings.yaml: {', '.join(uebrig)} gehoert nach seed.yaml — "
+            "was dort steht, gilt nur beim Import, und hier gilt es gar nicht"
+        )
 
 
 def _check_source_names(settings: Settings) -> None:
@@ -283,7 +376,7 @@ def _check_source_names(settings: Settings) -> None:
         beschriftung = registry.label(settings, name)
         if erster := gesehen.get(beschriftung):
             raise ConfigError(
-                f"profile.yaml: '{erster}' und '{name}' heissen beide "
+                f"settings.yaml: '{erster}' und '{name}' heissen beide "
                 f"\"{beschriftung}\" — gib einer von beiden ein eigenes 'name:'"
             )
         gesehen[beschriftung] = name

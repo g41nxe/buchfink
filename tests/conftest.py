@@ -10,12 +10,18 @@ import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
-PROFILE_YAML = """
+SETTINGS_YAML = """
 slug: test
 name: Testprofil
 sources:
   fake:
     fixture: fake-source.yaml
+"""
+
+# Leer, aber vorhanden: so sieht eine frische Installation aus. Wer
+# Interessen braucht, schreibt sie in seinem Test hinein (#36).
+SEED_YAML = """
+reference_authors: []
 """
 
 WATCHLIST_YAML = """
@@ -127,7 +133,8 @@ def unseeded_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     directory.mkdir()
     monkeypatch.setenv("EBW_DATA_DIR", str(directory))
     for name, body in (
-        ("profile.yaml", PROFILE_YAML),
+        ("settings.yaml", SETTINGS_YAML),
+        ("seed.yaml", SEED_YAML),
         ("watchlist.yaml", WATCHLIST_YAML),
         ("fake-source.yaml", FAKE_SOURCE_YAML),
     ):

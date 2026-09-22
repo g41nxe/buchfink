@@ -23,10 +23,14 @@ hatten Skill und Tor verschiedene Regeln bei derselben Sternskala.
    `docs/leseprofil.yaml` vollständig lesen. Nichts davon aus dem Gedächtnis
    rekonstruieren — die Dateien sind die Wahrheit und ändern sich.
 
-   Ergänzend `data/profile.yaml` lesen (Reference Authors, `liked_books`,
-   `no_gos`) und, falls vorhanden, `data/owned.yaml`. Diese Listen liegen lokal
-   und sind nicht im Repo; fehlen sie, wird ohne sie bewertet und das im
-   Ergebnis vermerkt.
+   Die Gegenanzeigen stehen in `docs/leseprofil.yaml` selbst, unter
+   `genres.passt_nicht` — nicht in einer zweiten Datei (ADR 32).
+
+   Ergänzend `data/seed.yaml` lesen (Reference Authors, `liked_books`) und,
+   falls vorhanden, `data/owned.yaml`. Diese Listen liegen lokal und sind nicht
+   im Repo; fehlen sie, wird ohne sie bewertet und das im Ergebnis vermerkt.
+   Sie sagen, womit die Datenbank einmal befüllt wurde — was heute gilt, steht
+   dort, nicht in der Datei.
 
 2. **Eingabeart bestimmen.**
    - **Einzelne Titel** (im Gespräch genannt): bewerten und im Chat antworten.
@@ -78,7 +82,7 @@ hatten Skill und Tor verschiedene Regeln bei derselben Sternskala.
   Watchlist, Watchlist Entry, Reference Author, Source, Observation, Digest.
 - **Profil und Schema werden nie angefasst.** Dieser Skill schreibt
   ausschließlich in die übergebene Buchliste — nie ins Leseprofil, nie ins
-  Bewertungsschema, nie in `data/profile.yaml`. Ein Messgerät, das sich selbst
+  Bewertungsschema, nie in `data/settings.yaml` oder `data/seed.yaml`. Ein Messgerät, das sich selbst
   kalibriert, misst nichts mehr. Änderungen am Profil gehören zu
   `leseprofil-schaerfen`.
 - **Persönliche Lesedaten bleiben in `data/`.** Nie nach `docs/` oder in einen

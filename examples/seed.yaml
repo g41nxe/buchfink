@@ -1,0 +1,21 @@
+# Copy to data/seed.yaml and edit.
+#
+# WAS HIER STEHT, GILT NUR EINMAL. `python -m ebook_watchlist.run seed` traegt
+# es in die Datenbank, und von da an ist die Datenbank die Wahrheit (ADR 18):
+# Autor:innen und Themen bearbeitest du danach auf der Profilseite, Buecher
+# ueber ihre Beziehungen. Diese Datei spaeter zu aendern, aendert nichts.
+
+# Either a plain list, or split into a list swept every run and a long tail
+# swept once a week.
+reference_authors:
+  core: []
+  extended: []
+
+# Shop category paths whose new arrivals are surfaced as suggestions (ticket 07).
+genre_categories: []
+
+# Buecher, die gefallen haben, und die Gegenprobe. Werden beim Import zu
+# Beziehungen — Rohstoff fuer das Urteil darueber, ob ein *gefundener* Titel
+# zur Leserin passt und nicht bloss zu ihrem Regal (ADR 13).
+liked_books: []
+disliked_books: []

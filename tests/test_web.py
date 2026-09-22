@@ -91,7 +91,7 @@ def test_a_missing_digest_is_a_404_not_a_crash(client: TestClient) -> None:
 def test_broken_configuration_is_reported_rather_than_a_stack_trace(
     client: TestClient, data_dir: Path
 ) -> None:
-    (data_dir / "profile.yaml").unlink()
+    (data_dir / "settings.yaml").unlink()
 
     response = client.get("/uebersicht")
 
@@ -174,12 +174,12 @@ def test_a_broken_configuration_is_a_page_not_a_traceback_on_post(
     client: TestClient, data_dir: Path
 ) -> None:
     """Die Ansichtsseiten fingen das je einzeln ab, die Formulare gar nicht."""
-    (data_dir / "profile.yaml").write_text("nicht: [eine, abbildung\n", encoding="utf-8")
+    (data_dir / "settings.yaml").write_text("nicht: [eine, abbildung\n", encoding="utf-8")
 
     response = client.post("/watchlist/add", data={"title": "Irgendwas"})
 
     assert response.status_code == 500
-    assert "profile.yaml" in response.text
+    assert "settings.yaml" in response.text
 
 
 # --- was die Gestaltung behauptet, und was pruefbar davon ist ---------------

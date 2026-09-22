@@ -62,7 +62,10 @@ selbst und misst nichts mehr.
    überarbeitet, schau mal drüber".
 
 5. **Schreiben.**
-   - Stufe 1 → `data/profile.yaml` (bleibt lokal, nichts davon ins Repo).
+   - Stufe 1 → `data/seed.yaml` (bleibt lokal, nichts davon ins Repo).
+     **Sag dabei, was das heißt:** die Datei ist Saatgut (ADR 32). Der Eintrag
+     hält die Beobachtung fest, wirkt aber erst bei einem erneuten `seed` —
+     was heute gilt, steht als Beziehung in der Datenbank.
    - Stufe 2 und 3 → `docs/leseprofil.yaml`, **Profilversion erhöhen**, und
      committen. Die Commit-Nachricht nennt das Buch, das die Änderung ausgelöst
      hat. In einem halben Jahr ist das der Unterschied zwischen „warum steht das

@@ -241,7 +241,7 @@ def test_a_run_that_never_got_off_the_ground_shows_why(
     Kindprozesses erhalten bleiben, sonst sähe der Klick aus, als wäre nichts
     passiert.
     """
-    (data_dir / "profile.yaml").unlink()
+    (data_dir / "settings.yaml").unlink()
     launcher = RunLauncher()
 
     launcher.start(store, "test")

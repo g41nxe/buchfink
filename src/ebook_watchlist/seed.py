@@ -26,7 +26,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .config import OwnedBook, Settings, WatchlistEntry
+from .config import OwnedBook, Seed, Settings, WatchlistEntry
 from .ratings import BY_CONVERSATION, book_subject
 from .relations import InterestKey, RelationKind
 from .store import Store
@@ -126,10 +126,18 @@ def _put_missing_relation(
     return True
 
 
-def seed(store: Store, settings: Settings, watchlist: list[WatchlistEntry],
-         *, owned: list[OwnedBook] | None = None,
-         now: datetime | None = None) -> SeedReport:
-    """Alles einlesen, was heute in YAML steht."""
+def sow(store: Store, settings: Settings, seed: Seed, watchlist: list[WatchlistEntry],
+        *, owned: list[OwnedBook] | None = None,
+        now: datetime | None = None) -> SeedReport:
+    """Alles einlesen, was heute in YAML steht.
+
+    ``settings`` steuert nur bei, *wessen* Profil gemeint ist; was eingesaet
+    wird, steht in ``seed`` (#36). Frueher kam beides aus derselben Datei, und
+    man sah den Feldern nicht an, welche davon nach dem Import noch gelten.
+
+    Heisst ``sow`` und nicht ``seed``, damit das Saatgut den kuerzeren Namen
+    behaelt — es ist das, worueber hier geredet wird.
+    """
     at = now or datetime.now()
     report = SeedReport()
     before = len(store.books())
@@ -161,8 +169,8 @@ def seed(store: Store, settings: Settings, watchlist: list[WatchlistEntry],
 
     # --- Gefallen und nicht gefallen: Freitext, also mit Vorbehalt ----------
     for kind, entries in (
-        (RelationKind.LIKED, settings.liked_books),
-        (RelationKind.DISLIKED, settings.disliked_books),
+        (RelationKind.LIKED, seed.liked_books),
+        (RelationKind.DISLIKED, seed.disliked_books),
     ):
         for entry in entries:
             book_id, note = _book_for_free_text(store, entry, at)
@@ -219,17 +227,17 @@ def seed(store: Store, settings: Settings, watchlist: list[WatchlistEntry],
     # in einen Import: ``ebw dismissals`` loest sie einmalig auf (Ticket 17).
 
     # --- Interessen: Autor:innen und Themen --------------------------------
-    for author in settings.reference_authors:
+    for author in seed.reference_authors:
         store.put_interest(settings.slug, str(InterestKey.AUTHOR), author, now=at, tier="core")
         report.interests += 1
-    for author in settings.extended_authors:
-        if author in settings.reference_authors:
+    for author in seed.extended_authors:
+        if author in seed.reference_authors:
             continue
         store.put_interest(
             settings.slug, str(InterestKey.AUTHOR), author, now=at, tier="extended"
         )
         report.interests += 1
-    for category in settings.genre_categories:
+    for category in seed.genre_categories:
         store.put_interest(settings.slug, str(InterestKey.THEMA), category, now=at, tier="core")
         report.interests += 1
 

@@ -43,13 +43,14 @@ Was dabei zu wissen ist:
   sie durch die Virtualisierungsschicht von Docker Desktop, wo die Sperren
   dokumentiert unzuverlässig sind. Das Volume ist bewusst `external`, damit ein
   versehentliches `docker compose down -v` die Datenbank nicht mitnimmt.
-- **Die vier YAML-Dateien kommen weiterhin aus `data/`**, schreibgeschützt
-  eingebunden — du bearbeitest sie mit deinem Editor. `profile.yaml` ist dabei
-  keine Saatgutdatei, sondern wird bei jeder Anfrage gelesen (`CONTEXT.md`).
+- **Die YAML-Dateien kommen weiterhin aus `data/`**, schreibgeschützt
+  eingebunden — du bearbeitest sie mit deinem Editor. `settings.yaml` ist dabei
+  keine Saatgutdatei, sondern wird bei jeder Anfrage gelesen; `seed.yaml`
+  dagegen gilt nur beim Import (ADR 32, `CONTEXT.md`).
 - **Der Lauf taktet sich selbst**: das Einstiegsskript stößt beim Start einen
   Lauf an und dann alle 24 Stunden. Keine feste Uhrzeit — ein Lauf vergleicht
   gegen die letzte Aufzeichnung, nie gegen „gestern".
-- **Die Kadenz steht im Profil, nicht im Wirt.** Ein Lauf mit `--trigger cron`
+- **Die Kadenz steht in den Einstellungen, nicht im Wirt.** Ein Lauf mit `--trigger cron`
   schaut selbst ins Journal und tut nichts, wenn der letzte keine
   `run_every_hours` Stunden her ist (Voreinstellung **20**); er sagt es und
   endet mit 0, denn zu eifrig ist kein Fehler. Der Wirt darf deshalb dumm sein

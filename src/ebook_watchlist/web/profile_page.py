@@ -96,7 +96,6 @@ class Overview:
     min_discount: int
     sweep_weekday: str
     last_sweep: datetime | None
-    no_gos: tuple[str, ...]
     leseprofil: str | None
     profile_version: int | None
     leseprofil_path: str
@@ -184,7 +183,6 @@ def build(store: Store, settings: Settings) -> Overview:
         min_discount=settings.min_discount_pct,
         sweep_weekday=_WEEKDAYS[settings.extended_sweep_weekday % 7],
         last_sweep=store.get_state(settings.slug, EXTENDED_SWEEP_KEY),
-        no_gos=tuple(settings.no_gos),
         leseprofil=leseprofil,
         profile_version=version,
         leseprofil_path=str(LESEPROFIL_PATH.name),

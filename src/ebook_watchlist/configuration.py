@@ -54,7 +54,7 @@ def load(store: Store, settings: Settings) -> Configured:
     """Die Konfiguration dieses Profils, aus der Datenbank.
 
     ``settings`` liefert nur, was dort nicht steht: Schwellwerte, Quellen,
-    Kontakt, Sweep-Tag.
+    Kontakt, Sweep-Tag — der Inhalt von ``settings.yaml`` (#36).
     """
     interests = store.interests(settings.slug)
     authors = {row.value: row for row in interests if row.key == InterestKey.AUTHOR}
@@ -91,16 +91,15 @@ def load(store: Store, settings: Settings) -> Configured:
             "einmalig 'python -m ebook_watchlist.run seed' aufrufen"
         )
 
+    # Die Buchlisten mussten hier frueher eigens geleert werden: sie standen
+    # als Freitext in derselben Datei wie die Schwellwerte und haetten sonst
+    # neben den Beziehungen weitergegolten. Seit #36 gibt es diese Felder am
+    # Typ nicht mehr — das Saatgut liegt getrennt und gilt nur beim Import.
     settings = replace(
         settings,
         reference_authors=core,
         extended_authors=extended,
         genre_categories=list(themen),
-        # Aus der Datenbank gelesene Buchlisten sind Beziehungen, keine
-        # Freitextlisten mehr. Die Felder bleiben leer, damit niemand aus
-        # Versehen gegen eine veraltete YAML-Kopie arbeitet.
-        liked_books=[],
-        disliked_books=[],
     )
     return Configured(
         settings=settings,

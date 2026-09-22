@@ -132,15 +132,6 @@
   </div>
 </dl>
 
-{% if view.no_gos %}
-{{ abschnitt("Gegenanzeigen", "ic-warn") }}
-<ul class="flex flex-wrap gap-2">
-  {% for no_go in view.no_gos %}
-  <li class="rounded border border-rule px-2 py-0.5 text-sm text-soft">{{ no_go }}</li>
-  {% endfor %}
-</ul>
-{% endif %}
-
 {# Zwei Dokumente, nicht eins (ADR 21): das Leseprofil sagt, wonach geurteilt
    wird, das Bewertungsschema wie. Nur das erste traegt eine Version. #}
 {{ abschnitt("Das Leseprofil", "ic-doc") }}

@@ -1,4 +1,8 @@
-# Copy to data/profile.yaml and edit.
+# Copy to data/settings.yaml and edit.
+#
+# Was der Betrieb braucht: Quellen, Kadenz, Budgets, Schwellwerte. Womit die
+# Datenbank einmalig befuellt wird, steht in seed.yaml; wonach geurteilt wird,
+# in docs/leseprofil.yaml (ADR 21).
 slug: default
 name: Meine Leseliste
 
@@ -34,26 +38,14 @@ run_every_hours: 20
 home_offers: 5
 home_suggestions: 3
 
-# Either a plain list, or split into a list swept every run and a long tail
-# swept once a week.
-reference_authors:
-  core: []
-  extended: []
+# Der Wochentag des breiteren Durchgangs.
 extended_sweep_weekday: 6  # 0 = Monday
-
-# Shop category paths whose new arrivals are surfaced as suggestions (ticket 07).
-genre_categories: []
 
 # Sprachen, in denen Funde in Frage kommen — Codes, wie die DNB sie liefert
 # (ISO 639-2): ger, eng, fre, ... Was die DNB ausdruecklich in einer anderen
 # fuehrt, kommt nicht in den Stapel und kostet kein Urteil. Unbekannt gilt
 # nie als fremd, und Watchlist-Titel sind ausgenommen.
 languages: [ger]
-
-# Dormant in v1.
-no_gos: []
-liked_books: []
-disliked_books: []
 
 # Appended to the outgoing User-Agent so a site operator can reach you.
 # Optional, and nothing personal is sent unless you fill it in yourself.

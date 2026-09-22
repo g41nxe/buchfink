@@ -25,6 +25,7 @@ from .config import (
     Settings,
     load_dismissals,
     load_owned,
+    load_seed,
     load_settings,
     load_watchlist,
 )
@@ -40,7 +41,7 @@ from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
 from .rating import DEFAULT_THRESHOLD, RatingUnavailable, build_rater, load_leseprofil
 from .render import render_html, render_text
-from .seed import seed
+from .seed import sow
 from .sources import build_sources
 from .sources.base import RunContext
 from .store import ENTRY_TRIGGER, Store
@@ -680,7 +681,12 @@ def _seed(settings, watchlist) -> int:
     zurück, was inzwischen woanders geändert wurde.
     """
     store = Store(paths.db_path())
-    report = seed(store, settings, watchlist, owned=load_owned())
+    saatgut = load_seed()
+    if saatgut.is_empty:
+        # Sonst stehen unten vier Nullen, und das sieht aus wie ein Fehler
+        # statt wie eine fehlende Datei (#36).
+        print(f"  seed.yaml nennt nichts ({paths.seed_path()}) — nur watchlist.yaml wird gelesen.")
+    report = sow(store, settings, saatgut, watchlist, owned=load_owned())
 
     print(f"  {report.books:>4}  Bücher neu angelegt")
     print(f"  {report.relations:>4}  Beziehungen")

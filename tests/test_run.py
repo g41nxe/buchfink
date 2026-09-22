@@ -107,7 +107,7 @@ def test_a_broken_source_is_reported_not_swallowed(
 
 
 def test_missing_config_fails_loudly(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    (data_dir / "profile.yaml").unlink()
+    (data_dir / "settings.yaml").unlink()
     assert main([]) == EXIT_CONFIG_ERROR
     assert "config error" in capsys.readouterr().err
 
@@ -380,8 +380,8 @@ def test_the_cadence_from_the_profile_is_what_counts(data_dir: Path) -> None:
     assert main(["--trigger", "cron"]) == EXIT_OK
     assert len(Store(paths.db_path()).recent_runs("test")) == vorher
 
-    profil = (data_dir / "profile.yaml").read_text(encoding="utf-8")
-    (data_dir / "profile.yaml").write_text(
+    profil = (data_dir / "settings.yaml").read_text(encoding="utf-8")
+    (data_dir / "settings.yaml").write_text(
         profil + "\nrun_every_hours: 1\n", encoding="utf-8"
     )
 
