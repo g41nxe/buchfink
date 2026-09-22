@@ -15,9 +15,13 @@ from ..config import Profile
 from ..deals import is_strong_deal
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
+from ..ratings import BY_MODEL, subject_of
 from ..relations import DONE_LABELS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
+
+#: Nur fuer den Vergleich zweier Zeitstempel, von denen einer fehlen darf.
+_EPOCH = datetime.min
 
 #: Was die Leserin je Eintrag einschränken kann. Leer heißt: alle Quellen, die
 #: eingeschaltet sind — nicht "keine".
@@ -168,6 +172,12 @@ class Entry:
     deal: bool = False
     #: Der Titel, zu dem die Leserin "kenne ich" gesagt hat (ADR 27).
     known_missing: str | None = None
+    #: Das Urteil des Werkzeugs, wo eines vorliegt — dieselbe Spalte wie im
+    #: Stapel (#16). Die eigenen Sterne der Leserin stehen hier bewusst nicht:
+    #: die vergibt sie nach dem Lesen, und dann ist der Titel meist schon
+    #: abgeschlossen und von der Liste.
+    stars: float | None = None
+    pitch: str | None = None
 
     @property
     def is_bundle(self) -> bool:
@@ -378,6 +388,23 @@ def _candidates(details: dict, url: str | None, *, abgelehnt: bool) -> tuple:
     return tuple(aus)
 
 
+def _judgement(ratings: dict, observations: Sequence[Observation]):
+    """Das juengste Maschinenurteil zu einem Buch, ueber alle seine Funde.
+
+    Ein Buch kann bei mehreren Quellen stehen, und jeder Fund traegt seinen
+    eigenen Schluessel. Das juengste gilt: es beruht auf dem, was zuletzt
+    bekannt war.
+    """
+    gefunden = None
+    for observation in observations:
+        row = ratings.get((subject_of(observation), BY_MODEL))
+        if row is None:
+            continue
+        if gefunden is None or (row.rated_at or _EPOCH) > (gefunden.rated_at or _EPOCH):
+            gefunden = row
+    return gefunden
+
+
 def entries(
     store: Store, profile: Profile, *, include_paused: bool = True
 ) -> list[Entry]:
@@ -401,6 +428,14 @@ def entries(
     # Eintraege kosteten so 9 der 25 ms, die diese Funktion braucht.
     buecher = store.books_by_id(book_ids)
     quellen = store.book_sources_of(book_ids)
+    # Urteile haengen am *Fund* (ADR 18): an der ISBN, wo es eine gibt, sonst
+    # an der Produktnummer. Ein Zugriff fuer die ganze Liste, nicht einer je
+    # Zeile — dieselbe Regel wie im Stapel.
+    urteile = store.ratings_for(
+        subject_of(observation)
+        for beobachtungen in latest.values()
+        for observation in beobachtungen
+    )
 
     rows = []
     for relation in relations:
@@ -423,6 +458,7 @@ def entries(
             )
             for link in quellen.get(book.id, ())
         )
+        urteil = _judgement(urteile, latest.get(book.id, ()))
         rows.append(
             Entry(
                 book_id=book.id,
@@ -435,6 +471,8 @@ def entries(
                 sources=states,
                 latest=tuple(latest.get(book.id, ())),
                 known_missing=details.get("known_missing"),
+                stars=urteil.stars if urteil else None,
+                pitch=(urteil.pitch or None) if urteil else None,
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

@@ -11,6 +11,7 @@
 {% from "_buchzeile.html" import zeile %}
 {% from "_quellensymbole.html" import quellensymbole %}
 {% from "_watchlist_aktionen.html" import watchlist_aktionen %}
+{% from "_urteilssterne.html" import urteilssterne %}
   {# Solange ein enger Lauf laeuft, fragt die Zeile selbst nach — und hoert
      von selbst auf, sobald der Server sie ohne Trigger zurueckgibt. Dasselbe
      Muster wie `_run_panel.html`: kein Websocket, kein Timer, der
@@ -58,6 +59,11 @@
     {{ watchlist_aktionen(entry, abschluss, icons, zurueck=zurueck | default("/watchlist")) }}
     {% endset %}
 
+    {# Dieselbe Spalte wie im Stapel (#16): was das Werkzeug urteilt, steht
+       auch hier — die Zeile sagte bisher nur, was ein Buch kostet, nicht ob es
+       sich lohnt. #}
+    {% set kennzahlen %}{{ urteilssterne(entry.stars) }}{% endset %}
+
     {{ zeile(
          entry.title,
          titel_url="/book/" ~ entry.book_id,
@@ -67,6 +73,8 @@
          deal=entry.deal,
          pille=pille,
          unter_autor=unter_autor,
+         kennzahlen=kennzahlen,
+         pitch=entry.pitch,
          oben=entry.availability,
          oben_farbe="text-accent" if entry.borrowable else "text-soft",
          preis=entry.price,

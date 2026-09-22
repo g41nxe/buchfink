@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_profile
-from ebook_watchlist.models import LinkOutcome
+from ebook_watchlist.models import LinkOutcome, MatchReason, Observation
+from ebook_watchlist.ratings import BY_MODEL
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app
@@ -467,3 +468,38 @@ def test_the_hint_names_every_source_of_the_category() -> None:
     )
 
     assert gruppen[0].hint == "Overdrive: gefunden · Onleihe: nicht im Katalog"
+
+
+# --- die Bewertung in der Zeile (#16) ---------------------------------------
+
+
+def test_the_row_carries_the_judgement_of_the_gate(client: TestClient, db: Store) -> None:
+    """Dieselbe Spalte wie im Stapel: Sterne und Pitch aus dem Urteil des
+    Werkzeugs. Die Zeile sagte bisher nur, was ein Buch kostet — nicht, ob es
+    sich lohnt."""
+    book = db.books()[0]
+    db.append(
+        db.start_run("test", "cli", NOW),
+        "test",
+        [Observation(source="beam", source_item_id="1", title=book.title,
+                     match_reason=MatchReason.WATCHLIST, book_id=book.id,
+                     isbn="9783000000042", price_cents=999, observed_at=NOW)],
+        NOW,
+    )
+    db.put_rating("isbn:9783000000042", stars=4, confidence="belegt",
+                  reason="Passt zum Profil.", profile_version=3, now=NOW,
+                  origin=BY_MODEL, pitch="Ein Forscher, 1977 tief in einer Mine.")
+
+    eintrag = next(e for e in view.entries(db, load_profile()) if e.book_id == book.id)
+
+    assert eintrag.stars == 4
+    assert eintrag.pitch == "Ein Forscher, 1977 tief in einer Mine."
+    assert "Ein Forscher" in client.get("/watchlist").text
+
+
+def test_a_title_nobody_judged_shows_no_stars(db: Store) -> None:
+    """Null Sterne waeren eine Aussage, "noch nicht bewertet" ist keine."""
+    eintrag = view.entries(db, load_profile())[0]
+
+    assert eintrag.stars is None
+    assert eintrag.pitch is None

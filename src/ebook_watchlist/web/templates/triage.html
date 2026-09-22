@@ -3,6 +3,7 @@
 
 {% from "_cover.html" import cover %}
 {% from "_buchzeile.html" import zeile %}
+{% from "_urteilssterne.html" import urteilssterne %}
 {% from "_entscheidungen.html" import entscheidungen %}
 {% from "_zustandsknopf.html" import zustandsknopf %}
 {% from "_pille.html" import pille %}
@@ -134,17 +135,7 @@
     {% endset %}
 
     {% set kennzahlen %}
-    {# Die Sterne des Bewertungstors. Ohne Urteil steht hier nichts — null
-       Sterne waeren eine Aussage, "noch nicht bewertet" ist keine. #}
-    {% if item.stars is not none %}
-    <span class="flex items-center gap-0.5 text-gold"
-          title="{{ item.stars | sterne }} von 5 — Urteil des Werkzeugs">
-      {% for value in range(1, 6) %}
-      <svg class="i" {% if value <= item.stars %}style="fill:currentColor"{% endif %}>
-        <use href="#ic-star"/></svg>
-      {% endfor %}
-    </span>
-    {% endif %}
+    {{ urteilssterne(item.stars) }}
     {# Der Buendelvorteil ist ein eigener Grund, hier zu stehen — weder
        Schnaeppchen noch Preissturz, sondern billiger als die Einzelbaende
        zusammen (ADR 24). #}

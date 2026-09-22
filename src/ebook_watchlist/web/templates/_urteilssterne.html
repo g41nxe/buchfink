@@ -1,0 +1,25 @@
+{# Die Sterne des Bewertungstors, wie sie in einer Listenzeile stehen (#16).
+
+   Zu lesen, nicht zu drücken: was das Werkzeug urteilt, ändert man nicht durch
+   Anklicken. Die anklickbaren Sterne der Leserin sind ein anderes Element
+   (`_sterne.html`), und sie sehen bewusst anders aus — eine 4 von ihr ist eine
+   Tatsache, eine 4 vom Modell ein Vorschlag (ADR 17).
+
+   Eine Stelle für Stapel und Watchlist: beide zeigen dieselbe Spalte, und
+   zweimal dieselben fünf Sterne zu bauen hieße, sie auseinanderlaufen zu
+   lassen.
+
+   Ohne Urteil steht hier nichts — null Sterne wären eine Aussage,
+   „noch nicht bewertet" ist keine.
+#}
+{% macro urteilssterne(stars) %}
+{% if stars is not none %}
+<span class="flex items-center gap-0.5 text-gold"
+      title="{{ stars | sterne }} von 5 — Urteil des Werkzeugs">
+  {% for value in range(1, 6) %}
+  <svg class="i" {% if value <= stars %}style="fill:currentColor"{% endif %}>
+    <use href="#ic-star"/></svg>
+  {% endfor %}
+</span>
+{% endif %}
+{% endmacro %}
