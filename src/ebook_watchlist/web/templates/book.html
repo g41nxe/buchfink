@@ -290,10 +290,16 @@
 
 {# Ein Punkt ist kein Verlauf: bei einer einzigen Preisangabe stuende die
    Zahl dreimal auf der Seite, ohne dass die Liste etwas beitraegt. Dann sagt
-   ein Satz mehr. #}
+   ein Satz mehr.
+
+   Der Satz sagt jetzt, was er meint. Vorher hiess er "Bisher nur ein Preis
+   bekannt — ein Verlauf entsteht erst mit weiteren Laeufen", und darunter
+   standen vier Beobachtungen: es hatte also sehr wohl weitere Laeufe gegeben,
+   nur nannten sie alle denselben Betrag. Gezaehlt werden *Preise*, nicht
+   Sichtungen. #}
 {% if price_points | length == 1 %}
 <p class="mb-4 text-xs text-soft">
-  Bisher nur ein Preis bekannt — ein Verlauf entsteht erst mit weiteren Läufen.
+  Immer {{ price_points[0].price }} — die Liste beginnt mit der ersten Änderung.
 </p>
 {% elif price_points %}
 <p class="mb-2 text-xs text-soft">Preisänderungen; unveränderte Läufe stehen nicht dabei.</p>

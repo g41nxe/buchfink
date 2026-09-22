@@ -172,12 +172,16 @@ def test_a_book_nobody_has_seen_says_so(client: TestClient, db: Store) -> None:
 
 def test_one_price_is_not_called_a_history(client: TestClient, db: Store) -> None:
     """Ein Punkt ist kein Verlauf. Das zu sagen ist ehrlicher, als eine Linie
-    zu zeichnen, die nichts zeigt."""
+    zu zeichnen, die nichts zeigt.
+
+    Der Satz nennt den Betrag und zaehlt *Preise*: vier Laeufe mit derselben
+    Zahl sind vier Beobachtungen und trotzdem kein Verlauf. Vorher hiess es
+    "ein Verlauf entsteht erst mit weiteren Laeufen" — darunter standen vier."""
     book = db.books()[0]
     sighting(db, book.id, when=NOW, price=999)
 
     body = client.get(f"/book/{book.id}").text
-    assert "nur ein Preis bekannt" in body
+    assert "Immer 9,99 €" in body
 
 
 def test_unchanged_prices_do_not_fill_the_list(db: Store) -> None:
@@ -286,7 +290,7 @@ def test_a_single_price_gets_a_sentence_not_a_list(client: TestClient, db: Store
     sighting(db, book.id, when=NOW, price=999)
 
     body = client.get(f"/book/{book.id}").text
-    assert "nur ein Preis bekannt" in body
+    assert "Immer 9,99 €" in body
     assert "Preisänderungen" not in body
 
 
@@ -373,7 +377,9 @@ def test_a_judgement_against_an_older_leseprofil_says_so(client: TestClient, db:
 
     body = client.get(f"/book/{book.id}").text
 
-    assert "gegen Profil 0" in body
+    # Sichtbar steht ein Wort; die Versionen stehen im Hinweis daneben.
+    assert ">veraltet<" in body
+    assert "beurteilt gegen Profil 0" in body
 
 
 def test_a_nonsense_star_count_is_refused(client: TestClient, db: Store) -> None:
@@ -497,7 +503,9 @@ def test_foreign_voices_do_not_look_like_the_tools_verdict(client, db) -> None:
     assert "1641 Stimmen" in body
     # Und ausdrücklich *nicht* als veraltetes Modellurteil gebrandmarkt: die
     # Profilversion 0 heißt "nicht gegen das Profil gefällt", nicht "veraltet".
-    assert "gegen Profil 0" not in body
+    # Die Marke am Modellurteil daneben (Profil 2) gehoert dorthin — geprueft
+    # wird deshalb die Version, nicht das blosse Wort.
+    assert "beurteilt gegen Profil 0" not in body
 
 
 def test_a_foreign_voice_never_goes_stale(db) -> None:

@@ -43,9 +43,15 @@
   {% endif %}
   {% if profile_version and judgement.stale(profile_version) %}
   {# Ein Maschinenurteil gegen einen alten Massstab ist Auskunft, keine
-     Grundlage — beim naechsten Lauf wird es neu eingeholt (ADR 19). #}
-  <span class="rounded bg-danger/10 px-1.5 py-0.5 text-xs text-danger">
-    gegen Profil {{ judgement.profile_version }}, heute gilt {{ profile_version }}</span>
+     Grundlage (ADR 19).
+
+     Ein Wort statt einer Rechnung: vorher stand hier "gegen Profil 3, heute
+     gilt 4" und die Leserin musste zwei Zahlen vergleichen, um zu der
+     Auskunft zu kommen, die in einem Wort steht. Die Zahlen stehen im
+     Hinweis — wer sie braucht, findet sie. #}
+  <span class="rounded bg-danger/10 px-1.5 py-0.5 text-xs text-danger"
+        title="beurteilt gegen Profil {{ judgement.profile_version }}, heute gilt
+               {{ profile_version }} — mit ↻ neu holen">veraltet</span>
   {% endif %}
 </div>
 {# Die Begruendung einer fremden Stimme lautet "Durchschnitt der Leser:innen
