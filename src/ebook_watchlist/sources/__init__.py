@@ -1,4 +1,4 @@
-"""Sources and the registry that builds them from ``profile.yaml``."""
+"""Sources and the registry that builds them from ``settings.yaml``."""
 
 from .base import LibrarySource, ShopSource, Source, SourceStructureError
 from .registry import build_sources

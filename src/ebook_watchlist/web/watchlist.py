@@ -166,7 +166,7 @@ class Entry:
     sources: tuple[SourceState, ...]
     #: Je Quelle die juengste Beobachtung, neueste zuerst. Frueher war es
     #: **eine** je Buch, und welche, entschied die Reihenfolge der Quellen in
-    #: ``profile.yaml`` — mit zwei Bibliotheken also der Zufall.
+    #: ``settings.yaml`` — mit zwei Bibliotheken also der Zufall.
     latest: tuple[Observation, ...] = ()
     #: Unter der Schnaeppchen-Grenze. Faerbt den Preis und setzt das
     #: Abzeichen aufs Cover — dieselbe Farbe bedeutet ueberall dasselbe.

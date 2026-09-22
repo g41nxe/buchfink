@@ -287,7 +287,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(ConfigError)
     def broken_configuration(request: Request, exc: ConfigError) -> HTMLResponse:
-        """Eine unlesbare ``profile.yaml`` ist eine Auskunft, kein Absturz.
+        """Eine unlesbare ``settings.yaml`` ist eine Auskunft, kein Absturz.
 
         Die Ansichtsseiten fingen das je einzeln ab, die Formulare gar nicht —
         dort gab es einen Traceback statt der Seite, die den Grund nennt. Hier

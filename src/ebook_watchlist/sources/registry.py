@@ -1,6 +1,6 @@
 """Builds the Sources the settings ask for.
 
-``profile.yaml`` names them::
+``settings.yaml`` names them::
 
     sources:
       onleihe:
@@ -31,7 +31,7 @@ from .overdrive import OverdriveSource
 def _build_fake(name: str, options: dict, client: HttpClient) -> Source:
     fixture = options.get("fixture")
     if not fixture:
-        raise ConfigError(f"profile.yaml: source {name!r} needs a 'fixture' path")
+        raise ConfigError(f"settings.yaml: source {name!r} needs a 'fixture' path")
     path = Path(fixture)
     if not path.is_absolute():
         path = paths.data_dir() / path
@@ -44,14 +44,14 @@ def _build_onleihe(name: str, options: dict, client: HttpClient) -> Source:
         media = onleihe_selectors.DEFAULT_MEDIA
     else:
         if not isinstance(raw_media, list):
-            raise ConfigError(f"profile.yaml: source {name!r}: 'media' must be a list")
+            raise ConfigError(f"settings.yaml: source {name!r}: 'media' must be a list")
         media = []
         for wanted in raw_media:
             icon = onleihe_selectors.MEDIUM_BY_NAME.get(str(wanted).casefold())
             if icon is None:
                 known = ", ".join(sorted(onleihe_selectors.MEDIUM_BY_NAME))
                 raise ConfigError(
-                    f"profile.yaml: source {name!r}: unknown medium {wanted!r} (known: {known})"
+                    f"settings.yaml: source {name!r}: unknown medium {wanted!r} (known: {known})"
                 )
             media.append(icon)
     return OnleiheSource(client=client, name=name, media=media)
@@ -157,17 +157,17 @@ _BUILDERS: dict[str, Callable[[str, dict, HttpClient], Source]] = {
 
 def build_sources(settings: Settings, client: HttpClient) -> list[Source]:
     if not settings.sources:
-        raise ConfigError("profile.yaml: no 'sources' configured — nothing to check")
+        raise ConfigError("settings.yaml: no 'sources' configured — nothing to check")
 
     sources: list[Source] = []
     for name, options in settings.sources.items():
         options = options or {}
         if not isinstance(options, dict):
-            raise ConfigError(f"profile.yaml: options for source {name!r} must be a mapping")
+            raise ConfigError(f"settings.yaml: options for source {name!r} must be a mapping")
         kind = options.get("kind", name)
         builder = _BUILDERS.get(kind)
         if builder is None:
             known = ", ".join(sorted(_BUILDERS))
-            raise ConfigError(f"profile.yaml: unknown source {kind!r} (known: {known})")
+            raise ConfigError(f"settings.yaml: unknown source {kind!r} (known: {known})")
         sources.append(builder(name, options, client))
     return sources

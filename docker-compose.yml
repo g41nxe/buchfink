@@ -36,13 +36,14 @@ services:
       # `covers/`, `digests/`, Logs und die Lauf-Sperre.
       - buchfink-data:/data
 
-      # Reiner Text, keine Sperren: diese vier duerfen von D:\ kommen, damit
-      # du sie mit deinem Editor bearbeitest.
+      # Reiner Text, keine Sperren: diese duerfen von D:\ kommen, damit du sie
+      # mit deinem Editor bearbeitest.
       #
-      # `profile.yaml` ist dabei **keine** Saatgutdatei, auch wenn die drei
-      # anderen es sind: `load_profile()` liest sie bei jeder Anfrage neu
-      # (CONTEXT.md, Eintrag "Seed file").
-      - ./data/profile.yaml:/data/profile.yaml:ro
+      # `settings.yaml` ist dabei **keine** Saatgutdatei, auch wenn die
+      # anderen es sind: `load_settings()` liest sie bei jeder Anfrage neu.
+      # `seed.yaml` dagegen gilt nur beim Import (ADR 32).
+      - ./data/settings.yaml:/data/settings.yaml:ro
+      - ./data/seed.yaml:/data/seed.yaml:ro
       - ./data/watchlist.yaml:/data/watchlist.yaml:ro
       - ./data/owned.yaml:/data/owned.yaml:ro
       - ./data/dismissed.yaml:/data/dismissed.yaml:ro

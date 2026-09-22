@@ -17,7 +17,7 @@ import requests
 from . import __version__
 
 #: Sent unless the settings supply a contact. Deliberately carries no personal
-#: data — add your own address via ``profile.yaml``'s ``http.contact`` if you
+#: data — add your own address via ``settings.yaml``'s ``contact`` if you
 #: want an operator to be able to reach you.
 DEFAULT_USER_AGENT = f"ebook-watchlist/{__version__} (personal watchlist bot; +https://github.com/g41nxe/ebook-watchlist)"
 

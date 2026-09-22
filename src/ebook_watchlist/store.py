@@ -663,7 +663,7 @@ class Store:
             )
             # Je Buch **und Quelle**, nicht je Buch: eine einzige Beobachtung je
             # Buch war die der zuletzt eingefuegten Quelle, also eine Frage der
-            # Reihenfolge in ``profile.yaml``. Mit zwei Bibliotheken entschied
+            # Reihenfolge in ``settings.yaml``. Mit zwei Bibliotheken entschied
             # das darueber, welche von beiden die Zeile beschreibt — sagte die
             # eine "ausleihbar" und die andere "verliehen", stand in der
             # Watchlist die falsche von beiden.

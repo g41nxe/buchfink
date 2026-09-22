@@ -31,7 +31,7 @@ CARD_DETAIL_LINK = 'a[test-id="mediaInfoLink"]'
 #: Cards carry several ``ic_*`` icons (rating stars among them), so the medium
 #: is picked by name rather than by position.
 CARD_MEDIUM_ICON = 'svg[test-id^="ic_"]'
-#: Friendly names for ``profile.yaml``, mapped to the icon the markup uses.
+#: Friendly names for ``settings.yaml``, mapped to the icon the markup uses.
 MEDIUM_BY_NAME = {
     "ebook": "ic_ebook",
     "hoerbuch": "ic_eaudio",
