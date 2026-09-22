@@ -538,7 +538,7 @@ def test_the_head_carries_price_and_availability(client: TestClient, db: Store) 
 
     body = client.get(f"/book/{buch.id}").text
 
-    kopf = body[: body.find("Wie gut das passt")]
+    kopf = body[: body.find("Bewertung")]
     assert "2,99" in kopf
     assert "kachelbild" in kopf
 
@@ -862,8 +862,10 @@ def test_the_button_stays_once_a_judgement_stands(client: TestClient, db: Store)
     body = client.get(f"/book/{buch.id}").text
 
     assert f"/book/{buch.id}/bewerten" in body
-    assert "neu beurteilen" in body
-    assert "etwa eine Minute" in body
+    # Nur noch das Zeichen: das Wort steht im Hinweis, der Dauerhinweis ist
+    # ganz weg — er sagte etwas ueber die Technik, nicht ueber das Buch.
+    assert 'aria-label="neu beurteilen"' in body
+    assert "etwa eine Minute" not in body
 
 
 def test_a_running_run_is_named_in_the_head(client: TestClient, db: Store) -> None:

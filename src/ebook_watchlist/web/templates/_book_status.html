@@ -13,10 +13,15 @@
       hx-swap="outerHTML"
       {% endif %}>
   {% if check and check.busy %}
+  {# Zwei Zeichen, keine Woerter — dieselben wie bei der Bewertung: das
+     drehende heisst "fragt gerade", die Sanduhr "steht in der Schlange".
+     Was gemeint ist, steht im Hinweis. #}
   {% if check.label(now=now) == "sucht …" %}
-  <svg class="i animate-spin text-accent"><use href="#ic-spin"/></svg>sucht …
+  <svg class="i animate-spin text-accent" role="img" aria-label="sucht gerade"
+       title="sucht gerade"><use href="#ic-refresh"/></svg>
   {% else %}
-  <svg class="i"><use href="#ic-hourglass"/></svg>wartet auf den laufenden Lauf …
+  <svg class="i" role="img" aria-label="wartet auf den laufenden Lauf"
+       title="wartet auf den laufenden Lauf"><use href="#ic-hourglass"/></svg>
   {% endif %}
   {% elif check and check.trouble %}
   <span class="text-danger">{{ check.trouble }}</span>

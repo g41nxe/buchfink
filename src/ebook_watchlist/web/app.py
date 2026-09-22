@@ -255,7 +255,7 @@ def create_app() -> FastAPI:
         return launcher.state(store, profile.slug).busy
 
     def _urteil_stand(request: Request, key, url: str) -> Response:
-        """Das Fragment neben *Wie gut das passt*, solange ein Urteil entsteht.
+        """Das Fragment neben *Bewertung*, solange ein Urteil entsteht.
 
         Ist der Job fertig, kommt keine Zeile zurueck, sondern die Bitte, die
         Seite neu zu laden: danach hat sich nicht eine Zeile geaendert, sondern

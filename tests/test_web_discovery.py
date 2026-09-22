@@ -136,7 +136,7 @@ def test_the_table_shows_the_last_five_sightings(client: TestClient, db: Store) 
 
     body = client.get("/discovery/beam/7").text
 
-    assert "Was beobachtet wurde" in body
+    assert "Beobachtungen" in body
     assert "3 ältere" in body
 
 

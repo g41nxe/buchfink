@@ -225,7 +225,7 @@ class Judgement:
         return current is not None and self.profile_version != current
 
 
-#: Wie viele Zeilen die Tabelle "Was beobachtet wurde" zeigt. Der Snapshot ist
+#: Wie viele Zeilen die Tabelle "Beobachtungen" zeigt. Der Snapshot ist
 #: anhaengend (ADR 5) und wird nie kuerzer — die Seite muss es sein.
 HISTORY_ROWS = 5
 

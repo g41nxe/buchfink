@@ -9,6 +9,12 @@
    geändert, sondern der ganze Abschnitt. Dasselbe Muster wie beim engen Lauf
    (`_book_status.html`), kein Websocket (ADR 3).
 
+   Knopf und Stand tragen kein Wort: in einer Ueberschrift ist es Beiwerk,
+   und daneben stand frueher noch "dauert etwa eine Minute" — eine Auskunft
+   ueber die Technik, nicht ueber das Buch. Dieselben zwei Zeichen wie bei den
+   Beobachtungen: ein drehendes fuer "laeuft gerade", eine Sanduhr fuer
+   "wartet auf den grossen Lauf".
+
    Der Knopf steht immer. Das Modell urteilt nicht deterministisch — gemessen
    3, 2, 2, 2 Sterne am selben Buch —, und nach einer Berichtigung will man neu
    urteilen. Keine Rückfrage: das alte Urteil ist nur eine Momentaufnahme
@@ -29,17 +35,19 @@
       hx-swap="outerHTML"
       {% endif %}>
   {% if job and job.busy %}
-  <svg class="i animate-spin text-accent"><use href="#ic-spin"/></svg>beurteilt …
+  {# Nur das Zeichen: dass es laeuft, sagt die Drehung, und was laeuft, steht
+     im Hinweis. Das Wort daneben war eine Zeile Text fuer eine Auskunft, die
+     das Zeichen schon gibt. #}
+  <svg class="i animate-spin text-accent" role="img" aria-label="beurteilt gerade"
+       title="beurteilt gerade"><use href="#ic-refresh"/></svg>
   {% else %}
   {% if job and job.trouble %}
   <span class="text-danger">{{ job.trouble }}</span>
   {% endif %}
+  {% set wort = 'neu beurteilen' if vorhanden else 'beurteilen lassen' %}
   <button type="button" hx-post="{{ url }}" hx-target="#urteil-stand" hx-swap="outerHTML"
-          title="{{ 'neu beurteilen' if vorhanden else 'beurteilen lassen' }} — dauert etwa eine Minute"
-          class="tun flex items-center gap-1 rounded px-1.5 py-1 hover:bg-hair
-                 hover:text-accent">
-    <svg class="i"><use href="#ic-refresh"/></svg>
-    {{- 'neu beurteilen' if vorhanden else 'beurteilen lassen' }}</button>
-  <span>dauert etwa eine Minute</span>
+          title="{{ wort }}" aria-label="{{ wort }}"
+          class="tun flex items-center rounded p-1 hover:bg-hair hover:text-accent">
+    <svg class="i"><use href="#ic-refresh"/></svg></button>
   {% endif %}
 </span>

@@ -86,7 +86,7 @@
    Stapel. Knopf und Stand aus derselben Vorlage wie auf der Buchseite (#15). #}
 {% set machine = page.judgements | rejectattr("is_human") | rejectattr("is_foreign") | list %}
 {% set fremd = page.judgements | selectattr("is_foreign") | list %}
-{% call abschnitt("Wie gut das passt", "ic-star") %}
+{% call abschnitt("Bewertung", "ic-star") %}
   {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/bewerten", job=urteil_job,
           vorhanden=machine | length > 0 %}
   {% include "_urteil_stand.html" %}
@@ -104,6 +104,6 @@
 
 {# Dieselbe Tabelle wie auf der Buchseite, dieselbe Grenze: ein Fund, der seit
    elf Laeufen dasselbe kostet, braucht keine elf Zeilen dafuer. #}
-{{ abschnitt("Was beobachtet wurde", "ic-clock") }}
+{{ abschnitt("Beobachtungen", "ic-clock") }}
 {{ beobachtungen(page.recent_history, page.hidden_history) }}
 {% endblock %}

@@ -204,7 +204,7 @@
    nur ueber Funde, die in den Stapel kaemen — ein Watchlist-Titel ist gewollt
    und wird nie gefragt, hier stand deshalb fuer immer nichts. Knopf und Stand
    kommen aus derselben Vorlage wie auf der Fundseite (#15). #}
-{% call abschnitt("Wie gut das passt", "ic-star") %}
+{% call abschnitt("Bewertung", "ic-star") %}
   {% with url="/book/" ~ page.book_id ~ "/bewerten", job=urteil_job,
           vorhanden=page.judgements | rejectattr("is_human") | rejectattr("is_foreign")
                     | list | length > 0 %}
@@ -271,7 +271,7 @@
 {# Der enge Lauf sitzt an der Ueberschrift der Geschichte, nicht unter den
    Kacheln: er schreibt eine neue Zeile in genau diese Tabelle. Ein Symbol
    statt eines Wortes — was es tut, sagt der Tooltip (Ticket 51). #}
-{% call abschnitt("Was beobachtet wurde", "ic-clock") %}
+{% call abschnitt("Beobachtungen", "ic-clock") %}
   <span class="ml-auto">{% include "_book_status.html" %}</span>
   {% if page.watching %}
   <form hx-post="/book/{{ page.book_id }}/nachsehen"
