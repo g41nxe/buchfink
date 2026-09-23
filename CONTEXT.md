@@ -468,6 +468,10 @@ them. A model identifies each book — original title, author — and the reader
 confirms it; a book the model does not know contributes nothing. The model then
 assigns Appeal Terms and Story Patterns to each book.
 
+Each named title is an **`IntakeEntry`** (*Eintrag*), saved the moment it is
+typed; only when the reader confirms it does it become a book on the shelf,
+marked *Mag ich* or *Doof*.
+
 The tool looks across all loved books at once for the Appeal Families that
 more than one of them carries and asks which of those carry the reader. It never
 compares books pairwise and has no threshold for "similar". Families that are

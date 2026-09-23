@@ -101,6 +101,10 @@ class Overview:
     leseprofil_path: str
     #: Das Verfahren, ohne Version (ADR 21).
     scheme: str | None
+    #: Die Fassung des Leseprofils aus Facetten (ADR 33), oder keine.
+    facet_profile: int | None = None
+    #: Wie viele Bücher in der Erstaufnahme schon genannt sind (#47).
+    intake_named: int = 0
 
     @property
     def next_sweep(self) -> str:
@@ -187,4 +191,6 @@ def build(store: Store, settings: Settings) -> Overview:
         profile_version=version,
         leseprofil_path=str(LESEPROFIL_PATH.name),
         scheme=scheme,
+        facet_profile=profil.version if (profil := store.reading_profile(settings.slug)) else None,
+        intake_named=len(store.intake_entries(settings.slug)),
     )

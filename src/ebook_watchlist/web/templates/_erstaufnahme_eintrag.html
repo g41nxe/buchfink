@@ -1,0 +1,104 @@
+{# Ein genanntes Buch in der Erstaufnahme (#47).
+
+   Vier Zustände, eine Zeile: das Modell sucht noch (die Zeile fragt alle zwei
+   Sekunden nach, ADR 3), es schlägt ein Buch vor, es kennt keines, oder die
+   Leserin hat bestätigt. Gefragt wird geschlossen — „Meinst du …?" mit Ja
+   oder einem anderen Buch —, nie offen.
+
+   Der erkannte Titel steht in Serifen wie jeder Buchtitel; was die Leserin
+   getippt hat, steht in Anführungszeichen, denn es ist ihre Eingabe und noch
+   kein Buch.
+
+   Erwartet: `e`, `jobs`. #}
+{% set job = jobs.get(e.id) %}
+{% set basis = "/erstaufnahme/buch/" ~ e.id %}
+{% set ziel = "#seite-" ~ e.side %}
+<li id="eintrag-{{ e.id }}" data-zustand="{{ e.state }}"
+    class="rounded-lg border border-rule bg-card px-4 py-3 text-sm"
+    {% if e.state == "asking" and job and job.busy %}
+    hx-get="{{ basis }}" hx-trigger="every 2s" hx-target="this" hx-swap="outerHTML"
+    {% endif %}>
+
+  {% if e.state == "confirmed" %}
+  <div class="flex flex-wrap items-baseline gap-x-2">
+    <svg class="i shrink-0 self-center text-accent" role="img" aria-label="bestätigt">
+      <use href="#ic-check"/></svg>
+    <a href="/book/{{ e.book_id }}"
+       class="font-serif text-ink underline decoration-rule underline-offset-2
+              hover:decoration-ink">{{ e.title }}</a>
+    {% if e.author %}<span class="text-soft">{{ e.author }}</span>{% endif %}
+  </div>
+
+  {% elif e.state == "asking" %}
+  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+    {% if job and job.busy %}
+    <svg class="i animate-spin text-accent" role="img" aria-label="sucht"><use href="#ic-refresh"/></svg>
+    <span>„{{ e.typed_title }}“{% if e.typed_author %} · {{ e.typed_author }}{% endif %}</span>
+    <span class="text-soft">— wird gesucht …</span>
+    {% else %}
+    <span>„{{ e.typed_title }}“{% if e.typed_author %} · {{ e.typed_author }}{% endif %}</span>
+    {% if job and job.trouble %}
+    <span class="text-danger">— {{ job.trouble }}</span>
+    {% endif %}
+    <form method="post" action="{{ basis }}/nochmal" class="ml-auto"
+          hx-post="{{ basis }}/nochmal" hx-target="{{ ziel }}" hx-swap="outerHTML">
+      <button type="submit" class="text-xs text-accent underline underline-offset-2">Nochmal</button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% elif e.state == "unknown" %}
+  <p>„{{ e.typed_title }}“{% if e.typed_author %} · {{ e.typed_author }}{% endif %}
+    <span class="text-soft">— dieses Buch kennt das Modell nicht. Es trägt nichts
+      zu deinem Profil bei.</span></p>
+
+  {% else %}
+  <p>Meinst du
+    <span class="font-serif font-semibold text-ink">{{ e.title }}</span>{% if e.original_title %}
+    <span class="text-soft">(im Original <span class="font-serif italic">{{ e.original_title }}</span>)</span>{% endif %}{% if e.author %}
+    von {{ e.author }}{% endif %}?</p>
+  {% if e.genre %}<p class="mt-0.5 text-xs text-soft">{{ e.genre }}</p>{% endif %}
+  {% endif %}
+
+  {% if e.state in ("proposed", "unknown") %}
+  {# „Anderes Buch" klappt die Eingabe auf, schon mit dem Getippten darin:
+     meist fehlt nur die Autorin oder ein Wort. #}
+  <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ anders: false }">
+    {% if e.state == "proposed" %}
+    <form method="post" action="{{ basis }}/ja"
+          hx-post="{{ basis }}/ja" hx-target="{{ ziel }}" hx-swap="outerHTML">
+      <button type="submit"
+              class="tun inline-flex h-8 items-center gap-1 rounded border border-accent
+                     bg-accent/10 px-3 text-sm font-medium text-accent hover:bg-accent/25">
+        <svg class="i"><use href="#ic-check"/></svg>Ja</button>
+    </form>
+    {% endif %}
+    <button type="button" @click="anders = !anders"
+            class="tun inline-flex h-8 items-center rounded border border-rule px-3 text-sm
+                   text-soft hover:border-accent hover:text-accent">
+      {{ "Anderes Buch" if e.state == "proposed" else "Anders eingeben" }}</button>
+    <form method="post" action="{{ basis }}/weg" class="ml-auto"
+          hx-post="{{ basis }}/weg" hx-target="{{ ziel }}" hx-swap="outerHTML">
+      <button type="submit" title="entfernen" aria-label="entfernen"
+              class="flex rounded p-1 text-soft hover:bg-hair hover:text-danger">
+        <svg class="i"><use href="#ic-x"/></svg></button>
+    </form>
+    <form method="post" action="{{ basis }}/anders" x-show="anders" x-cloak
+          hx-post="{{ basis }}/anders" hx-target="{{ ziel }}" hx-swap="outerHTML"
+          class="flex w-full flex-wrap items-end gap-2 pt-1">
+      <input name="titel" required autocomplete="off" value="{{ e.typed_title }}"
+             aria-label="Titel"
+             class="h-9 min-w-0 flex-1 rounded border border-rule bg-paper px-2 font-serif
+                    text-sm text-ink outline-none focus:border-accent sm:w-56 sm:flex-none">
+      <input name="autor" autocomplete="off" value="{{ e.typed_author or '' }}"
+             aria-label="Autor:in" placeholder="Autor:in"
+             class="h-9 min-w-0 flex-1 rounded border border-rule bg-paper px-2 text-sm
+                    text-ink outline-none focus:border-accent sm:w-44 sm:flex-none">
+      <button type="submit"
+              class="tun inline-flex h-9 items-center rounded border border-accent
+                     bg-accent/10 px-3 text-sm font-medium text-accent hover:bg-accent/25">
+        Neu suchen</button>
+    </form>
+  </div>
+  {% endif %}
+</li>

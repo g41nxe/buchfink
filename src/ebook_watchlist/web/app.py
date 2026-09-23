@@ -37,6 +37,7 @@ from . import (
     book,
     discovery,
     home,
+    intake,
     profile_page,
     sorting,
     symbols,
@@ -1099,6 +1100,127 @@ def create_app() -> FastAPI:
                 "view": profile_page.build(_store_for(paths.db_path()), settings),
             },
         )
+
+    # --- Erstaufnahme (#47) --------------------------------------------------
+
+    def _erkennen(key) -> Report:
+        """Die Arbeit des vierten Verwalters: erkennen, welches Buch gemeint ist.
+
+        Ein eigener Verwalter: während die Leserin das dritte Buch tippt,
+        arbeiten die ersten beiden noch, jedes unter seinem Schlüssel.
+        """
+        store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
+        return Report(trouble=intake.identify(store, settings, key[1], now=now))
+
+    erkenner = Rechecker(work=_erkennen)
+
+    def _intake_jobs(eintraege) -> dict:
+        """Der Stand je Eintrag — und wer noch keinen Steckbrief hat und nicht
+        gefragt wird, wird jetzt gefragt. So holt die Seite nach einem Abbruch
+        oder einem Neustart des Servers nach, was offen war. Ein Fehler wird
+        nicht von selbst wiederholt; dafür steht "Nochmal" da."""
+        jobs = {}
+        for e in eintraege:
+            if e.state != "asking":
+                continue
+            job = erkenner.state(("intake", e.id))
+            jobs[e.id] = job if job is not None else erkenner.start(("intake", e.id))
+        return jobs
+
+    def _intake_side(request: Request, kind: str, fehler: str | None = None) -> Response:
+        """Eine Seite der Erstaufnahme als Bruchstück, nach jeder Handlung."""
+        seite = intake.build(_store_for(paths.db_path()), load_settings())
+        side = seite.liked if kind == str(RelationKind.LIKED) else seite.disliked
+        return TEMPLATES.TemplateResponse(
+            request,
+            "_erstaufnahme_seite.html",
+            {"side": side, "seite": seite, "jobs": _intake_jobs(side.entries),
+             "fehler": fehler, "oob": True},
+        )
+
+    def _intake_answer(request: Request, kind: str, fehler: str | None = None) -> Response:
+        """Mit htmx das Bruchstück, ohne die ganze Seite neu."""
+        if request.headers.get("HX-Request"):
+            return _intake_side(request, kind, fehler)
+        return RedirectResponse("/erstaufnahme", status_code=303)
+
+    @app.get("/erstaufnahme", response_class=HTMLResponse)
+    def intake_page(request: Request) -> HTMLResponse:
+        """Bücher nennen und bestätigen — die ersten Schritte zum Leseprofil."""
+        seite = intake.build(_store_for(paths.db_path()), load_settings())
+        return TEMPLATES.TemplateResponse(
+            request,
+            "erstaufnahme.html",
+            {
+                "seite": seite,
+                "jobs": _intake_jobs((*seite.liked.entries, *seite.disliked.entries)),
+                "asset_version": asset_version(),
+            },
+        )
+
+    @app.post("/erstaufnahme/buch")
+    def intake_add(
+        request: Request, seite: str = Form(...), titel: str = Form(""), autor: str = Form("")
+    ) -> Response:
+        try:
+            eintrag = intake.add(
+                _store_for(paths.db_path()), load_settings(), seite, titel, autor,
+                now=datetime.now(),
+            )
+        except intake.IntakeError as exc:
+            if seite not in intake.SIDES:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return _intake_answer(request, seite, str(exc))
+        erkenner.start(("intake", eintrag))
+        return _intake_answer(request, seite)
+
+    def _intake_row(entry_id: int):
+        row = _store_for(paths.db_path()).intake_entry(entry_id)
+        if row is None:
+            raise HTTPException(status_code=404)
+        return row
+
+    @app.get("/erstaufnahme/buch/{entry_id}")
+    def intake_entry_state(request: Request, entry_id: int) -> Response:
+        """Hier fragt ein Eintrag nach, solange das Modell arbeitet (ADR 3)."""
+        e = intake.entry(_store_for(paths.db_path()), _intake_row(entry_id))
+        return TEMPLATES.TemplateResponse(
+            request, "_erstaufnahme_eintrag.html", {"e": e, "jobs": _intake_jobs((e,))}
+        )
+
+    @app.post("/erstaufnahme/buch/{entry_id}/ja")
+    def intake_confirm(request: Request, entry_id: int) -> Response:
+        row = _intake_row(entry_id)
+        try:
+            intake.confirm(_store_for(paths.db_path()), load_settings(), entry_id,
+                           now=datetime.now())
+        except intake.IntakeError as exc:
+            return _intake_answer(request, row.side, str(exc))
+        return _intake_answer(request, row.side)
+
+    @app.post("/erstaufnahme/buch/{entry_id}/anders")
+    def intake_retype(
+        request: Request, entry_id: int, titel: str = Form(""), autor: str = Form("")
+    ) -> Response:
+        row = _intake_row(entry_id)
+        try:
+            intake.retype(_store_for(paths.db_path()), entry_id, titel, autor)
+        except intake.IntakeError as exc:
+            return _intake_answer(request, row.side, str(exc))
+        erkenner.start(("intake", entry_id))
+        return _intake_answer(request, row.side)
+
+    @app.post("/erstaufnahme/buch/{entry_id}/nochmal")
+    def intake_retry(request: Request, entry_id: int) -> Response:
+        row = _intake_row(entry_id)
+        erkenner.start(("intake", entry_id))
+        return _intake_answer(request, row.side)
+
+    @app.post("/erstaufnahme/buch/{entry_id}/weg")
+    def intake_remove(request: Request, entry_id: int) -> Response:
+        row = _intake_row(entry_id)
+        intake.remove(_store_for(paths.db_path()), entry_id)
+        return _intake_answer(request, row.side)
 
     # --- Jetzt laufen (Ticket 10) -------------------------------------------
 

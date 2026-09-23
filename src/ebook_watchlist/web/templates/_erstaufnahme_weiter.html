@@ -1,0 +1,30 @@
+{# Der Stand der Erstaufnahme unter beiden Seiten (#47).
+
+   Kommt nach jeder Handlung mit (`hx-swap-oob`), damit er nicht hinter den
+   Einträgen zurückbleibt. Weiter geht es, sobald drei geliebte Bücher
+   bestätigt sind und keines mehr auf eine Antwort wartet.
+
+   Erwartet: `seite`, `oob`. #}
+{% set fehlen = seite.liked.fewest - seite.liked.confirmed %}
+<div id="erstaufnahme-weiter" {% if oob %}hx-swap-oob="true"{% endif %}
+     class="mt-8 rounded-lg border border-rule bg-card px-5 py-4 text-sm">
+  {% if seite.ready %}
+  <p class="flex items-center gap-2 text-ink">
+    <svg class="i text-accent"><use href="#ic-check"/></svg>
+    {{ seite.liked.confirmed }} geliebte{% if seite.disliked.confirmed %} und
+    {{ seite.disliked.confirmed }} enttäuschende{% endif %} Bücher stehen in deinen Regalen.
+  </p>
+  <p class="mt-1 text-soft">
+    Als Nächstes zeigt dir die Erstaufnahme, was deine Bücher gemeinsam haben.
+    Dieser Schritt kommt noch; bis dahin findest du die Bücher im
+    <a href="/profil" class="text-accent underline underline-offset-2">Profil</a>.
+  </p>
+  {% elif fehlen > 0 %}
+  <p class="text-soft">
+    Noch {{ "ein geliebtes Buch" if fehlen == 1 else fehlen ~ " geliebte Bücher" }}
+    bestätigen, dann geht es weiter.
+  </p>
+  {% else %}
+  <p class="text-soft">Noch nicht jedes Buch ist beantwortet.</p>
+  {% endif %}
+</div>

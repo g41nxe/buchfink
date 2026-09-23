@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Erstaufnahme — Buchfink{% endblock %}
+
+{# Die Erstaufnahme, Bildschirme 1 und 2 (#47, ADR 33 Punkt 6).
+
+   Beide Seiten stehen untereinander auf einer Seite statt auf zwei
+   Bildschirmen: während das Modell das erste Buch erkennt, tippt die Leserin
+   schon das nächste, und niemand soll warten, um weiterblättern zu dürfen.
+   Was fertig ist, meldet sich in seiner eigenen Zeile; die Seite lädt dafür
+   nie neu, damit keine halbe Eingabe verloren geht. #}
+
+{% block content %}
+{% from "_abschnitt.html" import abschnitt %}
+<h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Erstaufnahme</h1>
+<p class="mb-2 max-w-xl text-sm text-soft">
+  Aus deinen Büchern entsteht dein Leseprofil. Nenne ein paar, die du geliebt
+  hast, und gern auch welche, die dich enttäuscht haben.
+</p>
+<p class="mb-6 max-w-xl text-sm text-soft">
+  Der Titel genügt, ein Tippfehler auch: welches Buch gemeint ist, findet das
+  Werkzeug heraus, und du bestätigst es.
+</p>
+
+{% call abschnitt("Geliebt", "ic-heart") %}
+  <span class="text-xs font-normal text-soft">drei bis fünf</span>
+{% endcall %}
+{% with side=seite.liked, oob=false, fehler=none %}
+{% include "_erstaufnahme_seite.html" %}
+{% endwith %}
+
+{% call abschnitt("Enttäuscht", "ic-ban") %}
+  <span class="text-xs font-normal text-soft">bis zu fünf — oder keins</span>
+{% endcall %}
+{% with side=seite.disliked, oob=false, fehler=none %}
+{% include "_erstaufnahme_seite.html" %}
+{% endwith %}
+
+{% with oob=false %}
+{% include "_erstaufnahme_weiter.html" %}
+{% endwith %}
+{% endblock %}

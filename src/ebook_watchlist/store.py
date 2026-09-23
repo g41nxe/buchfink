@@ -375,6 +375,30 @@ class ReadingProfileRow(Base):
     )
 
 
+class IntakeEntryRow(Base):
+    """Ein Buch, das die Leserin in der Erstaufnahme genannt hat (#47).
+
+    Sofort gespeichert, noch bevor das Modell geantwortet hat: ein Abbruch
+    verliert nichts, und wer die Seite wieder öffnet, findet seine Bücher.
+    Wo ein Eintrag steht — gefragt, vorgeschlagen, unbekannt —, sagt sein
+    Steckbrief, nicht eine Spalte hier; die Zeile hält nur fest, was die
+    Leserin getan hat.
+    """
+
+    __tablename__ = "intake_entry"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_slug: Mapped[str] = mapped_column(String, index=True)
+    #: ``liked`` oder ``disliked`` — dieselben Wörter wie die Beziehungen.
+    side: Mapped[str] = mapped_column(String)
+    typed_title: Mapped[str] = mapped_column(String)
+    typed_author: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    #: ``open``, ``confirmed`` oder ``removed``.
+    status: Mapped[str] = mapped_column(String, default="open")
+    book_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class BookRelationRow(Base):
     """Was die Leserin zu einem Buch sagt (ADR 18).
 
@@ -1709,6 +1733,62 @@ class Store:
                 ),
                 version=row.version,
             )
+
+    # --- Erstaufnahme (#47) --------------------------------------------------
+
+    def add_intake_entry(
+        self, profile_slug: str, side: str, title: str, author: str | None, *, now: datetime
+    ) -> int:
+        with self.session() as session:
+            row = IntakeEntryRow(
+                profile_slug=profile_slug,
+                side=side,
+                typed_title=title,
+                typed_author=author,
+                created_at=now,
+                status="open",
+            )
+            session.add(row)
+            session.commit()
+            return row.id
+
+    def intake_entries(self, profile_slug: str) -> list[IntakeEntryRow]:
+        """Die genannten Bücher, ohne die entfernten, in der Reihenfolge der Nennung."""
+        with self.session() as session:
+            rows = list(
+                session.scalars(
+                    select(IntakeEntryRow)
+                    .where(
+                        IntakeEntryRow.profile_slug == profile_slug,
+                        IntakeEntryRow.status != "removed",
+                    )
+                    .order_by(IntakeEntryRow.id)
+                )
+            )
+            for row in rows:
+                session.expunge(row)
+            return rows
+
+    def intake_entry(self, entry_id: int) -> IntakeEntryRow | None:
+        with self.session() as session:
+            row = session.get(IntakeEntryRow, entry_id)
+            if row is not None:
+                session.expunge(row)
+            return row
+
+    def update_intake_entry(self, entry_id: int, **fields: object) -> None:
+        """Was die Leserin mit einem Eintrag getan hat: neu eingegeben,
+        bestätigt, entfernt."""
+        erlaubt = {"typed_title", "typed_author", "status", "book_id"}
+        if not set(fields) <= erlaubt:
+            raise ValueError(f"nicht änderbar: {sorted(set(fields) - erlaubt)}")
+        with self.session() as session:
+            row = session.get(IntakeEntryRow, entry_id)
+            if row is None:
+                raise KeyError(entry_id)
+            for name, wert in fields.items():
+                setattr(row, name, wert)
+            session.commit()
 
     # --- Beziehungen und Interessen (Ticket 05) ----------------------------
 

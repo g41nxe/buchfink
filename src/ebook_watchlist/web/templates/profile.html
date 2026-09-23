@@ -10,6 +10,23 @@
   und warum, steht unten.
 </p>
 
+{# Der Weg zum neuen Leseprofil aus Büchern (ADR 33, #47). Nur solange es
+   keines gibt: danach ändert es sich beim Nachschärfen, nicht durch eine
+   zweite Erstaufnahme. #}
+{% if view.facet_profile is none %}
+<a href="/erstaufnahme" data-erstaufnahme
+   class="tun mb-6 flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/5
+          px-5 py-4 hover:bg-accent/10">
+  <svg class="i shrink-0 text-accent"><use href="#ic-heart"/></svg>
+  <span class="text-sm">
+    <span class="font-medium text-accent">{{ "Erstaufnahme fortsetzen" if view.intake_named
+                                             else "Erstaufnahme beginnen" }}</span>
+    <span class="block text-soft">Nenne ein paar Bücher, die du geliebt hast, gern
+      auch welche, die dich enttäuscht haben — daraus entsteht dein Leseprofil.</span>
+  </span>
+</a>
+{% endif %}
+
 {# Die Zahlen bleiben der Ueberblick — dahinter stehen jetzt die Buecher.
    Bis Ticket 49 stand hier nur die Zahl, und was Ticket 48 aus der Watchlist
    entfernt, war danach nur ueber seine Buch-Nummer zu finden.

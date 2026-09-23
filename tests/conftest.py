@@ -207,12 +207,21 @@ def kein_bewerter(monkeypatch: pytest.MonkeyPatch) -> None:
     einem Rechner ohne Schluessel, und er ist ausdruecklich erlaubt. Wer das
     Urteilen pruefen will, setzt seine eigene Attrappe; sie kommt nach dieser
     Fixture und gewinnt.
-    """
-    from ebook_watchlist import run
-    from ebook_watchlist.web import book
 
-    monkeypatch.setattr(book, "build_rater", lambda model=None: None)
-    monkeypatch.setattr(run, "build_rater", lambda model=None: None)
+    Abgeschaltet wird in **jedem** Modul, das ``build_rater`` importiert hat,
+    nicht in einer festen Liste: die Erstaufnahme (#47) kam als drittes Modul
+    dazu, stand nicht in der Liste, und ihr erster Test rief das Modell
+    wirklich.
+    """
+    import sys
+
+    from ebook_watchlist import rating, run  # noqa: F401 - laden, damit sie erfasst werden
+    from ebook_watchlist.web import book, intake  # noqa: F401
+
+    echt = rating.build_rater
+    for name, modul in list(sys.modules.items()):
+        if name.startswith("ebook_watchlist") and getattr(modul, "build_rater", None) is echt:
+            monkeypatch.setattr(modul, "build_rater", lambda model=None: None)
 
 
 @pytest.fixture(autouse=True)
