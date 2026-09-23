@@ -1602,3 +1602,36 @@ def test_a_scheme_without_the_pitch_length_still_loads(tmp_path) -> None:
     )
 
     assert load_rating_scheme(ohne).pitch_max == 200
+
+
+def test_the_batch_asks_again_only_for_the_pitch_that_breaks_the_rule(monkeypatch) -> None:
+    """Die Nachfrage gilt je Buch, nicht je Bündel.
+
+    Ohne diesen Test hielte nichts fest, dass ``rate_many`` die Probe
+    überhaupt anwendet — sie war in ``rate`` verdrahtet und hier eigens.
+    """
+    antworten = [
+        json.dumps({
+            "1": {**_entry(4), "pitch": "Solide, wo das Profil Härte verlangt."},
+            "2": {**_entry(3), "pitch": "Ein Haus zählt nachts dreizehn Fenster."},
+        }),
+        "Ein Trupp steigt in die Tunnel unter dem Geisterdorf.",
+    ]
+    gefragt: list[str] = []
+
+    def antworte(command, **kwargs):
+        gefragt.append(kwargs.get("input", ""))
+        return _completed(stdout=antworten.pop(0))
+
+    monkeypatch.setattr("ebook_watchlist.rating.subprocess.run", antworte)
+    books = _books(2)
+
+    ratings = ClaudeCodeRater(leseprofil=LESEPROFIL, version=1).rate_many(books)
+
+    # Ein Aufruf für das Bündel, ein zweiter für den einen krummen Satz.
+    assert len(gefragt) == 2
+    assert "Nur der eine Satz" in gefragt[1]
+    assert ratings[books[0].key].pitch == "Ein Trupp steigt in die Tunnel unter dem Geisterdorf."
+    # Das saubere Buch bleibt unberührt, und seine Sterne ebenso.
+    assert ratings[books[1].key].pitch == "Ein Haus zählt nachts dreizehn Fenster."
+    assert ratings[books[0].key].stars == 4

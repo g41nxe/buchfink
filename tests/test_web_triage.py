@@ -748,3 +748,20 @@ def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> 
 def test_the_default_order_stays_out_of_the_links(client: TestClient, db: Store) -> None:
     found(db)
     assert "sortiert=sterne" not in client.get("/vorschlaege").text
+
+
+def test_sorting_by_occasion_works_against_the_real_type(
+    client: TestClient, db: Store
+) -> None:
+    """Der Schlüssel vergleicht `str(item.reason)` mit "profile_author".
+
+    Die Einheitsprobe in ``test_web_sorting`` reicht eine Zeichenkette herein
+    und hätte einen Typwechsel nie bemerkt — hier kommt ein echter
+    ``MatchReason`` durch die ganze Seite.
+    """
+    found(db, item_id="thema", title="Aus dem Regal", reason=MatchReason.GENRE_CATEGORY)
+    found(db, item_id="autor", title="Von wem ich lese", reason=MatchReason.PROFILE_AUTHOR)
+
+    body = client.get("/vorschlaege?sortiert=anlass").text
+
+    assert body.index("Von wem ich lese") < body.index("Aus dem Regal")
