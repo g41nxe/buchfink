@@ -1,0 +1,132 @@
+# 33. Das Leseprofil entsteht aus Büchern, und der Code urteilt
+
+Das Leseprofil beschreibt nicht mehr in Prosa, was eine Leserin mag, sondern
+hält fest, was ihre Bücher gemeinsam haben. Ein Modell sieht jedes Buch genau
+einmal; das Urteil rechnet der Code. Die Einzelheiten stehen in #43 und #44.
+
+## Kontext
+
+Das Leseprofil bis Fassung 4 war eine Repo-Datei mit gewichteten Achsen und
+Gegenanzeigen, geändert nur über den Skill `leseprofil-schaerfen`, gelesen von
+einem Modell, das jedes Buch gegen den ganzen Text hielt (ADR 17, ADR 21). Fünf
+Befunde sprachen gegen dieses Modell:
+
+- **Es kannte nur eine Art zu passen.** Die Achsen wurden gesammelt, bis ein
+  Buch passend aussah. *Das Rosie-Projekt* und *Otherland*, beide geliebt,
+  fielen dabei durch, weil jedes eine Sache ganz tut und nicht alle ein
+  bisschen (#43).
+- **Es mischte Genre mit Geschmack.** „Katz und Maus" stand als Achse im
+  Profil. NoveList führt es als Erzählmuster des Thrillers, getrennt vom
+  Appeal.
+- **Das Modell widersprach sich.** Null Sterne bei getroffenen Achsen (#42)
+  musste eine Nachfrage abfangen.
+- **Jede Profiländerung war teuer.** Eine neue Fassung entwertete alle
+  Maschinenurteile; zuletzt 136, rund vier Läufe über `claude -p`.
+- **Der Detektor hatte nie Daten.** Die Probe „gemocht, aber schlecht
+  bewertet" aus ADR 17 setzt voraus, dass gemochte Bücher beurteilt werden.
+  Von 14 Regalbüchern war keines maschinell beurteilt.
+
+ADR 21 Punkt 5 hatte einen Ableitungsschritt ausdrücklich abgelehnt, weil
+„niemand ein Problem beobachtet hat". Die Befunde oben sind diese
+Beobachtung. Dazu kommen zwei Anforderungen der Leserin: Das Profil soll in
+der Oberfläche entstehen und sich dort ändern lassen, auch für neue
+Leser:innen (#18), und das Werkzeug soll reproduzierbar sein.
+
+Ein Versuch am 23.09.2026 (#44) hat das neue Modell von Hand durchgespielt: vier
+geliebte Bücher, ein enttäuschendes, eine Probe gegen die übrigen. Facetten,
+die je Buch abgefragt wurden, trafen **0 von 5** weiteren gemochten Büchern
+voll. Über alle Bücher hinweg abgeleitet waren es **3 von 5**, und kein
+enttäuschendes Buch wurde mehr getroffen.
+
+## Entscheidung
+
+**1. Das Leseprofil besteht aus Facetten, Gegengewichten, Autor:innen und
+Genres.** Eine Facette ist eine benannte Art, wie ein Buch zu dieser Leserin
+passt, und besteht aus mindestens zwei Merkmalsfamilien, die ihre geliebten
+Bücher gemeinsam tragen. Gegengewichte kommen aus enttäuschenden Büchern.
+**Gegenanzeigen gibt es nicht mehr**: Ein Gegengewicht zieht ein Buch nach
+unten, schließt es aber nie aus.
+
+**2. Das Vokabular ist fest und liegt im Repo.** `docs/merkmale.yaml`: 72
+Merkmale auf Grundlage von NoveLists Appeal-Begriffen, fünf Dimensionen,
+darüber 44 Merkmalsfamilien als Arbeitsstand. Die Gegenteil-Probe entscheidet,
+was hineindarf. Erzählmuster werden genauso behandelt; ihr Vokabular ist noch
+offen. Geändert wird auf Beleg: wenn ein Buch zeigt, dass etwas fehlt oder
+falsch schneidet.
+
+**3. Ein Modell sieht jedes Buch genau einmal, unabhängig von jeder Leserin.**
+Es identifiziert das Buch, vergibt Merkmale mit Beleg, Erzählmuster und Genre
+und schreibt den Pitch. Das Ergebnis wird mit dem Buch gespeichert: Dasselbe
+Buch trägt immer dieselben Merkmale.
+
+**4. Der Code urteilt.** Jede Facette ist ein eigener Grund, das Buch zu mögen:
+ganz getroffen wiegt sie 0,8, teilweise 0,1, verbunden als Noisy-OR. Das
+stärkste Gegengewicht zieht ein Fünftel ab. Die Prozentzahl ordnet, die Sterne
+fassen zusammen; null Sterne heißt, nichts passt und etwas spricht dagegen. Die
+Begründung setzt sich aus vorhandenen Daten zusammen: welche Facette, der Satz
+zum Merkmal, warum es für diese Leserin zählt. Die Werte sind Startwerte und
+stehen maschinenlesbar im Bewertungsschema; später lernt das Werkzeug sie aus
+den eigenen Urteilen der Leserin.
+
+**5. Das Leseprofil liegt in der Datenbank**, je Leserin (`profile_slug`),
+append-only: eine Zeile je Fassung, mit dem Anlass, der sie ausgelöst hat.
+`docs/bewertungsschema.yaml` und `docs/merkmale.yaml` bleiben Repo-Dateien:
+Sie nennen keinen Geschmack und gelten für jede Leserin gleich.
+
+**6. Es entsteht in der Oberfläche, in der Erstaufnahme.** Die Leserin nennt
+drei bis fünf geliebte und bis zu fünf enttäuschende Bücher. Das Werkzeug fragt
+nur geschlossen: Es sammelt die Familien aller Bücher auf einmal, zeigt, was
+mehrere tragen, und die Leserin bestätigt. Jedes geliebte Buch muss am Ende in
+einer Facette stecken. Wie stark eine Facette belegt ist, zeigt eine Skala.
+
+**7. Es ändert sich beim Nachschärfen**, bei jedem Buch, das die Leserin *Mag
+ich* oder *Doof* nennt. Bestärken geht still, alles Neue wird gefragt, und auf
+der Profilseite lässt sich jederzeit alles abwählen. Die Beweislast aus ADR 17
+ist keine Schranke mehr; ihre Asymmetrie lebt als „Bestärken ist billig,
+Ändern fragt nach" fort.
+
+**8. Ohne Profil wird nicht geurteilt.** Keine Sterne, kein Vorfilter,
+Vorschläge unsortiert, und kein Ersatzprofil. Ein Buch, dessen Merkmale fehlen,
+weil das Modell nicht erreichbar war oder es nicht kennt, wird nicht aussortiert
+(ADR 7).
+
+## Abgelöst
+
+- **ADR 17**: das Leseprofil als Repo-Datei, geändert nur über
+  `leseprofil-schaerfen`; die Gegenanzeigen; die dreistufige Beweislast.
+- **ADR 21**: Punkt 1 (das Leseprofil als versionierte Repo-Datei) und Punkt 5
+  (kein Ableitungsschritt, das Profil als Text an das Modell). Die Trennung von
+  Leseprofil und Bewertungsschema bleibt.
+- **ADR 32**: die Zeile `docs/leseprofil.yaml` der Tabelle. Einstellungen und
+  Saatgut bleiben, wie sie sind.
+
+ADR 19 bleibt: Das Tor lässt ab drei Sternen durch, jetzt mit Sternen aus dem
+Code.
+
+## Konsequenzen
+
+- **Eine Profiländerung kostet keinen Modellaufruf.** Alle Urteile werden
+  sofort neu berechnet; Nachbewerten gibt es nicht mehr.
+- **Es wird bei null angefangen.** Das Leseprofil Fassung 4 und die 136
+  Maschinenurteile dagegen gelten nicht weiter.
+- **Die Güte hängt an den Merkmalen.** Im Versuch vergab das Modell *lebendiger
+  Schauplatz* an 7 von 13 Büchern, kannte *Cry Baby* unter dem deutschen Titel
+  nicht und verriet einmal ein Ende. Dagegen stehen: das Identifizieren vor dem
+  Vergeben, das Sortieren häufiger Familien an einem neutralen Bestand und die
+  Gegenteil-Probe. Ein ganzheitliches Urteil, das Zwischentöne abwägt, gibt es
+  nicht mehr.
+- **Die Bewerter vergeben Merkmale statt Sterne.** `ModelRater` und
+  `ClaudeCodeRater` behalten den Weg zum Modell, nicht ihre Aufgabe. `star_contradiction` und
+  `with_settled_stars` (#42) entfallen; `with_better_pitch` (#29) wandert ins
+  Vergeben. Die Skills `buch-bewerten` und `leseprofil-schaerfen` haben
+  ausgedient.
+- **Das Bewertungsschema wird umgeschrieben**: Sternetabelle, Pitch-Regeln
+  (einmal je Buch, ohne Ton passend zu den Sternen) und die Bedeutung von
+  `confidence`, die jetzt aus dem Beleg der Merkmale und der Stärke der Facette
+  folgt.
+- **Die eigenen Sterne der Leserin** schärfen nicht; sie sind die Daten, aus
+  denen die Gewichte später gelernt werden.
+- **Offen**: das Vokabular der Erzählmuster, und wie die Übereinstimmung
+  angezeigt wird. Netflix hat seine Sterne abgeschafft, weil sie für ein
+  Qualitätsurteil gehalten wurden; Buchfink zeigt Maschinensterne neben den
+  Leser-Sternen der Onleihe.

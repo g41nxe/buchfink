@@ -91,3 +91,12 @@ eight hundred.
   circular claim ("trifft den Kern") is not a reason. Each must name the axis,
   the concrete element in the book, why it counts for this reader, and what
   costs the missing star.
+
+> **Nachtrag: in Teilen abgelöst durch ADR 33.** Das Leseprofil ist keine
+> Repo-Datei mehr, die nur `leseprofil-schaerfen` ändert; es entsteht in der
+> Oberfläche und liegt in der Datenbank. Gegenanzeigen gibt es nicht mehr, nur
+> Gegengewichte, die nie ausschließen. Die dreistufige Beweislast ist keine
+> Schranke mehr; ihre Asymmetrie lebt als „Bestärken ist billig, Ändern fragt
+> nach" fort, und wie gut etwas belegt ist, zeigt die Stärke einer Facette.
+> Die Anforderungen an eine Begründung oben gelten weiter; sie werden jetzt
+> aus Daten erfüllt statt von einem Modell.

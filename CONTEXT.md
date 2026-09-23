@@ -242,28 +242,31 @@ because most finds never become a Book. A human Rating is keyed to the **Book**,
 because that is where a person gives it and it should hold whichever Source the
 book next arrives through.
 
-A new **Reading Profile** version invalidates machine Ratings, and only those:
-that the reader sharpened their own taste is no reason to void what they said.
-A change to the Rating Scheme invalidates nothing at all (ADR 21).
+A machine Rating is **computed by the code** from the Appeal Terms a model has
+assigned to the book once and the reader's Facets and counterweights (ADR 33).
+A new Reading Profile version therefore voids nothing: machine Ratings are
+recomputed, and the reader's own stars stay as they are.
 
 ### Reading Profile
 *deutsch: Leseprofil*
 
-A description of the books this reader likes — as detailed and as specific to
-them as it can be made, written in prose, produced by discussing *why* they like
-the books they like. It lives in the repository as `docs/leseprofil.md` and
-carries a version number; that number means one thing only: the state of the
-reader's taste.
+What the books this reader loved have in common: **Facets**, the
+**counterweights** from books that disappointed them, and the **Reference
+Authors and genres** that steer the search. It is derived from the reader's
+books, not written in prose (ADR 33).
 
-It is the **basis for deciding whether an Observation is interesting**. Two
-things are *derived* from it and are not themselves the profile: the Reference
-Authors and the Genre Categories — what a shop can actually be asked for
-(ADR 21).
+It is the **basis for deciding whether an Observation is interesting**. It comes
+into being in the Intake, changes through Sharpening, and lives in the database
+per reader, append-only: every version keeps the book or the click that caused
+it. A version number still means one thing only — the state of the reader's
+taste — but a new version no longer voids any Rating, because the code
+recomputes them.
 
-It changes only through the `leseprofil-schaerfen` skill, which carries an
-asymmetric burden of proof and asks for consent per change (ADR 17). The web UI
-shows it and refuses to edit it, because a form there would bypass that
-procedure.
+Without a Reading Profile nothing is judged.
+
+Until ADR 33 is built, the code still reads the old prose profile from
+`docs/leseprofil.yaml`, changed through the `leseprofil-schaerfen` skill
+(ADR 17, ADR 21).
 
 **Reader-facing name: *Leseprofil*.**
 
@@ -271,10 +274,12 @@ procedure.
 *deutsch: Facette*
 
 One named way a book can suit this reader. A Reading Profile holds several, and
-a book has to hit **one** of them convincingly — the best Facet decides alone.
-Partial hits across several do not add up, which is precisely what the weighted
-axes it replaces used to do, and what let a book collect enough to look right
-while suiting nobody.
+each is an **independent reason** to like a book: a Facet hit in full counts
+strongly, one hit in part counts little, and several reasons strengthen each
+other without ever passing certainty (a noisy-OR, ADR 33). A book that hits two
+Facets in full outranks one that hits a single Facet. What must never happen is
+what the weighted axes it replaces did: partial hits collected until a book
+looked right while suiting nobody.
 
 It is the counterpart to a Genre Category: a Thema says where a shop shelves a
 book, a Facet says what the book carries. Confusing the two is what put "Katz
@@ -402,13 +407,35 @@ result — Facets, Reference Authors, genres and counterweights — is presented
 a list to confirm or deselect. Deselecting everything starts over, with other
 books or other answers.
 
-It carries **no burden of proof**: there is nothing yet to contradict. Sharpening
-an existing profile later does (ADR 17).
+It carries **no burden of proof**: there is nothing yet to contradict. What
+follows it is Sharpening.
 
 The same answers give the same profile. Which question comes next and which
 Facet follows from the answers is decided by code, not by a model.
 
 **Reader-facing name: *Erstaufnahme*.**
+
+### Sharpening
+*deutsch: Nachschärfen*
+
+How an existing Reading Profile changes. It is triggered by every book the
+reader marks *Mag ich* or *Doof* — verdicts after reading — and never by
+*Ausschließen*, which says nothing about taste, nor by the reader's own stars,
+which stay a display and the data weights may later be learned from.
+
+What merely confirms a Facet happens silently: another loved book carrying it
+makes it stronger, and that strength is derived, never stored. Everything new is
+asked, in the same pattern as the Intake: a loved book that sits in no Facet,
+families several loved books now share, a new author or genre, a counterweight
+from a *Doof* book. A *Doof* book that fully hits a Facet yields a counterweight
+only; the Facet stays as it is. On the profile page anything can be deselected
+at any time; additions only ever come through books.
+
+The burden of proof of ADR 17 is no longer a gate. Its asymmetry lives on —
+confirming is cheap, changing asks — and how well something is evidenced is
+shown by the strength scale.
+
+**Reader-facing name: *Nachschärfen*.**
 
 ### Rating Scheme
 *deutsch: Bewertungsschema*
@@ -422,10 +449,10 @@ It names **no** axis of taste — it is the procedure, not the content, and it
 would work unchanged for a different reader. It is therefore **not** versioned
 alongside the profile: a change to the scheme invalidates no Rating (ADR 21).
 
-Both raters read the same scheme: the `buch-bewerten` skill and the Rating Gate
-in a Run. Before they did, they had already drifted apart — the skill required
-research until a judgement was at least half-evidenced, the gate explicitly
-allowed a suspected one.
+Since ADR 33 it holds, machine-readable, how the code turns Facets into a
+Rating: what a Facet hit in full or in part weighs, what a counterweight takes
+off, where the star thresholds lie. It also holds the rules for what the model
+writes once per book, the pitch among them.
 
 **Reader-facing name: *Bewertungsschema*.**
 

@@ -60,3 +60,7 @@ für einen begrifflichen Gewinn, den `configuration.load` schon erbringt.
   zweimal da: als Kästchenreihe aus `no_gos` und zwei Zeilen darunter im
   Leseprofil selbst, wo sie begründet sind.
 - Der Skill `buch-bewerten` liest ein Dokument statt zweier.
+
+> **Nachtrag: eine Zeile abgelöst durch ADR 33.** Das Leseprofil liegt nicht
+> mehr in `docs/leseprofil.yaml`, sondern als Fassungen je Leserin in der
+> Datenbank. Einstellungen und Saatgut bleiben, wie sie hier stehen.

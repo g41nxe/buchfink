@@ -102,3 +102,11 @@ ist und die Suchlisten stehengeblieben sind.
 > Die Gegenprobe etwa betrifft die Pflege des Profils und nicht das Urteil über
 > ein Buch — sie mitzuschicken kostet Aufmerksamkeit für etwas, das der
 > Bewerter gar nicht tun soll.
+
+> **Nachtrag: in Teilen abgelöst durch ADR 33.** Punkt 1 gilt nicht mehr: Das
+> Leseprofil liegt als Fassungen in der Datenbank, nicht als Repo-Datei. Punkt
+> 5 gilt nicht mehr: Genau der hier abgelehnte Ableitungsschritt ist gekommen,
+> weil die Probleme inzwischen beobachtet sind (#42, die Kosten jeder
+> Profiländerung, die Reproduzierbarkeit). Ein Modell vergibt einmal je Buch
+> Merkmale; geurteilt wird im Code. Die Trennung von Leseprofil und
+> Bewertungsschema bleibt, und das Schema bleibt ohne Version.
