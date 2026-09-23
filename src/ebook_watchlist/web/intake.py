@@ -380,25 +380,31 @@ class Choosing:
     draft: Draft
 
 
+def shelf_book(store: Store, vocabulary, book_id: int) -> ShelfBook | None:
+    """Ein Buch mit den Familien aus seinem Steckbrief — oder nichts, wenn es
+    keinen gibt oder das Modell das Buch nicht kennt."""
+    buch = store.book(book_id)
+    bild = stored_portrait(store, buch, fingerprint(vocabulary)) if buch else None
+    if bild is None or not bild.known:
+        return None
+    familien: dict[str, str] = {}
+    for trait in bild.traits:
+        if trait.term in vocabulary.terms:
+            familien.setdefault(vocabulary.family_of(trait.term).id, trait.sentence)
+    # Fein genug für ein Gegengewicht mit Genre: "High Fantasy" statt
+    # "Fantasy", sonst träfe es auch Grimdark (#44).
+    genre = bild.subgenre.split("/")[0].strip() if bild.subgenre else bild.genre
+    return ShelfBook(str(buch.id), buch.id, buch.title, genre, familien)
+
+
 def _shelf_books(store: Store, settings: Settings, vocabulary, side: str) -> list[ShelfBook]:
-    abdruck = fingerprint(vocabulary)
-    buecher = []
-    for row in store.intake_entries(settings.slug):
-        if row.side != side or row.status != CONFIRMED or row.book_id is None:
-            continue
-        buch = store.book(row.book_id)
-        bild = stored_portrait(store, buch, abdruck) if buch else None
-        if bild is None or not bild.known:
-            continue
-        familien: dict[str, str] = {}
-        for trait in bild.traits:
-            if trait.term in vocabulary.terms:
-                familien.setdefault(vocabulary.family_of(trait.term).id, trait.sentence)
-        # Fein genug für ein Gegengewicht mit Genre: "High Fantasy" statt
-        # "Fantasy", sonst träfe es auch Grimdark (#44).
-        genre = bild.subgenre.split("/")[0].strip() if bild.subgenre else bild.genre
-        buecher.append(ShelfBook(str(buch.id), buch.id, buch.title, genre, familien))
-    return buecher
+    """Die bestätigten Bücher einer Seite dieser Erstaufnahme."""
+    buecher = (
+        shelf_book(store, vocabulary, row.book_id)
+        for row in store.intake_entries(settings.slug)
+        if row.side == side and row.status == CONFIRMED and row.book_id is not None
+    )
+    return [b for b in buecher if b is not None]
 
 
 def frequent_families(store: Store, settings: Settings, vocabulary) -> set[str]:

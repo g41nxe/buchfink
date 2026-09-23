@@ -370,6 +370,15 @@
 </div>
 {% endif %}
 
+{# Nachschärfen (#51): was dieses Buch an deinem Leseprofil ändert — nur bei
+   *Mag ich* oder *Doof*, und nur, wenn es ein Profil gibt. #}
+{% if nachschaerfen %}
+{{ abschnitt("Nachschärfen", "ic-heart") }}
+{% with n=nachschaerfen, book_id=page.book_id %}
+{% include "_nachschaerfen.html" %}
+{% endwith %}
+{% endif %}
+
 {% if fremd %}
 {{ abschnitt("Was andere Leser:innen sagen", "ic-lib") }}
 <p class="mb-3 max-w-xl text-xs text-soft">

@@ -421,6 +421,23 @@ class IntakeChoiceRow(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class DeclinedFacetRow(Base):
+    """Eine vorgeschlagene Facette, die die Leserin abgelehnt hat (#51).
+
+    Beim Nachschärfen schlägt das Werkzeug Familien vor, die mehrere gemochte
+    Bücher teilen. Wer "passt nicht" sagt, wird nicht bei jedem weiteren Buch
+    wieder gefragt. Kein Teil des Profils: es ändert keine Fassung.
+    """
+
+    __tablename__ = "declined_facet"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_slug: Mapped[str] = mapped_column(String, index=True)
+    #: Die Familien-ids, sortiert und mit Komma verbunden.
+    families: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
 class BookRelationRow(Base):
     """Was die Leserin zu einem Buch sagt (ADR 18).
 
@@ -1877,6 +1894,22 @@ class Store:
             ):
                 row.active = False
             session.commit()
+
+    def decline_facet(self, profile_slug: str, families: Iterable[str], *, now: datetime) -> None:
+        with self.session() as session:
+            session.add(DeclinedFacetRow(
+                profile_slug=profile_slug, families=",".join(sorted(families)), created_at=now
+            ))
+            session.commit()
+
+    def declined_facets(self, profile_slug: str) -> set[frozenset[str]]:
+        with self.session() as session:
+            return {
+                frozenset(row.families.split(","))
+                for row in session.scalars(
+                    select(DeclinedFacetRow).where(DeclinedFacetRow.profile_slug == profile_slug)
+                )
+            }
 
     def latest_portraits(self, fingerprint: str) -> dict[str, Portrait]:
         """Der jüngste Steckbrief je Gegenstand mit diesem Fingerabdruck.

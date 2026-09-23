@@ -226,13 +226,22 @@ def _facet_profile(store: Store, settings: Settings):
         vocabulary = load_vocabulary()
     except VocabularyError:
         return (), ()
-    facetten = tuple(
-        FacetLine(
-            family_names(f.families, vocabulary), f.books,
-            strength=strength(len(f.books)), level=STRENGTHS.index(strength(len(f.books))) + 1,
-        )
-        for f in profil.facets
-    )
+    # Die Stärke ist abgeleitet, nicht gespeichert (#51, ADR 16): gezählt
+    # werden die gemochten Bücher, die die Facette heute tragen. Gespeichert
+    # sind nur die Bücher, aus denen sie entstand — sie zählen, solange ihr
+    # Steckbrief fehlt.
+    from .sharpening import carried_by, liked_shelf
+
+    regal = liked_shelf(store, settings, vocabulary)
+
+    def zeile(f) -> FacetLine:
+        traeger = carried_by(f.families, regal)
+        buecher = tuple(b.title for b in traeger) or f.books
+        wort = strength(len(buecher))
+        return FacetLine(family_names(f.families, vocabulary), buecher, strength=wort,
+                         level=STRENGTHS.index(wort) + 1)
+
+    facetten = tuple(zeile(f) for f in profil.facets)
     gegen = tuple(
         FacetLine(family_names(c.families, vocabulary), c.books, genre=c.genre)
         for c in profil.counterweights

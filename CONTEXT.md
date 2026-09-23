@@ -510,6 +510,10 @@ from a *Doof* book. A *Doof* book that fully hits a Facet yields a counterweight
 only; the Facet stays as it is. On the profile page anything can be deselected
 at any time; additions only ever come through books.
 
+A suggested Facet the reader turns down ("passt nicht") is a **declined facet**
+(`DeclinedFacet`, *abgelehnter Vorschlag*): remembered, so it is not asked
+again with the next book, and not part of the profile — it changes no version.
+
 The burden of proof of ADR 17 is no longer a gate. Its asymmetry lives on —
 confirming is cheap, changing asks — and how well something is evidenced is
 shown by the strength scale.

@@ -39,6 +39,7 @@ from . import (
     home,
     intake,
     profile_page,
+    sharpening,
     sorting,
     symbols,
     triage,
@@ -123,6 +124,7 @@ _SELECTED = Form(default=[])
 #: sonst den Namen, und nur einer kommt an (#50).
 _FACETS = Form(default=[])
 _WEIGHTS = Form(default=[])
+_FAMILIES = Form(default=[])
 
 
 @dataclass(frozen=True, slots=True)
@@ -765,6 +767,7 @@ def create_app() -> FastAPI:
                 "urteil_job": urteiler.state(("book", book_id)),
                 "steckbrief_job": zeichner.state(("book", book_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
+                "nachschaerfen": sharpening.build(store, settings, book_id),
             },
         )
 
@@ -861,15 +864,51 @@ def create_app() -> FastAPI:
         Stilllegen statt loeschen: dass ein Buch einmal beobachtet wurde, ist
         selbst eine Auskunft (ADR 18).
         """
-        book.set_relation(
-            _store_for(paths.db_path()),
-            load_settings(),
-            book_id,
-            kind,
-            active=active == "1",
-            now=datetime.now(),
-        )
+        store, settings = _store_for(paths.db_path()), load_settings()
+        book.set_relation(store, settings, book_id, kind, active=active == "1",
+                          now=datetime.now())
+        # Nachschärfen braucht den Steckbrief (#51). Wer *Mag ich* oder *Doof*
+        # sagt und ein Profil hat, bekommt ihn im Hintergrund; gibt es ihn
+        # schon, kostet das nichts.
+        if (
+            active == "1"
+            and kind in (str(RelationKind.LIKED), str(RelationKind.DISLIKED))
+            and store.reading_profile(settings.slug) is not None
+        ):
+            zeichner.start(("book", book_id))
         return RedirectResponse(f"/book/{book_id}", status_code=303)
+
+    # --- Nachschärfen (#51) --------------------------------------------------
+
+    def _nachschaerfen(book_id: int, tun) -> RedirectResponse:
+        try:
+            tun(_store_for(paths.db_path()), load_settings())
+        except intake.IntakeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return RedirectResponse(f"/book/{book_id}#nachschaerfen", status_code=303)
+
+    @app.post("/book/{book_id}/nachschaerfen/facette")
+    def sharpen_facet(book_id: int, familie: list[str] = _FAMILIES) -> RedirectResponse:
+        """Eine neue Facette aus Familien dieses Buchs."""
+        return _nachschaerfen(book_id, lambda store, settings: sharpening.add_facet(
+            store, settings, book_id, familie, now=datetime.now()))
+
+    @app.post("/book/{book_id}/nachschaerfen/ablehnen")
+    def sharpen_decline(book_id: int, familie: list[str] = _FAMILIES) -> RedirectResponse:
+        """Ein Vorschlag passt nicht und kommt nicht wieder."""
+        return _nachschaerfen(book_id, lambda store, settings: sharpening.decline(
+            store, settings, familie, now=datetime.now()))
+
+    @app.post("/book/{book_id}/nachschaerfen/gegengewicht")
+    async def sharpen_counterweight(request: Request, book_id: int) -> RedirectResponse:
+        """Gegengewichte aus einem *Doof*-Buch; je Familie ihr Umfang."""
+        formular = await request.form()
+        umfaenge = {
+            str(f): str(formular.get(f"umfang-{f}") or intake.GENERAL)
+            for f in formular.getlist("familie")
+        }
+        return _nachschaerfen(book_id, lambda store, settings: sharpening.add_counterweights(
+            store, settings, book_id, umfaenge, now=datetime.now()))
 
     @app.post("/book/{book_id}/sterne")
     def book_stars(book_id: int, stars: str = Form("")) -> RedirectResponse:
