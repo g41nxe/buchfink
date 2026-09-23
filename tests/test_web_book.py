@@ -1204,3 +1204,147 @@ def test_a_find_is_preferred_over_the_bare_title(
     view.rate(db, load_settings(), buch.id, now=NOW)
 
     assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].stars == 4
+
+
+# --- der Steckbrief (#45) ----------------------------------------------------
+
+
+class StubAsker:
+    """Ein Bewerter, der nur gefragt wird — so wie ihn der Steckbrief braucht."""
+
+    def __init__(self, answer) -> None:
+        self.answer = answer
+        self.asked: list[str] = []
+
+    def ask(self, text: str, max_tokens: int = 300) -> str:
+        self.asked.append(text)
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        return self.answer
+
+
+def steckbrief_abwarten(client: TestClient, pfad: str) -> str:
+    """Den Knopf druecken und warten, bis der Hintergrundjob fertig ist."""
+    client.post(f"{pfad}/steckbrief")
+    for _ in range(250):
+        stand = client.get(f"{pfad}/steckbrief")
+        if stand.headers.get("HX-Refresh") == "true":
+            break
+        threading.Event().wait(0.02)
+    else:
+        raise AssertionError("der Steckbrief wurde nicht fertig")
+    return client.get(pfad).text
+
+
+def _leopard() -> str:
+    """Die Antwort zu *Leopard* aus dem Versuch vom 23.09., gekürzt."""
+    import json
+
+    return json.dumps({
+        "bekannt": True, "titel": "Leopard", "autor": "Jo Nesbø",
+        "originaltitel": "Panserhjerte", "genre": "Kriminalroman",
+        "untergenre": "Nordic Noir", "pitch": "Harry Hole jagt einen Mörder.",
+        "merkmale": [
+            {"id": "brooding", "satz": "Harry Hole wird zurückgeholt.", "beleg": "wissen"},
+            {"id": "violent", "satz": "Der Leopoldsapfel wird genau ausgemalt.",
+             "beleg": "wissen"},
+            {"id": "flawed", "satz": "Er greift zur Flasche.", "beleg": "wissen"},
+            {"id": "intricate", "satz": "Die Opfer verbindet etwas.", "beleg": "wissen"},
+            {"id": "intensifying", "satz": "In Oslo zieht es an.", "beleg": "wissen"},
+        ],
+    }, ensure_ascii=False)
+
+
+def test_the_button_draws_a_portrait_once(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dasselbe Buch trägt immer denselben Steckbrief: ein zweiter Klick
+    kostet keinen Aufruf (ADR 33)."""
+    buch = db.books()[0]
+    fragt = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_rater", lambda model: fragt)
+
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert len(fragt.asked) == 1
+    assert f"Titel: {buch.title}" in fragt.asked[0]
+    # Nach Familien gruppiert: "brutal" steht unter "hart".
+    assert "hart" in body and "gezeichnete Figur" in body
+    assert "Der Leopoldsapfel wird genau ausgemalt." in body
+    assert "Nordic Noir" in body
+
+
+def test_a_book_the_model_does_not_know_says_so(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buch = db.books()[0]
+    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker('{"bekannt": false}'))
+
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert "kennt dieses Buch nicht" in body
+
+
+def test_without_a_model_nothing_changes_and_the_page_says_why(
+    client: TestClient, db: Store
+) -> None:
+    """Das Tor scheitert nie zu (ADR 7) — und der Steckbrief auch nicht."""
+    buch = db.books()[0]
+
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert "Kein Bewerter eingerichtet" in body
+
+
+def test_a_failed_call_stores_nothing(db: Store, monkeypatch: pytest.MonkeyPatch) -> None:
+    from ebook_watchlist.portrait import fingerprint, load_vocabulary
+
+    buch = db.books()[0]
+    monkeypatch.setattr(
+        view, "build_rater", lambda model: StubAsker(RatingUnavailable("Zeit abgelaufen"))
+    )
+
+    grund = view.portray(db, load_settings(), buch.id, now=NOW)
+
+    assert grund == "Zeit abgelaufen"
+    assert db.portrait(view.portrait_subject(buch), fingerprint(load_vocabulary())) is None
+
+
+def test_a_book_with_an_isbn_keeps_its_portrait_at_the_isbn(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Wie ein Urteil des Tors: so findet der Lauf denselben Steckbrief wieder."""
+    buch = db.find_or_create_book(isbn="9783548289441", title="Leopard",
+                                  author="Jo Nesbø", now=NOW)
+    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+
+    view.portray(db, load_settings(), buch.id, now=NOW)
+
+    from ebook_watchlist.portrait import fingerprint, load_vocabulary
+
+    assert db.portrait("isbn:9783548289441", fingerprint(load_vocabulary())).known
+
+
+def test_a_portrait_survives_the_book_getting_an_isbn(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ein Watchlist-Titel bekommt seine ISBN oft erst, wenn ein Lauf ihn
+    auflöst. Der Steckbrief von vorher gilt weiter und kostet keinen zweiten
+    Aufruf."""
+    from sqlalchemy import update
+
+    from ebook_watchlist.store import BookRow
+
+    buch = db.find_or_create_book(isbn=None, title="Leopard", author="Jo Nesbø", now=NOW)
+    fragt = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_rater", lambda model: fragt)
+    view.portray(db, load_settings(), buch.id, now=NOW)
+    with db.session() as session:
+        session.execute(update(BookRow).where(BookRow.id == buch.id).values(isbn="9783548289441"))
+        session.commit()
+
+    view.portray(db, load_settings(), buch.id, now=NOW)
+
+    assert len(fragt.asked) == 1
+    assert view.build(db, load_settings(), buch.id).portrait.known

@@ -18,6 +18,8 @@ from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
 from ..http import HttpClient, build_user_agent
 from ..models import Availability, MatchReason, Observation
+from ..portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
+from ..portrait import portray as draw_portrait
 from ..rating import RatingUnavailable, build_rater, confidence_label, load_leseprofil
 from ..ratings import (
     BY_CONVERSATION,
@@ -271,6 +273,67 @@ NOT_FOUND = 2
 
 
 @dataclass(frozen=True, slots=True)
+class TraitView:
+    """Ein Merkmal, wie es auf der Seite steht."""
+
+    name: str
+    sentence: str
+    evidence: str
+
+
+@dataclass(frozen=True, slots=True)
+class FamilyView:
+    """Eine Merkmalsfamilie mit den Merkmalen, die das Buch aus ihr trägt."""
+
+    name: str
+    traits: tuple[TraitView, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PortraitView:
+    """Der Steckbrief, nach Familien geordnet (#45).
+
+    Nach Familien, weil die Leserin so gefragt wird: "brutal", "verstörend"
+    und "schonungslos" unterscheidet sie nicht, und hier stehen sie unter
+    "hart" beisammen.
+    """
+
+    known: bool
+    families: tuple[FamilyView, ...] = ()
+    genre: str | None = None
+    subgenre: str | None = None
+    pitch: str | None = None
+    #: Nur wenn das Modell das Buch unter einem anderen Namen kennt.
+    original_title: str | None = None
+    violations: tuple[str, ...] = ()
+
+
+def _portrait_view(portrait: Portrait, vocabulary: Vocabulary, book) -> PortraitView:
+    if not portrait.known:
+        return PortraitView(known=False, violations=portrait.violations)
+    familien: dict[str, list[TraitView]] = {}
+    for trait in portrait.traits:
+        term = vocabulary.terms.get(trait.term)
+        if term is None:  # pragma: no cover - ein Merkmal, das es nicht mehr gibt
+            continue
+        familien.setdefault(vocabulary.family_of(trait.term).name, []).append(
+            TraitView(term.name, trait.sentence, trait.evidence)
+        )
+    original = portrait.original_title
+    if original and original.strip().casefold() == (book.title or "").strip().casefold():
+        original = None
+    return PortraitView(
+        known=True,
+        families=tuple(FamilyView(name, tuple(traits)) for name, traits in familien.items()),
+        genre=portrait.genre,
+        subgenre=portrait.subgenre,
+        pitch=portrait.pitch,
+        original_title=original,
+        violations=portrait.violations,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class Page:
     book_id: int
     title: str
@@ -298,6 +361,8 @@ class Page:
     note: str | None = None
     #: Die jüngste Beobachtung je Quelle — daraus baut der Kopf seine Kacheln.
     latest: tuple[Sighting, ...] = ()
+    #: Der Steckbrief, sobald es einen gibt (#45).
+    portrait: PortraitView | None = None
 
     @property
     def price(self) -> str | None:
@@ -585,6 +650,17 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
     except RatingUnavailable:
         current_version = None
 
+    # Ein unlesbares Vokabular kostet nur den Steckbrief, nicht die Seite.
+    portrait = None
+    try:
+        vocabulary = load_vocabulary()
+    except VocabularyError:
+        vocabulary = None
+    if vocabulary is not None:
+        gespeichert = _stored_portrait(store, book, fingerprint(vocabulary))
+        if gespeichert is not None:
+            portrait = _portrait_view(gespeichert, vocabulary, book)
+
     return Page(
         book_id=book.id,
         title=book.title,
@@ -608,7 +684,69 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         else None,
         watching=str(RelationKind.WATCHING) in known
         and known[str(RelationKind.WATCHING)].active,
+        portrait=portrait,
     )
+
+
+def portrait_subject(book) -> str:
+    """Woran der Steckbrief eines Buchs hängt.
+
+    Die ISBN, wo es eine gibt — dieselbe Form wie beim Urteil des Tors, damit
+    der Lauf später denselben Steckbrief wiederfindet, den die Buchseite
+    angelegt hat. Sonst das Buch selbst.
+    """
+    return f"isbn:{book.isbn}" if book.isbn else book_subject(book.id)
+
+
+def _stored_portrait(store: Store, book, abdruck: str) -> Portrait | None:
+    """Der Steckbrief dieses Buchs, unter der ISBN oder unter dem Buch.
+
+    Ein Watchlist-Titel bekommt seine ISBN oft erst, wenn ein Lauf ihn
+    auflöst. Der Steckbrief von vorher liegt dann am Buch und gilt weiter;
+    ihn neu anzulegen kostete einen Aufruf für dasselbe Ergebnis.
+    """
+    gefunden = store.portrait(portrait_subject(book), abdruck)
+    if gefunden is None and book.isbn:
+        gefunden = store.portrait(book_subject(book.id), abdruck)
+    return gefunden
+
+
+def portray(store: Store, settings: Settings, book_id: int, *, now: datetime) -> str:
+    """Den Steckbrief dieses Buchs anlegen, falls es noch keinen gibt (#45).
+
+    Einmal je Buch: liegt schon einer mit passendem Fingerabdruck vor, wird
+    nicht gefragt. Gespeichert wird erst bei Erfolg (ADR 7).
+
+    Belege werden hier nicht geholt. Der Steckbrief soll ohne Vorgeschichte
+    auskommen, wie bei der Erstaufnahme (#44); steht ein Klappentext am Buch,
+    geht er mit.
+
+    Zurück kommt der Grund, warum es nicht ging — leer heißt: der Steckbrief
+    steht.
+    """
+    book = store.book(book_id)
+    if book is None:  # pragma: no cover - nur bei geloeschtem Buch
+        return "Dieses Buch gibt es nicht mehr."
+    try:
+        vocabulary = load_vocabulary()
+    except VocabularyError as exc:
+        return str(exc)
+    subject = portrait_subject(book)
+    if _stored_portrait(store, book, fingerprint(vocabulary)) is not None:
+        return ""
+
+    rater = build_rater(settings.rating_model)
+    if rater is None:
+        return (
+            "Kein Bewerter eingerichtet: weder ein API-Schlüssel in der Umgebung "
+            "noch eine angemeldete Claude-Code-Installation."
+        )
+    try:
+        portrait = draw_portrait(book.title, book.author, book.blurb, rater.ask, vocabulary)
+    except RatingUnavailable as exc:
+        return str(exc)
+    store.put_portrait(subject, portrait, now=now)
+    return ""
 
 
 def set_relation(

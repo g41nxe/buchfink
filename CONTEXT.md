@@ -414,6 +414,23 @@ Not a Thema: a Thema is the shop's category.
 
 **Reader-facing name: *Erzählmuster*.**
 
+### Portrait
+*deutsch: Steckbrief*
+
+What a model says about a book, **once** and independent of any reader: which
+book it is (title, author, and the original title of a translation), its genre
+and subgenre, its Appeal Terms — each with a sentence that could stand under no
+other book and the evidence it rests on — and the pitch (ADR 33).
+
+It is kept at the book's subject, the ISBN where there is one, append-only. The
+same book always has the same Steckbrief: a new one is asked for only when the
+instructions or the Appeal Terms change, never when the Appeal Families do,
+because those are applied when it is read. Rules the answer breaks are kept
+beside it rather than used to discard it. A book the model does not know gets a
+Steckbrief too — *unbekannt*, without terms — so it is not asked again.
+
+**Reader-facing name: *Steckbrief*.**
+
 ### Intake
 *deutsch: Erstaufnahme*
 

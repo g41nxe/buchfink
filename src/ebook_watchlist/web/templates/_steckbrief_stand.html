@@ -1,0 +1,35 @@
+{# Knopf und Stand eines Steckbriefs, neben der Überschrift (#45).
+
+   Dasselbe Muster wie `_urteil_stand.html`: solange einer entsteht, fragt die
+   Zeile alle zwei Sekunden nach, und ist er fertig, lädt die Seite neu (ADR 3,
+   kein Websocket).
+
+   Anders als beim Urteil steht der Knopf nur, solange es keinen Steckbrief
+   gibt. Dasselbe Buch trägt immer denselben Steckbrief (ADR 33); ein zweiter
+   Knopf würde etwas versprechen, das er nicht hält.
+
+   Erwartet: `url`, `job` (der Stand, oder nichts), `vorhanden`. #}
+<span id="steckbrief-stand"
+      class="mt-2 flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-xs
+             font-normal text-soft sm:mt-0 sm:ml-auto sm:w-auto sm:justify-end"
+      {% if job and job.busy %}
+      hx-get="{{ url }}"
+      hx-trigger="every 2s"
+      hx-target="this"
+      hx-swap="outerHTML"
+      {% endif %}>
+  {% if job and job.busy %}
+  <svg class="i animate-spin text-accent" role="img" aria-label="legt den Steckbrief an"
+       title="legt den Steckbrief an"><use href="#ic-refresh"/></svg>
+  {% else %}
+  {% if job and job.trouble %}
+  <span class="text-danger">{{ job.trouble }}</span>
+  {% endif %}
+  {% if not vorhanden %}
+  <button type="button" hx-post="{{ url }}" hx-target="#steckbrief-stand" hx-swap="outerHTML"
+          title="Steckbrief anlegen" aria-label="Steckbrief anlegen"
+          class="tun flex items-center rounded p-1 hover:bg-hair hover:text-accent">
+    <svg class="i"><use href="#ic-refresh"/></svg></button>
+  {% endif %}
+  {% endif %}
+</span>

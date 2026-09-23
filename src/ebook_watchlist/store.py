@@ -36,6 +36,7 @@ from .cleaning import author_key, preferred_spelling
 from .dnb import Record
 from .migrations import migrate
 from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
+from .portrait import Portrait, Trait
 from .ratings import PROFILE_BOUND, RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
 
@@ -315,6 +316,38 @@ class RatingRow(Base):
     rated_at: Mapped[datetime] = mapped_column(DateTime)
 
     __table_args__ = (UniqueConstraint("subject", "origin", name="uq_rating"),)
+
+
+class PortraitRow(Base):
+    """Der Steckbrief eines Buchs: was das Modell einmal darüber sagt (#45, ADR 33).
+
+    Geschlüsselt wie ein Urteil des Tors, an der ISBN, wo es eine gibt, sonst am
+    Buch oder am Fund — damit findet der Lauf später denselben Steckbrief
+    wieder, den die Buchseite angelegt hat.
+
+    Append-only (ADR 5): ein neuer Steckbrief ersetzt keinen alten, er kommt
+    dazu, und gelesen wird der jüngste mit passendem Fingerabdruck. Die
+    Merkmale stehen als JSON da: nichts filtert oder sortiert danach, gelesen
+    werden sie immer als Ganzes.
+    """
+
+    __tablename__ = "portrait"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subject: Mapped[str] = mapped_column(String, index=True)
+    fingerprint: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    known: Mapped[bool] = mapped_column(Boolean)
+    title: Mapped[str | None] = mapped_column(String, nullable=True)
+    author: Mapped[str | None] = mapped_column(String, nullable=True)
+    original_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    genre: Mapped[str | None] = mapped_column(String, nullable=True)
+    subgenre: Mapped[str | None] = mapped_column(String, nullable=True)
+    pitch: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: JSON-Liste aus ``{"term", "sentence", "evidence"}``.
+    traits: Mapped[str] = mapped_column(String, default="[]")
+    #: JSON-Liste der verletzten Regeln.
+    violations: Mapped[str] = mapped_column(String, default="[]")
 
 
 class BookRelationRow(Base):
@@ -1533,6 +1566,65 @@ class Store:
             row.profile_version = profile_version
             row.rated_at = now
             session.commit()
+
+    # --- Steckbriefe (#45) ---------------------------------------------------
+
+    def put_portrait(self, subject: str, portrait: Portrait, *, now: datetime) -> None:
+        """Einen Steckbrief festhalten — dazu, nie an Stelle eines alten."""
+        with self.session() as session:
+            session.add(
+                PortraitRow(
+                    subject=subject,
+                    fingerprint=portrait.fingerprint,
+                    created_at=now,
+                    known=portrait.known,
+                    title=portrait.title,
+                    author=portrait.author,
+                    original_title=portrait.original_title,
+                    genre=portrait.genre,
+                    subgenre=portrait.subgenre,
+                    pitch=portrait.pitch,
+                    traits=json.dumps(
+                        [
+                            {"term": t.term, "sentence": t.sentence, "evidence": t.evidence}
+                            for t in portrait.traits
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    violations=json.dumps(list(portrait.violations), ensure_ascii=False),
+                )
+            )
+            session.commit()
+
+    def portrait(self, subject: str, fingerprint: str) -> Portrait | None:
+        """Der jüngste Steckbrief mit diesem Fingerabdruck, oder keiner.
+
+        Ein Steckbrief mit altem Fingerabdruck gilt nicht mehr: Anweisung oder
+        Merkmale haben sich seitdem geändert, und er wird neu angelegt, sobald
+        ihn jemand braucht.
+        """
+        with self.session() as session:
+            row = session.scalars(
+                select(PortraitRow)
+                .where(PortraitRow.subject == subject, PortraitRow.fingerprint == fingerprint)
+                .order_by(PortraitRow.created_at.desc(), PortraitRow.id.desc())
+            ).first()
+            if row is None:
+                return None
+            return Portrait(
+                known=row.known,
+                fingerprint=row.fingerprint,
+                title=row.title,
+                author=row.author,
+                original_title=row.original_title,
+                genre=row.genre,
+                subgenre=row.subgenre,
+                pitch=row.pitch,
+                traits=tuple(
+                    Trait(t["term"], t["sentence"], t["evidence"]) for t in json.loads(row.traits)
+                ),
+                violations=tuple(json.loads(row.violations)),
+            )
 
     # --- Beziehungen und Interessen (Ticket 05) ----------------------------
 

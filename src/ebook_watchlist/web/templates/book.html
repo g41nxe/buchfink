@@ -200,6 +200,49 @@
 {{ klappentext(page.blurb) }}
 {% endif %}
 
+{# Der Steckbrief (#45): was das Modell einmal über dieses Buch sagt, für jede
+   Leserin gleich — noch kein Urteil, das folgt aus ihm (ADR 33). Nach
+   Merkmalsfamilien geordnet, weil die Leserin so gefragt wird. Der Satz zu
+   einem Merkmal ist das, was es an diesem Buch nachprüfbar macht; worauf er
+   beruht, steht im Titel, nicht im Bild. #}
+{% call abschnitt("Steckbrief", "ic-search") %}
+  {% with url="/book/" ~ page.book_id ~ "/steckbrief", job=steckbrief_job,
+          vorhanden=page.portrait is not none %}
+  {% include "_steckbrief_stand.html" %}
+  {% endwith %}
+{% endcall %}
+{% if page.portrait is none %}
+<p class="text-sm text-soft">Noch kein Steckbrief.</p>
+{% elif not page.portrait.known %}
+<p class="text-sm text-soft">Das Modell kennt dieses Buch nicht und hat ihm deshalb keine
+  Merkmale gegeben.</p>
+{% else %}
+{% set steckbrief = page.portrait %}
+<p class="text-sm text-soft">
+  {{ steckbrief.genre or "Genre unbekannt" }}{% if steckbrief.subgenre %} · {{ steckbrief.subgenre }}{% endif %}
+  {% if steckbrief.original_title %} · im Original
+  <span class="font-serif italic text-ink">{{ steckbrief.original_title }}</span>{% endif %}
+</p>
+{% if steckbrief.pitch %}
+<p class="mt-2 max-w-prose font-serif text-ink">{{ steckbrief.pitch }}</p>
+{% endif %}
+<dl class="mt-4 space-y-3">
+  {% for familie in steckbrief.families %}
+  <div>
+    <dt class="text-sm font-semibold text-ink">{{ familie.name }}</dt>
+    {% for merkmal in familie.traits %}
+    <dd class="mt-1 max-w-prose text-sm text-soft" title="beruht auf: {{ merkmal.evidence }}">
+      {% if merkmal.name != familie.name %}<span class="text-ink">{{ merkmal.name }}:</span>
+      {% endif %}{{ merkmal.sentence }}</dd>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</dl>
+{% endif %}
+{% if page.portrait and page.portrait.violations %}
+<p class="mt-3 text-xs text-soft">Nicht nach den Regeln: {{ page.portrait.violations | join(" · ") }}</p>
+{% endif %}
+
 {# Der Knopf holt ein Urteil des Tors nach (Ticket 55). Im Lauf urteilt das Tor
    nur ueber Funde, die in den Stapel kaemen — ein Watchlist-Titel ist gewollt
    und wird nie gefragt, hier stand deshalb fuer immer nichts. Knopf und Stand

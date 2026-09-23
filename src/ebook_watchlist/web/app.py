@@ -265,6 +265,29 @@ def create_app() -> FastAPI:
 
     urteiler = Rechecker(work=_urteilen)
 
+    def _steckbrief_anlegen(key) -> Report:
+        """Die Arbeit des dritten Verwalters: einen Steckbrief anlegen (#45).
+
+        Ein eigener Verwalter und nicht der des Urteils: beide koennen
+        gleichzeitig laufen, und ihr Stand steht an verschiedenen Stellen der
+        Seite.
+        """
+        store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
+        return Report(trouble=book.portray(store, settings, key[1], now=now))
+
+    zeichner = Rechecker(work=_steckbrief_anlegen)
+
+    def _steckbrief_stand(request: Request, book_id: int) -> Response:
+        """Das Fragment neben *Steckbrief*, solange einer entsteht — wie beim Urteil."""
+        job = zeichner.state(("book", book_id))
+        if job is None or not job.busy:
+            return Response(status_code=204, headers={"HX-Refresh": "true"})
+        return TEMPLATES.TemplateResponse(
+            request,
+            "_steckbrief_stand.html",
+            {"url": f"/book/{book_id}/steckbrief", "job": job, "vorhanden": False},
+        )
+
     def _lauf_unterwegs(store: Store, settings) -> bool:
         """Ob gerade ein grosser Lauf jedes Buch anfasst — fuer den Kopf der Seite."""
         return launcher.state(store, settings.slug).busy
@@ -735,6 +758,7 @@ def create_app() -> FastAPI:
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
                 "urteil_job": urteiler.state(("book", book_id)),
+                "steckbrief_job": zeichner.state(("book", book_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
             },
         )
@@ -754,6 +778,21 @@ def create_app() -> FastAPI:
     def book_rate_status(request: Request, book_id: int) -> Response:
         """Hier fragt die Seite nach, solange das Urteil entsteht."""
         return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/bewerten")
+
+    @app.post("/book/{book_id}/steckbrief")
+    def book_portray(request: Request, book_id: int) -> Response:
+        """Den Steckbrief dieses Buchs anlegen lassen (#45).
+
+        Im Hintergrund wie das Urteil. Gibt es schon einen, kostet der Klick
+        keinen Aufruf: dasselbe Buch trägt immer denselben Steckbrief.
+        """
+        zeichner.start(("book", book_id))
+        return _steckbrief_stand(request, book_id)
+
+    @app.get("/book/{book_id}/steckbrief")
+    def book_portray_status(request: Request, book_id: int) -> Response:
+        """Hier fragt die Seite nach, solange der Steckbrief entsteht."""
+        return _steckbrief_stand(request, book_id)
 
     @app.post("/book/{book_id}/bearbeiten")
     def book_edit(
