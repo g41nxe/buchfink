@@ -12,10 +12,13 @@ import json
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+import yaml
+
 from ..cleaning import is_truncated
 from ..config import Settings
 from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
+from ..facets import Reason, fit, load_weights
 from ..http import HttpClient, build_user_agent
 from ..models import Availability, MatchReason, Observation
 from ..portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
@@ -334,6 +337,40 @@ def _portrait_view(portrait: Portrait, vocabulary: Vocabulary, book) -> Portrait
 
 
 @dataclass(frozen=True, slots=True)
+class FitView:
+    """Die Übereinstimmung mit dem Leseprofil, aus dem Code gerechnet (#46)."""
+
+    stars: int
+    #: Ganze Prozent; ordnet später die Liste.
+    percent: int
+    #: Gegen welche Fassung des Leseprofils gerechnet wurde.
+    version: int
+    reasons: tuple[Reason, ...]
+
+
+def _fit_view(
+    store: Store, settings: Settings, portrait: Portrait, vocabulary: Vocabulary
+) -> FitView | None:
+    """Ohne Profil in der Datenbank wird nicht geurteilt (ADR 33, Punkt 8)."""
+    profil = store.reading_profile(settings.slug)
+    if profil is None:
+        return None
+    try:
+        gewichte = load_weights()
+    except (OSError, KeyError, ValueError, yaml.YAMLError):
+        return None
+    ergebnis = fit(portrait, profil, vocabulary, gewichte)
+    if ergebnis is None:
+        return None
+    return FitView(
+        stars=ergebnis.stars,
+        percent=round(ergebnis.share * 100),
+        version=profil.version,
+        reasons=ergebnis.reasons,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class Page:
     book_id: int
     title: str
@@ -363,6 +400,8 @@ class Page:
     latest: tuple[Sighting, ...] = ()
     #: Der Steckbrief, sobald es einen gibt (#45).
     portrait: PortraitView | None = None
+    #: Die Übereinstimmung mit dem Leseprofil, sobald es Profil und Steckbrief gibt.
+    fit: FitView | None = None
 
     @property
     def price(self) -> str | None:
@@ -652,6 +691,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
 
     # Ein unlesbares Vokabular kostet nur den Steckbrief, nicht die Seite.
     portrait = None
+    passung = None
     try:
         vocabulary = load_vocabulary()
     except VocabularyError:
@@ -660,6 +700,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         gespeichert = _stored_portrait(store, book, fingerprint(vocabulary))
         if gespeichert is not None:
             portrait = _portrait_view(gespeichert, vocabulary, book)
+            passung = _fit_view(store, settings, gespeichert, vocabulary)
 
     return Page(
         book_id=book.id,
@@ -685,6 +726,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         watching=str(RelationKind.WATCHING) in known
         and known[str(RelationKind.WATCHING)].active,
         portrait=portrait,
+        fit=passung,
     )
 
 

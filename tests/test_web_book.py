@@ -1348,3 +1348,64 @@ def test_a_portrait_survives_the_book_getting_an_isbn(
 
     assert len(fragt.asked) == 1
     assert view.build(db, load_settings(), buch.id).portrait.known
+
+
+# --- die Übereinstimmung aus dem Code (#46) ---------------------------------
+
+
+def _profil():
+    from ebook_watchlist.facets import Counterweight, Facet, ReadingProfile
+
+    return ReadingProfile(
+        facets=(Facet(("harsh", "brooding"), ("Leichenblässe", "Kruzifix Killer")),),
+        counterweights=(Counterweight(("leisurely",)),),
+    )
+
+
+def test_with_profile_and_portrait_the_page_shows_the_fit(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Leopard trägt "hart" und "gezeichnete Figur" und trifft die Facette ganz."""
+    buch = db.books()[0]
+    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    view.portray(db, load_settings(), buch.id, now=NOW)
+    db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
+
+    passung = view.build(db, load_settings(), buch.id).fit
+
+    assert (passung.stars, passung.percent, passung.version) == (5, 80, 1)
+    assert any("Leichenblässe und Kruzifix Killer" in z.text for z in passung.reasons)
+
+
+def test_the_fit_stands_under_the_judgement(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buch = db.books()[0]
+    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    view.portray(db, load_settings(), buch.id, now=NOW)
+    db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
+
+    body = client.get(f"/book/{buch.id}").text
+
+    assert "Übereinstimmung mit deinen Facetten" in body
+    assert "Trifft deine Facette hart · gezeichnete Figur" in body
+    assert "Harry Hole wird zurückgeholt." in body
+
+
+def test_without_a_profile_there_is_no_fit(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ohne Profil kein Urteil (ADR 33, Punkt 8) — auch nicht "passt nicht"."""
+    buch = db.books()[0]
+    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    view.portray(db, load_settings(), buch.id, now=NOW)
+
+    assert view.build(db, load_settings(), buch.id).fit is None
+    assert "data-passung" not in client.get(f"/book/{buch.id}").text
+
+
+def test_without_a_portrait_there_is_no_fit(db: Store) -> None:
+    buch = db.books()[0]
+    db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
+
+    assert view.build(db, load_settings(), buch.id).fit is None

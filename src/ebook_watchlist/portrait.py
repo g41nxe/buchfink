@@ -80,6 +80,18 @@ class Vocabulary:
         term = self.terms[term_id]
         return Family(term.id, term.name, (term.id,))
 
+    def family(self, family_id: str) -> Family:
+        """Eine Familie nach ihrer id; ein Merkmal ohne Familie ist seine eigene.
+
+        Wirft ``KeyError``, wenn es sie nicht gibt.
+        """
+        for family in self.families:
+            if family.id == family_id:
+                return family
+        if family_id in self.terms and self.family_of(family_id).id == family_id:
+            return self.family_of(family_id)
+        raise KeyError(family_id)
+
     def prompt_text(self) -> str:
         """Das Vokabular, wie das Modell es liest — ohne Familien."""
         zeilen = []

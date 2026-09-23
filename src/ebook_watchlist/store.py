@@ -34,6 +34,7 @@ from .books import BookLike
 from .books import find as find_book
 from .cleaning import author_key, preferred_spelling
 from .dnb import Record
+from .facets import Counterweight, Facet, ReadingProfile
 from .migrations import migrate
 from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
@@ -348,6 +349,30 @@ class PortraitRow(Base):
     traits: Mapped[str] = mapped_column(String, default="[]")
     #: JSON-Liste der verletzten Regeln.
     violations: Mapped[str] = mapped_column(String, default="[]")
+
+
+class ReadingProfileRow(Base):
+    """Eine Fassung des Leseprofils: Facetten und Gegengewichte (#46, ADR 33).
+
+    Append-only (ADR 5): jede Änderung ist eine neue Fassung mit ihrem Anlass,
+    gelesen wird die jüngste. Facetten und Gegengewichte stehen als JSON da;
+    gelesen werden sie immer als Ganzes.
+    """
+
+    __tablename__ = "reading_profile"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_slug: Mapped[str] = mapped_column(String, index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    #: Warum es diese Fassung gibt, etwa "aus der Datei profil.yaml".
+    cause: Mapped[str] = mapped_column(String)
+    #: JSON: ``{"facets": [...], "counterweights": [...]}``.
+    body: Mapped[str] = mapped_column(String)
+
+    __table_args__ = (
+        UniqueConstraint("profile_slug", "version", name="uq_reading_profile_version"),
+    )
 
 
 class BookRelationRow(Base):
@@ -1624,6 +1649,65 @@ class Store:
                     Trait(t["term"], t["sentence"], t["evidence"]) for t in json.loads(row.traits)
                 ),
                 violations=tuple(json.loads(row.violations)),
+            )
+
+    # --- Leseprofil aus Facetten (#46) ---------------------------------------
+
+    def put_reading_profile(
+        self, profile_slug: str, profile: ReadingProfile, *, cause: str, now: datetime
+    ) -> int:
+        """Eine neue Fassung des Leseprofils festhalten; gibt ihre Nummer zurück."""
+        body = {
+            "facets": [
+                {"families": list(f.families), "books": list(f.books)} for f in profile.facets
+            ],
+            "counterweights": [
+                {"families": list(c.families), "genre": c.genre, "books": list(c.books)}
+                for c in profile.counterweights
+            ],
+        }
+        with self.session() as session:
+            letzte = session.scalar(
+                select(func.max(ReadingProfileRow.version)).where(
+                    ReadingProfileRow.profile_slug == profile_slug
+                )
+            )
+            version = (letzte or 0) + 1
+            session.add(
+                ReadingProfileRow(
+                    profile_slug=profile_slug,
+                    version=version,
+                    created_at=now,
+                    cause=cause,
+                    body=json.dumps(body, ensure_ascii=False),
+                )
+            )
+            session.commit()
+        return version
+
+    def reading_profile(self, profile_slug: str) -> ReadingProfile | None:
+        """Die jüngste Fassung des Leseprofils, oder keine."""
+        with self.session() as session:
+            row = session.scalars(
+                select(ReadingProfileRow)
+                .where(ReadingProfileRow.profile_slug == profile_slug)
+                .order_by(ReadingProfileRow.version.desc())
+            ).first()
+            if row is None:
+                return None
+            body = json.loads(row.body)
+            return ReadingProfile(
+                facets=tuple(
+                    Facet(tuple(f["families"]), tuple(f.get("books") or ()))
+                    for f in body.get("facets") or ()
+                ),
+                counterweights=tuple(
+                    Counterweight(
+                        tuple(c["families"]), c.get("genre"), tuple(c.get("books") or ())
+                    )
+                    for c in body.get("counterweights") or ()
+                ),
+                version=row.version,
             )
 
     # --- Beziehungen und Interessen (Ticket 05) ----------------------------

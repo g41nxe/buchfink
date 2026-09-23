@@ -295,3 +295,25 @@ nichts_erfinden: |
   Was auch nach der Recherche offen bleibt, wird BENANNT und nicht in die
   Bewertung eingerechnet. Eine Begründung, die eine Lücke verschweigt, ist
   schlimmer als eine, die sie ausspricht: die erste sieht aus wie ein Ergebnis.
+
+# Das Urteil aus Merkmalen (ADR 33, #46): wie der Code aus dem Steckbrief
+# eines Buchs und dem Profil der Leserin die Übereinstimmung rechnet. Kein
+# Modell liest diesen Abschnitt; er steht deshalb nicht in "fuer_den_bewerter".
+# Die Werte sind Startwerte (Grill vom 23.09.2026, #44); sobald genug eigene
+# Urteile vorliegen, werden sie gelernt statt gesetzt.
+urteil_aus_merkmalen:
+  # Jede Facette ist ein eigener Grund, das Buch zu mögen; die Gründe werden
+  # als Noisy-OR verbunden und verstärken sich, ohne je 100 % zu erreichen.
+  facette_ganz: 0.8
+  facette_teilweise: 0.1
+  # Nur das stärkste Gegengewicht zählt, und es zieht diesen Anteil ab.
+  # Ablehnung wiegt beim Standardverfahren Rocchio etwa ein Fünftel der
+  # Zustimmung.
+  gegengewicht: 0.2
+  # Ab welcher Übereinstimmung wie viele Sterne; darunter einer. Null Sterne
+  # gibt es nur, wenn keine Facette berührt ist und ein Gegengewicht trifft.
+  sterne_ab:
+    5: 0.8
+    4: 0.6
+    3: 0.4
+    2: 0.2

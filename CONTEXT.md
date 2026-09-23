@@ -414,6 +414,21 @@ Not a Thema: a Thema is the shop's category.
 
 **Reader-facing name: *Erzählmuster*.**
 
+### Fit
+*deutsch: Übereinstimmung*
+
+How well a book suits a Reading Profile, computed by the code from the book's
+Steckbrief and the reader's Facets and Counterweights (ADR 33): every Facet is
+an independent reason — hit in full it weighs 0.8, in part 0.1 — combined as a
+noisy-OR, and the strongest Counterweight takes a fifth off. The percentage
+orders; stars summarise it. No model is asked, so a new profile version
+recomputes every Fit at once.
+
+Not a **Profile Match** (*Profiltreffer*): that is the older, author-based way a
+Discovery came in.
+
+**Reader-facing name: *Übereinstimmung*.**
+
 ### Portrait
 *deutsch: Steckbrief*
 
