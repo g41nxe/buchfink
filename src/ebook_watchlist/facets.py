@@ -50,7 +50,7 @@ class Facet:
 
     #: Die ids der Merkmalsfamilien.
     families: tuple[str, ...]
-    #: Aus welchen geliebten Büchern sie stammt — für die Begründung und die Stärke.
+    #: Aus welchen geliebten Büchern sie stammt — für die Stärke und die Profilseite.
     books: tuple[str, ...] = ()
 
 
@@ -95,11 +95,29 @@ class FacetHit:
 
 @dataclass(frozen=True, slots=True)
 class Reason:
-    """Eine Zeile der Begründung."""
+    """Eine Zeile der Begründung.
 
+    Knapp wie eine Marke, kein Satz: die Facette steht mit ihrem Namen da,
+    und ob sie ganz oder zum Teil trifft, sagt die Art der Zeile — das Bild
+    macht daraus ein Zeichen. Woher eine Facette stammt, steht nicht hier:
+    "wie Leichenblässe" unter einem Buch von Nesbø las sich wie ein Vergleich
+    der beiden Bücher, und den zieht niemand.
+    """
+
+    #: ``ganz``, ``teils``, ``dagegen``, ``keine`` oder ``beleg``.
+    kind: str
     text: str
-    #: Ein Beleg zur Zeile davor — der Satz aus dem Steckbrief.
-    detail: bool = False
+
+    @property
+    def detail(self) -> bool:
+        """Ein Beleg zur Zeile davor — der Satz aus dem Steckbrief."""
+        return self.kind == "beleg"
+
+    @property
+    def line(self) -> str:
+        """Die Zeile als Text, ohne Bild."""
+        vorn = {"teils": "zum Teil: ", "dagegen": "dagegen: "}.get(self.kind, "")
+        return vorn + self.text
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,21 +233,16 @@ def _reasons(
     portrait: Portrait,
     vocabulary: Vocabulary,
 ) -> tuple[Reason, ...]:
-    """Die Begründung aus Daten: welche Facette, woher, und der Satz dazu."""
-    zeilen: list[Reason] = []
-    for t in treffer:
-        buecher = " und ".join(t.facet.books)
-        if t.full:
-            woher = f", wie {buecher}" if buecher else ""
-            zeilen.append(Reason(
-                f"Trifft deine Facette {_names(t.facet.families, vocabulary)}{woher}."
-            ))
-        else:
-            # Nur, was das Buch trägt: "Streift große Welt · verschachtelt" las
-            # sich bei Leopard, als hätte Harry Hole eine große Welt.
-            wie = f"wie {buecher}" if buecher else "deine Facette"
-            zeilen.append(Reason(f"Zum Teil {wie}: {_names(t.hit, vocabulary)}."))
-        for family_id in t.hit:
+    """Die Begründung aus Daten: welche Facette, und der Satz dazu.
+
+    Facette und Gegengewicht sind gleich gebaut — eine Marke, darunter die
+    Sätze aus dem Steckbrief. Nur der Satz: die Familie steht schon in der
+    Marke, und zweimal derselbe Name ist keine zweite Auskunft.
+    """
+
+    def belege(family_ids: Sequence[str]) -> list[Reason]:
+        saetze = []
+        for family_id in family_ids:
             satz = next(
                 (
                     trait.sentence
@@ -240,14 +253,24 @@ def _reasons(
                 "",
             )
             if satz:
-                zeilen.append(Reason(f"{_name(family_id, vocabulary)}: {satz}", True))
+                saetze.append(Reason("beleg", satz))
+        return saetze
+
+    zeilen: list[Reason] = []
+    for t in treffer:
+        # Beim Teiltreffer nur, was das Buch trägt: "große Welt · verschachtelt"
+        # las sich bei Leopard, als hätte Harry Hole eine große Welt.
+        if t.full:
+            zeilen.append(Reason("ganz", _names(t.facet.families, vocabulary)))
+        else:
+            zeilen.append(Reason("teils", _names(t.hit, vocabulary)))
+        zeilen.extend(belege(t.hit))
     if not treffer:
-        zeilen.append(Reason("Keine deiner Facetten trifft dieses Buch."))
+        zeilen.append(Reason("keine", "keine Facette getroffen"))
     if dagegen is not None:
-        im_genre = f" in {dagegen.genre}" if dagegen.genre else ""
-        zeilen.append(
-            Reason(f"Dagegen spricht {_names(dagegen.families, vocabulary)}{im_genre}.")
-        )
+        im_genre = f" (bei {dagegen.genre})" if dagegen.genre else ""
+        zeilen.append(Reason("dagegen", _names(dagegen.families, vocabulary) + im_genre))
+        zeilen.extend(belege(dagegen.families))
     return tuple(zeilen)
 
 

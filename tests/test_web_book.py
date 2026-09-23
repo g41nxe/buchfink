@@ -1374,7 +1374,7 @@ def test_with_profile_and_portrait_the_page_shows_the_fit(
     passung = view.build(db, load_settings(), buch.id).fit
 
     assert (passung.stars, passung.percent, passung.version) == (5, 80, 1)
-    assert any("Leichenblässe und Kruzifix Killer" in z.text for z in passung.reasons)
+    assert passung.reasons[0].text == "hart · gezeichnete Figur"
 
 
 def test_the_fit_stands_under_the_judgement(
@@ -1388,7 +1388,7 @@ def test_the_fit_stands_under_the_judgement(
     body = client.get(f"/book/{buch.id}").text
 
     assert "Übereinstimmung mit deinen Facetten" in body
-    assert "Trifft deine Facette hart · gezeichnete Figur" in body
+    assert "hart · gezeichnete Figur" in body
     assert "Harry Hole wird zurückgeholt." in body
 
 

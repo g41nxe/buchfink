@@ -196,17 +196,25 @@ Regeln:
   deshalb spannungsgeladen, weil er ein Thriller ist.
 - Zu jedem Merkmal schreibst du einen Satz, der zeigt, wo es in DIESEM Buch
   steckt: eine Figur, eine Situation, eine Eigenart. Die Probe: Könnte derselbe
-  Satz unter einem anderen Buch stehen, ist er falsch. Verrate kein Ende.
+  Satz unter einem anderen Buch stehen, ist er falsch.
 - Zu jedem Merkmal nennst du, worauf es beruht: "klappentext", "leseprobe"
   oder "wissen" (was du selbst über das Buch weißt).
 - Nichts erfinden.
+
+Keine Spoiler — die Leserin hat das Buch womöglich noch vor sich:
+- Satz und Pitch verraten nichts, was nicht schon der Klappentext oder die
+  ersten Seiten preisgeben: keine Wendung, keinen Täter, keinen Tod, kein
+  Ende, keine Auflösung eines Rätsels, nicht wie ein Handlungsstrang ausgeht.
+- Bei einem Band aus einer Reihe auch nichts aus den früheren Bänden, was
+  deren Ausgang verrät.
+- Im Zweifel beschreibst du, wie es sich liest, statt was geschieht.
 
 Nenne außerdem Genre und Untergenre auf Deutsch, so wie eine Buchhandlung das
 Buch einordnen würde.
 
 Und schreib den Pitch: ein bis zwei Sätze, höchstens 200 Zeichen. Zuerst, was
 das Buch ist; dann, was es ausmacht. Wähle ein Bild, an dem dieses Buch hängt,
-statt es zusammenzufassen. Beschreiben, nicht loben. Nichts verraten.
+statt es zusammenzufassen. Beschreiben, nicht loben.
 
 --- VOKABULAR ---
 {vokabular}

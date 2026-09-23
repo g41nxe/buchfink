@@ -310,3 +310,12 @@ def test_known_must_be_a_real_yes() -> None:
     bild = parse_answer(antwort(bekannt="false"), load_vocabulary())
 
     assert not bild.known
+
+
+def test_the_instruction_forbids_spoilers_for_sentences_pitch_and_series() -> None:
+    """Die Sätze stehen auf der Buchseite, bevor die Leserin das Buch liest.
+    Der erste echte Steckbrief (Leopard) verriet den Ausgang des Vorgängers."""
+    text = prompt("Leopard", "Jo Nesbø", None, load_vocabulary())
+
+    assert "Keine Spoiler" in text
+    assert "früheren Bänden" in text

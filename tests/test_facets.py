@@ -169,18 +169,24 @@ def test_a_counterweight_counts_only_with_all_its_parts(wort, gewichte) -> None:
 # --- die Begründung ---------------------------------------------------------------
 
 
-def test_the_reason_names_facet_books_and_the_sentence(wort, gewichte) -> None:
-    text = "\n".join(r.text for r in fit(LEOPARD, PROFIL, wort, gewichte).reasons)
+def test_the_reason_names_the_facet_and_the_sentence(wort, gewichte) -> None:
+    zeilen = fit(LEOPARD, PROFIL, wort, gewichte).reasons
 
-    assert "hart · gezeichnete Figur" in text
-    assert "Leichenblässe" in text and "Kruzifix Killer" in text
-    assert "Satz zu brooding." in text
+    assert (zeilen[0].kind, zeilen[0].text) == ("ganz", "hart · gezeichnete Figur")
+    assert zeilen[1].line == "Satz zu violent."
+
+
+def test_the_reason_does_not_compare_with_the_source_books(wort, gewichte) -> None:
+    """„wie Leichenblässe" unter einem Nesbø las sich wie ein Buchvergleich."""
+    text = "\n".join(z.line for z in fit(LEOPARD, PROFIL, wort, gewichte).reasons)
+
+    assert "Leichenblässe" not in text and "Otherland" not in text
 
 
 def test_the_reason_names_what_is_against(wort, gewichte) -> None:
-    text = "\n".join(r.text for r in fit(OTHERLAND, PROFIL, wort, gewichte).reasons)
+    zeilen = fit(OTHERLAND, PROFIL, wort, gewichte).reasons
 
-    assert "gemächlich" in text
+    assert "dagegen: gemächlich" in [z.line for z in zeilen]
 
 
 # --- die Gewichte kommen aus dem Bewertungsschema ------------------------------
@@ -310,7 +316,7 @@ def test_a_family_the_vocabulary_forgot_does_not_break_the_reason(wort, gewichte
 
     ergebnis = fit(LEOPARD, alt, wort, gewichte)
 
-    assert "Zum Teil deine Facette: hart." in [r.text for r in ergebnis.reasons]
+    assert "zum Teil: hart" in [r.line for r in ergebnis.reasons]
 
 
 def test_a_partial_hit_names_only_what_the_book_carries(wort, gewichte) -> None:
@@ -318,5 +324,21 @@ def test_a_partial_hit_names_only_what_the_book_carries(wort, gewichte) -> None:
     das nicht behaupten."""
     texte = [r.text for r in fit(LEOPARD, PROFIL, wort, gewichte).reasons if not r.detail]
 
-    assert "Zum Teil wie Otherland: verschachtelt." in texte
+    assert "verschachtelt" in texte
     assert not any("große Welt" in t for t in texte)
+
+
+def test_a_family_is_named_once(wort, gewichte) -> None:
+    """Der Name steht in der Marke, darunter nur die Sätze."""
+    zeilen = fit(LEOPARD, PROFIL, wort, gewichte).reasons
+    belege = [z.line for z in zeilen if z.detail]
+
+    assert belege and not any(":" in b.split(" ")[0] for b in belege)
+    assert "Satz zu intricate." in belege
+
+
+def test_a_counterweight_carries_its_sentence_like_a_facet(wort, gewichte) -> None:
+    zeilen = list(fit(OTHERLAND, PROFIL, wort, gewichte).reasons)
+    dagegen = next(i for i, z in enumerate(zeilen) if z.kind == "dagegen")
+
+    assert zeilen[dagegen + 1].line == "Satz zu leisurely."

@@ -317,14 +317,35 @@
           title="gegen Fassung {{ page.fit.version }} deines Leseprofils"
           >{{ page.fit.percent }}&nbsp;%</span>
   </div>
-  {# Die Facette laut, der Beleg aus dem Steckbrief leise und eingerückt
-     darunter — sonst liest sich die Begründung wie ein Block. #}
-  <ul class="mt-1.5 max-w-prose text-sm">
+  {# Die Facette als Marke, wie die Achsen beim Urteil des Tors: der Name
+     ist die Auskunft, das Zeichen sagt, ob ganz, zum Teil oder dagegen. Kein
+     Satz drumherum — "Trifft deine Facette …, wie Leichenblässe" las sich
+     wie ein Vergleich zweier Bücher. Darunter leise und eingerückt der
+     Beleg aus dem Steckbrief. #}
+  <ul class="mt-2 max-w-prose text-sm">
     {% for zeile in page.fit.reasons %}
     {% if zeile.detail %}
-    <li class="mt-0.5 border-l border-rule pl-3 text-soft">{{ zeile.text }}</li>
+    <li class="mt-1 border-l border-rule pl-3 text-soft">
+      {{ zeile.text }}</li>
     {% else %}
-    <li class="{% if not loop.first %}mt-2 {% endif %}text-ink">{{ zeile.text }}</li>
+    <li class="{% if not loop.first %}mt-3 {% endif %}flex flex-wrap items-center gap-x-2"
+        data-facette="{{ zeile.kind }}">
+      {# Eine Form für alle drei: Marke mit Zeichen und Name, dahinter ein
+         leises Wort. Was sie unterscheidet, sagen Farbe, Zeichen und Wort. #}
+      {% set art = {
+           "ganz": ("bg-accent/15 text-accent", "ic-check", "trifft"),
+           "teils": ("bg-hair text-ink", "ic-check", "zum Teil"),
+           "dagegen": ("bg-danger/10 text-danger", "ic-x", "spricht dagegen"),
+         }.get(zeile.kind) %}
+      {% if art %}
+      <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold
+                   {{ art[0] }}">
+        <svg class="i"><use href="#{{ art[1] }}"/></svg>{{ zeile.text }}</span>
+      <span class="text-xs text-soft">{{ art[2] }}</span>
+      {% else %}
+      <span class="italic text-soft">{{ zeile.text }}</span>
+      {% endif %}
+    </li>
     {% endif %}
     {% endfor %}
   </ul>
