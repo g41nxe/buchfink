@@ -62,7 +62,7 @@
     {# Dieselbe Spalte wie im Stapel (#16): was das Werkzeug urteilt, steht
        auch hier — die Zeile sagte bisher nur, was ein Buch kostet, nicht ob es
        sich lohnt. #}
-    {% set kennzahlen %}{{ urteilssterne(entry.stars) }}{% endset %}
+    {% set kennzahlen %}{{ urteilssterne(entry.stars, entry.confidence_note) }}{% endset %}
 
     {{ zeile(
          entry.title,

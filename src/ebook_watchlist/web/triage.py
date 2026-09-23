@@ -24,7 +24,7 @@ from ..junk import is_junk
 from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
-from ..rating import DEFAULT_THRESHOLD
+from ..rating import BELEGT, DEFAULT_THRESHOLD, confidence_label
 from ..ratings import BY_MODEL, subject_of
 from ..reasons import short_why, thema_name, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
@@ -85,10 +85,25 @@ class Suggestion:
     #: Ob eine Bibliothek den Fund gerade herausgibt. Fuer die Sortierung
     #: gebraucht (#37) — in der Zeile steht es als Zeichen der Quellenart.
     borrowable: bool = False
+    #: Worauf das Urteil ruht (#41). Gezeigt wird es nur, wo es eine
+    #: Einschraenkung ist — siehe :attr:`confidence_note`.
+    confidence: str = ""
     #: Wann der Fund zuletzt gesehen wurde. Die Watchlist nennt denselben
     #: Schluessel "zuletzt hinzugefuegt"; ein Fund wird nicht hinzugefuegt,
     #: er taucht auf.
     observed_at: datetime | None = None
+
+    @property
+    def confidence_note(self) -> str:
+        """Was der Leserin zu sagen ist, wenn das Urteil duenn ruht (#41).
+
+        Bei ``belegt`` steht nichts: das ist der Normalfall und braucht kein
+        Wort. Die uebrigen Stufen sind eine Einschraenkung, und die gehoert
+        dorthin, wo entschieden wird — bisher stand sie nur auf der Buchseite.
+        Gemessen: ein belegtes Urteil erreicht die Schwelle in 12 Prozent der
+        Faelle, ein teilweise belegtes in 32.
+        """
+        return "" if self.confidence in ("", BELEGT) else confidence_label(self.confidence)
 
     @property
     def is_bundle(self) -> bool:
@@ -207,6 +222,7 @@ def _suggestion(
         why=why_shown(observation),
         why_short=short_why(observation),
         stars=judgement.stars if judgement else None,
+        confidence=judgement.confidence if judgement else "",
         cover_file=_cover_file(observation, covers),
         pitch=(judgement.pitch or None) if judgement else None,
         bundle=bundle,

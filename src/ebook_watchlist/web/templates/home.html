@@ -176,7 +176,7 @@
       {% endset %}
       {# Dieselbe Spalte wie auf der Watchlist und im Stapel (#16): es ist
          dieselbe Zeile, und sie soll ueberall dasselbe sagen. #}
-      {% set kennzahlen %}{{ urteilssterne(entry.stars) }}{% endset %}
+      {% set kennzahlen %}{{ urteilssterne(entry.stars, entry.confidence_note) }}{% endset %}
       {{ zeile(
            entry.title,
            titel_url="/book/" ~ entry.book_id,
@@ -228,18 +228,12 @@
       {% endif %}
       {% endset %}
 
-      {% set kennzahlen %}
-      {# Die Sterne des Tors, wie im Stapel. Ohne Urteil steht hier nichts. #}
-      {% if item.stars is not none %}
-      <span class="flex items-center gap-0.5 text-gold"
-            title="{{ item.stars | sterne }} von 5 — Urteil des Werkzeugs">
-        {% for value in range(1, 6) %}
-        <svg class="i" {% if value <= item.stars %}style="fill:currentColor"{% endif %}>
-          <use href="#ic-star"/></svg>
-        {% endfor %}
-      </span>
-      {% endif %}
-      {% endset %}
+      {# Dasselbe Makro wie in den anderen drei Zeilen. Hier stand die
+         Sternereihe bis #41 noch einmal von Hand, obwohl der Kommentar in der
+         Spalte darueber schon sagte, sie solle ueberall dasselbe sagen — und
+         der Hinweis auf die Gewissheit waere prompt an dieser einen Stelle
+         gefehlt. #}
+      {% set kennzahlen %}{{ urteilssterne(item.stars, item.confidence_note) }}{% endset %}
 
       {% set aktionen %}
       {# Ein Klick, keine Nachfrage — die Beziehung laesst sich stilllegen

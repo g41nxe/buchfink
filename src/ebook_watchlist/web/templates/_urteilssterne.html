@@ -12,14 +12,27 @@
    Ohne Urteil steht hier nichts — null Sterne wären eine Aussage,
    „noch nicht bewertet" ist keine.
 #}
-{% macro urteilssterne(stars) %}
+{% macro urteilssterne(stars, hinweis="") %}
 {% if stars is not none %}
-<span class="flex items-center gap-0.5 text-gold"
-      title="{{ stars | sterne }} von 5 — Urteil des Werkzeugs">
-  {% for value in range(1, 6) %}
-  <svg class="i" {% if value <= stars %}style="fill:currentColor"{% endif %}>
-    <use href="#ic-star"/></svg>
-  {% endfor %}
+<span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+  <span class="flex items-center gap-0.5 text-gold"
+        title="{{ stars | sterne }} von 5 — Urteil des Werkzeugs">
+    {% for value in range(1, 6) %}
+    <svg class="i" {% if value <= stars %}style="fill:currentColor"{% endif %}>
+      <use href="#ic-star"/></svg>
+    {% endfor %}
+  </span>
+  {# Worauf das Urteil ruht — aber nur, wo es einschraenkt (#41). Vier Sterne
+     aus einer Leseprobe und vier aus einem Klappentext sahen hier gleich aus,
+     und sie sind es nachweislich nicht: ein belegtes Urteil erreicht die
+     Schwelle in 12 Prozent der Faelle, ein teilweise belegtes in 32. Die
+     Auskunft stand bisher nur auf der Buchseite — also nicht dort, wo
+     entschieden wird. #}
+  {% if hinweis %}
+  <span class="text-xs text-soft"
+        title="Worauf dieses Urteil ruht. Ohne Leseprobe sieht das Werkzeug nur
+               den Klappentext, und der ist Werbung.">{{ hinweis }}</span>
+  {% endif %}
 </span>
 {% endif %}
 {% endmacro %}

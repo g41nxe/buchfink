@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import MatchReason, Observation
+from ebook_watchlist.ratings import BY_MODEL, subject_of
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, sorting
@@ -801,3 +802,34 @@ def test_the_whole_work_goes_not_just_the_declaring_title(
 
     assert "Nur ein Teaser" not in body
     assert "2 KI-erzeugt" in body
+
+
+def test_a_thin_judgement_says_so_in_the_row(client: TestClient, db: Store) -> None:
+    """Vier Sterne aus einer Leseprobe und vier aus einem Klappentext sahen in
+    der Zeile gleich aus (#41).
+
+    Gemessen: ein belegtes Urteil erreicht die Schwelle in 12 Prozent der
+    Faelle, ein teilweise belegtes in 32. Die Auskunft gab es laengst — sie
+    stand nur auf der Buchseite, also nicht dort, wo entschieden wird.
+    """
+    fund = found(db, item_id="duenn", title="Nur vom Klappentext")
+    db.put_rating(subject_of(fund), stars=4, confidence="teils", reason="…",
+                  profile_version=1, now=NOW, origin=BY_MODEL)
+
+    body = client.get("/vorschlaege").text
+
+    assert "teilweise belegt" in body
+
+
+def test_a_well_founded_judgement_stays_silent(client: TestClient, db: Store) -> None:
+    """`belegt` ist der Normalfall und braucht kein Wort — sonst stuende in
+    jeder der achtundachtzig Zeilen eines mehr, und das haeufigste sagte
+    nichts Neues."""
+    fund = found(db, item_id="dick", title="Mit Leseprobe")
+    db.put_rating(subject_of(fund), stars=4, confidence="belegt", reason="…",
+                  profile_version=1, now=NOW, origin=BY_MODEL)
+
+    body = client.get("/vorschlaege").text
+
+    assert "Mit Leseprobe" in body
+    assert "im Text belegt" not in body

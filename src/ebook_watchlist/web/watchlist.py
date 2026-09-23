@@ -15,6 +15,7 @@ from ..config import Settings
 from ..deals import is_strong_deal
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
+from ..rating import BELEGT, confidence_label
 from ..ratings import BY_MODEL, book_subject, subject_of
 from ..relations import DONE_LABELS, RelationKind, labelled_actions
 from ..sources import registry
@@ -179,10 +180,17 @@ class Entry:
     #: abgeschlossen und von der Liste.
     stars: float | None = None
     pitch: str | None = None
+    #: Worauf das Urteil ruht (#41) — gezeigt nur, wo es einschraenkt.
+    confidence: str = ""
     #: Wann dieser Titel auf die Watchlist kam. Der Zeitstempel der Beziehung,
     #: und der wird nur beim Anlegen gesetzt — ein Pausieren und Fortsetzen
     #: macht einen alten Eintrag also nicht zu einem neuen (#37).
     added_at: datetime | None = None
+
+    @property
+    def confidence_note(self) -> str:
+        """Siehe ``triage.Suggestion.confidence_note`` — dieselbe Auskunft."""
+        return "" if self.confidence in ("", BELEGT) else confidence_label(self.confidence)
 
     @property
     def is_bundle(self) -> bool:
@@ -496,6 +504,7 @@ def entries(
                 known_missing=details.get("known_missing"),
                 stars=urteil.stars if urteil else None,
                 pitch=(urteil.pitch or None) if urteil else None,
+                confidence=urteil.confidence if urteil else "",
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

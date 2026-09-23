@@ -140,7 +140,7 @@
     {% endset %}
 
     {% set kennzahlen %}
-    {{ urteilssterne(item.stars) }}
+    {{ urteilssterne(item.stars, item.confidence_note) }}
     {# Der Buendelvorteil ist ein eigener Grund, hier zu stehen — weder
        Schnaeppchen noch Preissturz, sondern billiger als die Einzelbaende
        zusammen (ADR 24). #}
