@@ -23,14 +23,11 @@
   Zu diesem Anlass ist nichts offen.
   {% else %}
   Nichts offen.
-  {% if pile.hidden_junk or pile.hidden_priced %}
+  {% if pile.hidden %}
   {# Verschwunden ist nichts: faellt ein Preis, steht das Buch wieder da. #}
   <span class="block mt-1 text-xs">
-    {% if pile.hidden_junk %}{{ pile.hidden_junk }} Sammelbände und Gratistitel{% endif %}
-    {%- if pile.hidden_junk and pile.hidden_priced %}, {% endif %}
-    {%- if pile.hidden_priced %}{{ pile.hidden_priced }} weder Schnäppchen noch
-    ausleihbar{% endif %}
-    {%- if pile.hidden_weak %}, {{ pile.hidden_weak }} unter drei Sternen{% endif %}
+    {% for zahl, wort in pile.hidden %}{{ zahl }} {{ wort }}
+    {%- if not loop.last %}, {% endif %}{% endfor %}
     — ausgeblendet, nicht verworfen.</span>
   {% endif %}
   {% endif %}
@@ -59,12 +56,9 @@
   <span class="ml-auto text-xs text-soft">
     {{ pile.total }} offen{% if pile.items | length < pile.total %},
     {{ pile.items | length }} gezeigt{% endif %}
-    {%- if pile.hidden_junk %} · {{ pile.hidden_junk }} Sammelbände und
-    Gratistitel ausgeblendet{% endif %}
-    {%- if pile.hidden_priced %} · {{ pile.hidden_priced }} weder Schnäppchen
-    noch ausleihbar{% endif %}
-    {%- if pile.hidden_weak %} · {{ pile.hidden_weak }} unter drei Sternen{% endif %}
-    {%- if pile.hidden_language %} · {{ pile.hidden_language }} in anderen Sprachen{% endif %}
+    {%- if pile.hidden %} · ausgeblendet:
+    {% for zahl, wort in pile.hidden %}{{ zahl }} {{ wort }}
+    {%- if not loop.last %} · {% endif %}{% endfor %}{% endif %}
   </span>
 </div>
 

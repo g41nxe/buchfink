@@ -925,6 +925,25 @@ class Store:
                 ).all()
             )
 
+    def authors_and_blurbs(self, needles: Sequence[str]) -> list[tuple[str, str]]:
+        """Autor:in und Klappentext, wo der Text eines der Woerter enthaelt (#31).
+
+        ``needles`` ist eine grobe Vorauswahl, keine Entscheidung: wer genau
+        gemeint ist, sagt der Aufrufer. Ohne sie und ohne ``distinct`` las
+        diese Abfrage alle 3899 Beobachtungen und kostete 97 ms — ein Viertel
+        der Stapelseite, und wachsend, denn Beobachtungen werden nie geloescht
+        (ADR 5). Mit beidem sind es 150 Zeilen und 45 ms.
+        """
+        with self.session() as session:
+            stmt = select(ObservationRow.author, ObservationRow.blurb).where(
+                ObservationRow.author.is_not(None),
+                ObservationRow.blurb.is_not(None),
+                or_(*(ObservationRow.blurb.ilike(f"%{wort}%") for wort in needles)),
+            # Dasselbe Buch wird taeglich neu gesehen, und der Klappentext
+            # aendert sich dabei fast nie: von 720 Zeilen bleiben 150.
+            ).distinct()
+            return [(author, blurb) for author, blurb in session.execute(stmt).all()]
+
     def contained_isbns(self, isbn: str) -> tuple[str, ...]:
         """Die Baende einer Sammelausgabe, aus ``770 $i Enthaelt`` (ADR 24)."""
         with self.session() as session:

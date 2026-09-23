@@ -265,6 +265,24 @@ def _without_foreign_languages(store: Store, deltas, settings: Settings) -> list
     return bleibt
 
 
+def _without_ai_authors(store: Store, deltas) -> list:
+    """Wer seine Texte von einer Maschine schreiben laesst, faellt weg (#31).
+
+    Vor dem Tor, aus demselben Grund wie die Sprache: ein solches Buch ist
+    kein Kandidat, gleich was es kostet — und sechsundzwanzig davon hatten je
+    einen Modellaufruf verbraucht, bevor sie unter der Schwelle landeten.
+    """
+    from .authorship import ai_authors, is_ai_authored
+
+    autoren = ai_authors(store)
+    if not autoren:
+        return list(deltas)
+    bleibt = [d for d in deltas if not is_ai_authored(d.current, autoren)]
+    if weg := len(deltas) - len(bleibt):
+        print(f"Autorenschaft: {weg} KI-erzeugte Funde uebergangen")
+    return bleibt
+
+
 def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
     """Entdeckungen gegen das Leseprofil pruefen (ADR 19).
 
@@ -881,6 +899,7 @@ def _run(
     # bekannt — und vor dem Tor, damit ein fremdsprachiger Fund kein Urteil
     # kostet (#10).
     deltas = _without_foreign_languages(store, deltas, settings)
+    deltas = _without_ai_authors(store, deltas)
 
     # Das Tor sitzt hinter dem Snapshot: ein Ausfall kostet ein Urteil, nie
     # Geschichte. Und hinter der Preisregel: ein Buch zu bewerten, das ohnehin

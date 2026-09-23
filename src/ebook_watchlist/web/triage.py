@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from .. import paths
+from ..authorship import ai_authors, is_ai_authored
 from ..bundle_deal import BundleAdvantage, advantage_finder
 from ..config import Settings
 from ..covers import CoverStore, file_name
@@ -132,10 +133,32 @@ class Pile:
     hidden_priced: int = 0
     #: Funde, die die DNB ausdruecklich in einer anderen Sprache fuehrt (#10).
     hidden_language: int = 0
+    #: Funde von einer Autorenschaft, die ihre Texte selbst als KI-erzeugt
+    #: angibt (#31). Ausgeblendet wie die anderen, nicht verworfen.
+    hidden_ai: int = 0
 
     @property
     def is_empty(self) -> bool:
         return not self.items
+
+    @property
+    def hidden(self) -> tuple[tuple[int, str], ...]:
+        """Was der Stapel zurueckhaelt, mit Namen — ausgeblendet, nicht verworfen.
+
+        Als Liste statt als eine Bedingung je Zaehler in der Vorlage: die
+        Kommas dazwischen standen von Hand, und der fuenfte Zaehler (#31)
+        haette die fuenfte Sonderregel gebraucht. Vergessen worden war dabei
+        schon der vierte — im leeren Stapel hing die ganze Zeile an zweien von
+        ihnen, und "in anderen Sprachen" stand dort gar nicht.
+        """
+        paare = (
+            (self.hidden_junk, "Sammelbände und Gratistitel"),
+            (self.hidden_priced, "weder Schnäppchen noch ausleihbar"),
+            (self.hidden_weak, "unter drei Sternen"),
+            (self.hidden_language, "in anderen Sprachen"),
+            (self.hidden_ai, "KI-erzeugt"),
+        )
+        return tuple((zahl, wort) for zahl, wort in paare if zahl)
 
 
 def _cover_file(observation: Observation, covers: CoverStore | None = None) -> str | None:
@@ -220,12 +243,14 @@ def pending(
     # Zeile neu aufgeloest.
     covers = CoverStore(paths.covers_dir())
     sprache_von = language_finder(store)
+    ki_autoren = ai_authors(store)
 
     items: list[Suggestion] = []
     hidden_junk = 0
     hidden_priced = 0
     hidden_weak = 0
     hidden_language = 0
+    hidden_ai = 0
     for observation in found:
         if (observation.source, observation.source_item_id) in decided_items:
             continue
@@ -238,6 +263,11 @@ def pending(
         # ist kein Kandidat, gleich was er kostet oder wie er bewertet wurde.
         if is_foreign(observation, settings, sprache_von):
             hidden_language += 1
+            continue
+        # Aus demselben Grund und an derselben Stelle: wer seine Texte von
+        # einer Maschine schreiben laesst, ist kein Kandidat (#31).
+        if is_ai_authored(observation, ki_autoren):
+            hidden_ai += 1
             continue
         # Dieselbe Regel wie im Digest, aus einer Stelle: was dich nie
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
@@ -272,6 +302,7 @@ def pending(
         hidden_priced=hidden_priced,
         hidden_weak=hidden_weak,
         hidden_language=hidden_language,
+        hidden_ai=hidden_ai,
     )
 
 

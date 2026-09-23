@@ -90,7 +90,10 @@ def test_junk_never_reaches_the_pile(client: TestClient, db: Store) -> None:
 
     assert "Ein echter Fund" in body
     assert "3 Gruselkrimis" not in body
-    assert "Gratistitel ausgeblendet" in body
+    # "ausgeblendet" steht seit #31 einmal vor der Aufzaehlung statt am
+    # ersten Eintrag — verworfen wird weiterhin nichts.
+    assert "ausgeblendet" in body
+    assert "Sammelbände und Gratistitel" in body
 
 
 def test_a_find_in_another_language_leaves_the_pile(client: TestClient, db: Store) -> None:
@@ -765,3 +768,36 @@ def test_sorting_by_occasion_works_against_the_real_type(
     body = client.get("/vorschlaege?sortiert=anlass").text
 
     assert body.index("Von wem ich lese") < body.index("Aus dem Regal")
+
+
+def test_a_book_by_an_ai_author_never_reaches_the_stack(
+    client: TestClient, db: Store
+) -> None:
+    """Und es kostet kein Urteil: gefiltert wird vor dem Tor (#31)."""
+    found(db, item_id="ki", title="Die Glocke von Kirchberg", author="Matze K",
+          blurb="Der Autor verwendet zum Erstellen seiner Texte meistens "
+                "künstliche Intelligenz.")
+    found(db, item_id="echt", title="Ein handgeschriebener Fund", author="Wer Auch Immer")
+
+    body = client.get("/vorschlaege").text
+
+    assert "Ein handgeschriebener Fund" in body
+    assert "Die Glocke von Kirchberg" not in body
+    assert "1 KI-erzeugt" in body
+
+
+def test_the_whole_work_goes_not_just_the_declaring_title(
+    client: TestClient, db: Store
+) -> None:
+    """Die Angabe steht nur auf der Detailseite, und die wird allein für
+    Bücher geholt, die gleich beurteilt werden — ohne den Schluss auf die
+    Autorenschaft bliebe der Rest des Werks stehen."""
+    found(db, item_id="mit", title="Mit Detailseite", author="Matze K",
+          blurb="Matze K. ist ein deutscher KI-Autor.")
+    found(db, item_id="ohne", title="Nur ein Teaser", author="Matze K",
+          blurb="Im Jahr 2100 verändert sich Pegau.")
+
+    body = client.get("/vorschlaege").text
+
+    assert "Nur ein Teaser" not in body
+    assert "2 KI-erzeugt" in body

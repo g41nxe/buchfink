@@ -483,3 +483,41 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
     assert belegt.keywords == ("Space Opera", "Dune", "Quantenphysik")
     assert belegt.original_title == "Dark Matter"
     assert belegt.sample is not None and belegt.sample.startswith("Eins. Regen")
+
+
+def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
+    """Vor dem Tor, aus demselben Grund wie die Sprache (#31).
+
+    Gemessen am Bestand: sechsundzwanzig Urteile waren fuer Titel eines
+    einzigen KI-Autors ausgegeben, im Schnitt fuer 1,8 Sterne.
+    """
+    from datetime import datetime
+
+    from ebook_watchlist import paths
+    from ebook_watchlist import run as run_modul
+    from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
+    from ebook_watchlist.store import Store
+
+    now = datetime(2026, 9, 23, 12, 0)
+    store = Store(paths.db_path())
+    # Eine gesehene Detailseite — mehr braucht die Ableitung nicht.
+    run_id = store.start_run("test", "cli", now)
+    store.append(run_id, "test", [Observation(
+        source="beam", source_item_id="0", title="Mit Detailseite", author="Matze K",
+        match_reason=MatchReason.GENRE_CATEGORY,
+        blurb="Matze K. ist ein deutscher KI-Autor.")], now)
+
+    def neu(nummer: str, autor: str, grund: MatchReason) -> Delta:
+        return Delta(kind=DeltaKind.FIRST_SEEN, previous=None, current=Observation(
+            source="beam", source_item_id=nummer, title=f"Buch {nummer}", author=autor,
+            match_reason=grund, blurb="Ein kurzer Teaser."))
+
+    ki = neu("1", "Matze K", MatchReason.GENRE_CATEGORY)
+    echt = neu("2", "Wer Auch Immer", MatchReason.GENRE_CATEGORY)
+    eigener = neu("3", "Matze K", MatchReason.WATCHLIST)
+
+    bleibt = run_modul._without_ai_authors(store, [ki, echt, eigener])
+
+    # Der Titel ohne eigene Selbstauskunft faellt ueber die Autorenschaft weg;
+    # was die Leserin selbst benannt hat, bleibt.
+    assert bleibt == [echt, eigener]
