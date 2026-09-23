@@ -414,6 +414,18 @@ Not a Thema: a Thema is the shop's category.
 
 **Reader-facing name: *Erzählmuster*.**
 
+### Master Plot
+*deutsch: Grundhandlung*
+
+One of Tobias' twenty master plots — *Heldenreise*, *Katz und Maus*, *Rache* …
+— serving as the family of Story Patterns (`docs/erzaehlmuster.yaml`). Unlike
+an Appeal Family it is assignable itself: a book can be a *Heldenreise* without
+any finer pattern, as *Otherland* is. Facets and counterweights compare on it,
+across genres.
+
+**Reader-facing name: *Grundhandlung*** — where the reader sees it at all; on
+the book page it simply heads its patterns.
+
 ### Fit
 *deutsch: Übereinstimmung*
 

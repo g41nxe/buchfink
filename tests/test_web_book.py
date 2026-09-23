@@ -1252,6 +1252,9 @@ def _leopard() -> str:
             {"id": "intricate", "satz": "Die Opfer verbindet etwas.", "beleg": "wissen"},
             {"id": "intensifying", "satz": "In Oslo zieht es an.", "beleg": "wissen"},
         ],
+        "erzaehlmuster": [
+            {"id": "pursuit", "satz": "Der Mörder ist Hole voraus.", "beleg": "wissen"},
+        ],
     }, ensure_ascii=False)
 
 
@@ -1409,3 +1412,17 @@ def test_without_a_portrait_there_is_no_fit(db: Store) -> None:
     db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
 
     assert view.build(db, load_settings(), buch.id).fit is None
+
+
+def test_story_patterns_stand_apart_from_the_terms(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Merkmale sagen, wie es sich liest; Muster, was es erzählt (#49)."""
+    buch = db.books()[0]
+    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    view.portray(db, load_settings(), buch.id, now=NOW)
+
+    bild = view.build(db, load_settings(), buch.id).portrait
+
+    assert [f.name for f in bild.patterns] == ["Katz und Maus"]
+    assert "Katz und Maus" not in [f.name for f in bild.families]

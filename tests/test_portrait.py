@@ -48,6 +48,10 @@ LEOPARD = {
         {"id": "intensifying", "satz": "Nach der Rückkehr nach Oslo zieht es an.",
          "beleg": "wissen"},
     ],
+    "erzaehlmuster": [
+        {"id": "pursuit", "satz": "Hole jagt einen Mörder, der ihm immer einen Schritt voraus ist.",
+         "beleg": "wissen"},
+    ],
 }
 
 
@@ -61,7 +65,8 @@ def antwort(**anders) -> str:
 def test_the_vocabulary_is_the_one_in_the_repository() -> None:
     wort = load_vocabulary()
 
-    assert len(wort.terms) == 72
+    merkmale = [t for t in wort.terms if not wort.is_pattern(t)]
+    assert len(merkmale) == 72
     assert wort.terms["gritty"].name == "schonungslos"
     assert wort.terms["gritty"].dimension == "Stil"
 
@@ -175,7 +180,7 @@ def test_a_good_answer_becomes_a_portrait() -> None:
     assert bild.original_title == "Panserhjerte"
     assert (bild.genre, bild.subgenre) == ("Kriminalroman", "Nordic Noir")
     assert [t.term for t in bild.traits] == ["brooding", "violent", "flawed", "intricate",
-                                            "intensifying"]
+                                            "intensifying", "pursuit"]
     assert bild.traits[0] == Trait("brooding", "Harry Hole wird aus einer Opiumhöhle "
                                                "zurückgeholt.", "wissen")
     assert bild.violations == ()
@@ -190,7 +195,7 @@ def test_the_rules_are_checked_and_kept_not_hidden() -> None:
     bild = parse_answer(antwort(merkmale=zu_wenig), wort)
 
     assert any("drei" in v or "3" in v for v in bild.violations)
-    assert len(bild.traits) == 3
+    assert len(bild.traits) == 4  # drei Merkmale und das Muster
 
 
 def test_a_term_outside_the_vocabulary_is_dropped_and_named() -> None:
@@ -264,7 +269,7 @@ def test_portray_asks_once_and_reads_the_answer() -> None:
     bild = portray("Leopard", "Jo Nesbø", None, ask, load_vocabulary())
 
     assert len(gefragt) == 1 and "Titel: Leopard" in gefragt[0]
-    assert bild.known and len(bild.traits) == 5
+    assert bild.known and len(bild.traits) == 6
 
 
 # --- gespeichert -------------------------------------------------------------
@@ -319,3 +324,83 @@ def test_the_instruction_forbids_spoilers_for_sentences_pitch_and_series() -> No
 
     assert "Keine Spoiler" in text
     assert "früheren Bänden" in text
+
+
+# --- Erzählmuster (#49) -------------------------------------------------------
+
+
+def test_story_patterns_are_in_the_vocabulary_under_their_master_plot() -> None:
+    wort = load_vocabulary()
+
+    assert wort.is_pattern("dark_lord") and not wort.is_pattern("gritty")
+    assert wort.family_of("dark_lord").name == "Heldenreise"
+    # Die Grundhandlung ist selbst ein Wort und ihre eigene Familie.
+    assert wort.family_of("quest").id == "quest"
+    assert len([f for f in wort.families if wort.is_pattern(f.members[0])]) == 20
+
+
+def test_the_master_plots_bind_lotr_and_otherland_and_the_genre_pattern_parts_them() -> None:
+    """Beide sind eine Heldenreise; nur *Herr der Ringe* hat einen dunklen
+    Herrscher. Genau diese Trennung verlangte das Gegengewicht (#44)."""
+    from ebook_watchlist.facets import families_of
+
+    wort = load_vocabulary()
+    herr_der_ringe = Portrait(known=True, fingerprint="x", traits=(
+        Trait("dark_lord", "Sauron sammelt seine Heere.", "wissen"),
+        Trait("world_building", "Mittelerde hat Sprachen und Geschichte.", "wissen"),
+    ))
+    otherland = Portrait(known=True, fingerprint="x", traits=(
+        Trait("quest", "Eine Gruppe sucht den Grund für die Komas der Kinder.", "wissen"),
+        Trait("inside_the_game", "Das Netz ist eine Welt aus Welten.", "wissen"),
+    ))
+
+    assert "quest" in families_of(herr_der_ringe, wort) & families_of(otherland, wort)
+    assert "dark_lord" in {t.term for t in herr_der_ringe.traits}
+    assert "dark_lord" not in {t.term for t in otherland.traits}
+
+
+def test_the_prompt_lists_patterns_under_their_master_plot() -> None:
+    text = prompt("Leopard", "Jo Nesbø", None, load_vocabulary())
+
+    assert "  quest: Heldenreise" in text
+    assert "    dark_lord: der dunkle Herrscher" in text
+    assert '"erzaehlmuster"' in text
+
+
+def test_patterns_are_counted_apart_from_the_terms() -> None:
+    """Fünf Merkmale und ein Muster sind regelgerecht; ohne Muster nicht."""
+    wort = load_vocabulary()
+
+    assert parse_answer(antwort(), wort).violations == ()
+    assert "0 Erzählmuster statt eins bis drei" in parse_answer(
+        antwort(erzaehlmuster=[]), wort
+    ).violations
+
+
+def test_a_pattern_in_the_wrong_list_is_kept_and_named() -> None:
+    wort = load_vocabulary()
+    merkmale = LEOPARD["merkmale"] + [{"id": "dark_lord", "satz": "x", "beleg": "wissen"}]
+
+    bild = parse_answer(antwort(merkmale=merkmale), wort)
+
+    assert "dark_lord" in {t.term for t in bild.traits}
+    assert "in der falschen Liste: dark_lord" in bild.violations
+
+
+def test_a_pattern_file_that_names_no_master_plot_is_refused(tmp_path) -> None:
+    datei = tmp_path / "muster.yaml"
+    datei.write_text(
+        "familien: []\nmuster:\n  - id: x\n    name: x\n    familie: gibtsnicht\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VocabularyError, match="Grundhandlung"):
+        load_vocabulary(patterns=datei)
+
+
+def test_a_pattern_may_not_reuse_a_term_id(tmp_path) -> None:
+    datei = tmp_path / "muster.yaml"
+    datei.write_text("familien:\n  - id: gritty\n    name: x\n", encoding="utf-8")
+
+    with pytest.raises(VocabularyError, match="zweimal"):
+        load_vocabulary(patterns=datei)

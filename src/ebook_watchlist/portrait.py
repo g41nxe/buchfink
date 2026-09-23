@@ -14,6 +14,12 @@ Arbeitsstand und werden erst beim Lesen angewandt.
 Die Anweisung ist die aus dem Versuch vom 23.09.2026 (#44), dort an *Der Name
 der Rose* und an einem erfundenen Titel geprüft; dazu kommen das Erkennen des
 Buchs und der Pitch, die ADR 33 in denselben Aufruf legt.
+
+Im selben Aufruf vergibt das Modell auch Erzählmuster aus
+``docs/erzaehlmuster.yaml`` (#49). Sie sind Wörter desselben Vokabulars, in
+einer eigenen Dimension: so können Facetten und Gegengewichte sie enthalten,
+ohne dass der Code sie anders behandeln müsste. Gezählt werden sie getrennt —
+vier bis acht Merkmale und dazu ein bis drei Muster.
 """
 
 from __future__ import annotations
@@ -29,20 +35,26 @@ import yaml
 from .rating import RatingUnavailable, _json_object
 
 VOCABULARY_PATH = Path(__file__).resolve().parents[2] / "docs" / "merkmale.yaml"
+PATTERNS_PATH = VOCABULARY_PATH.with_name("erzaehlmuster.yaml")
+#: Die Dimension, in der die Erzählmuster stehen.
+PATTERN_DIMENSION = "Erzählmuster"
 
 #: Worauf ein Merkmal beruhen darf. "wissen" ist erlaubt: bei der Erstaufnahme
 #: gibt es keine Vorgeschichte und damit oft keinen Klappentext (#44).
 EVIDENCE = ("klappentext", "leseprobe", "wissen")
 FEWEST, MOST = 4, 8
 MIN_DIMENSIONS, MOST_PER_DIMENSION = 3, 3
+FEWEST_PATTERNS, MOST_PATTERNS = 1, 3
 #: Dieselbe Grenze wie im Bewertungsschema (#29).
 PITCH_MAX = 200
-#: Eine Antwort mit acht Merkmalen und ihren Sätzen braucht rund 700 Tokens.
-MAX_TOKENS = 1500
+#: Eine Antwort mit acht Merkmalen, drei Mustern und ihren Sätzen braucht rund
+#: 1000 Tokens.
+MAX_TOKENS = 2000
 
 
 class VocabularyError(Exception):
-    """``docs/merkmale.yaml`` widerspricht sich oder ist nicht lesbar."""
+    """``docs/merkmale.yaml`` oder ``docs/erzaehlmuster.yaml`` widerspricht sich
+    oder ist nicht lesbar."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,11 +104,28 @@ class Vocabulary:
             return self.family_of(family_id)
         raise KeyError(family_id)
 
+    def is_pattern(self, term_id: str) -> bool:
+        return self.terms[term_id].dimension == PATTERN_DIMENSION
+
     def prompt_text(self) -> str:
-        """Das Vokabular, wie das Modell es liest — ohne Familien."""
+        """Das Vokabular, wie das Modell es liest.
+
+        Die Merkmale ohne Familien — die sind ein Arbeitsstand. Die Erzählmuster
+        dagegen unter ihrer Grundhandlung: die ist selbst vergebbar, und das
+        Modell soll sehen, wann das genauere Muster passt.
+        """
         zeilen = []
         for name, frage in self.dimensions:
             zeilen.append(f"{name} ({frage}):")
+            if name == PATTERN_DIMENSION:
+                for family in self.families:
+                    if not family.members or not self.is_pattern(family.members[0]):
+                        continue
+                    for index, term_id in enumerate(family.members):
+                        term = self.terms[term_id]
+                        einzug = "  " if index == 0 else "    "
+                        zeilen.append(f"{einzug}{term.id}: {term.name} — {term.description}")
+                continue
             zeilen.extend(
                 f"  {term.id}: {term.name} — {term.description}"
                 for term in self.terms.values()
@@ -133,8 +162,12 @@ class Portrait:
     violations: tuple[str, ...] = ()
 
 
-def load_vocabulary(path: Path | None = None) -> Vocabulary:
-    """Das Vokabular, geprüft: jede id einmal, jede Familie mit echten Merkmalen."""
+def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> Vocabulary:
+    """Das Vokabular, geprüft: jede id einmal, jede Familie mit echten Merkmalen.
+
+    Merkmale und Erzählmuster zusammen; fehlt die Datei der Erzählmuster, gibt
+    es eben keine.
+    """
     datei = path or VOCABULARY_PATH
     try:
         daten = yaml.safe_load(datei.read_text(encoding="utf-8")) or {}
@@ -169,7 +202,51 @@ def load_vocabulary(path: Path | None = None) -> Vocabulary:
             vergeben[term_id] = name
         families.append(Family(str(eintrag["id"]), name, members))
 
+    _load_patterns(patterns or PATTERNS_PATH, terms, families, dimensions)
     return Vocabulary(terms, tuple(families), tuple(dimensions))
+
+
+def _load_patterns(
+    datei: Path,
+    terms: dict[str, Term],
+    families: list[Family],
+    dimensions: list[tuple[str, str]],
+) -> None:
+    """Die Erzählmuster dazuladen: jede Grundhandlung ist Familie und Wort zugleich."""
+    if not datei.exists():
+        return
+    try:
+        daten = yaml.safe_load(datei.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        raise VocabularyError(f"{datei.name} ist nicht lesbar: {exc}") from exc
+
+    familien_ids = {family.id for family in families}
+
+    def neu(term_id: str, name: str, beschreibung: str) -> None:
+        if term_id in terms or term_id in familien_ids:
+            raise VocabularyError(f"{term_id} steht zweimal im Vokabular")
+        terms[term_id] = Term(term_id, name, beschreibung.strip(), PATTERN_DIMENSION)
+
+    grund: dict[str, list[str]] = {}
+    namen: dict[str, str] = {}
+    for eintrag in daten.get("familien") or []:
+        family_id, name = str(eintrag["id"]), str(eintrag["name"])
+        neu(family_id, name, str(eintrag.get("beschreibung", "")))
+        grund[family_id] = [family_id]
+        namen[family_id] = name
+    for eintrag in daten.get("muster") or []:
+        term_id, familie = str(eintrag["id"]), str(eintrag.get("familie") or "")
+        if familie not in grund:
+            raise VocabularyError(f"das Erzählmuster {term_id} nennt keine Grundhandlung")
+        neu(term_id, str(eintrag["name"]), str(eintrag.get("beschreibung", "")))
+        grund[familie].append(term_id)
+
+    if grund:
+        dimensions.append((PATTERN_DIMENSION, "was für eine Geschichte es erzählt"))
+        families.extend(
+            Family(family_id, namen[family_id], tuple(members))
+            for family_id, members in grund.items()
+        )
 
 
 TEMPLATE = """\
@@ -189,7 +266,7 @@ gehalten oder verloren haben. Vergib also die Merkmale, die dieses Buch am
 deutlichsten prägen.
 
 Regeln:
-- Vier bis acht Merkmale.
+- Vier bis acht Merkmale, ohne die Erzählmuster.
 - Aus mindestens drei verschiedenen Dimensionen, höchstens drei aus derselben.
 - Was auf fast jedes Buch seines Genres zutrifft, nimmst du nur, wenn es hier
   deutlich stärker ausgeprägt ist als üblich. Ein Thriller ist nicht schon
@@ -201,10 +278,22 @@ Regeln:
   oder "wissen" (was du selbst über das Buch weißt).
 - Nichts erfinden.
 
+Dann die Erzählmuster: was für eine Geschichte das Buch erzählt. Sie stehen
+im Vokabular unter "Erzählmuster", jedes eingerückt unter seiner Grundhandlung.
+- Ein bis drei, nur was die Geschichte als Ganzes trägt, nicht eine Episode.
+- Das genaueste Muster, das zutrifft. Die Grundhandlung selbst vergibst du,
+  wenn kein genaueres passt, oder zusätzlich, wenn sie das Buch als Ganzes
+  trägt und das genauere Muster nur einen Teil davon.
+- Zu jedem Muster ein Satz und ein Beleg wie bei den Merkmalen.
+- Ein Muster, das selbst die Wendung ist — etwa eine Erzählstimme, die sich
+  erst spät als unzuverlässig erweist —, vergibst du nicht.
+
 Keine Spoiler — die Leserin hat das Buch womöglich noch vor sich:
 - Satz und Pitch verraten nichts, was nicht schon der Klappentext oder die
   ersten Seiten preisgeben: keine Wendung, keinen Täter, keinen Tod, kein
   Ende, keine Auflösung eines Rätsels, nicht wie ein Handlungsstrang ausgeht.
+- Auch nichts, was die Figuren erst im Lauf der Handlung herausfinden — bei
+  einem Krimi etwa, was die Opfer verbindet oder wie der Täter vorgeht.
 - Bei einem Band aus einer Reihe auch nichts aus den früheren Bänden, was
   deren Ausgang verrät.
 - Im Zweifel beschreibst du, wie es sich liest, statt was geschieht.
@@ -227,7 +316,8 @@ statt es zusammenzufassen. Beschreiben, nicht loben.
 Antworte ausschließlich mit JSON in genau dieser Form:
 {{"bekannt": true, "titel": "...", "autor": "...", "originaltitel": "... oder null",
   "genre": "...", "untergenre": "...", "pitch": "...",
-  "merkmale": [{{"id": "...", "satz": "...", "beleg": "..."}}]}}
+  "merkmale": [{{"id": "...", "satz": "...", "beleg": "..."}}],
+  "erzaehlmuster": [{{"id": "...", "satz": "...", "beleg": "..."}}]}}
 """
 
 
@@ -264,34 +354,44 @@ def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
         raise RatingUnavailable("Antwort ist kein JSON-Objekt")
     abdruck = fingerprint(vocabulary)
     roh = daten.get("merkmale") or []
+    roh_muster = daten.get("erzaehlmuster") or []
 
     # Nur ein echtes Ja: "false" als Text ist kein Ja.
     if daten.get("bekannt") is not True:
-        verstoesse = ("unbekannt, aber Merkmale vergeben",) if roh else ()
+        verstoesse = ("unbekannt, aber Merkmale vergeben",) if roh or roh_muster else ()
         return Portrait(known=False, fingerprint=abdruck, violations=verstoesse)
 
     traits: list[Trait] = []
     verstoesse: list[str] = []
-    for eintrag in roh:
-        if not isinstance(eintrag, dict):
-            verstoesse.append("ein Merkmal ohne Form")
-            continue
-        term_id = str(eintrag.get("id") or "").strip()
-        if term_id not in vocabulary.terms:
-            verstoesse.append(f"nicht im Vokabular: {term_id or '(leer)'}")
-            continue
-        if any(trait.term == term_id for trait in traits):
-            verstoesse.append(f"doppelt vergeben: {term_id}")
-            continue
-        beleg = str(eintrag.get("beleg") or "").strip()
-        if beleg not in EVIDENCE:
-            verstoesse.append(f"ungültiger Beleg bei {term_id}: {beleg or '(keiner)'}")
-        traits.append(Trait(term_id, str(eintrag.get("satz") or "").strip(), beleg))
+    # Ein Wort in der falschen Liste wird übernommen und genannt: ob es ein
+    # Merkmal oder ein Muster ist, weiß das Vokabular, nicht die Liste.
+    for liste, soll_muster in ((roh, False), (roh_muster, True)):
+        for eintrag in liste:
+            if not isinstance(eintrag, dict):
+                verstoesse.append("ein Merkmal ohne Form")
+                continue
+            term_id = str(eintrag.get("id") or "").strip()
+            if term_id not in vocabulary.terms:
+                verstoesse.append(f"nicht im Vokabular: {term_id or '(leer)'}")
+                continue
+            if any(trait.term == term_id for trait in traits):
+                verstoesse.append(f"doppelt vergeben: {term_id}")
+                continue
+            if vocabulary.is_pattern(term_id) != soll_muster:
+                verstoesse.append(f"in der falschen Liste: {term_id}")
+            beleg = str(eintrag.get("beleg") or "").strip()
+            if beleg not in EVIDENCE:
+                verstoesse.append(f"ungültiger Beleg bei {term_id}: {beleg or '(keiner)'}")
+            traits.append(Trait(term_id, str(eintrag.get("satz") or "").strip(), beleg))
 
-    if not FEWEST <= len(traits) <= MOST:
-        verstoesse.append(f"{len(traits)} Merkmale statt vier bis acht")
-    dimensionen = Counter(vocabulary.terms[trait.term].dimension for trait in traits)
-    if traits and len(dimensionen) < MIN_DIMENSIONS:
+    merkmale = [t for t in traits if not vocabulary.is_pattern(t.term)]
+    muster = len(traits) - len(merkmale)
+    if not FEWEST <= len(merkmale) <= MOST:
+        verstoesse.append(f"{len(merkmale)} Merkmale statt vier bis acht")
+    if not FEWEST_PATTERNS <= muster <= MOST_PATTERNS:
+        verstoesse.append(f"{muster} Erzählmuster statt eins bis drei")
+    dimensionen = Counter(vocabulary.terms[trait.term].dimension for trait in merkmale)
+    if merkmale and len(dimensionen) < MIN_DIMENSIONS:
         verstoesse.append(f"nur {len(dimensionen)} Dimensionen statt mindestens drei")
     for dimension, anzahl in dimensionen.items():
         if anzahl > MOST_PER_DIMENSION:

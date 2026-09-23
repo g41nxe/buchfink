@@ -303,6 +303,8 @@ class PortraitView:
 
     known: bool
     families: tuple[FamilyView, ...] = ()
+    #: Die Erzählmuster, unter ihrer Grundhandlung (#49).
+    patterns: tuple[FamilyView, ...] = ()
     genre: str | None = None
     subgenre: str | None = None
     pitch: str | None = None
@@ -315,11 +317,13 @@ def _portrait_view(portrait: Portrait, vocabulary: Vocabulary, book) -> Portrait
     if not portrait.known:
         return PortraitView(known=False, violations=portrait.violations)
     familien: dict[str, list[TraitView]] = {}
+    muster: dict[str, list[TraitView]] = {}
     for trait in portrait.traits:
         term = vocabulary.terms.get(trait.term)
         if term is None:  # pragma: no cover - ein Merkmal, das es nicht mehr gibt
             continue
-        familien.setdefault(vocabulary.family_of(trait.term).name, []).append(
+        ziel = muster if vocabulary.is_pattern(trait.term) else familien
+        ziel.setdefault(vocabulary.family_of(trait.term).name, []).append(
             TraitView(term.name, trait.sentence, trait.evidence)
         )
     original = portrait.original_title
@@ -328,6 +332,7 @@ def _portrait_view(portrait: Portrait, vocabulary: Vocabulary, book) -> Portrait
     return PortraitView(
         known=True,
         families=tuple(FamilyView(name, tuple(traits)) for name, traits in familien.items()),
+        patterns=tuple(FamilyView(name, tuple(traits)) for name, traits in muster.items()),
         genre=portrait.genre,
         subgenre=portrait.subgenre,
         pitch=portrait.pitch,

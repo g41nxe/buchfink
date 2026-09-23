@@ -238,6 +238,24 @@
   </div>
   {% endfor %}
 </dl>
+{# Die Erzählmuster (#49) für sich: Merkmale sagen, wie sich das Buch liest,
+   Muster, was für eine Geschichte es erzählt. Unter ihrer Grundhandlung,
+   genauso gebaut wie die Familien darüber. #}
+{% if steckbrief.patterns %}
+<p class="mt-5 text-xs font-medium uppercase tracking-wide text-soft">Erzählmuster</p>
+<dl class="mt-2 space-y-3" data-erzaehlmuster>
+  {% for familie in steckbrief.patterns %}
+  <div>
+    <dt class="text-sm font-semibold text-ink">{{ familie.name }}</dt>
+    {% for merkmal in familie.traits %}
+    <dd class="mt-1 max-w-prose text-sm text-soft" title="beruht auf: {{ merkmal.evidence }}">
+      {% if merkmal.name != familie.name %}<span class="text-ink">{{ merkmal.name }}:</span>
+      {% endif %}{{ merkmal.sentence }}</dd>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</dl>
+{% endif %}
 {% endif %}
 {% if page.portrait and page.portrait.violations %}
 <p class="mt-3 text-xs text-soft">Nicht nach den Regeln: {{ page.portrait.violations | join(" · ") }}</p>
