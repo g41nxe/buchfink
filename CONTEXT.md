@@ -267,6 +267,149 @@ procedure.
 
 **Reader-facing name: *Leseprofil*.**
 
+### Facet
+*deutsch: Facette*
+
+One named way a book can suit this reader. A Reading Profile holds several, and
+a book has to hit **one** of them convincingly — the best Facet decides alone.
+Partial hits across several do not add up, which is precisely what the weighted
+axes it replaces used to do, and what let a book collect enough to look right
+while suiting nobody.
+
+It is the counterpart to a Genre Category: a Thema says where a shop shelves a
+book, a Facet says what the book carries. Confusing the two is what put "Katz
+und Maus" — a convention of the crime genre — into the profile as though it were
+a matter of taste.
+
+A Facet consists of **at least two Appeal Families** that the reader's loved
+books carry together. The tool looks across all the books at once for families
+several of them share and asks which of those are really the reader's; confirmed
+families that the same books carry together form one Facet. A single family is too
+wide to be a Facet: in the Intake experiment (#44) "große Ideen" alone let in a
+disliked science thriller. A loved book that shares nothing with the others is
+asked about on its own and can still form a Facet by itself.
+
+A Facet keeps **how many loved books it rests on**. The reader does not see the
+number but a scale (schwach, mittel, stark, sehr stark): a Facet from a single
+book is a weak one, and it grows as sharpening adds books.
+
+Facets are **derived from the books the reader already loved**, not invented for
+them. The tool asks **no open questions**: it proposes, derived from the books,
+and the reader chooses. A Facet is named by its Appeal Families — "gezeichnete
+Figur · hart" — so choosing the Facet chooses its name.
+
+A disliked Appeal Term weighs **against** a book and never excludes it. The
+profile has no contraindications: an exclusion acts at once and invisibly, and a
+term rejected at one disappointing book can be exactly why another is loved.
+
+In library classification a "facet" is a dimension to sort by. Here it is the
+reader's own combination of terms; the dimensions are the five appeal factors
+the Appeal Terms belong to.
+
+Resemblance to a particular loved book is **evidence inside a justification**
+("carries the way David Hunter does"), never a Facet of its own and never itself
+worth a star: resemblance narrows, a Facet generalises.
+
+**Reader-facing name: *Facette*.**
+
+### Appeal Term
+*deutsch: Merkmal*
+
+One word of a fixed vocabulary for how reading a book feels — "trostlos",
+"exzentrische Figur", "gemächlich". Built on NoveList's appeal vocabulary, with
+its five appeal factors (pace, storyline, tone, character, writing style),
+translated, with near-synonyms merged into one term and quality verdicts
+("well-developed", "engaging") left out, because every reader would choose them.
+
+Together with the Appeal Families and the Story Patterns it is the part of the
+Intake that is fixed in advance. Books and genres can never be listed
+completely; these terms describe any book. The vocabulary names no taste, so it
+lives in the repository beside the Rating Scheme.
+
+A model assigns Appeal Terms to a book once, only from the vocabulary and each
+with its evidence, and the result is stored with the book: the same book always
+carries the same terms. Liked and disliked use the same words — a term that
+holds one reader can lose another. The reader is not asked about the fine terms
+but about their Appeal Families.
+
+Not to be confused with **Keywords** (*Schlagwörter*): those are what publisher
+and shop tag a book with, in their words.
+
+**Reader-facing name: *Merkmal*.**
+
+### Appeal Family
+*deutsch: Merkmalsfamilie*
+
+Appeal Terms a reader does not tell apart, grouped: "brutal", "verstörend" and
+"schonungslos" are one family, "hart". The model assigns the fine terms, because
+their precise descriptions keep it consistent; the reader is asked, and books
+are compared, by family. A family may span appeal factors — NoveList files
+"gritty" under style and "violent" under tone, and the reader feels them as one.
+
+Families are derived and a **work in progress**. Only the fine terms are stored
+with a book, so changing a family needs no book to be tagged again. A family
+changes when a concrete book shows that it cuts wrong, and it names the book
+that justifies it.
+
+What may enter at all is decided by the **opposite test**: is there an opposite
+another reader would want just as much? "rasant" passes (gemächlich),
+"anschaulich" does not (blass) — that is praise, not taste. Absence is not the
+opposite: Shakespeare carries no "lebendiger Schauplatz", but his readers seek
+language, not placelessness; Kafka's readers do seek it ("parabelhaft").
+
+**Reader-facing name: none.** The reader sees the families' own names, "hart"
+or "witzig"; the word itself belongs to the documentation.
+
+### Story Pattern
+*deutsch: Erzählmuster*
+
+A story pattern bound to a genre: "Katz und Maus", "race against time", "a
+fellowship sets out against evil". NoveList calls them themes and keeps them
+apart from appeal. Here they are treated like Appeal Terms — assigned by the
+model, chosen by the reader, part of a Facet or a counterweight — because the
+Intake experiment (#44) showed that the reason a book loses a reader can be
+exactly such a pattern.
+
+It enters a Facet only when the reader's own books share it. That is the
+difference to the old axis "Katz und Maus", which was written into the profile
+as a taste in its own right. The vocabulary of Story Patterns is still open;
+NoveList keeps one per genre.
+
+Not a Thema: a Thema is the shop's category.
+
+**Reader-facing name: *Erzählmuster*.**
+
+### Intake
+*deutsch: Erstaufnahme*
+
+How a Reading Profile comes into being for a reader who has none — and who
+brings no history: no blurb, no record, nothing stored. The reader names three
+to five books they loved and, if there are any, up to five that disappointed
+them. A model identifies each book — original title, author — and the reader
+confirms it; a book the model does not know contributes nothing. The model then
+assigns Appeal Terms and Story Patterns to each book.
+
+The tool looks across all loved books at once for the Appeal Families that
+more than one of them carries and asks which of those carry the reader. It never
+compares books pairwise and has no threshold for "similar". Families that are
+common across books in general come last, marked as such, but are never hidden;
+how common a family is is measured on the books the tool sees anyway, never on
+the reader's own, which would punish exactly their taste. Afterwards **every
+loved book must sit in a Facet**; one that does not is asked about on its own.
+The disappointing books yield counterweights, and one that a loved book also
+carries is not taken over silently: the reader is asked. The
+result — Facets, Reference Authors, genres and counterweights — is presented as
+a list to confirm or deselect. Deselecting everything starts over, with other
+books or other answers.
+
+It carries **no burden of proof**: there is nothing yet to contradict. Sharpening
+an existing profile later does (ADR 17).
+
+The same answers give the same profile. Which question comes next and which
+Facet follows from the answers is decided by code, not by a model.
+
+**Reader-facing name: *Erstaufnahme*.**
+
 ### Rating Scheme
 *deutsch: Bewertungsschema*
 
