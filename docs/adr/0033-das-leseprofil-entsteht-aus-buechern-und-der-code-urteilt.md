@@ -126,7 +126,27 @@ Code.
   folgt.
 - **Die eigenen Sterne der Leserin** schärfen nicht; sie sind die Daten, aus
   denen die Gewichte später gelernt werden.
-- **Offen**: das Vokabular der Erzählmuster, und wie die Übereinstimmung
-  angezeigt wird. Netflix hat seine Sterne abgeschafft, weil sie für ein
+- **Offen**: wie die Übereinstimmung angezeigt wird. Netflix hat seine Sterne
+  abgeschafft, weil sie für ein
   Qualitätsurteil gehalten wurden; Buchfink zeigt Maschinensterne neben den
   Leser-Sternen der Onleihe.
+
+> **Nachtrag: Gegengewichte sind Bündel.** Die Leserin hat *Herr der Ringe*
+> verloren als klassische Fantasy auf einer Heldenreise; *Otherland*, eine
+> Heldenreise in der Science Fiction, liebt sie. Ein Gegengewicht aus einer
+> einzelnen Familie hätte *Otherland* getroffen. Deshalb sind Gegengewichte wie
+> Facetten Bündel, die nur zählen, wenn ein Buch alle Teile trägt, und anders
+> als Facetten dürfen sie ein **Genre** enthalten: „klassische Fantasy ·
+> Heldenreise". Im Gegengewicht grenzt ein Genre nur ein, was bestraft wird;
+> in einer Facette würde es eingrenzen, was gefunden wird, und dorthin kommt
+> es erst, wenn ein Buch es verlangt. Das Genre muss dafür fein genug sein
+> (*High Fantasy*, nicht nur *Fantasy*); sonst träfe ein Gegengewicht auch
+> Grimdark wie *Kriegsklingen*.
+
+> **Nachtrag: das Vokabular der Erzählmuster.** Zwei Ebenen wie bei den
+> Merkmalen: NoveLists Themes, je Genre, als feine Ebene, die das Modell
+> vergibt; Tobias' 20 Grundhandlungen als Familien, über die gefragt und
+> verglichen wird. Statt der Gegenteil-Probe gilt für Erzählmuster die
+> Meiden-Probe: Gibt es Leser:innen, die genau dieses Muster meiden? Die
+> Abwägung der Quellen steht in `docs/research/story-pattern-vocabularies.md`;
+> ungeklärt ist die Lizenz der NoveList-Bezeichnungen.

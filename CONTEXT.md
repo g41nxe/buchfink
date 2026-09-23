@@ -303,9 +303,8 @@ them. The tool asks **no open questions**: it proposes, derived from the books,
 and the reader chooses. A Facet is named by its Appeal Families — "gezeichnete
 Figur · hart" — so choosing the Facet chooses its name.
 
-A disliked Appeal Term weighs **against** a book and never excludes it. The
-profile has no contraindications: an exclusion acts at once and invisibly, and a
-term rejected at one disappointing book can be exactly why another is loved.
+What a disappointing book yields is its mirror image, a **Counterweight**: it
+weighs against a book and never excludes it.
 
 In library classification a "facet" is a dimension to sort by. Here it is the
 reader's own combination of terms; the dimensions are the five appeal factors
@@ -316,6 +315,29 @@ Resemblance to a particular loved book is **evidence inside a justification**
 worth a star: resemblance narrows, a Facet generalises.
 
 **Reader-facing name: *Facette*.**
+
+### Counterweight
+*deutsch: Gegengewicht*
+
+The mirror image of a Facet: what the reader named as the reason a book lost
+them. It weighs **against** a book — the strongest one takes a fifth off — and
+never excludes it. The profile has no contraindications: an exclusion acts at
+once and invisibly, and what spoiled one disappointing book can be exactly why
+another is loved.
+
+Like a Facet it is a **bundle**, and it counts only when a book carries all of
+it. Unlike a Facet it may contain a **genre**: *Herr der Ringe* lost the reader
+as classic fantasy on a hero's journey, while *Otherland*, a hero's journey in
+science fiction, is loved. The counterweight is "klassische Fantasy ·
+Heldenreise", and *Otherland* stays untouched. In a Counterweight a genre only
+narrows what is punished, so it is safe; in a Facet it would narrow what is
+found, which is why Facets stay without genre until a book shows otherwise.
+
+When a counterweight is also carried by a loved book, it is not taken over
+silently; the reader is asked — only for this book, for books generally, or
+only together with a genre.
+
+**Reader-facing name: *Gegengewicht*.**
 
 ### Appeal Term
 *deutsch: Merkmal*
@@ -377,8 +399,16 @@ exactly such a pattern.
 
 It enters a Facet only when the reader's own books share it. That is the
 difference to the old axis "Katz und Maus", which was written into the profile
-as a taste in its own right. The vocabulary of Story Patterns is still open;
-NoveList keeps one per genre.
+as a taste in its own right.
+
+Its vocabulary is built like the Appeal Terms', in two levels: **NoveList's
+themes**, listed per genre, are the fine level the model assigns; **Tobias'
+twenty master plots** (*Quest*, *Pursuit*, *Revenge* …) are the families the
+reader is asked about, across genres — "Katz und Maus" is *Pursuit* in a
+thriller and in science fiction alike. The opposite test does not fit here: a
+pattern is present or absent and has no opposite anyone seeks. What may enter
+is decided by the **avoidance test** instead: are there readers who avoid
+exactly this pattern?
 
 Not a Thema: a Thema is the shop's category.
 
