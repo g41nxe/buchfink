@@ -272,8 +272,12 @@ def load_rating_scheme(path: Path | None = None) -> Scheme:
             max_stars=int(sterne["bis"]),
             confidences=tuple(str(entry["wert"]) for entry in confidence["werte"]),
             withhold_from=str(confidence["darf_zurueckhalten_ab"]),
-            pitch_max=int(data["pitch"]["hoechstens_zeichen"]),
-            pitch_rules=_render({"pitch": data["pitch"]}),
+            # Mit Rueckfall, nicht als Pflicht: ein Schema ohne diese Zahl ist
+            # noch lange kein unbrauchbares Schema, und das Tor scheitert nie
+            # zu (ADR 7). Aufgefallen beim Gegenversuch zu #29, der ein
+            # aelteres Schema laden wollte und nichts mehr bewerten konnte.
+            pitch_max=int((data.get("pitch") or {}).get("hoechstens_zeichen", 200)),
+            pitch_rules=_render({"pitch": data["pitch"]}) if data.get("pitch") else "",
         )
     except (yaml.YAMLError, KeyError, TypeError, ValueError) as exc:
         raise RatingUnavailable(f"Bewertungsschema unbrauchbar: {exc}") from exc
@@ -580,8 +584,10 @@ def parse_answer(
 _PITCH_STARS = re.compile(
     r"\b(null|eins?|zwei|drei|vier|f(ue|[uü])nf|[0-5])\s+(von\s+f(ue|[uü])nf|Stern)", re.I
 )
-#: Das Wort, an dem die Schablone haengt: "…, wo das Profil Härte verlangt".
-_PITCH_PROFILE = re.compile(r"\bprofil", re.I)
+#: Das Wort, an dem die Schablone hängt: "…, wo das Profil Härte verlangt".
+#: Mit Wortgrenze, sonst trifft es "Profiler-Jagd" — und "Profiler gegen Täter"
+#: steht im Leseprofil selbst. Zwei der 31 gemessenen Treffer waren genau das.
+_PITCH_PROFILE = re.compile(r"\bprofils?\b", re.I)
 
 
 def pitch_trouble(pitch: str, scheme: Scheme) -> str | None:
@@ -593,7 +599,7 @@ def pitch_trouble(pitch: str, scheme: Scheme) -> str | None:
     enthielt beide. Eine Probe, die gute Sätze verwirft, ist schlechter als
     keine.
 
-    Gemessen an 132 Urteilen traf "Profil" einunddreißig, eine Sternzahl und
+    Gemessen an 135 Urteilen traf "Profil" neunundzwanzig, eine Sternzahl und
     die Länge keines — die beiden letzten sind Wächter, nicht Fallen.
     """
     if not pitch:

@@ -1579,3 +1579,26 @@ def test_the_rater_only_sees_the_sections_meant_for_it() -> None:
 
     assert schema.prompt_text in prompt
     assert "GEGENPROBE" not in prompt
+
+
+def test_profiler_is_not_the_profile() -> None:
+    """"Profiler-Jagd" ist kein Verstoß — das Leseprofil sagt selbst
+    "Profiler gegen Täter". Zwei der 31 gemessenen Treffer waren genau das,
+    und eine Probe, die gute Sätze verwirft, wäre schlechter als keine."""
+    assert pitch_trouble("Profiler-Jagd an der Ostsee — aber Band vier.", SCHEMA) is None
+
+
+def test_a_scheme_without_the_pitch_length_still_loads(tmp_path) -> None:
+    """Das Tor scheitert nie zu (ADR 7).
+
+    Der Lader verlangte die Zahl kurzzeitig, und damit war ein älteres Schema
+    nicht mehr zu laden — aufgefallen beim Gegenversuch zu #29, der genau das
+    tun wollte.
+    """
+    ohne = tmp_path / "schema.yaml"
+    ohne.write_text(
+        load_rating_scheme().text.replace("  hoechstens_zeichen: 200\n", ""),
+        encoding="utf-8",
+    )
+
+    assert load_rating_scheme(ohne).pitch_max == 200
