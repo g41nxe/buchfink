@@ -590,6 +590,108 @@ _PITCH_STARS = re.compile(
 _PITCH_PROFILE = re.compile(r"\bprofils?\b", re.I)
 
 
+def star_contradiction(rating: Rating, scheme: Scheme) -> str | None:
+    """Ein Urteil, das sich in den eigenen Zahlen widerspricht (#42).
+
+    Die Gegenprobe zu den drei Proben aus #12, die hier bisher fehlte. Null
+    Sterne sind laut Verfahren **ausschliesslich** fuer eine greifende
+    Gegenanzeige da — „sie zieht auf null, gleichgueltig wie viel sonst passt.
+    Sonst ist sie keine". Wer zugleich Achsen unter ``trifft`` nennt, hat
+    entweder die Gegenanzeige vergessen zu nennen oder „verfehlt die
+    wichtigste Achse" mit „Gegenanzeige" verwechselt.
+
+    Genau das geschah bei *Kriegsklingen* (Joe Abercrombie): null Sterne,
+    dazu ``trifft: Tempo, Duester/dreckig/kompromisslos`` — und Grimdark steht
+    im Leseprofil ausdruecklich unter den passenden Genres.
+    """
+    if rating.stars == scheme.min_stars and rating.hits:
+        getroffen = ", ".join(rating.hits)
+        return (
+            f"du hast {scheme.min_stars} Sterne vergeben und zugleich "
+            f"{getroffen} unter 'trifft' genannt"
+        )
+    return None
+
+
+def _star_prompt(
+    observation: Observation,
+    rating: Rating,
+    scheme: Scheme,
+    leseprofil: str,
+    trouble: str,
+) -> str:
+    """Die Nachfrage: welche Gegenanzeige greift — oder welche Zahl gilt?
+
+    Mit Leseprofil, anders als bei der Pitch-Nachfrage: ob eine Gegenanzeige
+    greift, steht dort und nirgends sonst.
+    """
+    return (
+        "Du hast dieses Buch bereits beurteilt und dabei gegen das Verfahren "
+        f"verstossen: {trouble}.\n\n"
+        "Null Sterne bedeuten, dass eine GEGENANZEIGE des Profils greift — und "
+        "eine Gegenanzeige zieht auf null, gleichgueltig wie viel sonst passt. "
+        "Trifft keine zu, sagt die Sternetabelle, was gilt.\n\n"
+        f"--- VERFAHREN ---\n{scheme.prompt_text}\n--- ENDE VERFAHREN ---\n\n"
+        f"--- LESEPROFIL ---\n{leseprofil}\n--- ENDE LESEPROFIL ---\n\n"
+        "--- BUCH ---\n" + "\n".join(_facts(observation)) + "\n--- ENDE BUCH ---\n\n"
+        f"Dein bisheriges Urteil: {rating.stars} Sterne, "
+        f"trifft={list(rating.hits)}, fehlt={list(rating.misses)}.\n\n"
+        "Nenne entweder die Gegenanzeige, die greift, oder korrigiere die "
+        "Sterne. Antworte ausschliesslich mit JSON in genau dieser Form:\n"
+        '{"gegenanzeige": "<Name oder null>", "stars": <Zahl>, '
+        '"reason": "<die Begruendung, neu>"}'
+    )
+
+
+def with_settled_stars(
+    rating: Rating,
+    observation: Observation,
+    ask: Callable[[str, int], str],
+    scheme: Scheme,
+    leseprofil: str,
+) -> Rating:
+    """Einmal nachfragen, wenn das Urteil sich selbst widerspricht (#42).
+
+    **Nicht verwerfen und nicht selbst rechnen.** Die drei Proben aus #12
+    verwerfen das ganze Urteil; hier waere das teurer als noetig, denn die
+    Begruendung taugt ja meist. Und eine Zahl im Code zu setzen hiesse, dass
+    der Code urteilt — das tut er sonst nur bei Abzuegen, und dort sichtbar.
+
+    Stattdessen geht der **benannte** Fehler zurueck: was zu dieser Fehlerart
+    bekannt ist, empfiehlt genau das, und die Pitch-Nachfrage aus #29 ist
+    dasselbe Muster. Gemessen am Fall *Kriegsklingen* korrigierte das Modell
+    sich von 0 auf 3 und merkte von selbst an, dass Band 1 einer Trilogie die
+    Einstiegsachse gar nicht verletzt.
+
+    Bestaetigt es dagegen eine Gegenanzeige, bleibt es bei null — dann war das
+    Urteil richtig und nur seine Begruendung unvollstaendig.
+
+    Scheitert die Nachfrage, bleibt das erste Urteil stehen (ADR 7).
+    """
+    trouble = star_contradiction(rating, scheme)
+    if trouble is None:
+        return rating
+    try:
+        antwort = _json_object(
+            ask(_star_prompt(observation, rating, scheme, leseprofil, trouble), 600)
+        )
+    except RatingUnavailable:
+        return rating
+
+    begruendung = str(antwort.get("reason") or "").strip() or rating.reason
+    if antwort.get("gegenanzeige"):
+        # Die Gegenanzeige gilt. Null bleibt null; die Begruendung nennt sie
+        # jetzt, was sie vorher versaeumt hat.
+        return replace(rating, reason=begruendung)
+    try:
+        sterne = int(antwort["stars"])
+    except (KeyError, TypeError, ValueError):
+        return rating
+    if not scheme.min_stars <= sterne <= scheme.max_stars:
+        return rating
+    return replace(rating, stars=sterne, reason=begruendung)
+
+
 def pitch_trouble(pitch: str, scheme: Scheme) -> str | None:
     """Woran ein Pitch gegen das Verfahren verstößt — oder ``None`` (#29).
 
@@ -744,6 +846,9 @@ class ModelRater:
             had_sample=bool(observation.sample),
             publisher=observation.publisher,
         )
+        rating = with_settled_stars(
+            rating, observation, self.ask, self.scheme, self.leseprofil
+        )
         return with_better_pitch(rating, observation, self.ask, self.scheme)
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:
@@ -840,6 +945,9 @@ class ClaudeCodeRater:
             had_sample=bool(observation.sample),
             publisher=observation.publisher,
         )
+        rating = with_settled_stars(
+            rating, observation, self.ask, self.scheme, self.leseprofil
+        )
         return with_better_pitch(rating, observation, self.ask, self.scheme)
 
     def rate_many(
@@ -859,11 +967,19 @@ class ClaudeCodeRater:
         # Die Nachfrage gilt je Buch, nicht je Buendel: sie kostet einen
         # kurzen Aufruf fuer den einen Satz, und nur dort, wo er verstoesst.
         zu_buch = {(o.source, o.source_item_id): o for o in observations}
+        geklaert = {
+            key: with_settled_stars(
+                rating, zu_buch[key], self.ask, self.scheme, self.leseprofil
+            )
+            if key in zu_buch
+            else rating
+            for key, rating in ratings.items()
+        }
         return {
             key: with_better_pitch(rating, zu_buch[key], self.ask, self.scheme)
             if key in zu_buch
             else rating
-            for key, rating in ratings.items()
+            for key, rating in geklaert.items()
         }
 
     def ask(self, prompt: str, max_tokens: int = 300) -> str:

@@ -33,7 +33,9 @@ from ebook_watchlist.rating import (
     prompt_for,
     prompt_for_many,
     rate_in_batches,
+    star_contradiction,
     with_better_pitch,
+    with_settled_stars,
 )
 from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
 from ebook_watchlist.store import Store
@@ -1635,3 +1637,80 @@ def test_the_batch_asks_again_only_for_the_pitch_that_breaks_the_rule(monkeypatc
     # Das saubere Buch bleibt unberührt, und seine Sterne ebenso.
     assert ratings[books[1].key].pitch == "Ein Haus zählt nachts dreizehn Fenster."
     assert ratings[books[0].key].stars == 4
+
+
+# --- Null Sterne trotz Treffern: die vierte Probe (#42) ----------------------
+
+
+def _urteil(stars: int, hits=(), misses=()) -> Rating:
+    return Rating(stars=stars, reason="…", confidence="belegt", profile_version=1,
+                  hits=tuple(hits), misses=tuple(misses))
+
+
+def test_zero_stars_with_hits_is_a_contradiction() -> None:
+    """Null Sterne sind laut Verfahren allein für eine greifende Gegenanzeige
+    da — „sonst ist sie keine". Wer zugleich Achsen trifft, widerspricht sich.
+
+    Der Fall: *Kriegsklingen* stand mit 0 Sternen da und nannte dabei Tempo
+    und „Düster, dreckig, kompromisslos" unter `trifft`. Grimdark steht im
+    Leseprofil ausdrücklich unter den passenden Genres.
+    """
+    assert star_contradiction(_urteil(0, hits=("Tempo",)), SCHEMA)
+
+
+def test_zero_stars_without_hits_is_fine() -> None:
+    """Der Normalfall einer Gegenanzeige: nichts trifft, also null."""
+    assert star_contradiction(_urteil(0, misses=("Tempo",)), SCHEMA) is None
+
+
+def test_hits_above_zero_are_fine() -> None:
+    assert star_contradiction(_urteil(3, hits=("Tempo",)), SCHEMA) is None
+
+
+def test_the_model_may_correct_its_own_stars() -> None:
+    gefragt: list[str] = []
+
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        gefragt.append(prompt)
+        return json.dumps({"gegenanzeige": None, "stars": 3, "reason": "Keine greift."})
+
+    besser = with_settled_stars(
+        _urteil(0, hits=("Tempo",), misses=("Enge",)), discovery(), ask, SCHEMA, LESEPROFIL
+    )
+
+    assert len(gefragt) == 1
+    assert "Tempo" in gefragt[0]
+    assert (besser.stars, besser.reason) == (3, "Keine greift.")
+    # Die Achsen bleiben, wie sie waren — korrigiert wurde die Zahl.
+    assert besser.hits == ("Tempo",)
+
+
+def test_a_confirmed_counterindication_keeps_the_zero() -> None:
+    """Eine Gegenanzeige zieht auf null, gleichgültig wie viel sonst passt.
+    Dann war nur die Begründung unvollständig, nicht das Urteil."""
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        return json.dumps({"gegenanzeige": "Erotik", "stars": 0, "reason": "Erotik steht im Kern."})
+
+    besser = with_settled_stars(_urteil(0, hits=("Tempo",)), discovery(), ask, SCHEMA, LESEPROFIL)
+
+    assert besser.stars == 0
+    assert "Erotik" in besser.reason
+
+
+def test_a_failed_second_call_leaves_the_judgement_alone() -> None:
+    """Das Tor scheitert nie zu (ADR 7)."""
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        raise RatingUnavailable("Modell nicht erreichbar")
+
+    erst = _urteil(0, hits=("Tempo",))
+
+    assert with_settled_stars(erst, discovery(), ask, SCHEMA, LESEPROFIL) is erst
+
+
+def test_a_correction_outside_the_scale_is_ignored() -> None:
+    def ask(prompt: str, max_tokens: int = 300) -> str:
+        return json.dumps({"gegenanzeige": None, "stars": 9, "reason": "…"})
+
+    erst = _urteil(0, hits=("Tempo",))
+
+    assert with_settled_stars(erst, discovery(), ask, SCHEMA, LESEPROFIL).stars == 0
