@@ -1,0 +1,39 @@
+{# Eine Merkmalsfamilie oder ein Erzählmuster zum Antippen (#50, Variante E).
+
+   Dieselbe Pille wie über dem Stapel und im Profil, nur mit Zustand: auf
+   Bildschirm 3 heißt angetippt ♥ (hält dich), auf Bildschirm 4 ⊘ (hat dich
+   verloren) — dieselben Zeichen wie die Knöpfe auf der Buchseite. Keine neue
+   Farbe: Akzent für ♥, Gefahr für ⊘. Was nicht angetippt ist, ist egal.
+
+   Häufiges trägt den Zusatz „bei vielen Büchern" und steht am Ende; ein
+   Erzählmuster sagt, dass es eins ist. Ausgeblendet wird nichts (#44).
+
+   Erwartet: `p` (die Pille), `seite` (loved oder lost), `schritt`. #}
+{% macro titelreihe(titel) -%}
+{% for t in titel %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
+{%- endmacro %}
+
+{% macro familienpille(p, seite, schritt) %}
+{% set weg = seite == "lost" %}
+<form method="post" action="/erstaufnahme/wahl" class="inline-flex"
+      hx-post="/erstaufnahme/wahl" hx-target="#wahl" hx-swap="outerHTML">
+  <input type="hidden" name="seite" value="{{ seite }}">
+  <input type="hidden" name="familie" value="{{ p.family_id }}">
+  <input type="hidden" name="schritt" value="{{ schritt }}">
+  {% if p.book_id %}<input type="hidden" name="buch" value="{{ p.book_id }}">{% endif %}
+  <input type="hidden" name="an" value="{{ '' if p.on else '1' }}">
+  <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
+          data-familie="{{ p.family_id }}"
+          class="pille tun inline-flex h-7 items-center gap-1 rounded border px-3 text-xs
+                 transition sm:rounded-full
+                 {% if p.on and weg %}border-danger bg-danger/10 text-danger
+                 {% elif p.on %}border-accent bg-accent/10 text-accent
+                 {% elif weg %}border-rule text-soft hover:border-danger hover:text-danger
+                 {% else %}border-rule text-soft hover:border-accent hover:text-accent{% endif %}">
+    {% if p.on %}<svg class="i"><use href="#{{ 'ic-ban' if weg else 'ic-heart' }}"/></svg>{% endif %}
+    {{ p.name }}
+    {% if p.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}
+    {% if p.frequent %}<span class="opacity-70">· bei vielen Büchern</span>{% endif %}
+  </button>
+</form>
+{% endmacro %}

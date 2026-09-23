@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ..config import Settings
+from ..facets import STRENGTHS, family_names, strength
+from ..portrait import VocabularyError, load_vocabulary
 from ..rating import (
     LESEPROFIL_PATH,
     RatingUnavailable,
@@ -87,6 +89,19 @@ class Shelf:
 
 
 @dataclass(frozen=True, slots=True)
+class FacetLine:
+    """Eine Facette oder ein Gegengewicht, wie die Profilseite sie zeigt (#50)."""
+
+    name: str
+    books: tuple[str, ...]
+    #: Nur bei Facetten: die Stärke als Wort und als Stufe von 1 bis 4.
+    strength: str | None = None
+    level: int = 0
+    #: Nur bei Gegengewichten.
+    genre: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Overview:
     authors: tuple[Interest, ...]
     themen: tuple[Interest, ...]
@@ -105,6 +120,8 @@ class Overview:
     facet_profile: int | None = None
     #: Wie viele Bücher in der Erstaufnahme schon genannt sind (#47).
     intake_named: int = 0
+    facets: tuple[FacetLine, ...] = ()
+    counterweights: tuple[FacetLine, ...] = ()
 
     @property
     def next_sweep(self) -> str:
@@ -178,6 +195,8 @@ def build(store: Store, settings: Settings) -> Overview:
     except RatingUnavailable:
         scheme = None
 
+    facetten, gegen = _facet_profile(store, settings)
+
     return Overview(
         authors=collect(InterestKey.AUTHOR),
         themen=collect(InterestKey.THEMA),
@@ -193,4 +212,29 @@ def build(store: Store, settings: Settings) -> Overview:
         scheme=scheme,
         facet_profile=profil.version if (profil := store.reading_profile(settings.slug)) else None,
         intake_named=len(store.intake_entries(settings.slug)),
+        facets=facetten,
+        counterweights=gegen,
     )
+
+
+def _facet_profile(store: Store, settings: Settings):
+    """Das Leseprofil aus Facetten, lesbar gemacht — oder nichts."""
+    profil = store.reading_profile(settings.slug)
+    if profil is None:
+        return (), ()
+    try:
+        vocabulary = load_vocabulary()
+    except VocabularyError:
+        return (), ()
+    facetten = tuple(
+        FacetLine(
+            family_names(f.families, vocabulary), f.books,
+            strength=strength(len(f.books)), level=STRENGTHS.index(strength(len(f.books))) + 1,
+        )
+        for f in profil.facets
+    )
+    gegen = tuple(
+        FacetLine(family_names(c.families, vocabulary), c.books, genre=c.genre)
+        for c in profil.counterweights
+    )
+    return facetten, gegen

@@ -105,6 +105,13 @@ class Vocabulary:
         raise KeyError(family_id)
 
     def is_pattern(self, term_id: str) -> bool:
+        """Ob ein Wort — oder eine Familie — ein Erzählmuster ist.
+
+        Eine Familie ist nie gemischt: Merkmale und Muster stehen in eigenen
+        Familien, also entscheidet ihr erstes Mitglied.
+        """
+        if term_id not in self.terms:
+            term_id = self.family(term_id).members[0]
         return self.terms[term_id].dimension == PATTERN_DIMENSION
 
     def prompt_text(self) -> str:

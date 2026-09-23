@@ -399,6 +399,28 @@ class IntakeEntryRow(Base):
     book_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class IntakeChoiceRow(Base):
+    """Was die Leserin in der Erstaufnahme angetippt hat (#50).
+
+    Auf Bildschirm 3 eine Familie, die sie an ihren Büchern hält (``loved``),
+    auf Bildschirm 4 eine, die sie an einem enttäuschenden Buch verloren hat
+    (``lost``, mit dem Buch und dem Umfang). Sofort gespeichert wie die
+    Einträge: ein Abbruch verliert nichts.
+    """
+
+    __tablename__ = "intake_choice"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_slug: Mapped[str] = mapped_column(String, index=True)
+    side: Mapped[str] = mapped_column(String)
+    family_id: Mapped[str] = mapped_column(String)
+    #: Nur bei ``lost``: an welchem enttäuschenden Buch.
+    book_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Nur bei ``lost``: ``general``, ``here`` oder ``genre``.
+    scope: Mapped[str | None] = mapped_column(String, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class BookRelationRow(Base):
     """Was die Leserin zu einem Buch sagt (ADR 18).
 
@@ -1789,6 +1811,98 @@ class Store:
             for name, wert in fields.items():
                 setattr(row, name, wert)
             session.commit()
+
+    def set_intake_choice(
+        self,
+        profile_slug: str,
+        side: str,
+        family_id: str,
+        *,
+        book_id: int | None = None,
+        active: bool = True,
+        scope: str | None = None,
+    ) -> None:
+        """Eine Familie an- oder abwählen; der Umfang bleibt, wenn keiner kommt."""
+        with self.session() as session:
+            row = session.scalars(
+                select(IntakeChoiceRow).where(
+                    IntakeChoiceRow.profile_slug == profile_slug,
+                    IntakeChoiceRow.side == side,
+                    IntakeChoiceRow.family_id == family_id,
+                    IntakeChoiceRow.book_id.is_(None)
+                    if book_id is None
+                    else IntakeChoiceRow.book_id == book_id,
+                )
+            ).first()
+            if row is None:
+                row = IntakeChoiceRow(
+                    profile_slug=profile_slug, side=side, family_id=family_id, book_id=book_id
+                )
+                session.add(row)
+            row.active = active
+            if scope is not None:
+                row.scope = scope
+            session.commit()
+
+    def intake_choices(self, profile_slug: str) -> list[IntakeChoiceRow]:
+        """Die angetippten Familien, in der Reihenfolge des ersten Antippens."""
+        with self.session() as session:
+            rows = list(
+                session.scalars(
+                    select(IntakeChoiceRow)
+                    .where(
+                        IntakeChoiceRow.profile_slug == profile_slug,
+                        IntakeChoiceRow.active.is_(True),
+                    )
+                    .order_by(IntakeChoiceRow.id)
+                )
+            )
+            for row in rows:
+                session.expunge(row)
+            return rows
+
+    def reset_intake(self, profile_slug: str) -> None:
+        """Neu anfangen: Einträge und Antworten wirken nicht mehr.
+
+        Nichts wird gelöscht (ADR 5); bestätigte Bücher bleiben im Regal, dort
+        nimmt man sie auf der Buchseite zurück.
+        """
+        with self.session() as session:
+            for row in session.scalars(
+                select(IntakeEntryRow).where(IntakeEntryRow.profile_slug == profile_slug)
+            ):
+                row.status = "removed"
+            for row in session.scalars(
+                select(IntakeChoiceRow).where(IntakeChoiceRow.profile_slug == profile_slug)
+            ):
+                row.active = False
+            session.commit()
+
+    def latest_portraits(self, fingerprint: str) -> dict[str, Portrait]:
+        """Der jüngste Steckbrief je Gegenstand mit diesem Fingerabdruck.
+
+        Für die Häufigkeit der Familien auf dem neutralen Bestand (#50): was
+        die Buchseite, der Lauf oder die Erstaufnahme angelegt haben.
+        """
+        with self.session() as session:
+            rows = session.scalars(
+                select(PortraitRow)
+                .where(PortraitRow.fingerprint == fingerprint)
+                .order_by(PortraitRow.created_at, PortraitRow.id)
+            )
+            return {
+                row.subject: Portrait(
+                    known=row.known,
+                    fingerprint=row.fingerprint,
+                    genre=row.genre,
+                    subgenre=row.subgenre,
+                    traits=tuple(
+                        Trait(t["term"], t["sentence"], t["evidence"])
+                        for t in json.loads(row.traits)
+                    ),
+                )
+                for row in rows
+            }
 
     # --- Beziehungen und Interessen (Ticket 05) ----------------------------
 

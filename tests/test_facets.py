@@ -342,3 +342,76 @@ def test_a_counterweight_carries_its_sentence_like_a_facet(wort, gewichte) -> No
     dagegen = next(i for i, z in enumerate(zeilen) if z.kind == "dagegen")
 
     assert zeilen[dagegen + 1].line == "Satz zu leisurely."
+
+
+# --- Facetten aus der Erstaufnahme (#50) -----------------------------------------
+
+#: Welche geliebten Bücher im Versuch welche Familie trugen (Prototyp E).
+TRAEGER = {
+    "atmospheric": {"L", "O", "C"},
+    "harsh": {"L", "K"},
+    "brooding": {"L", "K"},
+    "expert": {"L", "K"},
+    "nerve_racking": {"L", "C"},
+    "menacing": {"L", "C"},
+    "thought_provoking": {"O", "C"},
+    "quirky": {"R"},
+    "funny": {"R"},
+    "likeable": {"R"},
+}
+GELIEBT = ["L", "O", "C", "K", "R"]
+
+
+def test_facets_come_from_families_the_same_books_carry() -> None:
+    from ebook_watchlist.facets import derive_facets
+
+    facetten = derive_facets(
+        ["harsh", "brooding", "nerve_racking", "menacing", "funny", "likeable"], TRAEGER
+    )
+
+    assert [(f.families, f.books) for f in facetten] == [
+        (("harsh", "brooding"), ("K", "L")),
+        (("nerve_racking", "menacing"), ("C", "L")),
+        (("funny", "likeable"), ("R",)),
+    ]
+
+
+def test_not_only_identical_book_sets_form_a_facet() -> None:
+    """Schauplatz (L, O, C) und große Ideen (O, C): beide tragen O und C."""
+    from ebook_watchlist.facets import derive_facets
+
+    facetten = derive_facets(["atmospheric", "thought_provoking"], TRAEGER)
+
+    assert (("atmospheric", "thought_provoking"), ("C", "O")) in [
+        (f.families, f.books) for f in facetten
+    ]
+
+
+def test_a_single_family_comes_back_too_broad() -> None:
+    from ebook_watchlist.facets import MIN_FAMILIES, derive_facets
+
+    facetten = derive_facets(["harsh", "brooding", "thought_provoking"], TRAEGER)
+
+    einzeln = [f for f in facetten if len(f.families) < MIN_FAMILIES]
+    assert [f.families for f in einzeln] == [("thought_provoking",)]
+
+
+def test_otherland_is_asked_with_the_answers_from_the_experiment() -> None:
+    """Die Antworten aus dem Versuch ließen *Otherland* in keiner Facette."""
+    from ebook_watchlist.facets import derive_facets, uncovered
+
+    facetten = derive_facets(
+        ["harsh", "brooding", "nerve_racking", "menacing", "thought_provoking", "funny",
+         "likeable"],
+        TRAEGER,
+    )
+
+    assert uncovered(facetten, GELIEBT) == ["O"]
+
+
+def test_the_strength_is_a_scale() -> None:
+    from ebook_watchlist.facets import strength
+
+    assert [strength(n) for n in (1, 2, 3, 4, 7)] == [
+        "schwach", "mittel", "stark", "sehr stark", "sehr stark"
+    ]

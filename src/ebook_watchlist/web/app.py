@@ -119,6 +119,10 @@ DIGEST_NAME = re.compile(r"^digest-\d{4}-\d{2}-\d{2}(?:-\d{4})?\.html$")
 #: FastAPI liest Formularfelder ueber diese Marker. Als Modulkonstante,
 #: damit im Funktionskopf kein Aufruf steht (ruff B008).
 _SELECTED = Form(default=[])
+#: Je Liste ein eigener Marker: zwei Parameter mit demselben teilen sich
+#: sonst den Namen, und nur einer kommt an (#50).
+_FACETS = Form(default=[])
+_WEIGHTS = Form(default=[])
 
 
 @dataclass(frozen=True, slots=True)
@@ -1221,6 +1225,91 @@ def create_app() -> FastAPI:
         row = _intake_row(entry_id)
         intake.remove(_store_for(paths.db_path()), entry_id)
         return _intake_answer(request, row.side)
+
+    # --- Erstaufnahme, Bildschirme 3 bis 5 (#50) ------------------------------
+
+    #: Die Schritte nach dem Nennen, mit ihrer Adresse.
+    _SCHRITTE = {3: "/erstaufnahme/gemeinsam", 4: "/erstaufnahme/verloren",
+                 5: "/erstaufnahme/profil"}
+
+    def _choosing(request: Request, schritt: int, *, fragment: bool) -> Response:
+        """Bildschirm 3 oder 4 — ganz, oder als Bruchstück nach einem Tipp."""
+        wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
+        kontext = {"wahl": wahl, "schritt": schritt}
+        if fragment:
+            return TEMPLATES.TemplateResponse(request, "_erstaufnahme_wahl.html", kontext)
+        return TEMPLATES.TemplateResponse(
+            request, "erstaufnahme_wahl.html", {**kontext, "asset_version": asset_version()}
+        )
+
+    @app.get("/erstaufnahme/gemeinsam", response_class=HTMLResponse)
+    def intake_common(request: Request) -> Response:
+        """Bildschirm 3: was deine Bücher gemeinsam haben."""
+        return _choosing(request, 3, fragment=False)
+
+    @app.get("/erstaufnahme/verloren", response_class=HTMLResponse)
+    def intake_lost(request: Request) -> Response:
+        """Bildschirm 4: was dich an den enttäuschenden Büchern verloren hat."""
+        return _choosing(request, 4, fragment=False)
+
+    def _after_choice(request: Request, schritt: int) -> Response:
+        if request.headers.get("HX-Request"):
+            return _choosing(request, schritt, fragment=True)
+        return RedirectResponse(_SCHRITTE.get(schritt, "/erstaufnahme/gemeinsam"),
+                                status_code=303)
+
+    @app.post("/erstaufnahme/wahl")
+    def intake_choose(
+        request: Request,
+        seite: str = Form(...),
+        familie: str = Form(...),
+        buch: str = Form(""),
+        an: str = Form(""),
+        schritt: int = Form(3),
+    ) -> Response:
+        """Eine Familie antippen oder wieder lösen — sofort gespeichert."""
+        try:
+            intake.choose(
+                _store_for(paths.db_path()), load_settings(), seite, familie,
+                book_id=int(buch) if buch else None, on=bool(an),
+            )
+        except (intake.IntakeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return _after_choice(request, schritt)
+
+    @app.post("/erstaufnahme/umfang")
+    def intake_scope(
+        request: Request, familie: str = Form(...), buch: int = Form(...),
+        umfang: str = Form(...),
+    ) -> Response:
+        """Die Nachfrage beim Gegengewicht: nur hier, überall, oder mit dem Genre."""
+        try:
+            intake.set_scope(_store_for(paths.db_path()), load_settings(), familie, buch, umfang)
+        except intake.IntakeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return _after_choice(request, 4)
+
+    @app.get("/erstaufnahme/profil", response_class=HTMLResponse)
+    def intake_profile(request: Request) -> Response:
+        """Bildschirm 5: dein Profil — bestätigen oder abwählen."""
+        wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
+        return TEMPLATES.TemplateResponse(
+            request, "erstaufnahme_profil.html",
+            {"wahl": wahl, "schritt": 5, "asset_version": asset_version()},
+        )
+
+    @app.post("/erstaufnahme/profil")
+    def intake_adopt(
+        facette: list[str] = _FACETS, gegengewicht: list[str] = _WEIGHTS
+    ) -> RedirectResponse:
+        """Bestätigt wird die erste Fassung; alles abgewählt heißt neu anfangen."""
+        fassung = intake.adopt(
+            _store_for(paths.db_path()), load_settings(),
+            {int(i) for i in facette if i.isdigit()},
+            {int(i) for i in gegengewicht if i.isdigit()},
+            now=datetime.now(),
+        )
+        return RedirectResponse("/profil" if fassung else "/erstaufnahme", status_code=303)
 
     # --- Jetzt laufen (Ticket 10) -------------------------------------------
 

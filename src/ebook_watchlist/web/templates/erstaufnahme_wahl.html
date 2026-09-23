@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Erstaufnahme — Buchfink{% endblock %}
+
+{# Bildschirm 3 und 4 der Erstaufnahme (#50, Variante E). Die Fragen und das
+   Profil, das aus den Antworten entsteht, sind ein Bruchstück: nach jedem
+   Tipp kommt es neu, ohne dass die Seite neu lädt. #}
+
+{% block content %}
+{% if schritt == 3 %}
+{% with frage="Was hält dich an diesen Büchern?",
+        hilfe="Tipp an, was dich trägt. Was du nicht antippst, ist dir egal." %}
+{% include "_erstaufnahme_schritt.html" %}
+{% endwith %}
+{% else %}
+{% with frage="Was dich verloren hat",
+        hilfe="Tipp an, was dich verloren hat. Es zählt dann gegen andere Bücher, schließt aber keines aus." %}
+{% include "_erstaufnahme_schritt.html" %}
+{% endwith %}
+{% endif %}
+
+{% include "_erstaufnahme_wahl.html" %}
+
+{% set weiter = "/erstaufnahme/profil" if schritt == 4 or not wahl.lost else "/erstaufnahme/verloren" %}
+<nav class="mt-8 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
+  <a href="{{ '/erstaufnahme' if schritt == 3 else '/erstaufnahme/gemeinsam' }}"
+     class="text-soft hover:text-ink">← Zurück</a>
+  <a href="{{ weiter }}"
+     class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
+            font-medium text-accent hover:bg-accent/25">Weiter</a>
+</nav>
+{% endblock %}

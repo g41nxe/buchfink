@@ -16,15 +16,16 @@ gefunden wird (Nachtrag zu ADR 33).
 
     uv run python -m ebook_watchlist.facets profil.yaml
 
-liest ein Profil aus einer Datei ein. Bis die Erstaufnahme gebaut ist (#50),
-ist das der Weg, ein Profil anzulegen.
+liest ein Profil aus einer Datei ein. Der gewöhnliche Weg ist die
+Erstaufnahme (#50); aus deren Antworten leitet ``derive_facets`` die Facetten
+ab, und ``uncovered`` nennt die geliebten Bücher, die in keiner stecken.
 """
 
 from __future__ import annotations
 
 import math
 import sys
-from collections.abc import Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -165,7 +166,7 @@ def _genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
     return any(gesucht in (teil or "").casefold() for teil in (portrait.genre, portrait.subgenre))
 
 
-def _name(family_id: str, vocabulary: Vocabulary) -> str:
+def family_name(family_id: str, vocabulary: Vocabulary) -> str:
     """Der Name einer Familie — oder ihre id, wenn das Vokabular sie nicht mehr
     kennt. Die Familien sind ein Arbeitsstand; ein gespeichertes Profil darf
     die Buchseite nicht umwerfen, nur weil eine umbenannt wurde."""
@@ -175,8 +176,8 @@ def _name(family_id: str, vocabulary: Vocabulary) -> str:
         return family_id
 
 
-def _names(families: Sequence[str], vocabulary: Vocabulary) -> str:
-    return " · ".join(_name(f, vocabulary) for f in families)
+def family_names(families: Sequence[str], vocabulary: Vocabulary) -> str:
+    return " · ".join(family_name(f, vocabulary) for f in families)
 
 
 def fit(
@@ -261,17 +262,87 @@ def _reasons(
         # Beim Teiltreffer nur, was das Buch trägt: "große Welt · verschachtelt"
         # las sich bei Leopard, als hätte Harry Hole eine große Welt.
         if t.full:
-            zeilen.append(Reason("ganz", _names(t.facet.families, vocabulary)))
+            zeilen.append(Reason("ganz", family_names(t.facet.families, vocabulary)))
         else:
-            zeilen.append(Reason("teils", _names(t.hit, vocabulary)))
+            zeilen.append(Reason("teils", family_names(t.hit, vocabulary)))
         zeilen.extend(belege(t.hit))
     if not treffer:
         zeilen.append(Reason("keine", "keine Facette getroffen"))
     if dagegen is not None:
         im_genre = f" (bei {dagegen.genre})" if dagegen.genre else ""
-        zeilen.append(Reason("dagegen", _names(dagegen.families, vocabulary) + im_genre))
+        zeilen.append(Reason("dagegen", family_names(dagegen.families, vocabulary) + im_genre))
         zeilen.extend(belege(dagegen.families))
     return tuple(zeilen)
+
+
+#: Wie stark eine Facette belegt ist, als Skala statt als Zahl (#44): ein Buch
+#: ist schwach, ab vier sehr stark. Die Anzahl wird gemerkt, gezeigt wird das
+#: Wort. Die Zuordnung ist vorläufig.
+STRENGTHS = ("schwach", "mittel", "stark", "sehr stark")
+
+
+def strength(books: int) -> str:
+    return STRENGTHS[max(1, min(books, len(STRENGTHS))) - 1]
+
+
+def derive_facets(
+    chosen: Sequence[str], carriers: Mapping[str, Collection[str]]
+) -> list[Facet]:
+    """Facetten aus den Familien, die die Leserin bestätigt hat (#50).
+
+    Eine Facette sind Familien, die **dieselben Bücher gemeinsam tragen** —
+    nicht nur genau gleiche Buchmengen: "lebendiger Schauplatz" (drei Bücher)
+    und "große Ideen" (zwei davon) gehören zusammen, weil die zwei beide
+    tragen. Kandidaten sind die Buchmenge jeder Familie und jede Schnittmenge
+    zweier, die mindestens zwei Bücher hat; ein Kandidat, der in einem anderen
+    ganz aufgeht, fällt weg. Bücher werden nie paarweise verglichen, und es
+    gibt keine Schwelle für "ähnlich" (#44).
+
+    Was in keiner Facette steckt, kommt als Facette aus einer einzigen Familie
+    zurück: zu breit, um zu zählen, aber sichtbar (``MIN_FAMILIES``).
+
+    ``carriers`` nennt je Familie die geliebten Bücher, die sie tragen.
+    """
+    familien = [f for f in dict.fromkeys(chosen) if carriers.get(f)]
+    traeger = {f: frozenset(carriers[f]) for f in familien}
+
+    kandidaten: dict[frozenset, tuple[str, ...]] = {}
+
+    def dazu(buecher: frozenset) -> None:
+        if buecher and buecher not in kandidaten:
+            kandidaten[buecher] = tuple(f for f in familien if buecher <= traeger[f])
+
+    for f in familien:
+        dazu(traeger[f])
+    for i, a in enumerate(familien):
+        for b in familien[i + 1:]:
+            gemeinsam = traeger[a] & traeger[b]
+            if len(gemeinsam) >= 2:
+                dazu(gemeinsam)
+
+    echte = [(b, f) for b, f in kandidaten.items() if len(f) >= MIN_FAMILIES]
+    echte = [
+        (b, f)
+        for b, f in echte
+        if not any(
+            (b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in echte
+        )
+    ]
+    echte.sort(key=lambda bf: -len(bf[0]))
+    drin = {f for _, fs in echte for f in fs}
+    einzeln = [(traeger[f], (f,)) for f in familien if f not in drin]
+    return [Facet(fs, tuple(sorted(b))) for b, fs in (*echte, *einzeln)]
+
+
+def uncovered(facets: Sequence[Facet], loved: Collection[str]) -> list[str]:
+    """Die geliebten Bücher, die in keiner Facette stecken, die zählt.
+
+    Die Abdeckungsregel (ADR 33, Punkt 6): jedes geliebte Buch muss am Ende in
+    einer Facette stecken. Im Versuch landete *Otherland* in keiner, und was
+    es eigentlich trägt, wurde nie gefragt (#44).
+    """
+    gedeckt = {b for f in facets if len(f.families) >= MIN_FAMILIES for b in f.books}
+    return [b for b in loved if b not in gedeckt]
 
 
 def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:

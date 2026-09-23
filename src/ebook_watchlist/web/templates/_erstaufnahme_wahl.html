@@ -1,0 +1,91 @@
+{# Die Fragen von Bildschirm 3 oder 4 und das Profil, das daraus entsteht
+   (#50, Variante E).
+
+   Bildschirm 3 gruppiert die Familien der geliebten Bücher nach den Büchern,
+   die sie tragen: „Weil du … mochtest" sagt, woher eine Familie kommt, und ein
+   Buch steht nur noch in der Überschrift, nicht auf jeder Pille. „warum?"
+   klappt die Sätze aus den Steckbriefen auf.
+
+   Bildschirm 4 fragt je enttäuschendem Buch. Was ein geliebtes Buch auch
+   trägt, steht in einer eigenen Gruppe, und wer es antippt, wird gefragt, wie
+   weit es gilt: nur bei diesem Buch (voreingestellt), überall, oder nur
+   zusammen mit dem Genre — so wird aus „klassisch" ein Bündel aus Genre und
+   Heldenreise statt eines Gegengewichts gegen jede Heldenreise.
+
+   Erwartet: `wahl`, `schritt`. #}
+{% from "_familienpille.html" import familienpille, titelreihe %}
+<div id="wahl" class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
+  <div>
+    {% if schritt == 3 %}
+    {% if not wahl.groups %}
+    <p class="text-sm text-soft">Noch kein geliebtes Buch mit Steckbrief bestätigt.
+      <a href="/erstaufnahme" class="text-accent underline underline-offset-2">Bücher nennen</a></p>
+    {% endif %}
+    {% for g in wahl.groups %}
+    <section class="mb-6" x-data="{ warum: false }">
+      <div class="mb-2 flex flex-wrap items-baseline gap-x-2 text-sm text-ink">
+        <p>{{ g.lead }} {{ titelreihe(g.titles) }}{{ " " if not g.tail.startswith(",") }}{{ g.tail }}</p>
+        <button type="button" @click="warum = !warum"
+                class="text-xs text-soft underline decoration-rule underline-offset-2
+                       hover:text-ink">warum?</button>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% for p in g.pills %}{{ familienpille(p, "loved", schritt) }}{% endfor %}
+      </div>
+      <ul x-show="warum" x-cloak class="mt-2 max-w-prose space-y-1 text-sm text-soft">
+        {% for name, saetze in g.why %}
+        <li><span class="text-ink">{{ name }}:</span> {{ saetze | join(" · ") }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+
+    {% else %}
+    {% if not wahl.lost %}
+    <p class="text-sm text-soft">Kein enttäuschendes Buch genannt — dann gibt es hier nichts
+      zu fragen.</p>
+    {% endif %}
+    {% for d in wahl.lost %}
+    <section class="mb-8">
+      <p class="mb-3 flex items-center gap-2 text-sm">
+        <svg class="i text-danger"><use href="#ic-ban"/></svg>
+        <span class="font-serif text-base italic text-ink">{{ d.title }}</span>
+        <span class="text-soft">hat dich enttäuscht</span>
+      </p>
+      {% for g in d.groups %}
+      <div class="mb-4">
+        <p class="mb-2 text-sm {{ 'text-ink' if g.conflict else 'text-soft' }}">
+          {% if g.conflict %}<svg class="i -mt-0.5 inline text-accent"><use href="#ic-heart"/></svg>{% endif %}
+          {{ g.lead }} {{ titelreihe(g.titles) }}{{ g.tail }}</p>
+        <div class="flex flex-wrap gap-2">
+          {% for p in g.pills %}{{ familienpille(p, "lost", schritt) }}{% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      {% for q in d.questions %}
+      <form method="post" action="/erstaufnahme/umfang"
+            hx-post="/erstaufnahme/umfang" hx-target="#wahl" hx-swap="outerHTML"
+            class="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-rule
+                   bg-card px-3 py-2 text-sm" data-nachfrage="{{ q.family_id }}">
+        <input type="hidden" name="familie" value="{{ q.family_id }}">
+        <input type="hidden" name="buch" value="{{ q.book_id }}">
+        <span><span class="font-medium text-ink">{{ q.name }}</span>
+          <span class="text-soft">hat dich gestört —</span></span>
+        {% set wahlen = [("here", "nur bei diesem Buch"), ("general", "auch bei anderen")] %}
+        {% if q.genre %}{% set wahlen = wahlen + [("genre", "nur bei " ~ q.genre)] %}{% endif %}
+        {% for wert, text in wahlen %}
+        <button type="submit" name="umfang" value="{{ wert }}"
+                aria-pressed="{{ 'true' if q.scope == wert else 'false' }}"
+                class="tun inline-flex h-7 items-center rounded border px-2.5 text-xs
+                       {{ 'border-ink bg-hair text-ink' if q.scope == wert
+                          else 'border-rule text-soft hover:text-ink' }}">{{ text }}</button>
+        {% endfor %}
+      </form>
+      {% endfor %}
+    </section>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  {% include "_erstaufnahme_entwurf.html" %}
+</div>

@@ -335,7 +335,8 @@ found, which is why Facets stay without genre until a book shows otherwise.
 
 When a counterweight is also carried by a loved book, it is not taken over
 silently; the reader is asked — only for this book, for books generally, or
-only together with a genre.
+only together with a genre. That answer is its **scope** (*Umfang*): `here`
+counts against nothing, `general` everywhere, `genre` only in that genre.
 
 **Reader-facing name: *Gegengewicht*.**
 

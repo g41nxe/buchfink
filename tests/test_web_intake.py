@@ -250,3 +250,189 @@ def test_the_profile_page_leads_into_the_intake(client) -> None:
     body = client.get("/profil").text
 
     assert 'href="/erstaufnahme"' in body and "Erstaufnahme beginnen" in body
+
+
+# --- Bildschirme 3 bis 5: das Gemeinsame, das Verlorene, dein Profil (#50) ------
+
+
+def _bild(genre, untergenre, merkmale, muster="quest"):
+    from ebook_watchlist.portrait import load_vocabulary, parse_answer
+
+    return parse_answer(json.dumps({
+        "bekannt": True, "titel": "x", "autor": "y", "genre": genre, "untergenre": untergenre,
+        "pitch": "Ein Buch.",
+        "merkmale": [{"id": m, "satz": f"Satz zu {m}.", "beleg": "wissen"} for m in merkmale],
+        "erzaehlmuster": [{"id": muster, "satz": "Muster.", "beleg": "wissen"}],
+    }), load_vocabulary())
+
+
+def bestaetigt(db: Store, seite: str, titel: str, bild) -> int:
+    """Ein Buch, wie es nach Bildschirm 1 und 2 dasteht: genannt, erkannt, bestätigt."""
+    from dataclasses import replace
+
+    eintrag = intake.add(db, load_settings(), seite, titel, None, now=NOW)
+    db.put_portrait(intake.intake_subject(titel, None), replace(bild, title=titel), now=NOW)
+    return intake.confirm(db, load_settings(), eintrag, now=NOW)
+
+
+@pytest.fixture
+def buecher(db: Store) -> dict[str, int]:
+    """Drei geliebte Bücher und ein enttäuschendes, nach dem Versuch vom 23.09.
+
+    Leichenblässe und Kruzifix Killer teilen hart und gezeichnete Figur;
+    Leichenblässe und Otherland den Schauplatz; Herr der Ringe trägt die große
+    Welt wie Otherland, und gemächlich für sich allein.
+    """
+    return {
+        "L": bestaetigt(db, "liked", "Leichenblässe", _bild(
+            "Kriminalroman", None, ["violent", "brooding", "menacing", "atmospheric"],
+            "pursuit")),
+        "K": bestaetigt(db, "liked", "Kruzifix Killer", _bild(
+            "Thriller", None, ["violent", "brooding", "flawed", "menacing"], "pursuit")),
+        "O": bestaetigt(db, "liked", "Otherland", _bild(
+            "Science-Fiction", "Cyberpunk", ["world_building", "intricate", "atmospheric",
+                                             "ensemble"])),
+        "H": bestaetigt(db, "disliked", "Herr der Ringe", _bild(
+            "Fantasy", "High Fantasy / Heroische Fantasy",
+            ["world_building", "leisurely", "bittersweet", "descriptive"])),
+    }
+
+
+HX = {"HX-Request": "true"}
+
+
+def tippen(client, familie, seite="loved", buch=None, an=True, schritt=3) -> str:
+    daten = {"seite": seite, "familie": familie, "an": "1" if an else "", "schritt": schritt}
+    if buch is not None:
+        daten["buch"] = buch
+    return client.post("/erstaufnahme/wahl", data=daten, headers=HX).text
+
+
+def test_screen_3_groups_the_families_by_the_books_that_carry_them(client, buecher) -> None:
+    body = client.get("/erstaufnahme/gemeinsam").text
+
+    assert "Weil du" in body and "mochtest" in body
+    assert "Nur in" in body
+    # Titel in Serifen, und ein Buch nur in der Überschrift.
+    assert '<span class="font-serif italic text-ink">Kruzifix Killer</span>' in body
+
+
+def test_a_tap_is_saved_and_the_profile_grows_below(client, db, buecher) -> None:
+    tippen(client, "harsh")
+    body = tippen(client, "brooding")
+
+    assert 'data-facette="harsh,brooding"' in body
+    assert {c.family_id for c in db.intake_choices(load_settings().slug)} == {"harsh", "brooding"}
+
+
+def test_a_single_family_shows_as_too_broad(client, buecher) -> None:
+    body = tippen(client, "atmospheric")
+
+    assert "zu breit" in body
+
+
+def test_a_loved_book_in_no_facet_is_asked_for(client, buecher) -> None:
+    """Die Abdeckungsregel: Otherland steckt nach hart und gezeichneter Figur in
+    keiner Facette und wird mit allem gefragt, was es trägt."""
+    tippen(client, "harsh")
+    body = tippen(client, "brooding")
+
+    assert "data-abdeckung" in body
+    abdeckung = body.split("data-abdeckung", 1)[1].split("</aside>")[0]
+    assert "Otherland" in abdeckung and 'data-familie="intricate"' in abdeckung
+
+
+def test_a_lost_family_a_loved_book_also_carries_asks_how_far(client, buecher) -> None:
+    body = tippen(client, "big_world", seite="lost", buch=buecher["H"], schritt=4)
+
+    assert 'data-nachfrage="big_world"' in body
+    assert "nur bei High Fantasy" in body
+    # Voreingestellt nur bei diesem Buch: es zählt noch gegen nichts.
+    assert "Nur an diesem einen Buch gestört" in body
+
+
+def test_with_the_genre_it_becomes_a_bundle(client, buecher) -> None:
+    tippen(client, "big_world", seite="lost", buch=buecher["H"], schritt=4)
+
+    body = client.post("/erstaufnahme/umfang",
+                       data={"familie": "big_world", "buch": buecher["H"], "umfang": "genre"},
+                       headers=HX).text
+
+    entwurf = body.split("data-entwurf", 1)[1]
+    assert "große Welt" in entwurf and "nur bei High Fantasy" in entwurf
+
+
+def test_a_lost_family_no_loved_book_carries_counts_everywhere(client, buecher) -> None:
+    body = tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
+
+    assert "data-nachfrage" not in body
+    assert "gemächlich" in body.split("Zählt gegen ein Buch", 1)[1]
+
+
+def test_adopting_saves_the_first_version_and_the_code_judges(client, db, buecher) -> None:
+    tippen(client, "harsh")
+    tippen(client, "brooding")
+    tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
+
+    antwort = client.post("/erstaufnahme/profil",
+                          data={"facette": ["0"], "gegengewicht": ["0"]})
+
+    profil = db.reading_profile(load_settings().slug)
+    assert profil.version == 1
+    assert profil.facets[0].families == ("harsh", "brooding")
+    assert profil.counterweights[0].families == ("leisurely",)
+    assert "Dein Leseprofil" in antwort.text
+    # Sofort geurteilt: Kruzifix Killer trifft die Facette ganz.
+    assert "Übereinstimmung mit deinen Facetten" in client.get(f"/book/{buecher['K']}").text
+
+
+def test_deselecting_everything_starts_over(client, db, buecher) -> None:
+    tippen(client, "harsh")
+    tippen(client, "brooding")
+
+    antwort = client.post("/erstaufnahme/profil", data={})
+
+    assert db.reading_profile(load_settings().slug) is None
+    assert db.intake_entries(load_settings().slug) == []
+    assert db.intake_choices(load_settings().slug) == []
+    assert "Erstaufnahme" in antwort.text
+    # Die bestätigten Bücher bleiben im Regal (ADR 5).
+    liked = [r.book_id for r in db.relations(load_settings().slug, kind=RelationKind.LIKED)]
+    assert buecher["L"] in liked
+
+
+def test_frequent_families_go_last_only_with_a_neutral_stock(db, buecher) -> None:
+    """Gemessen am neutralen Bestand, nie an den eigenen Büchern (#44)."""
+    from ebook_watchlist.portrait import load_vocabulary
+
+    wort = load_vocabulary()
+    assert intake.frequent_families(db, load_settings(), wort) == set()
+
+    for i in range(intake.NEUTRAL_MIN_BOOKS):
+        merkmale = ["atmospheric", "fast_paced", "funny", "likeable"] if i % 2 else \
+            ["atmospheric", "leisurely", "bittersweet", "lyrical"]
+        db.put_portrait(f"item:x:{i}", _bild("Roman", None, merkmale), now=NOW)
+
+    haeufig = intake.frequent_families(db, load_settings(), wort)
+    assert "atmospheric" in haeufig and "harsh" not in haeufig
+
+
+def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, buecher) -> None:
+    tippen(client, "harsh")
+    tippen(client, "brooding")
+    client.post("/erstaufnahme/profil", data={"facette": ["0"]})
+
+    body = client.get("/profil").text
+
+    assert "Erstaufnahme beginnen" not in body and "data-leseprofil" in body
+    assert "hart · gezeichnete Figur" in body
+
+
+def test_only_a_book_that_shares_nothing_is_there_for_other_reasons(client, db, buecher) -> None:
+    bestaetigt(db, "liked", "Das Rosie-Projekt", _bild(
+        "Roman", None, ["quirky", "funny", "likeable", "romantic"], "opposites_attract"))
+
+    body = client.get("/erstaufnahme/gemeinsam").text
+
+    assert "Rosie-Projekt</span>, aus ganz anderen Gründen" in body
+    assert "Kruzifix Killer</span>, aus ganz anderen Gründen" not in body

@@ -1,0 +1,64 @@
+{# Das Profil, wie es aus den Antworten gerade entsteht (#50).
+
+   Facetten als Karten mit ihrer Stärke als Skala, nicht als Zahl (#44): vier
+   Striche, und das Wort dazu. Eine Facette aus einer einzigen Familie steht
+   gestrichelt da und zählt nicht — zu breit. Ein geliebtes Buch, das in keiner
+   Facette steckt, wird hier gezielt gefragt, mit allem, was es trägt.
+
+   Erwartet: `wahl`, `schritt`. #}
+{% from "_familienpille.html" import familienpille, titelreihe %}
+<aside class="mt-8 rounded-lg border border-rule bg-card px-4 py-4 lg:sticky lg:top-20 lg:mt-0"
+       data-entwurf>
+  <p class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">Dein Profil entsteht</p>
+  {% if not wahl.draft.facets %}
+  <p class="text-sm text-soft italic">Noch nichts angetippt.</p>
+  {% endif %}
+  <ul class="space-y-3">
+    {% for f in wahl.draft.facets %}
+    <li class="rounded border px-3 py-2
+               {{ 'border-dashed border-rule text-soft' if f.too_broad else 'border-accent/40' }}"
+        data-facette="{{ f.families | join(',') }}">
+      <p class="text-sm font-semibold {{ 'text-soft' if f.too_broad else 'text-accent' }}">{{ f.name }}</p>
+      <p class="mt-1 flex items-center gap-2 text-xs text-soft"
+         aria-label="Stärke: {{ f.strength }}">
+        <span class="inline-flex gap-0.5">
+          {% for i in range(1, 5) %}
+          <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level and not f.too_broad
+                                                else 'bg-hair' }}"></i>
+          {% endfor %}
+        </span>{{ f.strength }}</p>
+      <p class="mt-1 text-xs">{{ titelreihe(f.books) }}</p>
+      {% if f.too_broad %}
+      <p class="mt-1 text-xs text-soft">Eine Familie allein ist zu breit für eine Facette.</p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% for u in wahl.draft.uncovered %}
+  <div class="mt-4 border-t border-rule pt-3" data-abdeckung>
+    <p class="mb-2 text-sm text-ink">{{ titelreihe([u.title]) }} steckt noch in keiner Facette.
+      Was hält dich daran?</p>
+    <div class="flex flex-wrap gap-1.5">
+      {% for p in u.pills %}{{ familienpille(p, "loved", schritt) }}{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if wahl.draft.weights or wahl.draft.only_here %}
+  <p class="mt-4 mb-2 border-t border-rule pt-3 text-xs font-medium uppercase tracking-wide
+            text-soft">Zählt gegen ein Buch</p>
+  <ul class="flex flex-wrap gap-1.5">
+    {% for w in wahl.draft.weights %}
+    <li class="inline-flex h-7 items-center gap-1 rounded-full border border-danger/40 px-3
+               text-xs text-danger">
+      <svg class="i"><use href="#ic-ban"/></svg>{{ w.name }}{% if w.genre %}
+      <span class="opacity-70">· nur bei {{ w.genre }}</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% if wahl.draft.only_here %}
+  <p class="mt-2 text-xs text-soft">Nur an diesem einen Buch gestört, zählt nicht:
+    {{ wahl.draft.only_here | join(", ") }}</p>
+  {% endif %}
+  {% endif %}
+</aside>
