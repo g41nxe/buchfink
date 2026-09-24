@@ -142,20 +142,7 @@ _SECTION_BY_REASON = {
 
 
 def _judgement_text(verdict: Verdict | None) -> str | None:
-    """Gerechnete Sterne bleiben als solche erkennbar (ADR 17): eine 4 aus der
-    Rechnung ist ein Vorschlag, eine 4 der Leserin eine Tatsache."""
-    if verdict is None:
-        return None
-    stars = "★" * verdict.stars + "☆" * (5 - verdict.stars)
-    if verdict.by_reader:
-        return f"Deine Sterne {stars}"
-    marks = [
-        f"dagegen: {r.text}" if r.kind == "dagegen" else r.text
-        for r in verdict.reasons
-        if r.kind in ("ganz", "merkmal", "muster", "dagegen")
-    ]
-    text = f"Übereinstimmung {stars} {verdict.percent} %"
-    return f"{text} — {', '.join(marks)}" if marks else text
+    return verdict.text if verdict is not None else None
 
 
 def _entry_for(

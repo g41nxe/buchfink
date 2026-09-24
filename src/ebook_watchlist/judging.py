@@ -33,6 +33,32 @@ class Verdict:
     def withholds(self, threshold: int) -> bool:
         return self.stars < threshold
 
+    @property
+    def marks(self) -> tuple[str, ...]:
+        """Die Begründung in Marken: die getroffene Facette, das Gemochte, was dagegen spricht."""
+        return tuple(
+            f"dagegen: {r.text}" if r.kind == "dagegen" else r.text
+            for r in self.reasons
+            if r.kind in ("ganz", "merkmal", "muster", "dagegen")
+        )
+
+    @property
+    def why(self) -> str:
+        """Prozent und Marken in einer Zeile, wo eine Begründung in ein Feld passen muss."""
+        if self.by_reader:
+            return "deine Sterne"
+        head = f"{self.percent} %"
+        return f"{head} — {', '.join(self.marks)}" if self.marks else head
+
+    @property
+    def text(self) -> str:
+        """Gerechnete Sterne bleiben als solche erkennbar (ADR 17): eine 4 aus der
+        Rechnung ist ein Vorschlag, eine 4 der Leserin eine Tatsache."""
+        stars = "★" * self.stars + "☆" * (5 - self.stars)
+        if self.by_reader:
+            return f"Deine Sterne {stars}"
+        return f"Übereinstimmung {stars} {self.why}"
+
 
 def judge(
     portrait: Portrait | None,
@@ -78,6 +104,8 @@ class Judge:
     weights: Weights
     #: Der Fingerabdruck des Vokabulars: nur Steckbriefe mit diesem gelten.
     stamp: str
+    #: Wessen Profil das ist.
+    slug: str = ""
 
     @property
     def threshold(self) -> int:
@@ -119,4 +147,4 @@ def load_judge(store: Store, slug: str) -> Judge | None:
         weights = load_weights()
     except (VocabularyError, OSError, KeyError, ValueError, yaml.YAMLError):
         return None
-    return Judge(profile, vocabulary, weights, fingerprint(vocabulary))
+    return Judge(profile, vocabulary, weights, fingerprint(vocabulary), slug)

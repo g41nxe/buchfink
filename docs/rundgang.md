@@ -142,9 +142,11 @@ zu fragen.
 Ohne Schlüssel benutzt das Tor die lokal angemeldete Claude-Code-Installation
 für neue Steckbriefe; wo es gar keinen Weg zum Modell gibt, urteilt es über
 die Funde, die schon einen Steckbrief haben. Den Rückstand eines ersten Laufs
-beschreibt `ebw rate` außerhalb des Laufbudgets. Alles, was über das Verhalten
-mit echten Funden gesagt wird, stammt aus Tests mit einem Stellvertreter, nicht
-aus Betrieb.
+beschreibt `ebw rate` außerhalb des Laufbudgets. Wer einen Titel oder eine
+YAML-Liste ohne die Oberfläche gegen das Profil halten will, ruft `ebw judge`:
+dieselbe Rechnung, ein Steckbrief nur für das, was noch keinen hat. Alles, was
+über das Verhalten mit echten Funden gesagt wird, stammt aus Tests mit einem
+Stellvertreter, nicht aus Betrieb.
 
 ---
 

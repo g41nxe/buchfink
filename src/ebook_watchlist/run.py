@@ -82,13 +82,38 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         "command",
         nargs="?",
         default="run",
-        choices=["run", "doctor", "sources", "seed", "dismissals", "rate"],
+        choices=["run", "doctor", "sources", "seed", "dismissals", "rate", "judge"],
         help=(
             "'run' checks everything; 'doctor' only asks each Source whether it still "
             "parses; 'sources' lists them and can pause one; 'seed' imports the YAML "
             "files into the database once; 'dismissals' resolves the leftover product "
-            "numbers from dismissed.yaml into Book Relations"
+            "numbers from dismissed.yaml into Book Relations; 'judge' holds named "
+            "titles or a YAML list against the Reading Profile"
         ),
+    )
+    parser.add_argument(
+        "titles",
+        nargs="*",
+        metavar="TITEL",
+        help=(
+            "für 'judge': Titel, jeder als eigenes Argument, mit Autor:in nach einem "
+            "senkrechten Strich (\"Der Schwarm | Frank Schätzing\")"
+        ),
+    )
+    parser.add_argument(
+        "--datei",
+        type=Path,
+        default=None,
+        metavar="PFAD",
+        help=(
+            "für 'judge': eine YAML-Liste von Einträgen mit title und author; stars und "
+            "why werden hineingeschrieben, Kommentare und Reihenfolge bleiben"
+        ),
+    )
+    parser.add_argument(
+        "--nur-bekannte",
+        action="store_true",
+        help="für 'judge': das Modell nicht fragen — ein Titel ohne Steckbrief bleibt offen",
     )
     parser.add_argument(
         "--anzahl",
@@ -386,6 +411,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _dismissals(settings, sources)
         if args.command == "rate":
             return _rate(settings, args.anzahl, sources, client)
+        if args.command == "judge":
+            return _judge(settings, args.titles, args.datei, ask=not args.nur_bekannte)
         if zu_frueh := _too_soon(settings, datetime.now(), _gap(args, settings)):
             print(zu_frueh)
             return EXIT_OK
@@ -693,6 +720,61 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
     print(f"\n  Verteilung: {summary or 'keine'}")
 
     _fetch_suggestion_covers(store, settings, client)
+    return EXIT_OK
+
+
+def _judge(settings: Settings, titles: Sequence[str], file: Path | None, *, ask: bool) -> int:
+    """Genannte Titel oder eine YAML-Liste gegen das Profil halten (#67).
+
+    Der Code urteilt; das Modell beschreibt höchstens, was noch keinen
+    Steckbrief hat, und auch das nur auf Wunsch. Ohne Profil wird nichts
+    geraten (ADR 33, Punkt 8).
+    """
+    from .judge_titles import Entry, judge_titles, read_entries, update_yaml
+    from .judging import load_judge
+
+    if file is None and not titles:
+        print("Nichts zu beurteilen: Titel nennen oder --datei angeben.", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    try:
+        text = file.read_text(encoding="utf-8") if file is not None else ""
+        entries = read_entries(text) if file is not None else []
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        print(f"{file}: {exc}", file=sys.stderr)
+        return EXIT_CONFIG_ERROR
+    for named in titles:
+        title, _, author = named.partition("|")
+        entries.append(Entry(title.strip(), author.strip() or None))
+
+    store = Store(paths.db_path())
+    judge = load_judge(store, settings.slug)
+    if judge is None:
+        print(
+            "Kein Leseprofil (oder kein lesbares Vokabular): erst die Erstaufnahme "
+            "machen, dann gibt es etwas, wogegen sich rechnen ließe.",
+            file=sys.stderr,
+        )
+        return EXIT_CONFIG_ERROR
+    portrayer = build_portrayer(settings.rating_model, judge.vocabulary) if ask else None
+    if ask and portrayer is None:
+        print("Kein Weg zum Modell: nur beurteilt, was einen Steckbrief hat.", file=sys.stderr)
+
+    results = judge_titles(store, entries, judge, portrayer, now=datetime.now(), ask=ask)
+    for result in results:
+        name = result.entry.title + (f" | {result.entry.author}" if result.entry.author else "")
+        if result.verdict is None:
+            print(f"  {result.source:<10} {name}")
+            continue
+        verdict = result.verdict
+        print(f"  {'★' * verdict.stars}{'☆' * (5 - verdict.stars)} {name}  ({result.source})")
+        print(f"            {verdict.why}")
+        if verdict.pitch:
+            print(f"            {verdict.pitch}")
+
+    if file is not None:
+        file.write_text(update_yaml(text, results), encoding="utf-8")
+        judged = sum(1 for r in results if r.verdict is not None)
+        print(f"\n  {file}: {judged} von {len(results)} Einträgen beurteilt")
     return EXIT_OK
 
 

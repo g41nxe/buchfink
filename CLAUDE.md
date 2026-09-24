@@ -22,6 +22,8 @@ ohne den Code zu lesen.
   sind mit `@pytest.mark.live` markiert und laufen nicht mit.
 - Oberfläche: `uv run python -m ebook_watchlist.web` (Port 8437). Die statischen
   Dateien vorher einmal mit `uv run python -m ebook_watchlist.web.build` bauen.
+- Projekteigene Skills liegen in `.agents/skills/` (`buch-bewerten` ruft
+  `ebw judge` auf; der Code urteilt, der Skill liest vor).
 
 ## Agent skills
 

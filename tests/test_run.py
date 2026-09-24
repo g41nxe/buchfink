@@ -348,6 +348,64 @@ def test_describing_the_backlog_needs_a_profile(
     assert "Leseprofil" in capsys.readouterr().err
 
 
+# --- ebw judge: Titel gegen das Profil halten (#67) ---------------------------
+
+
+@needs_vocabulary
+def test_judging_a_named_title_with_a_portrait_asks_nobody(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from conftest import describe, give_profile
+    from ebook_watchlist.web.intake import intake_subject
+
+    store = Store(paths.db_path())
+    give_profile(store)
+    describe(store, intake_subject("Der Schwarm", "Frank Schätzing"), 4, "Die See schlägt zurück.")
+
+    assert main(["judge", "Der Schwarm | Frank Schätzing", "--nur-bekannte"]) == EXIT_OK
+
+    out = capsys.readouterr().out
+    assert "★★★★☆ Der Schwarm | Frank Schätzing  (vorhanden)" in out
+    assert "Die See schlägt zurück." in out
+
+
+@needs_vocabulary
+def test_judging_a_yaml_file_writes_the_stars_back(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from conftest import describe, give_profile
+    from ebook_watchlist.web.intake import intake_subject
+
+    store = Store(paths.db_path())
+    give_profile(store)
+    describe(store, intake_subject("Der Schwarm", "Frank Schätzing"), 3)
+    file = data_dir / "liste.yaml"
+    file.write_text(
+        "# meine Liste\n- title: Der Schwarm\n  author: Frank Schätzing\n- title: Niemand\n",
+        encoding="utf-8",
+    )
+
+    assert main(["judge", "--datei", str(file), "--nur-bekannte"]) == EXIT_OK
+
+    text = file.read_text(encoding="utf-8")
+    head = "# meine Liste\n- title: Der Schwarm\n  author: Frank Schätzing\n  stars: 3\n"
+    assert text.startswith(head)
+    assert text.rstrip().endswith("- title: Niemand")
+    out = capsys.readouterr().out
+    assert "fehlt" in out and "1 von 2" in out
+
+
+@needs_vocabulary
+def test_judging_needs_a_profile(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["judge", "Irgendwas"]) == EXIT_CONFIG_ERROR
+    assert "Leseprofil" in capsys.readouterr().err
+
+
+def test_judging_nothing_says_so(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["judge"]) == EXIT_CONFIG_ERROR
+    assert "Titel nennen" in capsys.readouterr().err
+
+
 # --- ein Rundgang am Tag reicht ---------------------------------------------
 
 
