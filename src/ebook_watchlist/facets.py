@@ -356,6 +356,11 @@ def derive_facets(
     ganz aufgeht, fällt weg. Bücher werden nie paarweise verglichen, und es
     gibt keine Schwelle für "ähnlich" (#44).
 
+    Eine Facette aus einem einzigen Buch entsteht nur für ein Buch, das sonst
+    in keiner steckt — die Abdeckungsregel. Sonst machte jede Familie, die nur
+    ein Buch trägt, dieses Buch zur Kandidatenmenge, und alles Angetippte, was
+    es trägt, wüchse zu einer Facette zusammen (Erstaufnahme vom 24.09.2026).
+
     Was in keiner Facette steckt, kommt als Facette aus einer einzigen Familie
     zurück: zu breit, um zu zählen, aber sichtbar (``MIN_FAMILIES``).
 
@@ -364,29 +369,37 @@ def derive_facets(
     familien = [f for f in dict.fromkeys(chosen) if carriers.get(f)]
     traeger = {f: frozenset(carriers[f]) for f in familien}
 
-    kandidaten: dict[frozenset, tuple[str, ...]] = {}
+    def buendel(kandidaten: set[frozenset]) -> list[tuple[frozenset, tuple[str, ...]]]:
+        mit = {
+            b: tuple(f for f in familien if b <= traeger[f]) for b in kandidaten if b
+        }
+        echte = [(b, f) for b, f in mit.items() if len(f) >= MIN_FAMILIES]
+        return [
+            (b, f)
+            for b, f in echte
+            if not any(
+                (b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in echte
+            )
+        ]
 
-    def dazu(buecher: frozenset) -> None:
-        if buecher and buecher not in kandidaten:
-            kandidaten[buecher] = tuple(f for f in familien if buecher <= traeger[f])
-
-    for f in familien:
-        dazu(traeger[f])
-    for i, a in enumerate(familien):
-        for b in familien[i + 1:]:
-            gemeinsam = traeger[a] & traeger[b]
-            if len(gemeinsam) >= 2:
-                dazu(gemeinsam)
-
-    echte = [(b, f) for b, f in kandidaten.items() if len(f) >= MIN_FAMILIES]
-    echte = [
-        (b, f)
-        for b, f in echte
-        if not any(
-            (b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in echte
-        )
-    ]
-    echte.sort(key=lambda bf: -len(bf[0]))
+    # Erst über mehrere Bücher: die Buchmenge jeder Familie und jede
+    # Schnittmenge zweier, solange es mindestens zwei Bücher sind.
+    mehrere = {traeger[f] for f in familien if len(traeger[f]) >= 2}
+    mehrere |= {
+        traeger[a] & traeger[b]
+        for i, a in enumerate(familien)
+        for b in familien[i + 1:]
+        if len(traeger[a] & traeger[b]) >= 2
+    }
+    echte = buendel(mehrere)
+    # Dann je Buch, das in keiner steckt, eine Facette aus ihm allein.
+    gedeckt = {buch for b, _ in echte for buch in b}
+    alle = {buch for f in familien for buch in traeger[f]}
+    echte += buendel({frozenset({buch}) for buch in sorted(alle - gedeckt)})
+    # Fest geordnet: die breitesten zuerst, dann in der Reihenfolge, in der
+    # ihre Familien angetippt wurden — Mengen haben keine Reihenfolge.
+    stelle = {f: i for i, f in enumerate(familien)}
+    echte.sort(key=lambda bf: (-len(bf[0]), min(stelle[f] for f in bf[1])))
     drin = {f for _, fs in echte for f in fs}
     einzeln = [(traeger[f], (f,)) for f in familien if f not in drin]
     return [Facet(fs, tuple(sorted(b))) for b, fs in (*echte, *einzeln)]

@@ -311,13 +311,35 @@ def tippen(client, familie, seite="loved", buch=None, an=True, schritt=3) -> str
     return client.post("/intake/choice", data=daten, headers=HX).text
 
 
-def test_screen_3_groups_the_families_by_the_books_that_carry_them(client, buecher) -> None:
-    body = client.get("/intake/common").text
+def _fragen(body: str) -> str:
+    """Nur der Teil mit den Fragen, ohne das Profil daneben."""
+    return body.split("data-entwurf", 1)[0]
 
-    assert "Weil du" in body and "mochtest" in body
-    assert "Nur in" in body
-    # Titel in Serifen, und ein Buch nur in der Überschrift.
-    assert '<span class="font-serif italic text-ink">Kruzifix Killer</span>' in body
+
+def test_screen_3_lists_what_several_books_share_without_grouping_by_book(client,
+                                                                          buecher) -> None:
+    """Keine Gruppen „Weil du A und B mochtest" — die lasen sich wie
+    Buchvergleiche (24.09.2026). Die Bücher stehen nur hinter „warum?"."""
+    fragen = _fragen(client.get("/intake/common").text)
+
+    for familie in ("harsh", "brooding", "menacing", "atmospheric"):
+        assert f'data-familie="{familie}"' in fragen
+    assert "Weil du" not in fragen and "Nur in" not in fragen
+    warum = fragen.split("warum?", 1)[1]
+    assert "Kruzifix Killer" in warum and "Satz zu violent." in warum
+
+
+def test_what_only_one_book_carries_is_not_on_the_list(client, buecher) -> None:
+    """Das fragt die Abdeckung, wenn das Buch sonst in keiner Facette steckt."""
+    fragen = _fragen(client.get("/intake/common").text)
+
+    assert 'data-familie="intricate"' not in fragen
+
+
+def test_before_any_tap_no_book_is_asked_for_on_its_own(client, buecher) -> None:
+    """Ohne Antwort steckt jedes Buch in keiner Facette; die Abdeckung fragt
+    erst, wenn angetippt wurde — sonst stünde rechts wieder jedes Buch für sich."""
+    assert "data-abdeckung" not in client.get("/intake/common").text
 
 
 def test_a_tap_is_saved_and_the_profile_grows_below(client, db, buecher) -> None:
@@ -431,14 +453,32 @@ def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, b
     assert "hart · gezeichnete Figur" in body
 
 
-def test_only_a_book_that_shares_nothing_is_there_for_other_reasons(client, db, buecher) -> None:
+def test_books_that_share_nothing_are_asked_for_at_once(client, db) -> None:
+    """Teilen die Bücher gar nichts, gibt es auf Bildschirm 3 nichts anzutippen;
+    dann fragt die Abdeckung sofort nach jedem."""
     bestaetigt(db, "liked", "Das Rosie-Projekt", _bild(
         "Roman", None, ["quirky", "funny", "likeable", "romantic"], "opposites_attract"))
+    bestaetigt(db, "liked", "Leopard", _bild(
+        "Krimi", None, ["violent", "brooding", "menacing", "flawed"], "pursuit"))
 
     body = client.get("/intake/common").text
 
-    assert "Rosie-Projekt</span>, aus ganz anderen Gründen" in body
-    assert "Kruzifix Killer</span>, aus ganz anderen Gründen" not in body
+    assert "teilen nichts miteinander" in body
+    assert body.count("data-abdeckung") == 2
+
+
+def test_a_confirmed_book_can_be_removed_again(client, db, buecher) -> None:
+    """Auch ein bestätigtes Buch lässt sich wieder aus der Erstaufnahme nehmen;
+    es trägt dann nichts mehr bei und steht nicht mehr als *Mag ich* im Regal."""
+    eintrag = next(r for r in db.intake_entries(load_settings().slug)
+                   if r.typed_title == "Kruzifix Killer")
+
+    client.post(f"/intake/entry/{eintrag.id}/remove", headers=HX)
+
+    assert "Kruzifix Killer" not in client.get("/intake").text
+    liked = [r.book_id for r in db.relations(load_settings().slug, kind=RelationKind.LIKED)]
+    assert buecher["K"] not in liked
+    assert 'data-familie="flawed"' not in client.get("/intake/common").text
 
 
 # --- Review ---------------------------------------------------------------------

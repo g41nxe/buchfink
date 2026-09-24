@@ -44,7 +44,6 @@
               <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>
               {% endfor %}
             </span>{{ f.strength }}</span>
-          <span class="mt-1 block text-xs">{{ titelreihe(f.books) }}</span>
         </span>
       </label>
     </li>
@@ -76,9 +75,7 @@
                     has-[:checked]:text-danger">
         <input type="checkbox" name="counterweight" value="{{ w.key }}" checked
                class="accent-[var(--color-danger)]">
-        {{ w.name }}{% if w.genre %}<span class="text-xs opacity-70">· nur bei {{ w.genre }}</span>{% endif %}
-        <span class="text-xs text-soft">({{ titelreihe(w.books) }})</span>
-      </label>
+        {{ w.name }}{% if w.genre %}<span class="text-xs opacity-70">· nur bei {{ w.genre }}</span>{% endif %}      </label>
     </li>
     {% endfor %}
   </ul>

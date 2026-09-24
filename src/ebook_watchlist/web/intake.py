@@ -12,9 +12,9 @@ Steckbrief hängt deshalb zunächst an der Eingabe selbst und zieht beim
 Bestätigen zum Buch um.
 
 Danach fragt die Erstaufnahme nur geschlossen (ADR 33, Punkt 6): Bildschirm 3
-zeigt die Familien der geliebten Bücher, gruppiert nach den Büchern, die sie
-tragen („Weil du … mochtest"), Bildschirm 4 die der enttäuschenden. Aus dem
-Angetippten entsteht darunter das Profil; bestätigt wird es als erste Fassung.
+zeigt als eine Liste, was mehrere geliebte Bücher tragen — nicht nach Büchern
+gruppiert —, Bildschirm 4 das der enttäuschenden. Aus dem Angetippten bündelt
+das Werkzeug unsichtbar die Facetten; bestätigt wird es als erste Fassung.
 """
 
 from __future__ import annotations
@@ -223,11 +223,19 @@ def retype(store: Store, entry_id: int, title: str, author: str | None) -> None:
     )
 
 
-def remove(store: Store, entry_id: int) -> None:
-    """Entfernt wird nur aus der Erstaufnahme; ein bestätigtes Buch bleibt im
-    Regal, dort nimmt man es auf der Buchseite zurück (ADR 18)."""
-    if store.intake_entry(entry_id) is not None:
-        store.update_intake_entry(entry_id, status=REMOVED)
+def remove(store: Store, settings: Settings, entry_id: int, *, now: datetime) -> None:
+    """Einen Eintrag aus der Erstaufnahme nehmen — auch einen bestätigten.
+
+    Ein bestätigtes Buch trägt danach nichts mehr bei, und die Beziehung, die
+    die Erstaufnahme gesetzt hat (*Mag ich* oder *Doof*), wird stillgelegt,
+    nicht gelöscht (ADR 18). Das Buch selbst bleibt.
+    """
+    row = store.intake_entry(entry_id)
+    if row is None:
+        return
+    if row.status == CONFIRMED and row.book_id is not None:
+        store.put_relation(settings.slug, row.book_id, row.side, active=False, now=now)
+    store.update_intake_entry(entry_id, status=REMOVED)
 
 
 def confirm(store: Store, settings: Settings, entry_id: int, *, now: datetime) -> int:
@@ -313,6 +321,17 @@ class ScopeQuestion:
     book_id: int
     scope: str
     genre: str | None
+    #: Welche geliebten Bücher dasselbe tragen — der Grund für die Nachfrage,
+    #: und die eine Stelle auf Bildschirm 4, an der ein Buch genannt wird.
+    also_in: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class Why:
+    """Die Belege zu einer Familie: je Buch der Satz aus seinem Steckbrief."""
+
+    name: str
+    sentences: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -385,7 +404,11 @@ class Choosing:
     """Was Bildschirm 3 und 4 zeigen, und das Profil darunter."""
 
     loved: tuple[ShelfBook, ...]
-    groups: tuple[Group, ...]
+    #: Bildschirm 3: was mehrere geliebte Bücher tragen, als eine Liste —
+    #: nicht nach Büchern gruppiert (24.09.2026).
+    common: tuple[Pill, ...]
+    #: Die Belege dazu, nur hinter „warum?".
+    why: tuple[Why, ...]
     lost: tuple[LostBook, ...]
     draft: Draft
 
@@ -469,52 +492,52 @@ def choosing(store: Store, settings: Settings) -> Choosing:
         for f in b.families:
             traeger.setdefault(f, []).append(b)
 
-    nach_menge: dict[tuple[str, ...], list[str]] = {}
-    for f, bs in traeger.items():
-        nach_menge.setdefault(tuple(b.title for b in bs), []).append(f)
-    # „aus ganz anderen Gründen" nur bei einem Buch, das mit keinem anderen
-    # etwas teilt — bei den übrigen ist es nur das, was es zusätzlich trägt.
-    teilen = {t for titel in nach_menge if len(titel) > 1 for t in titel}
-    gruppen = []
-    for titel, fs in sorted(nach_menge.items(), key=lambda kv: -len(kv[0])):
-        if len(titel) > 1:
-            kopf = ("Weil du", titel, "mochtest")
-        elif titel[0] in teilen:
-            kopf = ("Nur in", titel, "")
-        else:
-            kopf = ("Nur in", titel, ", aus ganz anderen Gründen")
-        warum = tuple(
-            (family_name(f, vocabulary), tuple(b.families[f] for b in traeger[f]))
-            for f in ordnung(fs)
-        )
-        gruppen.append(Group(*kopf, tuple(pille(f, f in an) for f in ordnung(fs)), warum))
+    # Bildschirm 3: eine Liste dessen, was mehrere geliebte Bücher tragen —
+    # nicht nach Büchern gruppiert. Die Gruppen „Weil du A und B mochtest"
+    # zerfielen mit echten Büchern in viele kleine und lasen sich wie ein
+    # Vergleich von Buch zu Buch (24.09.2026). Welche Bücher dahinterstehen,
+    # sagt nur „warum?". Was ein einziges Buch trägt, fragt die Abdeckung.
+    gemeinsam = sorted(
+        (f for f, bs in traeger.items() if len(bs) > 1),
+        key=lambda f: (-len(traeger[f]), f in haeufig, family_name(f, vocabulary).casefold()),
+    )
+    warum = tuple(
+        Why(family_name(f, vocabulary), tuple((b.title, b.families[f]) for b in traeger[f]))
+        for f in gemeinsam
+    )
 
     verloren = []
     for d in enttaeuscht:
-        nach_konflikt: dict[tuple[str, ...], list[str]] = {}
-        for f in d.families:
-            nach_konflikt.setdefault(tuple(b.title for b in traeger.get(f, [])), []).append(f)
-        dgruppen, fragen = [], []
-        for auch, fs in sorted(nach_konflikt.items(), key=lambda kv: -len(kv[0])):
-            if auch:
-                kopf = ("Steckt auch in", auch, f", {'die' if len(auch) > 1 else 'das'} du liebst")
-            else:
-                kopf = ("Nur in", (d.title,), "")
-            pillen = tuple(pille(f, (f, d.book_id) in weg, d.book_id) for f in ordnung(fs))
-            dgruppen.append(Group(*kopf, pillen, conflict=bool(auch)))
-            fragen.extend(
-                ScopeQuestion(f, family_name(f, vocabulary), d.book_id, weg[(f, d.book_id)] or HERE,
-                              d.genre)
-                for f in ordnung(fs)
-                if auch and (f, d.book_id) in weg
-            )
-        verloren.append(LostBook(d.title, d.book_id, tuple(dgruppen), tuple(fragen)))
+        auch = [f for f in d.families if traeger.get(f)]
+        nur_hier = [f for f in d.families if not traeger.get(f)]
+        dgruppen = []
+        if auch:
+            dgruppen.append(Group("Steckt auch in Büchern, die du liebst", (), "",
+                                  tuple(pille(f, (f, d.book_id) in weg, d.book_id)
+                                        for f in ordnung(auch)),
+                                  conflict=True))
+        if nur_hier:
+            dgruppen.append(Group("Nur in diesem Buch", (), "",
+                                  tuple(pille(f, (f, d.book_id) in weg, d.book_id)
+                                        for f in ordnung(nur_hier))))
+        fragen = tuple(
+            ScopeQuestion(f, family_name(f, vocabulary), d.book_id, weg[(f, d.book_id)] or HERE,
+                          d.genre, tuple(b.title for b in traeger[f]))
+            for f in ordnung(auch)
+            if (f, d.book_id) in weg
+        )
+        verloren.append(LostBook(d.title, d.book_id, tuple(dgruppen), fragen))
 
-    entwurf = _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille)
-    return Choosing(tuple(geliebt), tuple(gruppen), tuple(verloren), entwurf)
+    entwurf = _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille,
+                     fragen_jetzt=bool(an) or not gemeinsam)
+    return Choosing(
+        tuple(geliebt), tuple(pille(f, f in an) for f in gemeinsam), warum, tuple(verloren),
+        entwurf,
+    )
 
 
-def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille) -> Draft:
+def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille, *,
+           fragen_jetzt: bool) -> Draft:
     gewaehlt = [f for f in traeger if f in an]
     facetten = derive_facets(gewaehlt, {f: [b.key for b in bs] for f, bs in traeger.items()})
     titel = {b.key: b.title for b in geliebt}
@@ -523,7 +546,10 @@ def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille) -> Draft:
                   tuple(titel[k] for k in f.books))
         for f in facetten
     )
-    offen = uncovered(facetten, [b.key for b in geliebt])
+    # Die Abdeckung fragt erst, wenn angetippt wurde: vorher steckt jedes Buch
+    # in keiner Facette, und rechts stünde jedes für sich. Teilen die Bücher
+    # gar nichts, gibt es nichts anzutippen — dann fragt sie sofort.
+    offen = uncovered(facetten, [b.key for b in geliebt]) if fragen_jetzt else []
     fragen = tuple(
         Uncovered(b.title, tuple(pille(f, f in an) for f in b.families))
         for b in geliebt

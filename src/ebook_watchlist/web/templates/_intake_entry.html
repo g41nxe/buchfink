@@ -27,6 +27,14 @@
        class="font-serif text-ink underline decoration-rule underline-offset-2
               hover:decoration-ink">{{ e.title }}</a>
     {% if e.author %}<span class="text-soft">{{ e.author }}</span>{% endif %}
+    {# Auch ein bestätigtes Buch lässt sich wieder herausnehmen; es trägt dann
+       nichts mehr bei. #}
+    <form method="post" action="{{ basis }}/remove" class="ml-auto self-center"
+          hx-post="{{ basis }}/remove" hx-target="{{ ziel }}" hx-swap="outerHTML">
+      <button type="submit" title="entfernen" aria-label="entfernen"
+              class="flex rounded p-1 text-soft hover:bg-hair hover:text-danger">
+        <svg class="i"><use href="#ic-x"/></svg></button>
+    </form>
   </div>
 
   {% elif e.state == "asking" %}

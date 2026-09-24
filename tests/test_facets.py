@@ -466,3 +466,22 @@ def test_concurrent_saves_get_distinct_versions(store: Store) -> None:
 
     assert fehler == []
     assert store.reading_profile("test").version == 20
+
+
+def test_a_family_of_one_book_does_not_grow_a_facet_of_that_book() -> None:
+    """Erstaufnahme vom 24.09.: „Erkenntnis" trägt nur *Leichenblässe*, und
+    daraus wurde eine Facette aus allem, was *Leichenblässe* trägt. Facetten
+    aus einem einzigen Buch gibt es nur für ein Buch, das sonst in keiner
+    steckt (Abdeckung)."""
+    from ebook_watchlist.facets import derive_facets
+
+    traeger = {**TRAEGER, "discovery": {"L"}}
+    facetten = derive_facets(
+        ["harsh", "brooding", "nerve_racking", "menacing", "discovery"], traeger
+    )
+
+    assert [(f.families, f.books) for f in facetten] == [
+        (("harsh", "brooding"), ("K", "L")),
+        (("nerve_racking", "menacing"), ("C", "L")),
+        (("discovery",), ("L",)),
+    ]

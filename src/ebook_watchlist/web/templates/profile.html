@@ -46,7 +46,6 @@
           <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>
           {% endfor %}
         </span>{{ f.strength }}</p>
-      {% if f.books %}<p class="mt-1 text-xs">{{ titelreihe(f.books) }}</p>{% endif %}
     </li>
     {% endfor %}
   </ul>

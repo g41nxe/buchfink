@@ -68,8 +68,7 @@
   <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-rule bg-card
               px-4 py-3" data-vorschlag="{{ v.families | join(',') }}">
     <p class="min-w-0 flex-1">Neue Facette?
-      <span class="font-semibold text-accent">{{ v.name }}</span>
-      <span class="text-soft">— tragen {{ titelreihe(v.books) }}</span></p>
+      <span class="font-semibold text-accent">{{ v.name }}</span></p>
     <form method="post" action="{{ basis }}/facet">
       {% for f in v.families %}<input type="hidden" name="family" value="{{ f }}">{% endfor %}
       <button type="submit"

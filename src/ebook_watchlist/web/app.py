@@ -1277,7 +1277,7 @@ def create_app() -> FastAPI:
     @app.post("/intake/entry/{entry_id}/remove")
     def intake_remove(request: Request, entry_id: int) -> Response:
         row = _intake_row(entry_id)
-        intake.remove(_store_for(paths.db_path()), entry_id)
+        intake.remove(_store_for(paths.db_path()), load_settings(), entry_id, now=datetime.now())
         return _intake_answer(request, row.side)
 
     # --- Erstaufnahme, Bildschirme 3 bis 5 (#50) ------------------------------
