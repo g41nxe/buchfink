@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import beam_fixture, beam_tiles
+from conftest import beam_fixture, beam_tiles, describe, give_profile, needs_vocabulary
 from ebook_watchlist.covers import MIN_BYTES, CoverStore, file_name
 from ebook_watchlist.http import FetchError, NotFound, RateLimited
 from ebook_watchlist.sources.beam import parse as beam_parse
@@ -219,14 +219,13 @@ def test_the_same_image_is_one_file_for_a_find_and_for_a_book(tmp_path: Path) ->
 # --- der Stapel: nur fuer die, die stehen bleiben --------------------------
 
 
+@needs_vocabulary
 def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
     """Unter drei Sternen steht ein Vorschlag gar nicht mehr im Stapel — ein
     Bild dafuer zu holen waere eine Anfrage fuer etwas, das niemand sieht."""
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_settings
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.rating import load_leseprofil
-    from ebook_watchlist.ratings import BY_MODEL
     from ebook_watchlist.run import _fetch_suggestion_covers
     from ebook_watchlist.store import Store
 
@@ -246,16 +245,8 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
 
     run_id = store.start_run(settings.slug, "cli", NOW)
     store.append(run_id, settings.slug, [fund("bleibt"), fund("faellt")], NOW)
-    store.put_rating(
-        "item:beam:faellt",
-        stars=1,
-        confidence="belegt",
-        reason="Passt nicht.",
-        profile_version=load_leseprofil()[1],
-        now=NOW,
-        origin=BY_MODEL,
-        pitch="",
-    )
+    give_profile(store)
+    describe(store, "item:beam:faellt", 1, "")
 
     client = StubClient()
     _fetch_suggestion_covers(store, settings, client)

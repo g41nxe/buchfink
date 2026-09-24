@@ -176,7 +176,7 @@
       {% endset %}
       {# Dieselbe Spalte wie auf der Watchlist und im Stapel (#16): es ist
          dieselbe Zeile, und sie soll ueberall dasselbe sagen. #}
-      {% set kennzahlen %}{{ urteilssterne(entry.stars, entry.confidence_note) }}{% endset %}
+      {% set kennzahlen %}{{ urteilssterne(entry.stars, entry.percent) }}{% endset %}
       {{ zeile(
            entry.title,
            titel_url="/book/" ~ entry.book_id,
@@ -233,7 +233,7 @@
          Spalte darueber schon sagte, sie solle ueberall dasselbe sagen — und
          der Hinweis auf die Gewissheit waere prompt an dieser einen Stelle
          gefehlt. #}
-      {% set kennzahlen %}{{ urteilssterne(item.stars, item.confidence_note) }}{% endset %}
+      {% set kennzahlen %}{{ urteilssterne(item.stars, item.percent) }}{% endset %}
 
       {% set aktionen %}
       {# Ein Klick, keine Nachfrage — die Beziehung laesst sich stilllegen

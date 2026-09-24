@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import needs_vocabulary
+from conftest import STAR_TERMS, judging_profile, needs_vocabulary
 from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
-from ebook_watchlist.judging import Verdict, judge, readers_verdict
+from ebook_watchlist.judging import Verdict, judge, load_judge, readers_verdict
 from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
 
 pytestmark = needs_vocabulary
@@ -79,3 +79,60 @@ def test_her_own_stars_are_marked_as_hers() -> None:
     verdict = readers_verdict(5)
 
     assert verdict.by_reader and verdict.percent is None and verdict.stars == 5
+
+
+# --- viele auf einmal (#48) ---------------------------------------------------------
+
+
+def test_the_judge_needs_a_profile_in_the_database(store) -> None:
+    assert load_judge(store, "test") is None
+
+
+def test_the_judge_carries_the_threshold_of_the_scheme(store, vocabulary) -> None:
+    from datetime import datetime
+
+    store.put_reading_profile("test", PROFILE, cause="Test", now=datetime(2026, 9, 24, 12, 0))
+
+    judge_ = load_judge(store, "test")
+
+    assert judge_ is not None and judge_.threshold == 3
+    assert judge_.stamp == fingerprint(vocabulary)
+
+
+def test_the_judge_takes_the_first_subject_that_has_a_portrait(store, vocabulary, weights) -> None:
+    from datetime import datetime
+
+    store.put_reading_profile("test", PROFILE, cause="Test", now=datetime(2026, 9, 24, 12, 0))
+    judge_ = load_judge(store, "test")
+    store.put_portrait("book:7", portrait(vocabulary, "brooding", "gritty"),
+                       now=datetime(2026, 9, 24, 12, 0))
+
+    portraits = judge_.portraits(store, ["isbn:1", "book:7"])
+    verdict = judge_.verdict_among(portraits, ["isbn:1", "book:7"])
+
+    assert set(portraits) == {"book:7"}
+    assert verdict is not None and verdict.stars >= 4
+    assert judge_.verdict_among(portraits, ["isbn:1"]) is None
+
+
+def test_the_youngest_portrait_of_a_subject_wins(store, vocabulary) -> None:
+    from datetime import datetime
+
+    store.put_portrait("isbn:1", portrait(vocabulary, "leisurely", pitch="alt"),
+                       now=datetime(2026, 9, 24, 12, 0))
+    store.put_portrait("isbn:1", portrait(vocabulary, "gritty", pitch="neu"),
+                       now=datetime(2026, 9, 24, 13, 0))
+
+    found = store.portraits_for(["isbn:1"], fingerprint(vocabulary))
+
+    assert found["isbn:1"].pitch == "neu"
+
+
+@pytest.mark.parametrize("stars", [1, 2, 3, 4, 5])
+def test_the_test_profile_steers_the_stars_exactly(vocabulary, weights, stars) -> None:
+    """Die Web-Tests verlassen sich darauf, dass ``describe`` genau diese Sterne
+    liefert."""
+    verdict = judge(portrait(vocabulary, *STAR_TERMS[stars]), judging_profile(),
+                    vocabulary, weights)
+
+    assert verdict.stars == stars

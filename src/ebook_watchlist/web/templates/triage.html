@@ -17,6 +17,16 @@
   wirkt damit bei jeder Quelle.
 </p>
 
+{# Ohne Leseprofil wird nichts beurteilt (ADR 33, Punkt 8): keine Sterne, kein
+   Vorfilter, unsortiert. Die Seite sagt es, statt still unbewertet zu wirken. #}
+{% if pile.no_profile %}
+<p class="mb-5 max-w-xl rounded-lg border border-rule bg-card px-4 py-3 text-sm text-soft"
+   data-ohne-profil>
+  Noch kein Leseprofil — die Vorschläge sind unbewertet und unsortiert.
+  <a href="/intake" class="text-accent underline underline-offset-2">Erstaufnahme machen</a>
+</p>
+{% endif %}
+
 {% if pile.is_empty %}
 <p class="rounded-lg border border-rule bg-card px-4 py-6 text-center text-sm text-soft">
   {% if anlass %}
@@ -140,7 +150,7 @@
     {% endset %}
 
     {% set kennzahlen %}
-    {{ urteilssterne(item.stars, item.confidence_note) }}
+    {{ urteilssterne(item.stars, item.percent) }}
     {# Der Buendelvorteil ist ein eigener Grund, hier zu stehen — weder
        Schnaeppchen noch Preissturz, sondern billiger als die Einzelbaende
        zusammen (ADR 24). #}

@@ -175,6 +175,57 @@ needs_vocabulary = pytest.mark.skipif(
 )
 
 
+#: Welche Merkmale ein Steckbrief tragen muss, damit das Urteil aus
+#: :func:`judging_profile` auf genau diese Sterne kommt (#48). Drei gemochte
+#: Erzählmuster zählen je 0,3; die Facette "gezeichnete Figur · hart" 0,8.
+STAR_TERMS = {
+    1: ("leisurely",),
+    2: ("quest",),
+    3: ("quest", "adventure"),
+    4: ("quest", "adventure", "pursuit"),
+    5: ("brooding", "gritty", "quest"),
+}
+
+
+def judging_profile():
+    """Ein Leseprofil, an dem sich Sterne von 1 bis 5 genau steuern lassen."""
+    from ebook_watchlist.facets import Facet, Liked, ReadingProfile
+
+    return ReadingProfile(
+        facets=(Facet(("brooding", "harsh"), ("Leichenblässe", "Sharp Objects")),),
+        counterweights=(),
+        liked=(Liked("quest"), Liked("adventure"), Liked("pursuit")),
+    )
+
+
+def give_profile(db, slug: str = "test", profile=None) -> None:
+    """Der Leserin ein Leseprofil in die Datenbank legen — ohne es urteilt niemand."""
+    from datetime import datetime
+
+    db.put_reading_profile(
+        slug, profile or judging_profile(), cause="Test", now=datetime(2026, 9, 4, 20, 0)
+    )
+
+
+def describe(db, subject: str, stars: int, pitch: str | None = "Ein Buch.") -> None:
+    """Zu einem Fund einen Steckbrief legen, der mit :func:`judging_profile` auf
+    diese Sterne kommt."""
+    from datetime import datetime
+
+    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+
+    db.put_portrait(
+        subject,
+        Portrait(
+            known=True,
+            fingerprint=fingerprint(load_vocabulary()),
+            pitch=pitch,
+            traits=tuple(Trait(t, f"Satz zu {t}", "wissen") for t in STAR_TERMS[stars]),
+        ),
+        now=datetime(2026, 9, 4, 20, 0),
+    )
+
+
 @pytest.fixture(autouse=True)
 def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     """Kein Test greift nach draußen — außer den ausdrücklich als ``live``

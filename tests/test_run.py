@@ -585,8 +585,14 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
     portrayer = _portraits(
         vocabulary, {"Fund 1": ("brooding", "gritty"), "Fund 2": ("leisurely", "lyrical")}
     )
-    monkeypatch.setattr(run_modul, "build_rater", lambda modell: object())
-    monkeypatch.setattr(run_modul, "_portrayer", lambda rater, vocab: portrayer)
+    class Rater:
+        def ask(self, prompt, max_tokens):  # pragma: no cover - portray_find ist ersetzt
+            raise AssertionError
+
+    monkeypatch.setattr(run_modul, "build_rater", lambda modell: Rater())
+    monkeypatch.setattr(
+        run_modul, "portray_find", lambda observation, ask, vocab: portrayer(observation)
+    )
 
     kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
 
@@ -637,33 +643,3 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
 
     assert kept == [good]
     assert (report.held_back, report.unrated) == (1, 1)
-
-
-def test_the_model_hears_the_original_title_and_the_keywords(
-    monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Ein Buch, das das Modell nur unter dem englischen Titel kennt, bliebe
-    sonst unbekannt (#17)."""
-    from ebook_watchlist import run as run_modul
-    from ebook_watchlist.models import MatchReason, Observation
-
-    seen: list[tuple] = []
-    monkeypatch.setattr(
-        run_modul, "portray", lambda *args: seen.append(args) or "Steckbrief"
-    )
-    class Rater:
-        def ask(self, prompt, max_tokens):  # pragma: no cover - portray ist ersetzt
-            raise AssertionError
-
-    observation = Observation(
-        source="beam", source_item_id="7", title="Der Zeitenläufer", author="Blake Crouch",
-        match_reason=MatchReason.GENRE_CATEGORY, blurb="Ein Physiker.",
-        original_title="Dark Matter", keywords=("Space Opera", "Dune"),
-    )
-
-    assert run_modul._portrayer(Rater(), object())(observation) == "Steckbrief"
-
-    title, author, blurb, _, _ = seen[0]
-    assert title == "Der Zeitenläufer (Originaltitel: Dark Matter)"
-    assert author == "Blake Crouch"
-    assert blurb == "Ein Physiker.\nSchlagwörter: Space Opera, Dune"

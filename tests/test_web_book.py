@@ -17,8 +17,8 @@ from conftest import needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import Settings, load_settings
 from ebook_watchlist.models import Availability, LinkOutcome, MatchReason, Observation
-from ebook_watchlist.rating import Rating, RatingUnavailable
-from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
+from ebook_watchlist.rating import RatingUnavailable
+from ebook_watchlist.ratings import BY_READER, book_subject
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import book as view
@@ -339,50 +339,6 @@ def test_taking_them_back_writes_no_zero(client: TestClient, db: Store) -> None:
     assert "Noch nicht bewertet" in client.get(f"/book/{book.id}").text
 
 
-def test_a_judgement_from_the_conversation_is_a_machine_judgement(
-    client: TestClient, db: Store
-) -> None:
-    """Eine 4 von ihr und eine 4 vom Modell dürfen nicht gleich aussehen
-    (ADR 17). Die dreizehn Urteile aus ``owned.yaml`` sind im Gespräch
-    entstanden, aber vom Modell gefällt — sie hießen trotzdem "deine
-    Bewertung", genau wie die Sterne, die sie selbst vergibt (#13)."""
-    book = db.books()[0]
-    db.put_rating(book_subject(book.id), stars=4, confidence="teils", reason="Reihe und Stimme.",
-                  profile_version=1, now=NOW, origin=BY_CONVERSATION)
-
-    body = client.get(f"/book/{book.id}").text
-
-    assert "deine Bewertung" not in body
-    assert "Leseprofil" in body
-    assert "Reihe und Stimme." in body
-    assert "Noch nicht bewertet" in body  # ihre eigenen stehen weiterhin aus
-
-
-def test_the_gates_judgement_is_found_through_the_isbn(client: TestClient, db: Store) -> None:
-    """Das Tor schlüsselt am Fund, nicht am Buch — sonst stünde sein Urteil
-    hier nicht."""
-    book = db.find_or_create_book(isbn="9783104911854", title="Ein Fund", now=NOW)
-    db.put_rating("isbn:9783104911854", stars=2, confidence="vermutet", reason="Zu weich.",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
-
-    body = client.get(f"/book/{book.id}").text
-
-    assert "Leseprofil" in body
-    assert "Zu weich." in body
-
-
-def test_a_judgement_against_an_older_leseprofil_says_so(client: TestClient, db: Store) -> None:
-    book = db.books()[0]
-    db.put_rating(book_subject(book.id), stars=4, confidence="teils", reason="Alt.",
-                  profile_version=0, now=NOW, origin=BY_MODEL)
-
-    body = client.get(f"/book/{book.id}").text
-
-    # Sichtbar steht ein Wort; die Versionen stehen im Hinweis daneben.
-    assert ">veraltet<" in body
-    assert "beurteilt gegen Profil 0" in body
-
-
 def test_a_nonsense_star_count_is_refused(client: TestClient, db: Store) -> None:
     book = db.books()[0]
 
@@ -466,34 +422,14 @@ def test_the_reason_survives_a_later_watchlist_check(client: TestClient, db: Sto
     assert "neu von Jo Nesbø, der du folgst" in client.get(f"/book/{book.id}").text
 
 
-def test_the_gates_verdict_on_a_discovery_without_an_isbn_is_found_too(
-    client: TestClient, db: Store
-) -> None:
-    """Buendel und Einzelfolgen tragen keine ISBN — dort haengt das Urteil an
-    der Produktnummer, unter der dieses Buch gesichtet wurde."""
-    book = db.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
-    discovery(db, book.id, reason=MatchReason.GENRE_CATEGORY, category="horror-mystery-allgemein")
-    db.put_rating("item:beam:7", stars=4, confidence="teils", reason="Achse D: isoliert.",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
-
-    body = client.get(f"/book/{book.id}").text
-
-    assert "Leseprofil" in body
-    assert "Achse D: isoliert." in body
-    assert "Noch nicht bewertet" in body  # ihre eigenen Sterne bleiben getrennt
-
-
-def test_foreign_voices_do_not_look_like_the_tools_verdict(client, db) -> None:
-    """Eine 4 vom Modell ist ein Vorschlag, eine 4 aus 1641 fremden Stimmen ist
-    etwas ganz anderes. Sie dürfen nicht im selben Kasten stehen (ADR 19,
-    Ticket 54)."""
-    from ebook_watchlist.ratings import BY_MODEL, BY_ONLEIHE_READERS
+def test_foreign_voices_stand_apart_from_the_fit(client, db) -> None:
+    """Eine 4 aus 1641 fremden Stimmen ist etwas ganz anderes als die
+    Übereinstimmung mit dem Profil. Sie stehen für sich (ADR 19, Ticket 54)."""
+    from ebook_watchlist.ratings import BY_ONLEIHE_READERS
 
     buch = db.find_or_create_book(
         isbn="9783641117009", title="Die sieben Schwestern", author="Riley", now=NOW
     )
-    db.put_rating(f"book:{buch.id}", stars=4, confidence="belegt", reason="Modell",
-                  profile_version=2, now=NOW, origin=BY_MODEL)
     db.put_rating(f"book:{buch.id}", stars=4, confidence="belegt",
                   reason="Durchschnitt der Leser:innen aus 1641 Stimmen",
                   profile_version=0, now=NOW, origin=BY_ONLEIHE_READERS, votes=1641)
@@ -502,25 +438,6 @@ def test_foreign_voices_do_not_look_like_the_tools_verdict(client, db) -> None:
 
     assert "Was andere Leser:innen sagen" in body
     assert "1641 Stimmen" in body
-    # Und ausdrücklich *nicht* als veraltetes Modellurteil gebrandmarkt: die
-    # Profilversion 0 heißt "nicht gegen das Profil gefällt", nicht "veraltet".
-    # Die Marke am Modellurteil daneben (Profil 2) gehoert dorthin — geprueft
-    # wird deshalb die Version, nicht das blosse Wort.
-    assert "beurteilt gegen Profil 0" not in body
-
-
-def test_a_foreign_voice_never_goes_stale(db) -> None:
-    """Sie ist kein Urteil gegen das Leseprofil und verfällt deshalb nicht,
-    wenn die Leserin ihr Profil schärft."""
-    from ebook_watchlist.ratings import BY_ONLEIHE_READERS
-    from ebook_watchlist.web.book import Judgement
-
-    stimme = Judgement(origin=BY_ONLEIHE_READERS, label="Leser:innen", stars=4.0,
-                       reason="", confidence="belegt", profile_version=0,
-                       when=None, votes=1641)
-
-    assert stimme.is_foreign
-    assert not stimme.stale(2)
 
 
 # --- der Kopf, der die Frage beantwortet (Ticket 52) ------------------------
@@ -669,212 +586,7 @@ def test_editing_the_title_leaves_the_note_alone(client: TestClient, db: Store) 
     assert view.build(db, settings, buch.id).note == 'Band 1, Originaltitel "Market Forces".'
 
 
-# --- ein Urteil nachholen (Ticket 55) ---------------------------------------
-
-
-class StubRater:
-    """Ein Bewerter, der nichts fragt. Merkt sich, worueber er urteilen sollte."""
-
-    def __init__(self, rating: Rating | Exception) -> None:
-        self.rating = rating
-        self.asked: list[Observation] = []
-
-    def rate(self, observation: Observation) -> Rating:
-        self.asked.append(observation)
-        if isinstance(self.rating, Exception):
-            raise self.rating
-        return self.rating
-
-
-def urteil_abwarten(client: TestClient, pfad: str) -> str:
-    """Den Knopf druecken und warten, bis der Hintergrundjob fertig ist (#15).
-
-    Die Seite fragt nach, solange er laeuft, und laesst sich neu laden, sobald
-    er fertig ist — genau das tut der Test auch. Zurueck kommt die Seite.
-    """
-    client.post(f"{pfad}/rate")
-    for _ in range(250):
-        stand = client.get(f"{pfad}/rate")
-        if stand.headers.get("HX-Refresh") == "true":
-            break
-        threading.Event().wait(0.02)
-    else:
-        raise AssertionError("das Urteil wurde nicht fertig")
-    return client.get(pfad).text
-
-
-def test_the_button_fetches_a_judgement_for_this_one_book(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Das Tor sieht im Lauf nur, was in den Stapel kaeme; ein Watchlist-Titel
-    ist gewollt und wird nie gefragt. Von seiner Seite aus schon."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW, price=999)
-    rater = StubRater(Rating(stars=4, reason="Passt.", confidence="teils",
-                             profile_version=1, pitch="Eine Flucht."))
-    monkeypatch.setattr(view, "build_rater", lambda model: rater)
-
-    body = urteil_abwarten(client, f"/book/{buch.id}")
-
-    assert [o.source_item_id for o in rater.asked] == ["1"]
-    # Am Fund geschluesselt, nicht am Buch (ADR 18) — und trotzdem auf der
-    # Seite zu sehen.
-    assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].stars == 4
-    assert "Passt." in body
-    # Der Weg steht am Urteil (#10): von der Buchseite, nicht im Lauf.
-    from ebook_watchlist.ratings import VIA_BOOK_PAGE
-
-    assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].via == VIA_BOOK_PAGE
-
-
-def test_the_button_gathers_the_same_evidence_as_the_run(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Sonst urteilte die Buchseite ohne Leseprobe und käme nie über "teils"
-    hinaus, während der Lauf dasselbe Buch belegt (#17). Dieselbe Funktion
-    wie im Lauf, im Hintergrundjob — die Seite wartet darauf nicht."""
-    from ebook_watchlist.sources.base import Item
-
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    rater = StubRater(Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1))
-    monkeypatch.setattr(view, "build_rater", lambda model: rater)
-
-    class Quelle:
-        name = "beam"
-
-        def item(self, source_item_id: str) -> Item:
-            return Item(source_item_id=source_item_id, title="Ein Buch",
-                        keywords=("Space Opera",))
-
-    monkeypatch.setattr(view, "evidence_sources", lambda settings, store: [Quelle()])
-
-    urteil_abwarten(client, f"/book/{buch.id}")
-
-    assert rater.asked[0].keywords == ("Space Opera",)
-
-
-def test_the_page_does_not_wait_for_the_model(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Ein Aufruf dauert rund 43 Sekunden, und bisher wartete der Browser so
-    lange auf die Antwort. Jetzt kommt sofort der Stand zurueck, und die Seite
-    fragt nach, bis das Urteil steht (#15)."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    losgelassen = threading.Event()
-
-    class Langsam(StubRater):
-        def rate(self, observation: Observation) -> Rating:
-            losgelassen.wait(5)
-            return super().rate(observation)
-
-    monkeypatch.setattr(view, "build_rater", lambda model: Langsam(
-        Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1)))
-    try:
-        stand = client.post(f"/book/{buch.id}/rate").text
-
-        assert "beurteilt" in stand
-        assert "every 2s" in stand
-        # Die Seite zeigt denselben Stand, solange er laeuft.
-        assert "beurteilt" in client.get(f"/book/{buch.id}").text
-    finally:
-        losgelassen.set()
-
-
-def test_the_old_judgement_stays_while_the_new_one_is_made(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Ersetzt wird erst beim Speichern — eine Minute lang steht die Seite
-    nicht leer (#15)."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    db.put_rating("item:beam:1", stars=3, confidence="teils", reason="Das alte Urteil.",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
-    losgelassen = threading.Event()
-
-    class Langsam(StubRater):
-        def rate(self, observation: Observation) -> Rating:
-            losgelassen.wait(5)
-            return super().rate(observation)
-
-    monkeypatch.setattr(view, "build_rater", lambda model: Langsam(
-        Rating(stars=4, reason="Das neue.", confidence="teils", profile_version=1)))
-    try:
-        client.post(f"/book/{buch.id}/rate")
-
-        assert "Das alte Urteil." in client.get(f"/book/{buch.id}").text
-    finally:
-        losgelassen.set()
-
-
-def test_without_a_rater_the_page_says_why(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Das Tor scheitert nie zu (ADR 7): kein Schluessel ist kein Fehler,
-    sondern eine Auskunft."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    monkeypatch.setattr(view, "build_rater", lambda model: None)
-
-    assert "Kein Bewerter eingerichtet" in urteil_abwarten(client, f"/book/{buch.id}")
-
-
-def test_a_refusal_from_the_model_is_named_not_swallowed(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Und das alte Urteil bleibt ganz, wenn der Aufruf scheitert (#15)."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    db.put_rating("item:beam:1", stars=3, confidence="teils", reason="Das alte Urteil.",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
-    monkeypatch.setattr(
-        view, "build_rater", lambda model: StubRater(RatingUnavailable("Modell antwortete 429"))
-    )
-
-    body = urteil_abwarten(client, f"/book/{buch.id}")
-
-    assert "Modell antwortete 429" in body
-    assert "Das alte Urteil." in body
-
-
-def test_a_book_nobody_has_seen_yet_is_judged_on_its_bare_title(
-    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Bis #38 hiess es hier "Noch kein Fund — es gibt nichts zu beurteilen".
-    Doch etwas gibt es: Titel und Autor:in. Das Urteil darauf ist duenn, und
-    es haengt am Buch statt an einem Fund, den es nicht gibt."""
-    from ebook_watchlist.ratings import book_subject
-
-    buch = db.find_or_create_book(isbn=None, title="Nie gesehen", now=NOW)
-    rater = StubRater(Rating(stars=5, reason="Klingt gut.", confidence="duenn",
-                             profile_version=1))
-    monkeypatch.setattr(view, "build_rater", lambda model: rater)
-
-    body = urteil_abwarten(client, f"/book/{buch.id}")
-
-    assert [o.title for o in rater.asked] == ["Nie gesehen"]
-    schluessel = book_subject(buch.id)
-    assert db.ratings_for([schluessel])[(schluessel, BY_MODEL)].stars == 5
-    assert "Klingt gut." in body
-
-
-def test_the_button_stays_once_a_judgement_stands(client: TestClient, db: Store) -> None:
-    """Das Modell urteilt nicht deterministisch — gemessen 3, 2, 2, 2 Sterne am
-    selben Buch —, und nach einer Berichtigung will man neu urteilen. Bisher
-    verschwand der Knopf, sobald ein Urteil dastand (#15)."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    db.put_rating("item:beam:1", stars=3, confidence="teils", reason="Steht.",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
-
-    body = client.get(f"/book/{buch.id}").text
-
-    assert f"/book/{buch.id}/rate" in body
-    # Nur noch das Zeichen: das Wort steht im Hinweis, der Dauerhinweis ist
-    # ganz weg — er sagte etwas ueber die Technik, nicht ueber das Buch.
-    assert 'aria-label="neu beurteilen"' in body
-    assert "etwa eine Minute" not in body
+# --- der grosse Lauf (#15) --------------------------------------------------
 
 
 def test_a_running_run_is_named_in_the_head(client: TestClient, db: Store) -> None:
@@ -923,8 +635,7 @@ def test_a_tile_asks_for_its_own_source_not_for_its_label() -> None:
     frueher, spaeter = datetime(2026, 9, 11, 12), datetime(2026, 9, 11, 21)
     seite = view.Page(
         book_id=1, title="Dark Matter", author=None, series=None, isbn=None,
-        cover_file=None, relations=(), sources=(), judgements=(), profile_version=None,
-        origin=None,
+        cover_file=None, relations=(), sources=(), judgements=(), origin=None,
         history=(
             sichtung("overdrive", label="Bibliothek", availability="verliehen", when=spaeter),
             sichtung("onleihe", label="Bibliothek", availability="unklar", when=frueher),
@@ -949,24 +660,6 @@ def test_the_book_page_names_series_and_volume(client: TestClient, db: Store) ->
     db.series_from_dnb()
 
     assert "Southern Reach, Band 2" in client.get(f"/book/{buch.id}").text
-
-
-def test_the_axes_stand_as_marks_above_the_reason(client: TestClient, db: Store) -> None:
-    """Die Marke traegt den Namen, der Satz den Beleg — nicht dasselbe zweimal
-    (#12). Getroffen und verfehlt sehen verschieden aus."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW)
-    db.put_rating("item:beam:1", stars=4, confidence="teils", reason="Beide Seiten handeln.",
-                  profile_version=1, now=NOW, origin=BY_MODEL,
-                  hits=("Katz und Maus",), misses=("Die Figur trägt alles",))
-
-    body = client.get(f"/book/{buch.id}").text
-
-    trifft = body.index('data-achse="trifft"')
-    fehlt = body.index('data-achse="fehlt"')
-    assert "Katz und Maus" in body[trifft:fehlt]
-    assert "Die Figur trägt alles" in body[fehlt:]
-    assert body.index("Katz und Maus") < body.index("Beide Seiten handeln.")
 
 
 # --- je Quellenart eine Kachel (#33) ----------------------------------------
@@ -1168,43 +861,6 @@ def test_a_borrowable_library_beats_a_lent_out_one(db: Store) -> None:
     bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
 
     assert bibliothek.best is not None and bibliothek.best.name == "overdrive"
-
-
-# --- ein Titel ohne Fund (#38) ----------------------------------------------
-
-
-def test_the_judgement_of_a_title_without_a_find_hangs_on_the_book(
-    db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from ebook_watchlist.ratings import book_subject
-
-    buch = db.books()[0]
-    rater = StubRater(Rating(stars=3, reason="Klingt passend.", confidence="duenn",
-                             profile_version=1, pitch="Sieben Schwestern."))
-    monkeypatch.setattr(view, "build_rater", lambda model: rater)
-
-    grund = view.rate(db, load_settings(), buch.id, now=NOW)
-
-    assert grund == ""
-    schluessel = book_subject(buch.id)
-    assert db.ratings_for([schluessel])[(schluessel, BY_MODEL)].stars == 3
-    # Gefragt wurde ueber Titel und Autor:in — mehr gibt es nicht.
-    assert rater.asked[0].title == buch.title
-
-
-def test_a_find_is_preferred_over_the_bare_title(
-    db: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Sobald es einen Fund gibt, urteilt das Werkzeug ueber den — er traegt
-    Preis, Verfuegbarkeit und Klappentext."""
-    buch = db.books()[0]
-    sighting(db, buch.id, when=NOW, price=999)
-    rater = StubRater(Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1))
-    monkeypatch.setattr(view, "build_rater", lambda model: rater)
-
-    view.rate(db, load_settings(), buch.id, now=NOW)
-
-    assert db.ratings_for(["item:beam:1"])[("item:beam:1", BY_MODEL)].stars == 4
 
 
 # --- der Steckbrief (#45) ----------------------------------------------------

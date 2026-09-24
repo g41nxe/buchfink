@@ -2,7 +2,7 @@
 
 Die Buchseite ohne die Teile, die es vor einer Entscheidung nicht gibt — und
 mit den zweien, die sonst nirgends stehen: die ausgeschriebene Begründung des
-Bewertungstors und der Preisverlauf des Funds.
+Übereinstimmung mit dem Leseprofil und der Preisverlauf des Funds.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import describe, give_profile, needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.ratings import subject_of
@@ -90,27 +91,30 @@ def test_the_page_names_the_reason_it_turned_up(client: TestClient, db: Store) -
     assert "Psychothriller" in body
 
 
-def test_the_gate_reasoning_is_readable_here_and_only_here(
-    client: TestClient, db: Store
-) -> None:
+@needs_vocabulary
+def test_the_reasoning_is_readable_here_and_only_here(client: TestClient, db: Store) -> None:
     """Der Stapel zeigt den Pitch, nie die Begründung — ADR 19 wollte sie
-    nachprüfbar machen, und dies ist der Ort dafür."""
+    nachprüfbar machen, und dies ist der Ort dafür. Seit #48 rechnet sie der
+    Code aus dem Steckbrief."""
     observation = fund(db)
-    db.put_rating(
-        subject_of(observation),
-        stars=4,
-        confidence="belegt",
-        reason="Täterstimme ohne Reue, genau die Tonlage aus deinem Profil.",
-        profile_version=3,
-        now=NOW,
-        pitch="Ein Metzger mit Regeln statt Gewissen.",
-    )
+    give_profile(db)
+    describe(db, subject_of(observation), 4, "Ein Metzger mit Regeln statt Gewissen.")
 
     body = client.get("/discovery/beam/7").text
 
-    assert "Täterstimme ohne Reue, genau die Tonlage aus deinem Profil." in body
-    assert "belegt" in body
-    assert client.get("/suggestions").text.count("Täterstimme ohne Reue") == 0
+    assert "data-passung" in body and "4 von 5" in body and "66" in body
+    assert "Satz zu quest" in body
+    assert "Satz zu quest" not in client.get("/suggestions").text
+
+
+def test_without_a_portrait_the_page_offers_to_make_one(client: TestClient, db: Store) -> None:
+    fund(db)
+
+    body = client.get("/discovery/beam/7").text
+
+    assert "Noch kein Steckbrief." in body
+    assert "/discovery/beam/7/portrait" in body
+    assert "data-passung" not in body
 
 
 def test_the_price_stands_in_the_tile_of_its_source(client: TestClient, db: Store) -> None:
@@ -248,10 +252,11 @@ def test_the_page_links_to_the_source(client: TestClient, db: Store) -> None:
     assert 'href="https://beam.invalid/7"' in body
 
 
-# --- ein Urteil nachholen, wie auf der Buchseite (#15) ----------------------
+# --- einen Steckbrief anlegen, wie auf der Buchseite (#15, #48) -------------
 
 
-def test_a_find_can_be_judged_again_from_its_page(
+@needs_vocabulary
+def test_a_find_can_be_described_from_its_page(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Bei einem Fund ist ein schlechtes Urteil teurer als bei einem Buch:
@@ -260,47 +265,58 @@ def test_a_find_can_be_judged_again_from_its_page(
     Buchseite — nichts davon nachgebaut."""
     import threading
 
-    from ebook_watchlist.rating import Rating
-    from ebook_watchlist.ratings import BY_MODEL, VIA_DISCOVERY_PAGE
     from ebook_watchlist.web import book as buchseite
+    from test_web_book import StubAsker, _leopard
 
     beobachtung = fund(db, item_id="7")
-    gefragt: list[str] = []
+    give_profile(db)
+    fragen = StubAsker(_leopard())
+    monkeypatch.setattr(buchseite, "build_rater", lambda model: fragen)
 
-    class Stub:
-        def rate(self, observation: Observation) -> Rating:
-            gefragt.append(observation.source_item_id)
-            return Rating(stars=4, reason="Neu beurteilt.", confidence="teils",
-                          profile_version=1)
+    assert "Noch kein Steckbrief." in client.get("/discovery/beam/7").text
 
-    monkeypatch.setattr(buchseite, "build_rater", lambda model: Stub())
-
-    seite = client.get("/discovery/beam/7").text
-    assert "/discovery/beam/7/rate" in seite
-
-    client.post("/discovery/beam/7/rate")
+    client.post("/discovery/beam/7/portrait")
     for _ in range(250):
-        if client.get("/discovery/beam/7/rate").headers.get("HX-Refresh") == "true":
+        if client.get("/discovery/beam/7/portrait").headers.get("HX-Refresh") == "true":
             break
         threading.Event().wait(0.02)
 
-    assert gefragt == ["7"]
-    zeile = db.ratings_for([subject_of(beobachtung)])[(subject_of(beobachtung), BY_MODEL)]
-    assert zeile.via == VIA_DISCOVERY_PAGE
-    assert "Neu beurteilt." in client.get("/discovery/beam/7").text
-
-
-def test_a_deduction_is_shown_beside_the_stars(client: TestClient, db: Store) -> None:
-    """Warum ein Buch unter die Schwelle fiel, muss auf der Seite stehen (#28):
-    die Sterne des Modells, und was der Code davon abgezogen hat."""
-    from ebook_watchlist.ratings import BY_MODEL
-
-    beobachtung = fund(db, item_id="7")
-    db.put_rating(subject_of(beobachtung), stars=3, confidence="teils", reason="Zieht.",
-                  profile_version=1, now=NOW, origin=BY_MODEL,
-                  model_stars=4, deductions=("Selbstverlag",))
-
+    assert len(fragen.asked) == 1
+    assert db.portrait(subject_of(beobachtung), _stamp()) is not None
     seite = client.get("/discovery/beam/7").text
+    assert "Noch kein Steckbrief." not in seite
 
-    assert "4 vom Modell" in seite
-    assert "−1 Selbstverlag" in seite
+
+@needs_vocabulary
+def test_a_second_click_costs_no_second_call(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dasselbe Buch trägt immer denselben Steckbrief (ADR 33)."""
+    from ebook_watchlist.web import book as buchseite
+    from ebook_watchlist.web import discovery
+    from test_web_book import StubAsker, _leopard
+
+    fund(db, item_id="7")
+    fragen = StubAsker(_leopard())
+    monkeypatch.setattr(buchseite, "build_rater", lambda model: fragen)
+    from ebook_watchlist.config import load_settings
+
+    for _ in range(2):
+        assert discovery.portray(db, load_settings(), "beam", "7", now=NOW) == ""
+
+    assert len(fragen.asked) == 1
+
+
+def test_a_find_nobody_saw_cannot_be_described(db: Store) -> None:
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.web import discovery
+
+    assert "noch niemand gesehen" in discovery.portray(
+        db, load_settings(), "beam", "gibt-es-nicht", now=NOW
+    )
+
+
+def _stamp() -> str:
+    from ebook_watchlist.portrait import fingerprint, load_vocabulary
+
+    return fingerprint(load_vocabulary())

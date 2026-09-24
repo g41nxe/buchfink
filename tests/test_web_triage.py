@@ -11,10 +11,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import describe, give_profile, needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.ratings import BY_MODEL, subject_of
+from ebook_watchlist.ratings import subject_of
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, sorting
@@ -410,6 +411,7 @@ def test_the_pile_counts_what_is_ticked_in_the_browser(client: TestClient, db: S
     assert ':disabled="chosen === 0"' in body
 
 
+@needs_vocabulary
 def test_without_alpine_the_page_stays_a_plain_form(client: TestClient, db: Store) -> None:
     """x-cloak verbirgt, was ohne Alpine sinnlos wäre. Fällt das Skript aus,
     fehlt der Zähler — die Seite funktioniert weiter."""
@@ -427,20 +429,15 @@ def test_without_alpine_the_page_stays_a_plain_form(client: TestClient, db: Stor
 
 
 def urteil(db: Store, observation: Observation, *, stars: int, pitch: str) -> None:
-    from ebook_watchlist.ratings import BY_MODEL, subject_of
-
-    db.put_rating(
-        subject_of(observation),
-        stars=stars,
-        confidence="teils",
-        reason="Begründung zum Nachprüfen.",
-        profile_version=1,
-        now=NOW,
-        origin=BY_MODEL,
-        pitch=pitch,
-    )
+    """Dem Fund einen Steckbrief legen, der mit dem Testprofil auf diese Sterne
+    kommt. Das Profil liegt beim ersten Aufruf in der Datenbank — ohne es
+    urteilt niemand (ADR 33, Punkt 8)."""
+    if db.reading_profile(load_settings().slug) is None:
+        give_profile(db)
+    describe(db, subject_of(observation), stars, pitch)
 
 
+@needs_vocabulary
 def test_the_pitch_replaces_the_blurb(client: TestClient, db: Store) -> None:
     """Der Klappentext sagt, wovon das Buch handelt — der steht im Shop. Hier
     zählt, warum es für diese Leserin in Frage kommt."""
@@ -461,6 +458,7 @@ def test_without_a_judgement_the_blurb_still_shows(client: TestClient, db: Store
     assert "Ein Schiff, allein im Dunkeln." in client.get("/suggestions").text
 
 
+@needs_vocabulary
 def test_the_stars_of_the_gate_are_shown(client: TestClient, db: Store) -> None:
     beobachtet = found(db, title="Der Kannibalenhügel")
     urteil(db, beobachtet, stars=4, pitch="Kurz und knapp.")
@@ -475,7 +473,7 @@ def test_an_unjudged_find_shows_no_stars(client: TestClient, db: Store) -> None:
     """Null Sterne wären eine Aussage. "Noch nicht bewertet" ist keine."""
     found(db, title="Der Kannibalenhügel")
 
-    assert "von 5 — Urteil des Werkzeugs" not in client.get("/suggestions").text
+    assert "aus deinem Leseprofil gerechnet" not in client.get("/suggestions").text
 
 
 def test_the_row_carries_a_cover_and_the_source_symbol(client: TestClient, db: Store) -> None:
@@ -526,6 +524,7 @@ def test_the_page_shows_ten_not_fifty(client: TestClient, db: Store) -> None:
     assert pile.total >= 15
 
 
+@needs_vocabulary
 def test_the_best_stand_at_the_top(client: TestClient, db: Store) -> None:
     """Sonst faengt der Stapel mit dem an, was das Profil gerade abgelehnt hat."""
     schwaecher = found(db, item_id="a", title="Der schwaechere Fund")
@@ -538,6 +537,7 @@ def test_the_best_stand_at_the_top(client: TestClient, db: Store) -> None:
     assert titel.index("Der stärkere Fund") < titel.index("Der schwaechere Fund")
 
 
+@needs_vocabulary
 def test_an_unjudged_find_sinks_below_the_judged(client: TestClient, db: Store) -> None:
     """Ohne Urteil ist es keine Empfehlung, sondern eine offene Frage."""
     found(db, item_id="a", title="Ohne Urteil")
@@ -549,6 +549,7 @@ def test_an_unjudged_find_sinks_below_the_judged(client: TestClient, db: Store) 
     assert titel.index("Mit Urteil") < titel.index("Ohne Urteil")
 
 
+@needs_vocabulary
 def test_what_the_gate_holds_back_is_not_a_task(client: TestClient, db: Store) -> None:
     """Dieselbe Schwelle wie im Digest. Was dich nie erreicht, ist keine
     Aufgabe — und die Seite sagt, wie viel sie deshalb verschweigt."""
@@ -576,6 +577,7 @@ def test_an_unjudged_find_is_never_hidden_as_weak(client: TestClient, db: Store)
     assert pile.hidden_weak == 0
 
 
+@needs_vocabulary
 def test_the_page_uses_the_same_threshold_as_the_digest(client: TestClient, db: Store) -> None:
     """Zwei Ansichten desselben Stapels mit zwei Schwellen waeren genau die
     Drift, die dieses Projekt schon dreimal eingefangen hat."""
@@ -804,32 +806,81 @@ def test_the_whole_work_goes_not_just_the_declaring_title(
     assert "2 KI-erzeugt" in body
 
 
-def test_a_thin_judgement_says_so_in_the_row(client: TestClient, db: Store) -> None:
-    """Vier Sterne aus einer Leseprobe und vier aus einem Klappentext sahen in
-    der Zeile gleich aus (#41).
-
-    Gemessen: ein belegtes Urteil erreicht die Schwelle in 12 Prozent der
-    Faelle, ein teilweise belegtes in 32. Die Auskunft gab es laengst — sie
-    stand nur auf der Buchseite, also nicht dort, wo entschieden wird.
-    """
-    fund = found(db, item_id="duenn", title="Nur vom Klappentext")
-    db.put_rating(subject_of(fund), stars=4, confidence="teils", reason="…",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
-
-    body = client.get("/suggestions").text
-
-    assert "teilweise belegt" in body
 
 
-def test_a_well_founded_judgement_stays_silent(client: TestClient, db: Store) -> None:
-    """`belegt` ist der Normalfall und braucht kein Wort — sonst stuende in
-    jeder der achtundachtzig Zeilen eines mehr, und das haeufigste sagte
-    nichts Neues."""
-    fund = found(db, item_id="dick", title="Mit Leseprobe")
-    db.put_rating(subject_of(fund), stars=4, confidence="belegt", reason="…",
-                  profile_version=1, now=NOW, origin=BY_MODEL)
+# --- das Urteil rechnet der Code (#48) ------------------------------------------
+
+
+@needs_vocabulary
+def test_the_stack_orders_by_percent_not_by_stars(client: TestClient, db: Store) -> None:
+    """Zwei Funde mit denselben Sternen stehen nach ihrer Prozentzahl."""
+    mittel = found(db, item_id="a", title="Der mittlere Fund")
+    stark = found(db, item_id="b", title="Der starke Fund")
+    urteil(db, mittel, stars=4, pitch="Trägt drei Muster.")
+    urteil(db, stark, stars=5, pitch="Trägt die Facette.")
+
+    items = view.pending(db, load_settings()).items
+
+    assert [i.title for i in items] == ["Der starke Fund", "Der mittlere Fund"]
+    assert items[0].percent > items[1].percent
+
+
+@needs_vocabulary
+def test_the_row_shows_the_percent_beside_the_stars(client: TestClient, db: Store) -> None:
+    urteil(db, found(db, title="Der Kannibalenhügel"), stars=4, pitch="Kurz und knapp.")
 
     body = client.get("/suggestions").text
 
-    assert "Mit Leseprobe" in body
-    assert "im Text belegt" not in body
+    assert "66 %" in body  # drei Muster zu 0,3: 1 - 0,7³ = 0,657
+    assert "aus deinem Leseprofil gerechnet" in body
+
+
+@needs_vocabulary
+def test_a_new_profile_reorders_the_stack_without_asking_the_model(
+    client: TestClient, db: Store
+) -> None:
+    """Eine neue Fassung wirkt sofort auf alles, weil der Code rechnet
+    (Abnahme in #48)."""
+    from ebook_watchlist.facets import Liked, ReadingProfile
+
+    urteil(db, found(db, item_id="a", title="Trägt eine Sache"), stars=2, pitch="Eins.")
+    assert view.pending(db, load_settings()).hidden_weak == 1
+
+    give_profile(db, profile=ReadingProfile(
+        facets=(), counterweights=(),
+        liked=(Liked("quest", True), Liked("adventure"), Liked("pursuit")),
+    ))
+
+    pile = view.pending(db, load_settings())
+
+    assert [i.title for i in pile.items] == ["Trägt eine Sache"]
+    assert pile.hidden_weak == 0
+
+
+def test_without_a_profile_nothing_is_judged_and_the_page_says_so(
+    client: TestClient, db: Store
+) -> None:
+    """Ohne Leseprofil keine Sterne, kein Vorfilter, und die Seite nennt den
+    Weg (ADR 33, Punkt 8)."""
+    found(db, item_id="b", title="Beta")
+    found(db, item_id="a", title="Alpha")
+
+    pile = view.pending(db, load_settings())
+    body = client.get("/suggestions").text
+
+    assert pile.no_profile and all(i.stars is None for i in pile.items)
+    assert "data-ohne-profil" in body and "Erstaufnahme machen" in body
+
+
+@needs_vocabulary
+def test_with_a_profile_the_page_does_not_send_her_back_to_the_intake(
+    client: TestClient, db: Store
+) -> None:
+    give_profile(db)
+    found(db, title="Ein Fund")
+
+    assert "data-ohne-profil" not in client.get("/suggestions").text
+
+
+def test_the_hidden_count_names_the_threshold_of_the_scheme() -> None:
+    assert view.Pile((), 0, 0, hidden_weak=2, threshold=4).hidden == ((2, "unter vier Sternen"),)

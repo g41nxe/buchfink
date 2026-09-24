@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import describe, give_profile, needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import LinkOutcome, MatchReason, Observation
-from ebook_watchlist.ratings import BY_MODEL
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, sorting
@@ -473,10 +473,11 @@ def test_the_hint_names_every_source_of_the_category() -> None:
 # --- die Bewertung in der Zeile (#16) ---------------------------------------
 
 
-def test_the_row_carries_the_judgement_of_the_gate(client: TestClient, db: Store) -> None:
-    """Dieselbe Spalte wie im Stapel: Sterne und Pitch aus dem Urteil des
-    Werkzeugs. Die Zeile sagte bisher nur, was ein Buch kostet — nicht, ob es
-    sich lohnt."""
+@needs_vocabulary
+def test_the_row_carries_the_verdict_of_the_code(client: TestClient, db: Store) -> None:
+    """Dieselbe Spalte wie im Stapel: Sterne, Prozent und Pitch, vom Code aus
+    dem Steckbrief gerechnet (#48). Die Zeile sagte bisher nur, was ein Buch
+    kostet — nicht, ob es sich lohnt."""
     book = db.books()[0]
     db.append(
         db.start_run("test", "cli", NOW),
@@ -486,15 +487,29 @@ def test_the_row_carries_the_judgement_of_the_gate(client: TestClient, db: Store
                      isbn="9783000000042", price_cents=999, observed_at=NOW)],
         NOW,
     )
-    db.put_rating("isbn:9783000000042", stars=4, confidence="belegt",
-                  reason="Passt zum Profil.", profile_version=3, now=NOW,
-                  origin=BY_MODEL, pitch="Ein Forscher, 1977 tief in einer Mine.")
+    give_profile(db)
+    describe(db, "isbn:9783000000042", 4, "Ein Forscher, 1977 tief in einer Mine.")
 
     eintrag = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
 
-    assert eintrag.stars == 4
+    assert (eintrag.stars, eintrag.percent) == (4, 66)
     assert eintrag.pitch == "Ein Forscher, 1977 tief in einer Mine."
     assert "Ein Forscher" in client.get("/watchlist").text
+
+
+@needs_vocabulary
+def test_a_title_without_a_find_carries_its_portrait_at_the_book(db: Store) -> None:
+    """Beim Hinzufügen gibt es keinen Fund, an dem der Steckbrief hängen könnte
+    (#38) — er hängt am Buch."""
+    from ebook_watchlist.ratings import book_subject
+
+    book = db.books()[0]
+    give_profile(db)
+    describe(db, book_subject(book.id), 3, "Am Buch.")
+
+    eintrag = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
+
+    assert (eintrag.stars, eintrag.pitch) == (3, "Am Buch.")
 
 
 def test_a_title_nobody_judged_shows_no_stars(db: Store) -> None:

@@ -262,62 +262,38 @@ def create_app() -> FastAPI:
     launcher = RunLauncher()
     rechecker = Rechecker()
 
-    def _urteilen(key) -> Report:
-        """Die Arbeit des zweiten Verwalters: ein Urteil holen (#15).
+    def _portray_work(key) -> Report:
+        """Die Arbeit des zweiten Verwalters: einen Steckbrief anlegen (#45, #48).
 
         Derselbe Verwalter wie beim engen Lauf, nur mit anderer Arbeit. Der
-        Schluessel sagt, was beurteilt wird: ``("book", 39)`` fuer die
-        Buchseite, ``("item", "beam", "7")`` fuer einen Fund.
+        Schlüssel sagt, was beschrieben wird: ``("book", 39)`` für die
+        Buchseite, ``("item", "beam", "7")`` für einen Fund.
         """
         store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
         if key[0] == "book":
-            return Report(trouble=book.rate(store, settings, key[1], now=now))
-        return Report(trouble=discovery.rate(store, settings, key[1], key[2], now=now))
-
-    urteiler = Rechecker(work=_urteilen)
-
-    def _portray_work(key) -> Report:
-        """Die Arbeit des dritten Verwalters: einen Steckbrief anlegen (#45).
-
-        Ein eigener Verwalter und nicht der des Urteils: beide koennen
-        gleichzeitig laufen, und ihr Stand steht an verschiedenen Stellen der
-        Seite.
-        """
-        store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
-        return Report(trouble=book.portray(store, settings, key[1], now=now))
+            return Report(trouble=book.portray(store, settings, key[1], now=now))
+        return Report(trouble=discovery.portray(store, settings, key[1], key[2], now=now))
 
     portrayer = Rechecker(work=_portray_work)
 
-    def _portrait_status(request: Request, book_id: int) -> Response:
-        """Das Fragment neben *Steckbrief*, solange einer entsteht — wie beim Urteil."""
-        job = portrayer.state(("book", book_id))
+    def _portrait_status(request: Request, key, url: str) -> Response:
+        """Das Fragment neben *Steckbrief*, solange einer entsteht.
+
+        Ist der Job fertig, kommt keine Zeile zurück, sondern die Bitte, die
+        Seite neu zu laden: danach hat sich nicht eine Zeile geändert, sondern
+        der ganze Abschnitt. Solange er läuft, fragt die Seite alle zwei
+        Sekunden nach (ADR 3, kein Websocket).
+        """
+        job = portrayer.state(key)
         if job is None or not job.busy:
             return Response(status_code=204, headers={"HX-Refresh": "true"})
         return TEMPLATES.TemplateResponse(
-            request,
-            "_portrait_status.html",
-            {"url": f"/book/{book_id}/portrait", "job": job, "vorhanden": False},
+            request, "_portrait_status.html", {"url": url, "job": job, "vorhanden": False}
         )
 
     def _lauf_unterwegs(store: Store, settings) -> bool:
         """Ob gerade ein grosser Lauf jedes Buch anfasst — fuer den Kopf der Seite."""
         return launcher.state(store, settings.slug).busy
-
-    def _urteil_stand(request: Request, key, url: str) -> Response:
-        """Das Fragment neben *Bewertung*, solange ein Urteil entsteht.
-
-        Ist der Job fertig, kommt keine Zeile zurueck, sondern die Bitte, die
-        Seite neu zu laden: danach hat sich nicht eine Zeile geaendert, sondern
-        der ganze Abschnitt — das neue Urteil, oder der Grund, warum es keins
-        gibt. Solange er laeuft, fragt die Seite alle zwei Sekunden nach
-        (ADR 3, kein Websocket).
-        """
-        job = urteiler.state(key)
-        if job is None or not job.busy:
-            return Response(status_code=204, headers={"HX-Refresh": "true"})
-        return TEMPLATES.TemplateResponse(
-            request, "_urteil_stand.html", {"url": url, "job": job, "vorhanden": True}
-        )
 
     @app.exception_handler(ConfigError)
     def broken_configuration(request: Request, exc: ConfigError) -> HTMLResponse:
@@ -480,12 +456,10 @@ def create_app() -> FastAPI:
             now=datetime.now(),
         )
         rechecker.start(book_id)
-        # Und gleich ein Urteil dazu (#38): bis dahin stand ein neuer Titel
-        # fuer immer ohne da — das Tor beurteilt nur Funde, und ein
-        # Watchlist-Titel ist keiner. Es ruht auf Titel und Autor:in, denn
-        # mehr gibt es in dieser Sekunde nicht; ein belegteres holt die
-        # Leserin mit "neu beurteilen".
-        urteiler.start(("book", book_id))
+        # Und gleich ein Steckbrief dazu (#38, #48): das Tor beschreibt nur
+        # Funde, und ein Watchlist-Titel ist keiner. Er ruht auf Titel und
+        # Autor:in, denn mehr gibt es in dieser Sekunde nicht.
+        portrayer.start(("book", book_id))
         return RedirectResponse("/watchlist", status_code=303)
 
     @app.post("/watchlist/{book_id}/active")
@@ -768,28 +742,11 @@ def create_app() -> FastAPI:
                 "icons": symbols.RELATION_ICONS,
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
-                "urteil_job": urteiler.state(("book", book_id)),
                 "portrait_job": portrayer.state(("book", book_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
                 "sharpening": sharpening.build(store, settings, book_id),
             },
         )
-
-    @app.post("/book/{book_id}/rate")
-    def book_rate(request: Request, book_id: int) -> Response:
-        """Das Tor jetzt ueber dieses Buch urteilen lassen (Ticket 55, #15).
-
-        Im Hintergrund: ein Aufruf dauert rund 43 Sekunden, und vorher wartete
-        der Browser so lange auf die Antwort. Ein zweiter Klick, waehrend einer
-        laeuft, startet keinen zweiten.
-        """
-        urteiler.start(("book", book_id))
-        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/rate")
-
-    @app.get("/book/{book_id}/rate")
-    def book_rate_status(request: Request, book_id: int) -> Response:
-        """Hier fragt die Seite nach, solange das Urteil entsteht."""
-        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/rate")
 
     @app.post("/book/{book_id}/portrait")
     def book_portray(request: Request, book_id: int) -> Response:
@@ -799,12 +756,12 @@ def create_app() -> FastAPI:
         keinen Aufruf: dasselbe Buch trägt immer denselben Steckbrief.
         """
         portrayer.start(("book", book_id))
-        return _portrait_status(request, book_id)
+        return _portrait_status(request, ("book", book_id), f"/book/{book_id}/portrait")
 
     @app.get("/book/{book_id}/portrait")
     def book_portray_status(request: Request, book_id: int) -> Response:
         """Hier fragt die Seite nach, solange der Steckbrief entsteht."""
-        return _portrait_status(request, book_id)
+        return _portrait_status(request, ("book", book_id), f"/book/{book_id}/portrait")
 
     @app.post("/book/{book_id}/edit")
     def book_edit(
@@ -980,22 +937,22 @@ def create_app() -> FastAPI:
                 "page": page,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
-                "urteil_job": urteiler.state(("item", source, item_id)),
+                "portrait_job": portrayer.state(("item", source, item_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
             },
         )
 
-    @app.post("/discovery/{source}/{item_id}/rate")
-    def discovery_rate(request: Request, source: str, item_id: str) -> Response:
-        """Einen Fund neu beurteilen lassen — derselbe Weg wie auf der Buchseite (#15)."""
+    @app.post("/discovery/{source}/{item_id}/portrait")
+    def discovery_portray(request: Request, source: str, item_id: str) -> Response:
+        """Einen Fund beschreiben lassen — derselbe Weg wie auf der Buchseite (#48)."""
         key = ("item", source, item_id)
-        urteiler.start(key)
-        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/rate")
+        portrayer.start(key)
+        return _portrait_status(request, key, f"/discovery/{source}/{item_id}/portrait")
 
-    @app.get("/discovery/{source}/{item_id}/rate")
-    def discovery_rate_status(request: Request, source: str, item_id: str) -> Response:
+    @app.get("/discovery/{source}/{item_id}/portrait")
+    def discovery_portray_status(request: Request, source: str, item_id: str) -> Response:
         key = ("item", source, item_id)
-        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/rate")
+        return _portrait_status(request, key, f"/discovery/{source}/{item_id}/portrait")
 
     # --- Triage (Ticket 08) -------------------------------------------------
 

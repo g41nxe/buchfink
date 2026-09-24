@@ -2,11 +2,11 @@
 
 Ein unentschiedener Fund hat keine Buch-Zeile — ADR 18 legt sie erst an, wenn
 die Leserin etwas über ihn gesagt hat. Er hat aber alles andere: Titel, Autor,
-Klappentext, den Anlass, das Urteil des Bewertungstors und eine Geschichte über
-mehrere Läufe. Diese Seite ist deshalb die Buchseite ohne die Teile, die es
-noch nicht gibt, und der einzige Ort, an dem die **Begründung** des Tors
-ausgeschrieben steht (ADR 19 wollte sie nachprüfbar machen; der Stapel zeigt
-nur den Pitch).
+Klappentext, den Anlass, die Übereinstimmung mit dem Leseprofil und eine
+Geschichte über mehrere Läufe. Diese Seite ist deshalb die Buchseite ohne die
+Teile, die es noch nicht gibt, und der einzige Ort, an dem die **Begründung**
+des Tors ausgeschrieben steht (ADR 19 wollte sie nachprüfbar machen; der
+Stapel zeigt nur den Pitch).
 
 Sie baut auf denselben Bausteinen wie ``book.py`` — ``Sighting``, ``Judgement``,
 ``Origin`` und deren Erzeuger —, damit dieselbe Auskunft nicht zweimal
@@ -20,20 +20,23 @@ from datetime import datetime
 
 from ..config import Settings
 from ..deals import is_strong_deal
-from ..ratings import VIA_DISCOVERY_PAGE
+from ..portrait import VocabularyError, fingerprint, load_vocabulary
+from ..ratings import subject_of
 from ..reasons import thema_name
 from ..sources import registry
 from ..store import Store
 from .book import (
     _AVAILABILITY,
     HISTORY_ROWS,
+    FitView,
     Judgement,
     Origin,
     Sighting,
+    _fit_view,
     _judgements,
     _origin,
     _price,
-    rate_observation,
+    portray_observation,
 )
 from .triage import _cover_file
 
@@ -56,6 +59,11 @@ class Page:
     url: str | None
     origin: Origin | None
     judgements: tuple[Judgement, ...]
+    #: Die vom Code gerechnete Übereinstimmung — ``None`` ohne Profil oder
+    #: Steckbrief.
+    fit: FitView | None
+    #: Ob der Fund schon einen Steckbrief hat; sonst steht der Knopf dafür da.
+    described: bool
     history: tuple[Sighting, ...]
     thema: str | None
     deal: bool
@@ -90,18 +98,17 @@ class Page:
         return max(0, len(self.history) - HISTORY_ROWS)
 
 
-def rate(store: Store, settings: Settings, source: str, item_id: str, *, now: datetime) -> str:
-    """Einen Fund von seiner Seite aus neu beurteilen lassen (#15).
+def portray(store: Store, settings: Settings, source: str, item_id: str, *, now: datetime) -> str:
+    """Zu einem Fund von seiner Seite aus den Steckbrief anlegen (#48).
 
-    Dieselbe Funktion wie auf der Buchseite, nur der Fund ist ein anderer: hier
-    der, um den es auf der Seite geht, in seiner juengsten Fassung. Bei einem
-    Fund ist ein schlechtes Urteil teurer als bei einem Buch — unter drei
-    Sternen verschwindet er aus dem Stapel.
+    Dieselbe Funktion wie im Lauf und auf der Buchseite, nur der Fund ist ein
+    anderer: hier der, um den es auf der Seite geht, in seiner jüngsten Fassung.
+    Zurück kommt der Grund, warum es nicht ging — leer heißt: der Steckbrief steht.
     """
     seen = store.observations_for_item(settings.slug, source, item_id)
     if not seen:
-        return "Diesen Fund hat noch niemand gesehen — es gibt nichts zu beurteilen."
-    return rate_observation(store, settings, seen[0], now=now, via=VIA_DISCOVERY_PAGE)
+        return "Diesen Fund hat noch niemand gesehen — es gibt nichts zu beschreiben."
+    return portray_observation(store, settings, seen[0], now=now)
 
 
 def build(store: Store, settings: Settings, source: str, item_id: str) -> Page | None:
@@ -133,6 +140,18 @@ def build(store: Store, settings: Settings, source: str, item_id: str) -> Page |
         for observation in seen
     )
 
+    # Ein unlesbares Vokabular kostet nur die Übereinstimmung, nicht die Seite.
+    fit, described = None, False
+    try:
+        vocabulary = load_vocabulary()
+    except VocabularyError:
+        vocabulary = None
+    if vocabulary is not None:
+        stored = store.portrait(subject_of(newest), fingerprint(vocabulary))
+        described = stored is not None
+        if stored is not None:
+            fit = _fit_view(store, settings, stored, vocabulary)
+
     return Page(
         source=source,
         source_item_id=item_id,
@@ -147,6 +166,8 @@ def build(store: Store, settings: Settings, source: str, item_id: str) -> Page |
         url=newest.url,
         origin=_origin(seen),
         judgements=_judgements(store, None, seen, isbn=newest.isbn),
+        fit=fit,
+        described=described,
         history=history,
         thema=thema_name(newest.category),
         deal=is_strong_deal(newest.price_cents, settings),

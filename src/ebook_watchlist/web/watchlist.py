@@ -13,17 +13,14 @@ from datetime import datetime
 
 from ..config import Settings
 from ..deals import is_strong_deal
+from ..judging import load_judge
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
-from ..rating import BELEGT, confidence_label
-from ..ratings import BY_MODEL, book_subject, subject_of
+from ..ratings import book_subject, subject_of
 from ..relations import DONE_LABELS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
 from . import sorting
-
-#: Nur fuer den Vergleich zweier Zeitstempel, von denen einer fehlen darf.
-_EPOCH = datetime.min
 
 #: Was die Leserin je Eintrag einschränken kann. Leer heißt: alle Quellen, die
 #: eingeschaltet sind — nicht "keine".
@@ -174,23 +171,17 @@ class Entry:
     deal: bool = False
     #: Der Titel, zu dem die Leserin "kenne ich" gesagt hat (ADR 27).
     known_missing: str | None = None
-    #: Das Urteil des Werkzeugs, wo eines vorliegt — dieselbe Spalte wie im
-    #: Stapel (#16). Die eigenen Sterne der Leserin stehen hier bewusst nicht:
-    #: die vergibt sie nach dem Lesen, und dann ist der Titel meist schon
-    #: abgeschlossen und von der Liste.
-    stars: float | None = None
+    #: Das gerechnete Urteil, wo ein Steckbrief und ein Profil vorliegen —
+    #: dieselbe Spalte wie im Stapel (#16, #48). Die eigenen Sterne der Leserin
+    #: stehen hier bewusst nicht: die vergibt sie nach dem Lesen, und dann ist
+    #: der Titel meist schon abgeschlossen und von der Liste.
+    stars: int | None = None
+    percent: int | None = None
     pitch: str | None = None
-    #: Worauf das Urteil ruht (#41) — gezeigt nur, wo es einschraenkt.
-    confidence: str = ""
     #: Wann dieser Titel auf die Watchlist kam. Der Zeitstempel der Beziehung,
     #: und der wird nur beim Anlegen gesetzt — ein Pausieren und Fortsetzen
     #: macht einen alten Eintrag also nicht zu einem neuen (#37).
     added_at: datetime | None = None
-
-    @property
-    def confidence_note(self) -> str:
-        """Siehe ``triage.Suggestion.confidence_note`` — dieselbe Auskunft."""
-        return "" if self.confidence in ("", BELEGT) else confidence_label(self.confidence)
 
     @property
     def is_bundle(self) -> bool:
@@ -401,23 +392,18 @@ def _candidates(details: dict, url: str | None, *, abgelehnt: bool) -> tuple:
     return tuple(aus)
 
 
-def _judgement(ratings: dict, observations: Sequence[Observation], book_id: int):
-    """Das juengste Maschinenurteil zu einem Buch, ueber alle seine Schluessel.
+def _portrait_subjects(book, observations: Sequence[Observation]) -> list[str]:
+    """Woran der Steckbrief dieses Buchs hängen kann, das Nächstliegende zuerst.
 
-    Ein Buch kann bei mehreren Quellen stehen, und jeder Fund traegt seinen
-    eigenen Schluessel; ein Titel ohne Fund traegt seinen am Buch (#38). Das
-    juengste gilt: es beruht auf dem, was zuletzt bekannt war.
+    Ein Buch kann bei mehreren Quellen stehen, und jeder Fund trägt seinen
+    eigenen Schlüssel; ein Titel ohne Fund trägt seinen am Buch (#38). Dieselbe
+    Auswahl wie auf der Buchseite.
     """
-    schluessel = [subject_of(observation) for observation in observations]
-    schluessel.append(book_subject(book_id))
-    gefunden = None
-    for eins in schluessel:
-        row = ratings.get((eins, BY_MODEL))
-        if row is None:
-            continue
-        if gefunden is None or (row.rated_at or _EPOCH) > (gefunden.rated_at or _EPOCH):
-            gefunden = row
-    return gefunden
+    subjects = [book_subject(book.id)]
+    if book.isbn:
+        subjects.insert(0, f"isbn:{book.isbn}")
+    subjects.extend(subject_of(observation) for observation in observations)
+    return subjects
 
 
 def entries(
@@ -451,21 +437,23 @@ def entries(
     # Eintraege kosteten so 9 der 25 ms, die diese Funktion braucht.
     buecher = store.books_by_id(book_ids)
     quellen = store.book_sources_of(book_ids)
-    # Urteile haengen am *Fund* (ADR 18): an der ISBN, wo es eine gibt, sonst
-    # an der Produktnummer. Ein Zugriff fuer die ganze Liste, nicht einer je
-    # Zeile — dieselbe Regel wie im Stapel.
-    urteile = store.ratings_for(
-        [
-            *(
-                subject_of(observation)
-                for beobachtungen in latest.values()
-                for observation in beobachtungen
-            ),
-            # Ein Titel ohne Fund traegt sein Urteil am Buch (#38): beim
-            # Hinzufuegen gibt es keinen Fund, an dem es haengen koennte.
-            *(book_subject(book_id) for book_id in book_ids),
-        ]
-    )
+    # Das Urteil rechnet der Code aus dem Steckbrief (ADR 33, #48). Steckbriefe
+    # hängen am *Fund* (ADR 18): an der ISBN, wo es eine gibt, sonst an der
+    # Produktnummer, und ein Titel ohne Fund trägt seinen am Buch (#38). Ein
+    # Zugriff für die ganze Liste, nicht einer je Zeile — dieselbe Regel wie im
+    # Stapel.
+    judge = load_judge(store, settings.slug)
+    portraits = {}
+    if judge is not None:
+        portraits = judge.portraits(
+            store,
+            [
+                subject
+                for book_id in book_ids
+                if (book := buecher.get(book_id)) is not None
+                for subject in _portrait_subjects(book, latest.get(book_id, ()))
+            ],
+        )
 
     rows = []
     for relation in relations:
@@ -488,7 +476,11 @@ def entries(
             )
             for link in quellen.get(book.id, ())
         )
-        urteil = _judgement(urteile, latest.get(book.id, ()), book.id)
+        urteil = (
+            judge.verdict_among(portraits, _portrait_subjects(book, latest.get(book.id, ())))
+            if judge is not None
+            else None
+        )
         rows.append(
             Entry(
                 book_id=book.id,
@@ -503,8 +495,8 @@ def entries(
                 latest=tuple(latest.get(book.id, ())),
                 known_missing=details.get("known_missing"),
                 stars=urteil.stars if urteil else None,
+                percent=urteil.percent if urteil else None,
                 pitch=(urteil.pitch or None) if urteil else None,
-                confidence=urteil.confidence if urteil else "",
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

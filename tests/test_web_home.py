@@ -9,10 +9,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import describe, give_profile, needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.ratings import BY_MODEL, subject_of
+from ebook_watchlist.ratings import subject_of
 from ebook_watchlist.run import main as run_main
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, home, watchlist
@@ -510,6 +511,7 @@ def test_the_emblem_and_the_name_lead_home(client: TestClient) -> None:
     assert re.search(r'<a href="/"[^>]*>Buchfink</a>', body), "der Name führt nicht auf /"
 
 
+@needs_vocabulary
 def test_an_offer_shows_its_judgement_like_everywhere_else(
     client: TestClient, db: Store
 ) -> None:
@@ -518,9 +520,9 @@ def test_an_offer_shows_its_judgement_like_everywhere_else(
     schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
     seen(db, schwestern.id, price=399, available=True)
     beobachtung = db.observations_for_book("test", schwestern.id)[0]
-    db.put_rating(subject_of(beobachtung), stars=4, confidence="belegt",
-                  reason="Passt.", profile_version=3, now=datetime.now(), origin=BY_MODEL,
-                  pitch="Sieben Schwestern, ein Vermaechtnis, viele Rueckblenden.")
+    give_profile(db)
+    describe(db, subject_of(beobachtung), 4,
+             "Sieben Schwestern, ein Vermaechtnis, viele Rueckblenden.")
 
     body = client.get("/").text
 

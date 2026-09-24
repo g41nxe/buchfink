@@ -430,3 +430,25 @@ def test_the_fingerprint_is_computed_once_per_vocabulary(monkeypatch) -> None:
     monkeypatch.setattr(type(wort), "prompt_text", lambda self: pytest.fail("neu gerechnet"))
 
     assert fingerprint(wort) == fingerprint(load_vocabulary())
+
+
+def test_a_find_is_described_with_its_original_title_and_keywords(monkeypatch) -> None:
+    """Ein Buch, das das Modell nur unter dem englischen Titel kennt, bliebe
+    sonst unbekannt (#17)."""
+    from ebook_watchlist import portrait as portrait_modul
+    from ebook_watchlist.models import MatchReason, Observation
+
+    seen: list[tuple] = []
+    monkeypatch.setattr(portrait_modul, "portray", lambda *args: seen.append(args) or "Steckbrief")
+    observation = Observation(
+        source="beam", source_item_id="7", title="Der Zeitenläufer", author="Blake Crouch",
+        match_reason=MatchReason.GENRE_CATEGORY, blurb="Ein Physiker.",
+        original_title="Dark Matter", keywords=("Space Opera", "Dune"),
+    )
+
+    assert portrait_modul.portray_find(observation, lambda p, n: "", object()) == "Steckbrief"
+
+    title, author, blurb, _, _ = seen[0]
+    assert title == "Der Zeitenläufer (Originaltitel: Dark Matter)"
+    assert author == "Blake Crouch"
+    assert blurb == "Ein Physiker.\nSchlagwörter: Space Opera, Dune"

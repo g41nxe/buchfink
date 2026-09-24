@@ -261,17 +261,10 @@
 <p class="mt-3 text-xs text-soft">Nicht nach den Regeln: {{ page.portrait.violations | join(" · ") }}</p>
 {% endif %}
 
-{# Der Knopf holt ein Urteil des Tors nach (Ticket 55). Im Lauf urteilt das Tor
-   nur ueber Funde, die in den Stapel kaemen — ein Watchlist-Titel ist gewollt
-   und wird nie gefragt, hier stand deshalb fuer immer nichts. Knopf und Stand
-   kommen aus derselben Vorlage wie auf der Fundseite (#15). #}
-{% call abschnitt("Bewertung", "ic-star") %}
-  {% with url="/book/" ~ page.book_id ~ "/rate", job=urteil_job,
-          vorhanden=page.judgements | rejectattr("is_human") | rejectattr("is_foreign")
-                    | list | length > 0 %}
-  {% include "_urteil_stand.html" %}
-  {% endwith %}
-{% endcall %}
+{# Die Bewertung: die eigenen Sterne, darunter die Übereinstimmung mit dem
+   Leseprofil, die der Code aus dem Steckbrief rechnet (ADR 33). Einen Knopf
+   dafür gibt es nicht — der Steckbrief oben ist die Grundlage. #}
+{{ abschnitt("Bewertung", "ic-star") }}
 
 {# Ohne eigene Sterne steht hier nur ein Satz. Vorher standen daneben fuenf
    leere Sterne und, kursiv dahinter, ein zweites Mal "noch nicht bewertet" —
@@ -304,77 +297,7 @@
    ueber die Passung zum Leseprofil — und duerfen deshalb nicht neben einem
    Modellurteil stehen, als waeren sie dasselbe (ADR 19, Ticket 54). #}
 {% set fremd = page.judgements | selectattr("is_foreign") | list %}
-{% set machine = page.judgements | rejectattr("is_human") | rejectattr("is_foreign") | list %}
-{% if machine %}
-<ul class="mt-4 space-y-4">
-  {% for judgement in machine %}
-  <li>{{ urteil(judgement, page.profile_version) }}</li>
-  {% endfor %}
-</ul>
-{% endif %}
-
-{# Die Übereinstimmung mit dem Leseprofil (#46, ADR 33): kein Modell urteilt
-   hier, der Code rechnet aus dem Steckbrief und den Facetten. Sie steht neben
-   dem Urteil des Tors, bis der Lauf umgestellt ist (#48) — zwei Zahlen, die
-   man vergleichen kann, statt einer, die plötzlich anders ist. Die Begründung
-   ist Satz für Satz aus Daten gebaut; nichts daran ist frei formuliert. #}
-{% if page.fit %}
-<div class="mt-4" data-passung>
-  <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-    <span class="flex items-center gap-0.5 text-gold"
-          title="{{ page.fit.stars }} von 5 — aus deinem Leseprofil gerechnet">
-      {% for value in range(1, 6) %}
-      <svg class="i" {% if value <= page.fit.stars %}style="fill:currentColor"{% endif %}>
-        <use href="#ic-star"/></svg>
-      {% endfor %}
-    </span>
-    <span class="text-sm tabular-nums text-soft">
-      <span class="font-semibold text-ink">{{ page.fit.stars }}</span>&nbsp;/&nbsp;5</span>
-    <span class="text-sm text-soft">Übereinstimmung mit deinem Leseprofil</span>
-    <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft"
-          title="gegen Fassung {{ page.fit.version }} deines Leseprofils"
-          >{{ page.fit.percent }}&nbsp;%</span>
-  </div>
-  {# Die Facette als Marke, wie die Achsen beim Urteil des Tors: der Name
-     ist die Auskunft, das Zeichen sagt, ob ganz, zum Teil oder dagegen. Kein
-     Satz drumherum — "Trifft deine Facette …, wie Leichenblässe" las sich
-     wie ein Vergleich zweier Bücher. Darunter leise und eingerückt der
-     Beleg aus dem Steckbrief. #}
-  <ul class="mt-2 max-w-prose text-sm">
-    {% for zeile in page.fit.reasons %}
-    {% if zeile.detail %}
-    <li class="mt-1 border-l border-rule pl-3 text-soft">
-      {{ zeile.text }}</li>
-    {% else %}
-    <li class="{% if not loop.first %}mt-3 {% endif %}flex flex-wrap items-center gap-x-2"
-        data-facette="{{ zeile.kind }}">
-      {# Eine Form für alle drei: Marke mit Zeichen und Name, dahinter ein
-         leises Wort. Was sie unterscheidet, sagen Farbe, Zeichen und Wort. #}
-      {# Kombination, gemochtes Merkmal, Erzählmuster, Gegengewicht — eine
-         Form, Farbe und Wort sagen, was es ist. Verstärktes trägt den Stern. #}
-      {% set art = {
-           "ganz": ("bg-accent/15 text-accent", "ic-check", "Kombination"),
-           "merkmal": ("bg-hair text-ink", "ic-heart", "gemocht"),
-           "muster": ("bg-hair text-ink", "ic-heart", "Erzählmuster"),
-           "dagegen": ("bg-danger/10 text-danger", "ic-x", "spricht dagegen"),
-         }.get(zeile.kind) %}
-      {% if art and zeile.boosted %}
-      {% set art = ("bg-amber/10 text-amber", "ic-star", art[2] ~ ", verstärkt") %}
-      {% endif %}
-      {% if art %}
-      <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold
-                   {{ art[0] }}">
-        <svg class="i"><use href="#{{ art[1] }}"/></svg>{{ zeile.text }}</span>
-      <span class="text-xs text-soft">{{ art[2] }}</span>
-      {% else %}
-      <span class="italic text-soft">{{ zeile.text }}</span>
-      {% endif %}
-    </li>
-    {% endif %}
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
+{% with fit=page.fit %}{% include "_passung.html" %}{% endwith %}
 
 {# Nachschärfen (#51): was dieses Buch an deinem Leseprofil ändert — nur bei
    *Mag ich* oder *Doof*, und nur, wenn es ein Profil gibt. #}

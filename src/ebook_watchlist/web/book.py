@@ -20,19 +20,23 @@ from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
 from ..facets import Reason, fit, load_weights
 from ..http import HttpClient, build_user_agent
-from ..models import Availability, MatchReason, Observation
-from ..portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
+from ..models import Availability, MatchReason
+from ..portrait import (
+    Portrait,
+    Vocabulary,
+    VocabularyError,
+    fingerprint,
+    load_vocabulary,
+    portray_find,
+)
 from ..portrait import portray as draw_portrait
 from ..rating import RatingUnavailable, build_rater, confidence_label, load_leseprofil
 from ..ratings import (
-    BY_CONVERSATION,
-    BY_MODEL,
     BY_ONLEIHE_READERS,
     BY_READER,
     FOREIGN_ORIGINS,
     HUMAN_ORIGINS,
     LABELS,
-    VIA_BOOK_PAGE,
     book_subject,
     subject_of,
 )
@@ -46,7 +50,7 @@ from .watchlist import SourceState
 #: hat, zuerst.
 #: Zuletzt die fremden Stimmen: sie sind Auskunft ueber das Buch, nicht ueber
 #: die Passung zum Profil (Ticket 54).
-ORIGIN_ORDER: tuple[str, ...] = (BY_READER, BY_CONVERSATION, BY_MODEL, BY_ONLEIHE_READERS)
+ORIGIN_ORDER: tuple[str, ...] = (BY_READER, BY_ONLEIHE_READERS)
 
 #: Was die Leserin über ein Buch sagen kann, in der Reihenfolge, in der es auf
 #: der Seite steht. Mehrere gelten gleichzeitig — das ist der Normalfall.
@@ -66,8 +70,9 @@ KINDS: tuple[tuple[str, str], ...] = labelled_actions(
 )
 
 #: Herkuenfte, deren Urteil an einer *Ausgabe* haengt statt am Buch der
-#: Leserin — das Tor (ADR 18) und fremde Leserstimmen (Ticket 54).
-_AT_THE_FIND: frozenset[str] = frozenset({BY_MODEL}) | FOREIGN_ORIGINS
+#: Leserin: fremde Leserstimmen (Ticket 54). Das Urteil des Werkzeugs steht hier
+#: nicht mehr — es wird aus dem Steckbrief gerechnet, nicht gespeichert (#48).
+_AT_THE_FIND: frozenset[str] = FOREIGN_ORIGINS
 
 #: Nur für den Vergleich zweier Zeitstempel, von denen einer fehlen darf.
 _EPOCH = datetime.min
@@ -215,19 +220,6 @@ class Judgement:
         sie dasselbe (Ticket 54).
         """
         return self.origin in FOREIGN_ORIGINS
-
-    def stale(self, current: int | None) -> bool:
-        """Gegen eine ältere Profilfassung gefällt — und deshalb nur noch Auskunft.
-
-        Gilt nur für Maschinenurteile: was ein Mensch gesagt hat, verfällt
-        nicht, wenn er sein Profil schärft.
-        """
-        if self.is_human or self.is_foreign:
-            # Eine fremde Durchschnittsnote ist kein Urteil gegen das Profil.
-            # Sie kann deshalb auch nicht gegen eine aeltere Fassung gefaellt
-            # worden sein.
-            return False
-        return current is not None and self.profile_version != current
 
 
 #: Wie viele Zeilen die Tabelle "Beobachtungen" zeigt. Der Snapshot ist
@@ -387,8 +379,6 @@ class Page:
     sources: tuple[SourceState, ...]
     history: tuple[Sighting, ...]
     judgements: tuple[Judgement, ...]
-    #: Die heutige Profilversion, oder ``None``, wenn das Profil nicht lesbar ist.
-    profile_version: int | None
     #: Warum dieser Fund überhaupt hereinkam — nur bei Entdeckungen (Ticket 22).
     origin: Origin | None
     #: An welcher Art Quelle geprüft wird — ``None`` heißt: an allen. Steht
@@ -689,11 +679,6 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         for observation in seen
     )
 
-    try:
-        _, current_version = load_leseprofil()
-    except RatingUnavailable:
-        current_version = None
-
     # Ein unlesbares Vokabular kostet nur den Steckbrief, nicht die Seite.
     portrait = None
     passung = None
@@ -718,7 +703,6 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         sources=sources,
         history=history,
         judgements=_judgements(store, book, seen),
-        profile_version=current_version,
         origin=_origin(seen),
         blurb=book.blurb,
         note=_details(known[str(RelationKind.WATCHING)]).get("note")
@@ -826,137 +810,59 @@ def price_points(history: tuple[Sighting, ...]) -> list[Sighting]:
     return seen
 
 
-def rate(store: Store, settings: Settings, book_id: int, *, now: datetime) -> str:
-    """Das Tor jetzt über dieses eine Buch urteilen lassen (Ticket 55).
-
-    Im Lauf sieht das Tor nur, was auch im Stapel landen würde. Ein
-    Watchlist-Titel ist gewollt und wird deshalb nie gefragt — über ihn
-    entscheidet das Tor nichts, und auf seiner Seite stand für immer „Noch
-    nicht bewertet". Eine Auskunft wäre das Urteil trotzdem, und hier holt es
-    sich die Leserin.
-
-    Laeuft im Hintergrund (#15): ein Aufruf dauert rund 43 Sekunden, und
-    vorher wartete der Browser so lange auf die Antwort.
-
-    Zurück kommt der Grund, warum es nicht ging — leer heißt: das Urteil steht.
-    """
-    book = store.book(book_id)
-    if book is None:  # pragma: no cover - nur bei geloeschtem Buch
-        return "Dieses Buch gibt es nicht mehr."
-
-    seen = store.observations_for_book(settings.slug, book_id)
-    if not seen:
-        # Noch kein Fund: ein frisch eingetragener Watchlist-Titel ist bei
-        # keiner Quelle aufgeloest (#38). Beurteilt wird dann, was dasteht —
-        # Titel und Autor:in —, und das Urteil haengt am *Buch*, weil es
-        # keinen Fund gibt, an dem es haengen koennte (ADR 18). Ohne Belege
-        # bleibt es duenn; ein besseres holt die Leserin spaeter mit
-        # "neu beurteilen", stillschweigend ersetzt wird es nie.
-        return rate_observation(
-            store,
-            settings,
-            _as_find(book),
-            now=now,
-            via=VIA_BOOK_PAGE,
-            subject=book_subject(book_id),
-            with_evidence=False,
-        )
-
-    # Das Urteil hängt am Fund, nicht am Buch (ADR 18): am jüngsten, denn er
-    # trägt den aktuellen Preis und die aktuelle Verfügbarkeit.
-    return rate_observation(
-        store, settings, seen[0], now=now, via=VIA_BOOK_PAGE, blurb=book.blurb
-    )
-
-
-def _as_find(book) -> Observation:
-    """Das Buch als Beobachtung, damit der Bewerter es lesen kann.
-
-    Kein Fund, nur seine Form: der Bewerter nimmt eine Beobachtung entgegen,
-    und was hier dasteht, ist alles, was ueber den Titel bekannt ist.
-    """
-    return Observation(
-        source="watchlist",
-        source_item_id=str(book.id),
-        title=book.title,
-        author=book.author,
-        isbn=book.isbn,
-        blurb=book.blurb,
-        match_reason=MatchReason.WATCHLIST,
-        book_id=book.id,
-    )
-
-
 def evidence_sources(settings: Settings, store: Store) -> list:
     """Die eingeschalteten Quellen, mit Kontaktadresse wie im Rundgang."""
     client = HttpClient(user_agent=build_user_agent(settings.contact))
     return [s for s in build_sources(settings, client) if store.is_enabled(s.name)]
 
 
-def rate_observation(
+def portray_observation(
     store: Store,
     settings: Settings,
     observation,
     *,
     now: datetime,
-    via: str,
-    blurb: str | None = None,
     subject: str | None = None,
+    blurb: str | None = None,
     with_evidence: bool = True,
 ) -> str:
-    """Einen Fund beurteilen lassen und das Urteil speichern — für Buch- und Fundseite.
+    """Zu einem Fund den Steckbrief anlegen — für die Fundseite (#48).
 
-    Eine Stelle, damit beide Seiten dasselbe tun (#15): welcher Fund beurteilt
-    wird, entscheidet die Seite, wie beurteilt wird, entscheidet diese
-    Funktion. Gespeichert wird **erst bei Erfolg** — scheitert der Aufruf,
-    bleibt das alte Urteil stehen.
+    Einmal je Fund: liegt schon einer mit passendem Fingerabdruck vor, wird
+    nicht gefragt. Gespeichert wird **erst bei Erfolg** (ADR 7). Vorher werden
+    dieselben Belege geholt wie im Lauf (#17): Detailseite, Leseprobe,
+    Schlagwörter — ein Steckbrief aus dem abgeschnittenen Kachel-Text bliebe
+    für immer dünn.
 
-    Zurück kommt der Grund, warum es nicht ging — leer heißt: das Urteil steht.
+    Zurück kommt der Grund, warum es nicht ging — leer heißt: der Steckbrief steht.
     """
+    try:
+        vocabulary = load_vocabulary()
+    except VocabularyError as exc:
+        return str(exc)
+    subject = subject or subject_of(observation)
+    if store.portrait(subject, fingerprint(vocabulary)) is not None:
+        return ""
     rater = build_rater(settings.rating_model)
     if rater is None:
         return (
             "Kein Bewerter eingerichtet: weder ein API-Schlüssel in der Umgebung "
             "noch eine angemeldete Claude-Code-Installation."
         )
-
-    # Dieselben Belege wie im Lauf (#17): Detailseite, Leseprobe,
-    # Schlagwoerter. Bis dahin fragte ein Knopfdruck keine Quelle an — aber
-    # ohne Leseprobe kommt ein Urteil nie ueber "teils" hinaus, und dasselbe
-    # Buch bekaeme hier ein schwaecheres als im Lauf. Es laeuft ohnehin im
-    # Hintergrund (#15); zwei Anfragen mehr fallen in der Minute nicht auf.
-    # Ohne Fund gibt es nichts nachzuladen: keine Quelle kennt den Titel, und
-    # eine Anfrage danach waere eine Anfrage ins Leere (#38).
     if with_evidence:
         observation = gather_evidence(
             store, settings, [observation], evidence_sources(settings, store)
         )[0]
-    duenn = not observation.blurb or is_truncated(observation.blurb)
-    if duenn and blurb:
+    thin = not observation.blurb or is_truncated(observation.blurb)
+    if thin and blurb:
         observation = replace(observation, blurb=blurb)
-
     try:
-        rating = rater.rate(observation)
+        portrait = portray_find(observation, rater.ask, vocabulary)
     except RatingUnavailable as exc:
         # Das Tor scheitert nie zu (ADR 7): der Grund wird genannt, das Buch
-        # bleibt sichtbar und unbewertet.
+        # bleibt sichtbar und unbeschrieben.
         return str(exc)
-
-    store.put_rating(
-        subject or subject_of(observation),
-        stars=rating.stars,
-        confidence=rating.confidence,
-        reason=rating.reason,
-        profile_version=rating.profile_version,
-        now=now,
-        origin=BY_MODEL,
-        pitch=rating.pitch,
-        via=via,
-        hits=rating.hits,
-        misses=rating.misses,
-        model_stars=rating.model_stars,
-        deductions=rating.deductions,
-    )
+    store.put_portrait(subject, portrait, now=now)
     return ""
 
 

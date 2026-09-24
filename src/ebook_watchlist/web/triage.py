@@ -20,12 +20,12 @@ from ..config import Settings
 from ..covers import CoverStore, file_name
 from ..deals import is_strong_deal
 from ..diff import worth_announcing
+from ..judging import load_judge
 from ..junk import is_junk
 from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
-from ..rating import BELEGT, DEFAULT_THRESHOLD, confidence_label
-from ..ratings import BY_MODEL, subject_of
+from ..ratings import subject_of
 from ..reasons import short_why, thema_name, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sources import registry
@@ -67,9 +67,10 @@ class Suggestion:
     #: einer Stelle (Ticket 14).
     why: str
     why_short: str
-    #: Was das Bewertungstor von dem Buch hält — ``None``, solange es nicht
-    #: gelaufen ist.
+    #: Wie gut das Buch zum Leseprofil passt, vom Code aus dem Steckbrief
+    #: gerechnet — ``None``, solange es keinen Steckbrief oder kein Profil gibt.
     stars: int | None = None
+    percent: int | None = None
     #: Der Dateiname im Cover-Ordner, falls das Bild schon geholt wurde. Eine
     #: Entdeckung hat keine ``book``-Zeile, an der er stehen könnte — er ergibt
     #: sich aus Schlüssel und Adresse und wird deshalb nachgesehen, nicht
@@ -85,25 +86,10 @@ class Suggestion:
     #: Ob eine Bibliothek den Fund gerade herausgibt. Fuer die Sortierung
     #: gebraucht (#37) — in der Zeile steht es als Zeichen der Quellenart.
     borrowable: bool = False
-    #: Worauf das Urteil ruht (#41). Gezeigt wird es nur, wo es eine
-    #: Einschraenkung ist — siehe :attr:`confidence_note`.
-    confidence: str = ""
     #: Wann der Fund zuletzt gesehen wurde. Die Watchlist nennt denselben
     #: Schluessel "zuletzt hinzugefuegt"; ein Fund wird nicht hinzugefuegt,
     #: er taucht auf.
     observed_at: datetime | None = None
-
-    @property
-    def confidence_note(self) -> str:
-        """Was der Leserin zu sagen ist, wenn das Urteil duenn ruht (#41).
-
-        Bei ``belegt`` steht nichts: das ist der Normalfall und braucht kein
-        Wort. Die uebrigen Stufen sind eine Einschraenkung, und die gehoert
-        dorthin, wo entschieden wird — bisher stand sie nur auf der Buchseite.
-        Gemessen: ein belegtes Urteil erreicht die Schwelle in 12 Prozent der
-        Faelle, ein teilweise belegtes in 32.
-        """
-        return "" if self.confidence in ("", BELEGT) else confidence_label(self.confidence)
 
     @property
     def is_bundle(self) -> bool:
@@ -132,6 +118,9 @@ class Suggestion:
         return f"{self.price_cents / 100:.2f} €".replace(".", ",")
 
 
+_NUMBER_WORDS = {1: "einem", 2: "zwei", 3: "drei", 4: "vier", 5: "fünf"}
+
+
 @dataclass(frozen=True, slots=True)
 class Pile:
     items: tuple[Suggestion, ...]
@@ -142,6 +131,11 @@ class Pile:
     #: das Urteil steht auf der Buchseite, und eine neue Profilversion holt sie
     #: zurück.
     hidden_weak: int = 0
+    #: Ab wie vielen Sternen ein Fund im Stapel bleibt.
+    threshold: int = 3
+    #: Es gibt noch kein Leseprofil: nichts wird beurteilt, der Stapel ist
+    #: unsortiert, und die Seite sagt, dass erst die Erstaufnahme nötig ist.
+    no_profile: bool = False
     #: Weder Schnäppchen noch ausleihbar — würde nie gemeldet, steht also auch
     #: nicht im Stapel. Verschwunden ist nichts: fällt der Preis, ist das Buch
     #: wieder da (ADR 19).
@@ -157,6 +151,10 @@ class Pile:
         return not self.items
 
     @property
+    def _threshold_word(self) -> str:
+        return _NUMBER_WORDS.get(self.threshold, str(self.threshold))
+
+    @property
     def hidden(self) -> tuple[tuple[int, str], ...]:
         """Was der Stapel zurueckhaelt, mit Namen — ausgeblendet, nicht verworfen.
 
@@ -169,7 +167,7 @@ class Pile:
         paare = (
             (self.hidden_junk, "Sammelbände und Gratistitel"),
             (self.hidden_priced, "weder Schnäppchen noch ausleihbar"),
-            (self.hidden_weak, "unter drei Sternen"),
+            (self.hidden_weak, f"unter {self._threshold_word} Sternen"),
             (self.hidden_language, "in anderen Sprachen"),
             (self.hidden_ai, "KI-erzeugt"),
         )
@@ -201,7 +199,7 @@ def _cover_file(observation: Observation, covers: CoverStore | None = None) -> s
 def _suggestion(
     observation: Observation,
     settings: Settings,
-    judgement=None,
+    verdict=None,
     bundle=None,
     covers: CoverStore | None = None,
 ) -> Suggestion:
@@ -221,10 +219,10 @@ def _suggestion(
         source_category=registry.category(settings, observation.source),
         why=why_shown(observation),
         why_short=short_why(observation),
-        stars=judgement.stars if judgement else None,
-        confidence=judgement.confidence if judgement else "",
+        stars=verdict.stars if verdict else None,
+        percent=verdict.percent if verdict else None,
         cover_file=_cover_file(observation, covers),
-        pitch=(judgement.pitch or None) if judgement else None,
+        pitch=(verdict.pitch or None) if verdict else None,
         bundle=bundle,
         borrowable=observation.availability is Availability.AVAILABLE,
         observed_at=observation.observed_at,
@@ -248,8 +246,10 @@ def pending(
     decided_items = store.decided_items(settings.slug)
     decided_isbns = set(store.books_with_relations(settings.slug))
     found = store.latest_discoveries(settings.slug)
-    # Ein Zugriff für den ganzen Stapel, nicht einer je Zeile.
-    judgements = store.ratings_for(subject_of(observation) for observation in found)
+    # Das Urteil rechnet der Code aus dem Steckbrief (ADR 33, #48): ein Zugriff
+    # für den ganzen Stapel, nicht einer je Zeile.
+    judge = load_judge(store, settings.slug)
+    portraits = judge.portraits(store, [subject_of(o) for o in found]) if judge else {}
     # Einmal fuer den ganzen Stapel: Titel -> guenstigster bekannter Preis.
     # Der Buendelvorteil braucht die Preise *anderer* Buecher (ADR 24).
     # Eine Stelle rechnet den Buendelvorteil aus — dieselbe, die der
@@ -295,14 +295,14 @@ def pending(
         # Dieselbe Schwelle wie im Digest: was das Tor zurückhält, ist keine
         # Aufgabe. Ein Fund **ohne** Urteil bleibt — "noch nicht beurteilt" ist
         # etwas anderes als "passt nicht".
-        judgement = judgements.get((subject_of(observation), BY_MODEL))
-        if judgement is not None and judgement.stars < DEFAULT_THRESHOLD:
+        verdict = judge.verdict(portraits.get(subject_of(observation))) if judge else None
+        if verdict is not None and verdict.withholds(judge.threshold):
             hidden_weak += 1
             continue
         if reason and str(observation.match_reason) != reason:
             continue
         items.append(
-            _suggestion(observation, settings, judgement, vorteil, covers)
+            _suggestion(observation, settings, verdict, vorteil, covers)
         )
 
     # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
@@ -319,6 +319,8 @@ def pending(
         hidden_weak=hidden_weak,
         hidden_language=hidden_language,
         hidden_ai=hidden_ai,
+        threshold=judge.threshold if judge else 3,
+        no_profile=judge is None,
     )
 
 

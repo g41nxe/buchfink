@@ -78,28 +78,32 @@
 {{ klappentext(page.blurb) }}
 {% endif %}
 
-{# Das Urteil des Tors, ausgeschrieben. Gespeichert und nie gezeigt war es für
-   niemanden nachprüfbar (ADR 19) — im Stapel steht nur der Pitch. #}
-{# Der Abschnitt steht immer, denn der Knopf braucht einen Platz: auch ein Fund
-   ohne Urteil laesst sich beurteilen, und ein schlechtes Urteil ist hier
-   teurer als bei einem Buch — unter drei Sternen verschwindet er aus dem
-   Stapel. Knopf und Stand aus derselben Vorlage wie auf der Buchseite (#15). #}
-{% set machine = page.judgements | rejectattr("is_human") | rejectattr("is_foreign") | list %}
+{# Die Übereinstimmung mit dem Leseprofil, ausgeschrieben (ADR 19, ADR 33): der
+   Code rechnet sie aus dem Steckbrief, der Stapel zeigt nur den Pitch. Der
+   Abschnitt steht immer, denn der Knopf braucht einen Platz: ein Fund ohne
+   Steckbrief lässt sich beschreiben, und unter drei Sternen verschwindet er
+   aus dem Stapel. Knopf und Stand aus derselben Vorlage wie auf der Buchseite. #}
 {% set fremd = page.judgements | selectattr("is_foreign") | list %}
 {% call abschnitt("Bewertung", "ic-star") %}
-  {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/rate", job=urteil_job,
-          vorhanden=machine | length > 0 %}
-  {% include "_urteil_stand.html" %}
+  {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/portrait",
+          job=portrait_job, vorhanden=page.described %}
+  {% include "_portrait_status.html" %}
   {% endwith %}
 {% endcall %}
-{% if machine or fremd %}
-<ul class="space-y-4">
-  {% for judgement in machine + fremd %}
+{% if page.fit %}
+{% with fit=page.fit %}{% include "_passung.html" %}{% endwith %}
+{% elif page.described %}
+<p class="text-sm text-soft">Noch kein Urteil: es gibt kein Leseprofil, oder das Modell
+  kennt dieses Buch nicht.</p>
+{% else %}
+<p class="text-sm text-soft">Noch kein Steckbrief.</p>
+{% endif %}
+{% if fremd %}
+<ul class="mt-4 space-y-4">
+  {% for judgement in fremd %}
   <li>{{ urteil(judgement) }}</li>
   {% endfor %}
 </ul>
-{% else %}
-<p class="text-sm text-soft">Noch nicht beurteilt.</p>
 {% endif %}
 
 {# Dieselbe Tabelle wie auf der Buchseite, dieselbe Grenze: ein Fund, der seit

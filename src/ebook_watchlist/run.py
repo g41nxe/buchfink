@@ -41,7 +41,7 @@ from .evidence import gather as gather_evidence
 from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
-from .portrait import VocabularyError, load_vocabulary, portray
+from .portrait import VocabularyError, load_vocabulary, portray_find
 from .rating import build_rater
 from .render import render_html, render_text
 from .seed import sow
@@ -286,27 +286,6 @@ def _without_ai_authors(store: Store, deltas) -> list:
     return bleibt
 
 
-def _portrayer(rater, vocabulary):
-    """Der Weg zum Modell für einen Fund: einmal beschreiben, Merkmale vergeben.
-
-    Titel und Klappentext gehen mit; wo es sie gibt, auch der Originaltitel und
-    die Schlagwörter (#17) — ein Buch, das das Modell nur unter dem englischen
-    Titel kennt, bliebe sonst unbekannt.
-    """
-
-    def portrayer(observation: Observation):
-        title = observation.title
-        if observation.original_title:
-            title += f" (Originaltitel: {observation.original_title})"
-        blurb = observation.blurb
-        if observation.keywords:
-            keywords = f"Schlagwörter: {', '.join(observation.keywords)}"
-            blurb = f"{blurb}\n{keywords}" if blurb else keywords
-        return portray(title, observation.author, blurb, rater.ask, vocabulary)
-
-    return portrayer
-
-
 def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
     """Entdeckungen gegen das Leseprofil prüfen (ADR 19, ADR 33, #48).
 
@@ -335,7 +314,11 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         profile=profile,
         vocabulary=vocabulary,
         weights=weights,
-        portrayer=_portrayer(rater, vocabulary) if rater is not None else None,
+        portrayer=(
+            (lambda observation: portray_find(observation, rater.ask, vocabulary))
+            if rater is not None
+            else None
+        ),
         threshold=weights.gate_stars,
         budget=settings.rating_budget,
         now=now,

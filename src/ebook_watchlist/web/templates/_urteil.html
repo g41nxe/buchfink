@@ -1,4 +1,4 @@
-{# Ein Urteil des Bewertungstors, ausgeschrieben (ADR 19).
+{# Ein Urteil, ausgeschrieben: eigene Sterne oder fremde Stimmen (ADR 19, ADR 33).
 
    Eine Stelle für Buch- und Fundseite (Issue #9). Ohne Kasten: die Begründung
    ist der eigentliche Text der Seite, und ein Rahmen darum sagte, sie sei ein
@@ -7,7 +7,7 @@
    Die Zahl steht neben den Sternen — fünf Symbole abzuzählen ist Arbeit, die
    eine Ziffer abnimmt. Dieselbe Schreibweise wie bei den fremden Stimmen.
 #}
-{% macro urteil(judgement, profile_version=none) %}
+{% macro urteil(judgement) %}
 <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
   <span class="flex items-center gap-0.5 text-gold">
     {% for value in range(1, 6) %}
@@ -40,18 +40,6 @@
   {% endif %}
   {% if judgement.when %}
   <span class="text-xs text-soft">{{ judgement.when.strftime("%d.%m.%Y") }}</span>
-  {% endif %}
-  {% if profile_version and judgement.stale(profile_version) %}
-  {# Ein Maschinenurteil gegen einen alten Massstab ist Auskunft, keine
-     Grundlage (ADR 19).
-
-     Ein Wort statt einer Rechnung: vorher stand hier "gegen Profil 3, heute
-     gilt 4" und die Leserin musste zwei Zahlen vergleichen, um zu der
-     Auskunft zu kommen, die in einem Wort steht. Die Zahlen stehen im
-     Hinweis — wer sie braucht, findet sie. #}
-  <span class="rounded bg-danger/10 px-1.5 py-0.5 text-xs text-danger"
-        title="beurteilt gegen Profil {{ judgement.profile_version }}, heute gilt
-               {{ profile_version }} — mit ↻ neu holen">veraltet</span>
   {% endif %}
 </div>
 {# Die Begruendung einer fremden Stimme lautet "Durchschnitt der Leser:innen

@@ -95,8 +95,10 @@ SUGGESTIONS: tuple[Order, ...] = (
     # Unbewertetes ans Ende — es ist keine Empfehlung, sondern eine offene Frage.
     Order(
         "sterne",
-        "beste Sterne zuerst",
-        lambda item: (item.stars is None, -(item.stars or 0), _title(item)),
+        "beste Übereinstimmung zuerst",
+        # Nach Prozent, nicht nach Sternen: die Sterne fassen zusammen, die
+        # Zahl ordnet (ADR 33). Ohne Urteil steht ein Fund am Ende.
+        lambda item: (item.percent is None, -(item.percent or 0), _title(item)),
     ),
     Order("frei", "ausleihbar zuerst", lambda item: (not item.borrowable, _title(item))),
     Order(

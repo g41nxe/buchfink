@@ -26,7 +26,7 @@ class Zeile:
     price_cents: int | None = None
     added_at: datetime | None = None
     observed_at: datetime | None = None
-    stars: int | None = None
+    percent: int | None = None
     reason: str = "genre_category"
 
 
@@ -151,14 +151,18 @@ def test_the_title_breaks_every_tie():
 # --- Vorschläge --------------------------------------------------------
 
 
-def test_the_stack_shows_the_best_stars_first_and_the_unjudged_last():
+def test_the_stack_shows_the_best_match_first_and_the_unjudged_last():
+    """Die Zahl ordnet, die Sterne fassen zusammen (ADR 33): zwei Bücher mit
+    denselben fünf Sternen stehen nach ihrer Prozentzahl."""
     rows = [
         Zeile("Ohne Urteil"),
-        Zeile("Drei", stars=3),
-        Zeile("Fuenf", stars=5),
+        Zeile("Drei", percent=51),
+        Zeile("Fuenf tiefer", percent=82),
+        Zeile("Fuenf hoeher", percent=97),
     ]
     assert namen(sorting.SUGGESTIONS, rows, "sterne") == [
-        "Fuenf",
+        "Fuenf hoeher",
+        "Fuenf tiefer",
         "Drei",
         "Ohne Urteil",
     ]

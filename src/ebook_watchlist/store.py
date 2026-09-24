@@ -606,6 +606,24 @@ def _better_spelling(kept: str | None, seen: str | None) -> str | None:
     return preferred_spelling([kept, seen]) or kept
 
 
+def _portrait_of(row: PortraitRow) -> Portrait:
+    """Eine gespeicherte Zeile als Steckbrief."""
+    return Portrait(
+        known=row.known,
+        fingerprint=row.fingerprint,
+        title=row.title,
+        author=row.author,
+        original_title=row.original_title,
+        genre=row.genre,
+        subgenre=row.subgenre,
+        pitch=row.pitch,
+        traits=tuple(
+            Trait(t["term"], t["sentence"], t["evidence"]) for t in json.loads(row.traits)
+        ),
+        violations=tuple(json.loads(row.violations)),
+    )
+
+
 class Store:
     """Owns the SQLite file. Schema is created on first use."""
 
@@ -1684,22 +1702,22 @@ class Store:
                 .where(PortraitRow.subject == subject, PortraitRow.fingerprint == fingerprint)
                 .order_by(PortraitRow.created_at.desc(), PortraitRow.id.desc())
             ).first()
-            if row is None:
-                return None
-            return Portrait(
-                known=row.known,
-                fingerprint=row.fingerprint,
-                title=row.title,
-                author=row.author,
-                original_title=row.original_title,
-                genre=row.genre,
-                subgenre=row.subgenre,
-                pitch=row.pitch,
-                traits=tuple(
-                    Trait(t["term"], t["sentence"], t["evidence"]) for t in json.loads(row.traits)
-                ),
-                violations=tuple(json.loads(row.violations)),
+            return _portrait_of(row) if row is not None else None
+
+    def portraits_for(self, subjects: Iterable[str], fingerprint: str) -> dict[str, Portrait]:
+        """Die jüngsten Steckbriefe zu diesen Schlüsseln — ein Zugriff für eine
+        ganze Liste statt einer je Zeile (#48)."""
+        wanted = set(subjects)
+        if not wanted:
+            return {}
+        with self.session() as session:
+            rows = session.scalars(
+                select(PortraitRow)
+                .where(PortraitRow.subject.in_(wanted), PortraitRow.fingerprint == fingerprint)
+                .order_by(PortraitRow.created_at, PortraitRow.id)
             )
+            # Aufsteigend gelesen, damit der jüngste je Schlüssel zuletzt kommt und gilt.
+            return {row.subject: _portrait_of(row) for row in rows}
 
     # --- Leseprofil aus Facetten (#46) ---------------------------------------
 

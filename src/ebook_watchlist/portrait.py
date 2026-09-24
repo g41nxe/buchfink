@@ -481,3 +481,20 @@ def portray(
 ) -> Portrait:
     """Einmal fragen, die Antwort lesen. Speichern tut der Aufrufer."""
     return parse_answer(ask(prompt(title, author, blurb, vocabulary), MAX_TOKENS), vocabulary)
+
+
+def portray_find(observation, ask: Callable[[str, int], str], vocabulary: Vocabulary) -> Portrait:
+    """Einen Fund beschreiben: einmal fragen, die Antwort lesen (#48).
+
+    Titel und Klappentext gehen mit; wo es sie gibt, auch der Originaltitel und
+    die Schlagwörter (#17) — ein Buch, das das Modell nur unter dem englischen
+    Titel kennt, bliebe sonst unbekannt.
+    """
+    title = observation.title
+    if observation.original_title:
+        title += f" (Originaltitel: {observation.original_title})"
+    blurb = observation.blurb
+    if observation.keywords:
+        keywords = f"Schlagwörter: {', '.join(observation.keywords)}"
+        blurb = f"{blurb}\n{keywords}" if blurb else keywords
+    return portray(title, observation.author, blurb, ask, vocabulary)
