@@ -215,8 +215,12 @@ never become one (ADR 22).
 The step that decides whether a Discovery reaches the reader at all (ADR 19).
 It sits **behind** the Snapshot, so a failure costs a judgement and never
 history, and **behind** the price rule, so nothing is judged that would not be
-shown anyway. Without an API key it does nothing and everything is shown —
-that is the intended degraded state, not an outage.
+shown anyway. It holds back a find that fits under three stars, judged by the
+code from the find's Portrait (ADR 33). A find without a judgement — no Reading
+Profile, no Portrait yet, a book the model does not know — is shown, never
+dropped. Without an API key it still judges the finds that already have a
+Portrait; the rest is shown unrated. That is the intended degraded state, not
+an outage.
 
 Its standing principle: **quality before quantity.** A handful of well-fitting
 suggestions beats a pile of poor ones, and an empty pile is a good result.

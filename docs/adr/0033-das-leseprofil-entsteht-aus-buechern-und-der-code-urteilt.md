@@ -189,3 +189,49 @@ Code.
 > sobald sie angetippt ist — ohne Verstärken, denn ein Gegengewicht hat keine
 > abgestufte Stärke. Ein angetipptes Gegengewicht gilt seither für alle
 > enttäuschenden Bücher, die dieselbe Familie tragen, nicht nur für eines.
+
+> **Nachtrag vom 24.09.2026: der Lauf urteilt im Code (#48).** Vor dem Umbau
+> des Tors sind fünf Fragen entschieden worden.
+>
+> **Ein Urteil wird gerechnet, nie gespeichert.** Tor, Stapel, Tagesbericht
+> und Buchseite rufen dieselbe Stelle auf, die aus Steckbrief, Profil und
+> Gewichten Prozent, Sterne und Begründung macht. Damit wirkt eine neue
+> Profilfassung sofort und ohne Modellaufruf auf alles, und die alten
+> Maschinenurteile (Herkunft `model`, `conversation`) werden nirgends mehr
+> gelesen. Das schließt eine Verwechslung aus: ihre Fassungsnummer stammt vom
+> Prosa-Profil, und das Datenbankprofil zählt selbst bei 4. Die Zeilen bleiben
+> stehen (ADR 16); gelöscht werden sie mit #52. Die eigenen Sterne der Leserin
+> bleiben und gehen dem Tor weiter vor.
+>
+> **Ein Fund bekommt seinen Steckbrief im Lauf.** Höchstens `rating_budget`
+> Steckbriefe je Lauf (Voreinstellung 40), einer je Aufruf, ohne Bündeln. Was
+> darüber liegt, ist unbewertet und wird gezeigt. Vorher holt der Lauf den
+> vollen Klappentext: die Funde sind überwiegend Neuerscheinungen, die ein
+> Modell nicht kennt, und ein Steckbrief aus dem abgeschnittenen Kachel-Text
+> bliebe für immer dünn.
+>
+> **Das Tor hält zurück, was unter drei Sternen liegt.** Ein Fund ohne
+> Urteil (kein Profil, kein Steckbrief, ein unbekanntes Buch) wird gezeigt und
+> nicht aussortiert (ADR 7). Die „vermutet"-Regel entfällt: sie schützte vor
+> einem Modell, das Sterne schätzt, und das Modell vergibt jetzt nur noch
+> Merkmale. Ohne Schlüssel urteilt das Tor über Funde, die schon einen
+> Steckbrief haben. Die Schwelle steht als Wert im Bewertungsschema. Die
+> Verteilung an den sieben Büchern der Erstaufnahme und an 20 000 Zufallsbüchern
+> spricht für 3: ein beliebiges Buch erreicht sie zu etwa 27 %, vier Sterne
+> nur zu etwa 5 %, und mit nur einer Facette hielte 4 fast alles Neue zurück.
+>
+> **Gegenbeispiele zählen nur über Gegengewichte, und das Gegengewicht wiegt
+> 0,35 statt 0,2.** Ein *Doof*-Buch selbst ist kein Signal; das hieße, Bücher
+> zu vergleichen, und das haben wir auf Schritt 3 und 4 gerade abgeschafft.
+> Gemessen: *Der Schwarm*, den die Leserin enttäuschend fand, kam mit 0,2 auf
+> 47 % und damit durch das Tor. Er trägt fünf gemochte Merkmale (59 %), und das
+> einzige Gegengewicht, das sie aus ihm angetippt hat, zog nur ein Fünftel ab.
+> Ab etwa 0,33 fällt er unter drei Sterne; 0,35 lässt die fünf gemochten
+> Bücher unberührt. Mehrere Gegengewichte werden **nicht** summiert: die fünf
+> aus *Herr der Ringe* kämen aus einem Buch und zählten es fünfmal. Der Wert ist
+> ein Startwert wie die anderen und wird an echten Funden nachgestellt.
+>
+> **Der Stapel ordnet nach Prozent**, Gleichstand nach Titel wie bisher,
+> Unbewertetes am Ende, und zeigt beides (Prozent und Sterne), bis #54 die
+> Anzeige entscheidet. `ebw rate` legt künftig die fehlenden Steckbriefe für
+> den Stapel an, statt Sterne zu vergeben.
