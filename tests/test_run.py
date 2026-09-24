@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from filelock import FileLock
 
+from conftest import needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.digest import build_digest
 from ebook_watchlist.models import SourceFailure
@@ -203,7 +204,6 @@ def test_the_gate_gets_the_sources_from_the_run(
         return echtes_tor(deltas, **kwargs)
 
     monkeypatch.setattr(run_modul.gate, "apply", beobachtet)
-    # Ohne Bewerter kommt `_apply_gate` gar nicht bis zum Tor.
     monkeypatch.setattr(run_modul, "build_rater", lambda modell: object())
 
     assert main([]) == EXIT_OK
@@ -521,3 +521,149 @@ def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
     # Der Titel ohne eigene Selbstauskunft faellt ueber die Autorenschaft weg;
     # was die Leserin selbst benannt hat, bleibt.
     assert bleibt == [echt, eigener]
+
+
+# --- das Tor im Lauf urteilt im Code (#48) ---------------------------------
+
+
+def _finds():
+    from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
+
+    def find(number: str) -> Delta:
+        return Delta(
+            DeltaKind.FIRST_SEEN,
+            Observation(
+                source="beam", source_item_id=number, title=f"Fund {number}",
+                match_reason=MatchReason.GENRE_CATEGORY, isbn=f"97800000000{number}",
+            ),
+            None,
+        )
+
+    return find("1"), find("2")
+
+
+def _portraits(vocabulary, by_title):
+    from ebook_watchlist.portrait import Portrait, Trait, fingerprint
+
+    def portrayer(observation):
+        terms = by_title[observation.title]
+        return Portrait(
+            known=True, fingerprint=fingerprint(vocabulary), pitch="Ein Buch.",
+            traits=tuple(Trait(t, f"Satz zu {t}", "wissen") for t in terms),
+        )
+
+    return portrayer
+
+
+def _profile(store):
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.facets import Facet, Liked, ReadingProfile
+
+    store.put_reading_profile(
+        load_settings().slug,
+        ReadingProfile(
+            facets=(Facet(("brooding", "harsh"), ("Leichenblässe", "Sharp Objects")),),
+            counterweights=(),
+            liked=(Liked("brooding"), Liked("harsh")),
+        ),
+        cause="Test", now=datetime(2026, 9, 24, 12, 0),
+    )
+
+
+@needs_vocabulary
+def test_the_run_judges_finds_from_the_profile_in_the_database(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ebook_watchlist import run as run_modul
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.portrait import load_vocabulary
+
+    store, settings = Store(paths.db_path()), load_settings()
+    _profile(store)
+    vocabulary = load_vocabulary()
+    good, poor = _finds()
+    portrayer = _portraits(
+        vocabulary, {"Fund 1": ("brooding", "gritty"), "Fund 2": ("leisurely", "lyrical")}
+    )
+    monkeypatch.setattr(run_modul, "build_rater", lambda modell: object())
+    monkeypatch.setattr(run_modul, "_portrayer", lambda rater, vocab: portrayer)
+
+    kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
+
+    assert kept == [good]
+    assert (report.held_back, report.rated, report.threshold) == (1, 2, 3)
+    assert report.judgements[good.current.key].stars >= 4
+
+
+@needs_vocabulary
+def test_the_run_without_a_profile_judges_nothing_and_asks_nobody(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ebook_watchlist import run as run_modul
+    from ebook_watchlist.config import load_settings
+
+    def never(modell):
+        raise AssertionError("ohne Profil braucht es keinen Bewerter")
+
+    monkeypatch.setattr(run_modul, "build_rater", never)
+    store, settings = Store(paths.db_path()), load_settings()
+    deltas = list(_finds())
+
+    kept, report = run_modul._apply_gate(store, deltas, settings, datetime.now())
+
+    assert kept == deltas and report.no_profile
+
+
+@needs_vocabulary
+def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ebook_watchlist import run as run_modul
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.portrait import load_vocabulary
+    from ebook_watchlist.ratings import subject_of
+
+    store, settings = Store(paths.db_path()), load_settings()
+    _profile(store)
+    vocabulary = load_vocabulary()
+    good, poor = _finds()
+    described = _portraits(vocabulary, {"Fund 1": ("brooding", "gritty"),
+                                        "Fund 2": ("leisurely", "lyrical")})
+    store.put_portrait(subject_of(poor.current), described(poor.current),
+                       now=datetime.now())
+    monkeypatch.setattr(run_modul, "build_rater", lambda modell: None)
+
+    kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
+
+    assert kept == [good]
+    assert (report.held_back, report.unrated) == (1, 1)
+
+
+def test_the_model_hears_the_original_title_and_the_keywords(
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ein Buch, das das Modell nur unter dem englischen Titel kennt, bliebe
+    sonst unbekannt (#17)."""
+    from ebook_watchlist import run as run_modul
+    from ebook_watchlist.models import MatchReason, Observation
+
+    seen: list[tuple] = []
+    monkeypatch.setattr(
+        run_modul, "portray", lambda *args: seen.append(args) or "Steckbrief"
+    )
+    class Rater:
+        def ask(self, prompt, max_tokens):  # pragma: no cover - portray ist ersetzt
+            raise AssertionError
+
+    observation = Observation(
+        source="beam", source_item_id="7", title="Der Zeitenläufer", author="Blake Crouch",
+        match_reason=MatchReason.GENRE_CATEGORY, blurb="Ein Physiker.",
+        original_title="Dark Matter", keywords=("Space Opera", "Dune"),
+    )
+
+    assert run_modul._portrayer(Rater(), object())(observation) == "Steckbrief"
+
+    title, author, blurb, _, _ = seen[0]
+    assert title == "Der Zeitenläufer (Originaltitel: Dark Matter)"
+    assert author == "Blake Crouch"
+    assert blurb == "Ein Physiker.\nSchlagwörter: Space Opera, Dune"

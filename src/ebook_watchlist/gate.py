@@ -4,6 +4,11 @@ Das Tor sitzt zwischen der Meldelogik und dem Digest. Es läuft **nach** dem
 Snapshot: ein Ausfall kostet damit ein Urteil, nie Geschichte. Und es läuft
 **nach** der Preisregel, weil ein Buch zu bewerten, das ohnehin niemand zu
 sehen bekommt, Verschwendung wäre.
+
+Seit #48 urteilt der **Code**: das Modell legt zu einem neuen Fund einmal den
+Steckbrief an, alles Weitere rechnet :func:`judging.judge` aus Steckbrief und
+Leseprofil. Ein Fund ohne Urteil — kein Profil, kein Steckbrief, ein Buch, das
+das Modell nicht kennt — wird gezeigt und nie zurückgehalten (ADR 7).
 """
 
 from __future__ import annotations
@@ -12,70 +17,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .facets import ReadingProfile, Weights
+from .judging import Verdict, judge, readers_verdict
 from .models import Delta, DeltaKind, MatchReason, Observation
-from .rating import BATCH_SIZE, Rater, Rating, rate_in_batches
-from .ratings import (
-    BY_CONVERSATION,
-    BY_MODEL,
-    BY_READER,
-    VIA_RUN,
-    book_subject,
-    subject_of,
-)
+from .portrait import Portrait, Vocabulary, fingerprint
+from .rating import RatingUnavailable
+from .ratings import BY_READER, book_subject, subject_of
 from .store import Store
-
-
-def _judgement(store: Store, observation: Observation, subject: str, profile_version: int):
-    """Das Urteil, das für diesen Fund schon vorliegt — Mensch vor Maschine.
-
-    Was die Leserin selbst gesagt hat, schlägt jedes Modellurteil und verfällt
-    auch nicht mit einer neuen Profilversion (ADR 17). Danach die Urteile aus
-    dem Gespräch: Maschinenurteile wie die des Tors (#13), aber über ein Buch,
-    das sie besitzt — und wie jedes Maschinenurteil nur für die Profilfassung,
-    gegen die es fiel. Beide hängen am *Buch*, nicht am Fund, damit sie gelten,
-    egal über welche Quelle das Buch das nächste Mal hereinkommt. Nur das Tor
-    selbst schlüsselt am Fund.
-    """
-    if observation.book_id is not None:
-        of_book = book_subject(observation.book_id)
-        for origin in (BY_READER, BY_CONVERSATION):
-            stored = store.rating(of_book, profile_version, origin=origin)
-            if stored is not None:
-                return stored
-    return store.rating(subject, profile_version, origin=BY_MODEL)
-
-
-def _as_rating(row) -> Rating:
-    """Eine gespeicherte Zeile als Urteil — damit beide Wege dasselbe halten."""
-    return Rating(
-        stars=row.stars,
-        reason=row.reason,
-        confidence=row.confidence,
-        profile_version=row.profile_version,
-        pitch=row.pitch,
-        hits=row.hits,
-        misses=row.misses,
-    )
-
-
-def _decide(
-    rating: Rating, delta: Delta, threshold: int, kept: list[Delta], report: GateReport
-) -> None:
-    """Ob dieses Urteil den Fund durchlässt — die **einzige** Stelle dafür.
-
-    Erstsichtung und Preissturz haben das eine Weile getrennt entschieden, und
-    genau so entstand die offene Hintertür, die dieses Modul schon einmal
-    hatte. Ein zweites Mal ist es dieselbe Funktion.
-    """
-    if rating.withholds(threshold):
-        report.held_back += 1
-        return
-    if not rating.passes(threshold):
-        # Zu schwach, aber nur vermutet: gezeigt und mitgezählt, damit es im
-        # Digest steht statt still zu wirken (bewertungsschema.md, 3).
-        report.shown_unsure += 1
-    report.judgements[delta.current.key] = rating
-    kept.append(delta)
 
 
 @dataclass(slots=True)
@@ -87,175 +35,187 @@ class GateReport:
     """
 
     held_back: int = 0
+    #: Die Schwelle, gegen die entschieden wurde — der Tagesbericht nennt sie.
+    threshold: int = 0
+    #: Steckbriefe, die dieser Lauf angelegt hat.
     rated: int = 0
+    #: Urteile, die ein schon vorhandener Steckbrief oder die eigenen Sterne
+    #: der Leserin ohne Aufruf lieferten.
     reused: int = 0
+    #: Kein Urteil möglich — der Bewerter kam nicht durch, das Buch ist dem
+    #: Modell unbekannt, oder es ist keiner eingerichtet — und deshalb gezeigt.
     unrated: int = 0
     #: Über dem Budget und deshalb ungefragt durchgelassen — unbewertet und
     #: gezeigt, nie verworfen.
     over_budget: int = 0
-    #: Unter dem Schwellwert, aber nur vermutet — und deshalb gezeigt statt
-    #: zurückgehalten (bewertungsschema.md, 3).
-    shown_unsure: int = 0
+    #: Es gibt kein Leseprofil, und der Lauf hatte Funde: nichts wurde
+    #: geurteilt, und das soll dastehen (ADR 33, Punkt 8).
+    no_profile: bool = False
     #: Das Urteil zu jedem durchgelassenen Fund, am Schlüssel der Beobachtung.
     #: Der Digest zeigt es: die Begründung ist der Grund, den ein Vorschlag
     #: mitbringt (ADR 19, Ticket 14).
-    judgements: dict[tuple[str, str], Rating] = field(default_factory=dict)
+    judgements: dict[tuple[str, str], Verdict] = field(default_factory=dict)
 
     @property
     def calls(self) -> int:
         return self.rated
 
 
-def unrated_report(deltas: list[Delta]) -> GateReport:
-    """Der Bericht für einen Lauf ohne Tor.
+def _readers_verdict(store: Store, observation: Observation, version: int) -> Verdict | None:
+    """Was die Leserin selbst gesagt hat, schlägt jede Rechnung (ADR 17)."""
+    if observation.book_id is None:
+        return None
+    stored = store.rating(book_subject(observation.book_id), version, origin=BY_READER)
+    return readers_verdict(stored.stars) if stored is not None else None
 
-    Eine Stelle für beide Wege dorthin — der Lauf zählte hier einmal *jedes*
-    Delta als unbewertet, auch Watchlist-Titel, die das Tor nie beurteilt
-    (Ticket 20).
+
+def _decide(
+    verdict: Verdict, delta: Delta, threshold: int, kept: list[Delta], report: GateReport
+) -> None:
+    """Ob dieses Urteil den Fund durchlässt — die **einzige** Stelle dafür.
+
+    Erstsichtung und Preissturz haben das eine Weile getrennt entschieden, und
+    genau so entstand die offene Hintertür, die dieses Modul schon einmal
+    hatte. Ein zweites Mal ist es dieselbe Funktion.
     """
-    return GateReport(unrated=sum(1 for delta in deltas if _is_discovery(delta)))
+    if verdict.withholds(threshold):
+        report.held_back += 1
+        return
+    report.judgements[delta.current.key] = verdict
+    kept.append(delta)
 
 
 def apply(
     deltas: list[Delta],
     *,
     store: Store,
-    rater: Rater | None,
-    profile_version: int,
+    profile: ReadingProfile | None,
+    vocabulary: Vocabulary,
+    weights: Weights,
+    portrayer: Callable[[Observation], Portrait] | None,
     threshold: int,
     budget: int,
     now: datetime,
-    batch_size: int = BATCH_SIZE,
     evidence: Callable[[list[Observation]], list[Observation]] | None = None,
 ) -> tuple[list[Delta], GateReport]:
     """Entdeckungen unter dem Schwellwert aussortieren.
 
-    Ohne Bewerter passiert nichts — das ist der Zustand ohne Schlüssel, und er
-    ist ausdrücklich erlaubt: gezeigt wird dann alles, was die Preisregel
-    durchgelassen hat.
+    Ohne Profil wird nicht geurteilt: alles bleibt, und der Bericht sagt es.
+    Ohne ``portrayer`` (kein Schlüssel, keine Anmeldung) urteilt das Tor über
+    die Funde, die schon einen Steckbrief haben; der Rest wird gezeigt.
 
-    ``budget`` begrenzt die *Bücher* eines Laufs, nicht die Aufrufe. Der erste
-    Lauf trifft einen Rückstand von dreihundert Entdeckungen, und die alle am
-    Stück abzufeuern widerspräche derselben Zurückhaltung, die jede andere
-    ausgehende Anfrage in diesem Projekt bindet (ADR 7). Ein gespeichertes
-    Urteil kostet nichts und zählt deshalb nicht mit.
+    ``budget`` begrenzt die *Steckbriefe* eines Laufs. Der erste Lauf trifft
+    einen Rückstand von dreihundert Entdeckungen, und die alle am Stück
+    abzufeuern widerspräche derselben Zurückhaltung, die jede andere
+    ausgehende Anfrage in diesem Projekt bindet (ADR 7). Ein vorhandener
+    Steckbrief kostet nichts und zählt nicht mit.
 
     ``evidence`` holt den ganzen Klappentext für genau die Bücher, die
-    gleich beurteilt werden — der Lauf reicht dafür seine Quellen herein, das
-    Tor kennt keine. Ohne das urteilte es auf dem Anriss der Trefferliste: im
-    Median 197 Zeichen und zu 85 % abgeschnitten, während die Detailseite rund
-    das Zehnfache trägt. Der Rückstands-Schritt lädt ihn längst nach; hier tat
-    es niemand, und dieselbe Frage bekam zwei verschieden gute Antworten.
+    gleich beschrieben werden: die Kachel einer Trefferliste ist im Median
+    197 Zeichen lang und zu 85 % abgeschnitten, ein Steckbrief daraus bliebe
+    für immer dünn. Die Quellen reicht der Lauf herein, das Tor kennt keine.
     """
-    report = GateReport()
-    if rater is None:
-        return deltas, unrated_report(deltas)
+    if profile is None:
+        return deltas, GateReport(
+            threshold=threshold, no_profile=any(_is_discovery(d) for d in deltas)
+        )
 
-    # Erst sammeln, wer ein frisches Urteil braucht, dann gebündelt fragen.
-    # Einzeln zu fragen schickte Profil und Verfahren je Buch erneut mit — sie sind
-    # der weitaus größte Teil des Prompts (Ticket 12).
-    #
-    # Das Budget zählt weiterhin *Bücher*, nicht Aufrufe: sonst hiesse "40"
-    # plötzlich achthundert.
-    wanted = [
-        delta.current
-        for delta in deltas
-        if _is_discovery(delta)
-        and _judgement(store, delta.current, subject_of(delta.current), profile_version) is None
-    ][:budget]
-    # Der Schluessel bleibt der der Sichtung: nachgeladen wird der Text, nicht
-    # die Nummer. Zugeordnet wird trotzdem ueber den Schluessel statt ueber die
-    # Reihenfolge — ein Rueckruf, der filtert oder umsortiert, verschoebe sonst
-    # `attempted` gegen `fresh`, und das Tor zaehlte Buecher als gefragt, die
-    # nie beurteilt wurden.
-    attempted = {observation.key for observation in wanted}
-    if wanted and evidence is not None:
-        # Seit #17 auch Leseprobe, Schlagwoerter und Originaltitel.
-        voller = {observation.key: observation for observation in evidence(wanted)}
-        wanted = [voller.get(observation.key, observation) for observation in wanted]
-    fresh = rate_in_batches(rater, wanted, size=batch_size) if wanted else {}
+    report = GateReport(threshold=threshold)
+    stamp = fingerprint(vocabulary)
+    portraits: dict[tuple[str, str], Portrait] = {}
+    created: set[tuple[str, str]] = set()
+    attempted: set[tuple[str, str]] = set()
+
+    # Erst sammeln, wer einen Steckbrief braucht, dann fragen — je Buch einmal.
+    wanted: list[Observation] = []
+    for delta in deltas:
+        if not _is_discovery(delta):
+            continue
+        observation = delta.current
+        if _readers_verdict(store, observation, profile.version) is not None:
+            continue
+        existing = store.portrait(subject_of(observation), stamp)
+        if existing is not None:
+            portraits[observation.key] = existing
+        elif observation.key not in {o.key for o in wanted}:
+            wanted.append(observation)
+
+    if portrayer is not None:
+        wanted = wanted[:budget]
+        attempted = {observation.key for observation in wanted}
+        described = wanted
+        if wanted and evidence is not None:
+            # Der Schlüssel bleibt der der Sichtung: nachgeladen wird der Text,
+            # nicht die Nummer. Zugeordnet wird über den Schlüssel, nicht über
+            # die Reihenfolge — ein Rückruf, der filtert oder umsortiert,
+            # verschöbe sonst die Antworten gegen die Bücher.
+            fuller = {o.key: o for o in evidence(wanted)}
+            described = [fuller.get(o.key, o) for o in wanted]
+        for observation, full in zip(wanted, described, strict=True):
+            try:
+                portrait = portrayer(full)
+            except RatingUnavailable:
+                continue
+            store.put_portrait(subject_of(observation), portrait, now=now)
+            portraits[observation.key] = portrait
+            created.add(observation.key)
+            report.rated += 1
 
     kept: list[Delta] = []
     for delta in deltas:
         if delta.current.match_reason is MatchReason.WATCHLIST:
-            # Von der Leserin selbst gewaehlt; sie gegen ihr eigenes Profil
-            # abzulehnen waere anmassend.
+            # Von der Leserin selbst gewählt; sie gegen ihr eigenes Profil
+            # abzulehnen wäre anmaßend.
             kept.append(delta)
             continue
 
-        subject = subject_of(delta.current)
+        observation = delta.current
+        verdict = _readers_verdict(store, observation, profile.version)
+        if verdict is None:
+            portrait = portraits.get(observation.key)
+            if portrait is None and delta.kind is not DeltaKind.FIRST_SEEN:
+                portrait = store.portrait(subject_of(observation), stamp)
+            verdict = judge(portrait, profile, vocabulary, weights)
 
-        if delta.kind is not DeltaKind.FIRST_SEEN:
-            # Ein Preissturz kostet nie ein neues Urteil — aber das vorhandene
-            # gilt weiter. Vorher lief er am Tor vorbei, und ein Buch, das mit
-            # einem Stern zurueckgehalten worden war, meldete sich beim
-            # naechsten Nachlass doch: streng an der Vordertuer, offen an der
-            # Hintertuer.
-            stored = _judgement(store, delta.current, subject, profile_version)
-            if stored is None:
-                kept.append(delta)
-                continue
-            report.reused += 1
-            _decide(_as_rating(stored), delta, threshold, kept, report)
-            continue
-
-        # Ein vorhandenes Urteil - auch das der Leserin - erspart den Aufruf.
-        stored = _judgement(store, delta.current, subject, profile_version)
-        if stored is not None:
-            report.reused += 1
-            rating = Rating(
-                stars=stored.stars,
-                reason=stored.reason,
-                confidence=stored.confidence,
-                profile_version=stored.profile_version,
-            )
-        elif delta.current.key not in attempted:
-            # Ueber dem Budget und deshalb gar nicht erst gefragt: der Rest
-            # wartet auf den naechsten Lauf und wird solange gezeigt.
-            # Uebersprungen heisst unbewertet, nicht aussortiert — sonst
-            # verschluckte ausgerechnet das Sparen die Neuzugaenge.
-            report.over_budget += 1
+        if verdict is None:
+            if delta.kind is DeltaKind.FIRST_SEEN:
+                if (
+                    observation.key in portraits
+                    or observation.key in attempted
+                    or portrayer is None
+                ):
+                    # Gefragt, aber ohne Antwort (kein Netz, unlesbare Antwort),
+                    # dem Modell unbekannt, oder es ist kein Bewerter
+                    # eingerichtet: unbewertet und trotzdem gezeigt — ein Tor,
+                    # das im Zweifel schließt, verschluckt Neuzugänge.
+                    report.unrated += 1
+                else:
+                    # Über dem Budget und deshalb gar nicht erst gefragt: der
+                    # Rest wartet auf den nächsten Lauf und wird solange
+                    # gezeigt.
+                    report.over_budget += 1
+            # Ein Preissturz ohne Urteil bleibt, wie er ist: er kostet nie
+            # einen neuen Steckbrief.
             kept.append(delta)
             continue
-        else:
-            judged = fresh.get(delta.current.key)
-            if judged is None:
-                # Gefragt, aber ohne Antwort: kein Schluessel, kein Netz, eine
-                # unlesbare Zeile im Buendel. Das Buch bleibt unbewertet und
-                # wird trotzdem gezeigt — ein Tor, das im Zweifel schliesst,
-                # verschluckt Neuzugaenge stillschweigend.
-                report.unrated += 1
-                kept.append(delta)
-                continue
-            rating = judged
-            report.rated += 1
-            store.put_rating(
-                subject,
-                stars=rating.stars,
-                confidence=rating.confidence,
-                reason=rating.reason,
-                profile_version=rating.profile_version,
-                now=now,
-                origin=BY_MODEL,
-                pitch=rating.pitch,
-                via=VIA_RUN,
-                hits=rating.hits,
-                misses=rating.misses,
-                model_stars=rating.model_stars,
-                deductions=rating.deductions,
-            )
 
-        _decide(rating, delta, threshold, kept, report)
+        # Ein Preissturz wird am vorhandenen Urteil gemessen. Vorher lief er am
+        # Tor vorbei, und ein Buch, das zurückgehalten worden war, meldete sich
+        # beim nächsten Nachlass doch: streng an der Vordertür, offen an der
+        # Hintertür.
+        if observation.key not in created:
+            report.reused += 1
+        _decide(verdict, delta, threshold, kept, report)
     return kept, report
 
 
 def _is_discovery(delta: Delta) -> bool:
-    """Die Erstsichtung einer Entdeckung — das, wofür ein Modell gefragt wird.
+    """Die Erstsichtung einer Entdeckung — das, wofür ein Steckbrief gebraucht wird.
 
     Ein Watchlist-Titel wurde von der Leserin selbst gewählt; ihn gegen ihr
-    eigenes Profil abzulehnen wäre anmassend. Ein Preissturz wird ebenfalls
-    nicht *bewertet* — aber er wird sehr wohl am vorhandenen Urteil gemessen,
-    und das tut :func:`apply` an seiner eigenen Stelle.
+    eigenes Profil abzulehnen wäre anmaßend. Ein Preissturz wird ebenfalls
+    nicht *beschrieben* — aber er wird sehr wohl am vorhandenen Urteil
+    gemessen, und das tut :func:`apply` an seiner eigenen Stelle.
     """
     return (
         delta.kind is DeltaKind.FIRST_SEEN

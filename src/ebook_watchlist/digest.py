@@ -12,8 +12,8 @@ from datetime import datetime
 
 from .config import Settings
 from .deals import deal_flags
+from .judging import Verdict
 from .models import Attention, Delta, DeltaKind, MatchReason, SourceFailure
-from .rating import Rating, confidence_label
 from .reasons import why_shown
 
 SECTION_LIBRARY = "Bibliothek"
@@ -43,6 +43,8 @@ class DigestEntry:
     #: Das Urteil des Bewertungstors, ausgeschrieben. Gespeichert und nie
     #: gezeigt war es nachprüfbar für niemanden (ADR 19, Ticket 20).
     judgement: str | None = None
+    #: Der Kurztext aus dem Steckbrief — warum dieses Buch, in einem Satz.
+    pitch: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,20 +65,18 @@ class GateNote:
     threshold: int = 0
     #: Über dem Budget: nicht bewertet, aber gezeigt.
     over_budget: int = 0
-    #: Der Bewerter kam nicht durch — kein Schlüssel, keine Anmeldung, eine
-    #: Zeitüberschreitung, eine unlesbare Antwort. Das Buch wird gezeigt, und
-    #: **das muss dastehen**: ein Tor, das für jedes Buch scheitert, sieht sonst
-    #: aus wie ein Tag ohne Rückhalt statt wie ein Defekt.
+    #: Kein Urteil möglich — der Bewerter kam nicht durch (kein Schlüssel, keine
+    #: Anmeldung, eine Zeitüberschreitung, eine unlesbare Antwort) oder das Buch
+    #: ist dem Modell unbekannt. Das Buch wird gezeigt, und **das muss
+    #: dastehen**: ein Tor, das für jedes Buch scheitert, sieht sonst aus wie
+    #: ein Tag ohne Rückhalt statt wie ein Defekt.
     unrated: int = 0
-    #: Unter dem Schwellwert, aber nur vermutet — und deshalb gezeigt. Ein
-    #: vermutetes Urteil darf nichts zurückhalten (bewertungsschema.md, 3).
-    shown_unsure: int = 0
+    #: Es gibt noch kein Leseprofil: nichts wurde geurteilt (ADR 33, Punkt 8).
+    no_profile: bool = False
 
     @property
     def is_worth_saying(self) -> bool:
-        return bool(
-            self.held_back or self.over_budget or self.unrated or self.shown_unsure
-        )
+        return bool(self.held_back or self.over_budget or self.unrated or self.no_profile)
 
     @property
     def text(self) -> str:
@@ -97,10 +97,10 @@ class GateNote:
                 f"{self.unrated} konnten nicht bewertet werden und werden "
                 "ungeprüft gezeigt"
             )
-        if self.shown_unsure:
+        if self.no_profile:
             parts.append(
-                f"{self.shown_unsure} lagen darunter, ruhten aber nur auf "
-                "Vermutung und werden deshalb gezeigt"
+                "noch kein Leseprofil, Vorschläge unbewertet — "
+                "erst die Erstaufnahme machen"
             )
         return "Bewertungstor: " + ", ".join(parts)
 
@@ -141,19 +141,27 @@ _SECTION_BY_REASON = {
 }
 
 
-def _judgement_text(rating: Rating | None) -> str | None:
-    """Maschinensterne bleiben als solche erkennbar (ADR 17): eine 4 vom Modell
-    ist ein Vorschlag, eine 4 der Leserin eine Tatsache."""
-    if rating is None:
+def _judgement_text(verdict: Verdict | None) -> str | None:
+    """Gerechnete Sterne bleiben als solche erkennbar (ADR 17): eine 4 aus der
+    Rechnung ist ein Vorschlag, eine 4 der Leserin eine Tatsache."""
+    if verdict is None:
         return None
-    stars = "★" * rating.stars + "☆" * (5 - rating.stars)
-    return f"Bewertung {stars} ({confidence_label(rating.confidence)}): {rating.reason}"
+    stars = "★" * verdict.stars + "☆" * (5 - verdict.stars)
+    if verdict.by_reader:
+        return f"Deine Sterne {stars}"
+    marks = [
+        f"dagegen: {r.text}" if r.kind == "dagegen" else r.text
+        for r in verdict.reasons
+        if r.kind in ("ganz", "merkmal", "muster", "dagegen")
+    ]
+    text = f"Übereinstimmung {stars} {verdict.percent} %"
+    return f"{text} — {', '.join(marks)}" if marks else text
 
 
 def _entry_for(
     delta: Delta,
     settings: Settings | None,
-    judgements: dict[tuple[str, str], Rating],
+    judgements: dict[tuple[str, str], Verdict],
     advantage_of=None,
 ) -> tuple[str, DigestEntry]:
     current, previous = delta.current, delta.previous
@@ -195,6 +203,7 @@ def _entry_for(
         flags=flags,
         url=current.url,
         judgement=_judgement_text(judgements.get(current.key)),
+        pitch=(verdict.pitch if (verdict := judgements.get(current.key)) else None),
     )
 
 
@@ -207,7 +216,7 @@ def build_digest(
     failures: list[SourceFailure],
     attention: list[Attention] | None = None,
     settings: Settings | None = None,
-    judgements: dict[tuple[str, str], Rating] | None = None,
+    judgements: dict[tuple[str, str], Verdict] | None = None,
     gate: GateNote | None = None,
     advantage_of=None,
 ) -> Digest:

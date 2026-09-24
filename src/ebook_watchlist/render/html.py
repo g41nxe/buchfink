@@ -44,6 +44,8 @@ def _entry_html(entry: DigestEntry) -> str:
     line = " · ".join(bits)
     if entry.judgement:
         line += f'<div class="judgement">{escape(entry.judgement)}</div>'
+    if entry.pitch:
+        line += f'<div class="judgement">{escape(entry.pitch)}</div>'
     return "<li>" + line + "</li>"
 
 

@@ -10,6 +10,8 @@ from ebook_watchlist.digest import (
     GateNote,
     build_digest,
 )
+from ebook_watchlist.facets import Reason
+from ebook_watchlist.judging import Verdict
 from ebook_watchlist.models import (
     Availability,
     Delta,
@@ -18,7 +20,6 @@ from ebook_watchlist.models import (
     Observation,
     SourceFailure,
 )
-from ebook_watchlist.rating import Rating
 from ebook_watchlist.render import render_html, render_text
 
 NOW = datetime(2026, 9, 4, 6, 0)
@@ -172,31 +173,46 @@ def test_the_digest_says_what_the_budget_left_unjudged() -> None:
     assert "ungeprüft gezeigt" in text
 
 
-def test_a_suggestion_carries_its_judgement() -> None:
-    """Sterne und Begründung waren gespeichert und für niemanden nachprüfbar
-    (ADR 19, Ticket 14)."""
+def test_a_suggestion_carries_its_verdict() -> None:
+    """Sterne, Prozent und Begründung waren gespeichert und für niemanden
+    nachprüfbar (ADR 19, Ticket 14); seit #48 rechnet sie der Code."""
     delta = discovered()
-    judgement = Rating(
-        stars=4, reason="Achse D: isoliertes Setting", confidence="teils", profile_version=1
+    verdict = Verdict(
+        stars=4,
+        percent=63,
+        reasons=(
+            Reason("ganz", "gezeichnete Figur · hart"),
+            Reason("beleg", "Sie trägt ein Geheimnis."),
+            Reason("dagegen", "gemächlich"),
+        ),
+        pitch="Ein Ermittler mit Vergangenheit.",
     )
-    digest = build(deltas=[delta], judgements={delta.current.key: judgement})
+    digest = build(deltas=[delta], judgements={delta.current.key: verdict})
 
     text = render_text(digest)
-    assert "★★★★☆" in text
-    assert "Achse D: isoliertes Setting" in text
-    assert "(teilweise belegt)" in text
-    assert "Achse D" in render_html(digest)
+    assert "Übereinstimmung ★★★★☆ 63 %" in text
+    assert "gezeichnete Figur · hart" in text and "dagegen: gemächlich" in text
+    assert "Sie trägt ein Geheimnis." not in text  # die Marken, nicht die Sätze
+    assert "Ein Ermittler mit Vergangenheit." in text
+    assert "gezeichnete Figur" in render_html(digest)
 
 
-def test_the_digest_says_when_a_book_was_shown_only_because_nobody_was_sure() -> None:
-    """Ein vermutetes Urteil hält kein Buch zurück (bewertungsschema.md, 3).
-    Die Regel muss sichtbar wirken, sonst sieht ein durchgelassener Fund aus wie
-    ein gutbewerteter."""
-    text = render_text(build(gate=GateNote(threshold=3, shown_unsure=4)))
+def test_her_own_stars_are_shown_as_hers() -> None:
+    delta = discovered()
+    digest = build(deltas=[delta], judgements={delta.current.key: Verdict(5, by_reader=True)})
 
-    assert "4" in text
-    assert "Vermutung" in text
+    assert "Deine Sterne ★★★★★" in render_text(digest)
+
+
+def test_the_digest_says_when_there_is_no_profile_yet() -> None:
+    """Ohne Profil wird nichts geurteilt (ADR 33, Punkt 8) — und das soll dastehen,
+    sonst sieht ein Stapel ohne Urteile aus wie ein Defekt."""
+    digest = build(gate=GateNote(threshold=3, no_profile=True))
+
+    assert not digest.is_empty
+    assert "noch kein Leseprofil" in render_text(digest)
+    assert "Erstaufnahme" in render_html(digest)
 
 
 def test_a_gate_note_about_nothing_stays_silent() -> None:
-    assert build(gate=GateNote(threshold=3, shown_unsure=0)).is_empty
+    assert build(gate=GateNote(threshold=3)).is_empty

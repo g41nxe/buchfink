@@ -109,6 +109,8 @@ class Weights:
     counterweight: float
     #: (Sterne, ab welcher Übereinstimmung), absteigend.
     stars_from: tuple[tuple[int, float], ...]
+    #: Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19).
+    gate_stars: int
 
     def liked(self, liked: Liked, pattern: bool) -> float:
         return (self.pattern if pattern else self.single) + (self.boost if liked.boosted else 0)
@@ -181,6 +183,7 @@ def load_weights(path: Path | None = None) -> Weights:
         pattern=float(section["erzaehlmuster"]),
         counterweight=float(section["gegengewicht"]),
         stars_from=tuple(tiers),
+        gate_stars=int(section["tor_ab_sternen"]),
     )
 
 

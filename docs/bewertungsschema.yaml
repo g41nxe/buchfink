@@ -321,8 +321,17 @@ urteil_aus_merkmalen:
   erzaehlmuster: 0.3
   # Nur das stärkste Gegengewicht zählt, und es zieht diesen Anteil ab.
   # Ablehnung wiegt beim Standardverfahren Rocchio etwa ein Fünftel der
-  # Zustimmung.
-  gegengewicht: 0.2
+  # Zustimmung; an den eigenen Büchern war das zu wenig (24.09.2026): "Der
+  # Schwarm", von der Leserin als enttäuschend genannt, kam mit 0,2 auf 47 %
+  # und damit durchs Tor. Ab etwa 0,33 fällt er unter drei Sterne; 0,35 lässt
+  # die gemochten Bücher unberührt. Mehrere Gegengewichte werden nicht
+  # summiert: die aus einem Buch zählten es sonst mehrfach.
+  gegengewicht: 0.35
+  # Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19,
+  # #48). Ein beliebiges Buch erreicht drei Sterne zu etwa 27 %, vier nur zu
+  # etwa 5 %; mit einer einzigen Facette hielte vier fast alles Neue zurück.
+  # Ein Fund ohne Urteil wird nie zurückgehalten.
+  tor_ab_sternen: 3
   # Ab welcher Übereinstimmung wie viele Sterne; darunter einer. Null Sterne
   # gibt es nur, wenn nichts Gemochtes getroffen ist und ein Gegengewicht trifft.
   sterne_ab:

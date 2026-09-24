@@ -15,6 +15,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import yaml
 from filelock import FileLock, Timeout
 
 from . import gate, paths
@@ -37,9 +38,11 @@ from .digest import GateNote, build_digest
 from .dismissals import dismissed_books
 from .dismissals import resolve as resolve_dismissals
 from .evidence import gather as gather_evidence
+from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
-from .rating import DEFAULT_THRESHOLD, RatingUnavailable, build_rater, load_leseprofil
+from .portrait import VocabularyError, load_vocabulary, portray
+from .rating import build_rater
 from .render import render_html, render_text
 from .seed import sow
 from .sources import build_sources
@@ -283,35 +286,58 @@ def _without_ai_authors(store: Store, deltas) -> list:
     return bleibt
 
 
-def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
-    """Entdeckungen gegen das Leseprofil pruefen (ADR 19).
+def _portrayer(rater, vocabulary):
+    """Der Weg zum Modell für einen Fund: einmal beschreiben, Merkmale vergeben.
 
-    Ohne Schluessel gibt es kein Tor — dann bleibt alles unbewertet und wird
-    gezeigt. Das ist der Zustand vor Ticket 12 und ausdruecklich erlaubt.
+    Titel und Klappentext gehen mit; wo es sie gibt, auch der Originaltitel und
+    die Schlagwörter (#17) — ein Buch, das das Modell nur unter dem englischen
+    Titel kennt, bliebe sonst unbekannt.
+    """
+
+    def portrayer(observation: Observation):
+        title = observation.title
+        if observation.original_title:
+            title += f" (Originaltitel: {observation.original_title})"
+        blurb = observation.blurb
+        if observation.keywords:
+            keywords = f"Schlagwörter: {', '.join(observation.keywords)}"
+            blurb = f"{blurb}\n{keywords}" if blurb else keywords
+        return portray(title, observation.author, blurb, rater.ask, vocabulary)
+
+    return portrayer
+
+
+def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
+    """Entdeckungen gegen das Leseprofil prüfen (ADR 19, ADR 33, #48).
+
+    Ohne Profil wird nicht geurteilt, und der Tagesbericht sagt es. Ohne
+    Schlüssel gibt es keine neuen Steckbriefe, aber was schon einen hat, wird
+    gerechnet — der Rest bleibt unbewertet und wird gezeigt.
 
     Die Quellen gehen mit, damit das Tor den ganzen Klappentext holen kann,
-    bevor es urteilt: die Kachel einer Trefferliste traegt im Median 197
+    bevor es beschreibt: die Kachel einer Trefferliste trägt im Median 197
     Zeichen und ist zu 85 % abgeschnitten, die Detailseite rund das Zehnfache.
-    Es sind hoechstens so viele Anfragen wie das Budget Buecher zulaesst, und
-    es sind dieselben, die der Rueckstands-Schritt sonst spaeter stellt.
+    Es sind höchstens so viele Anfragen wie das Budget Bücher zulässt.
     """
-    rater = build_rater(settings.rating_model)
-    if rater is None:
-        return deltas, gate.unrated_report(deltas)
     try:
-        _, version = load_leseprofil()
-    except RatingUnavailable as exc:
+        vocabulary = load_vocabulary()
+        weights = load_weights()
+    except (VocabularyError, OSError, KeyError, ValueError, yaml.YAMLError) as exc:
         print(f"Bewertung übersprungen: {exc}", file=sys.stderr)
-        return deltas, gate.unrated_report(deltas)
+        return deltas, gate.GateReport()
+
+    profile = store.reading_profile(settings.slug)
+    rater = build_rater(settings.rating_model) if profile is not None else None
 
     kept, report = gate.apply(
         deltas,
         store=store,
-        rater=rater,
-        profile_version=version,
-        threshold=DEFAULT_THRESHOLD,
+        profile=profile,
+        vocabulary=vocabulary,
+        weights=weights,
+        portrayer=_portrayer(rater, vocabulary) if rater is not None else None,
+        threshold=weights.gate_stars,
         budget=settings.rating_budget,
-        batch_size=settings.rating_batch_size,
         now=now,
         evidence=(
             lambda observations: gather_evidence(store, settings, observations, sources)
@@ -320,12 +346,12 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         else None,
     )
     if report.held_back or report.over_budget:
-        # Fuer das Log. Was die Leserin sehen muss, steht im Digest — stderr
+        # Für das Log. Was die Leserin sehen muss, steht im Digest — stderr
         # wirft ein Cron-Job weg (Ticket 20).
         print(
-            f"Bewertungstor: {report.held_back} unter {DEFAULT_THRESHOLD} Sternen "
+            f"Bewertungstor: {report.held_back} unter {report.threshold} Sternen "
             f"zurückgehalten, {report.over_budget} über dem Budget "
-            f"({report.rated} bewertet, {report.reused} aus dem Speicher)",
+            f"({report.rated} beschrieben, {report.reused} aus dem Speicher)",
             file=sys.stderr,
         )
     return kept, report
@@ -927,10 +953,10 @@ def _run(
         judgements=gate_report.judgements,
         gate=GateNote(
             held_back=gate_report.held_back,
-            threshold=DEFAULT_THRESHOLD,
+            threshold=gate_report.threshold,
             over_budget=gate_report.over_budget,
             unrated=gate_report.unrated,
-            shown_unsure=gate_report.shown_unsure,
+            no_profile=gate_report.no_profile,
         ),
     )
 

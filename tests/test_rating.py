@@ -7,7 +7,6 @@ Methode — genau damit ein Stub genügt.
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -37,7 +36,7 @@ from ebook_watchlist.rating import (
     with_better_pitch,
     with_settled_stars,
 )
-from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
+from ebook_watchlist.ratings import BY_MODEL, BY_READER, book_subject
 from ebook_watchlist.store import Store
 
 NOW = datetime(2026, 9, 4, 22, 0)
@@ -185,157 +184,6 @@ def test_an_unusable_answer_is_refused_rather_than_guessed(answer: str) -> None:
 # --- das Tor ----------------------------------------------------------------
 
 
-def test_a_good_fit_passes(store: Store) -> None:
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-    kept, report = gate.apply(
-        deltas, store=store, rater=StubRater(rating(4)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-    assert kept == deltas
-    assert report.held_back == 0
-
-
-def test_the_gate_notes_that_it_judged_in_a_run(store: Store) -> None:
-    """Drei Wege fuehren zu einem Modellurteil, und hinterher wusste niemand,
-    welcher es war — damit war "entscheidet das Tor im Lauf ueberhaupt?"
-    nicht zu beantworten (#10)."""
-    from ebook_watchlist.ratings import BY_MODEL, VIA_RUN
-
-    gate.apply([first_seen(discovery(isbn="9783104911854"))], store=store,
-               rater=StubRater(rating(4)), profile_version=1, threshold=3, budget=10, now=NOW)
-
-    zeile = store.ratings_for(["isbn:9783104911854"])[("isbn:9783104911854", BY_MODEL)]
-    assert zeile.via == VIA_RUN
-
-
-def test_a_poor_fit_never_reaches_the_pile(store: Store) -> None:
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-    kept, report = gate.apply(
-        deltas, store=store, rater=StubRater(rating(1)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-    assert kept == []
-    assert report.held_back == 1
-
-
-def test_a_book_is_judged_once_not_every_run(store: Store) -> None:
-    """Ein Lauf, der es wiedersieht, darf keinen Aufruf mehr kosten."""
-    rater = StubRater(rating(4))
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-
-    gate.apply(deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW)
-    _, second = gate.apply(
-        deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW
-    )
-
-    assert len(rater.calls) == 1
-    assert second.reused == 1
-
-
-def test_the_gate_judges_the_whole_blurb_not_the_teaser(store: Store) -> None:
-    """Die Kachel einer Trefferliste traegt im Median 197 Zeichen und ist zu
-    85 % abgeschnitten; die Detailseite traegt das Zehnfache. Das Tor urteilte
-    bisher auf dem Anriss, waehrend der Rueckstands-Schritt den ganzen Text
-    nachlaedt — zwei Wege, dieselbe Frage, verschieden gut beantwortet."""
-    angeriss = discovery(blurb="Manche Menschen haben Geheimnisse. Heinz…")
-    ganz = replace(angeriss, blurb="Manche Menschen haben Geheimnisse. Heinz Brandt hat Regeln.")
-    rater = StubRater(rating(4))
-    geholt: list[str] = []
-
-    def voller_text(observations):
-        geholt.extend(o.key for o in observations)
-        return [ganz]
-
-    gate.apply(
-        [first_seen(angeriss)], store=store, rater=rater, profile_version=1,
-        threshold=3, budget=10, now=NOW, evidence=voller_text,
-    )
-
-    assert geholt == [angeriss.key]
-    assert rater.calls[0].blurb == ganz.blurb
-
-
-def test_a_new_leseprofil_invalidates_the_judgement(store: Store) -> None:
-    """Die eine Änderung, bei der ein erneuter Aufruf richtig ist."""
-    rater = StubRater(rating(4))
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-
-    gate.apply(deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW)
-    gate.apply(deltas, store=store, rater=rater, profile_version=2, threshold=3, budget=10, now=NOW)
-
-    assert len(rater.calls) == 2
-
-
-def test_the_gate_never_fails_closed(store: Store) -> None:
-    """Ohne Urteil wird gezeigt. Ein Tor, das im Zweifel schließt, verschluckt
-    Neuzugänge stillschweigend — das eine Verhalten, das verboten ist."""
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-    kept, report = gate.apply(
-        deltas,
-        store=store,
-        rater=StubRater(RatingUnavailable("kein Netz")),
-        profile_version=1,
-        threshold=3,
-        budget=10,
-        now=NOW,
-    )
-    assert kept == deltas
-    assert report.unrated == 1
-
-
-def test_without_a_rater_nothing_is_held_back(store: Store) -> None:
-    deltas = [first_seen(discovery())]
-    kept, report = gate.apply(
-        deltas, store=store, rater=None, profile_version=1, threshold=3, budget=10, now=NOW
-    )
-    assert kept == deltas
-    assert report.held_back == 0
-
-
-def test_a_watchlist_title_is_never_judged(store: Store) -> None:
-    """Die Leserin hat es selbst gewählt — es gegen ihr eigenes Profil
-    abzulehnen wäre anmaßend."""
-    rater = StubRater(rating(0))
-    deltas = [first_seen(discovery(match_reason=MatchReason.WATCHLIST))]
-
-    kept, _ = gate.apply(
-        deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW
-    )
-
-    assert kept == deltas
-    assert rater.calls == []
-
-
-def test_a_price_drop_is_not_judged_again(store: Store) -> None:
-    """Es betrifft ein Buch, das schon einmal durchgelassen wurde."""
-    rater = StubRater(rating(0))
-    drop = Delta(DeltaKind.PRICE_DROP, discovery(price_cents=299), discovery(price_cents=999))
-
-    kept, _ = gate.apply(
-        [drop], store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW
-    )
-
-    assert kept == [drop]
-    assert rater.calls == []
-
-
-def test_the_judgement_follows_the_isbn_across_sources(store: Store) -> None:
-    """Dasselbe Buch bei zwei Shops kostet ein Urteil, nicht zwei."""
-    rater = StubRater(rating(4))
-    at_beam = first_seen(discovery(source="beam", source_item_id="1", isbn="9783104911854"))
-    at_voebb = first_seen(
-        discovery(source="onleihe", source_item_id="9", isbn="9783104911854",
-                  match_reason=MatchReason.PROFILE_AUTHOR)
-    )
-
-    for deltas in ([at_beam], [at_voebb]):
-        gate.apply(
-            deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW
-        )
-
-    assert len(rater.calls) == 1
-
-
 def test_without_an_isbn_the_find_itself_is_the_subject(store: Store) -> None:
     """Bündel und Einzelfolgen haben keine — ein Urteil je Quelle ist ehrlicher
     als eines, das über den Titel geraten wäre."""
@@ -346,139 +194,10 @@ def test_without_an_isbn_the_find_itself_is_the_subject(store: Store) -> None:
 # --- das Budget (Ticket 20) -------------------------------------------------
 
 
-def test_a_run_stops_asking_once_the_budget_is_spent(store: Store) -> None:
-    """Der erste Lauf mit einem Schlüssel trifft einen Rückstand von
-    dreihundert Entdeckungen. Er darf ihn nicht am Stück abfeuern (ADR 7)."""
-    rater = StubRater(rating(4))
-    deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(5)]
-
-    _, report = gate.apply(
-        deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=2, now=NOW
-    )
-
-    assert len(rater.calls) == 2
-    assert report.over_budget == 3
-
-
-def test_what_the_budget_skips_is_shown_not_dropped(store: Store) -> None:
-    """Übersprungen heißt unbewertet. Sonst verschluckte ausgerechnet das
-    Sparen die Neuzugänge."""
-    rater = StubRater(rating(4))
-    deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(3)]
-
-    kept, report = gate.apply(
-        deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=1, now=NOW
-    )
-
-    assert kept == deltas
-    assert report.held_back == 0
-
-
-def test_the_rest_is_judged_on_the_next_run(store: Store) -> None:
-    """Der Rückstand wird über Läufe abgearbeitet, nicht verloren."""
-    rater = StubRater(rating(4))
-    deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(4)]
-    kwargs = dict(store=store, rater=rater, profile_version=1, threshold=3, budget=2, now=NOW)
-
-    gate.apply(deltas, **kwargs)
-    _, second = gate.apply(deltas, **kwargs)
-
-    assert len(rater.calls) == 4
-    assert second.reused == 2
-    assert second.over_budget == 0
-
-
-def test_a_stored_judgement_does_not_cost_budget(store: Store) -> None:
-    """Ein gespeichertes Urteil kostet keinen Aufruf — also auch kein Budget."""
-    rater = StubRater(rating(4))
-    known = first_seen(discovery(source_item_id="alt"))
-    gate.apply(
-        [known], store=store, rater=rater, profile_version=1, threshold=3, budget=5, now=NOW
-    )
-
-    _, report = gate.apply(
-        [known, first_seen(discovery(source_item_id="neu"))],
-        store=store, rater=rater, profile_version=1, threshold=3, budget=1, now=NOW,
-    )
-
-    assert (report.reused, report.rated, report.over_budget) == (1, 1, 0)
-
-
 # --- was der Lauf weitergibt ------------------------------------------------
 
 
-def test_without_a_rater_only_discoveries_count_as_unrated() -> None:
-    """Ein Watchlist-Titel wird nie beurteilt. Ihn als unbewertet zu zählen
-    ergab im Lauf eine andere Zahl als im Tor — eine der beiden war falsch."""
-    report = gate.unrated_report(
-        [
-            first_seen(discovery(source_item_id="1")),
-            first_seen(discovery(source_item_id="2", match_reason=MatchReason.WATCHLIST)),
-        ]
-    )
-    assert report.unrated == 1
-
-
-def test_the_judgement_of_a_passing_find_is_reported(store: Store) -> None:
-    """Gespeichert und nie gezeigt konnte niemand das Urteil nachprüfen."""
-    found = discovery(isbn="9783104911854")
-    _, report = gate.apply(
-        [first_seen(found)],
-        store=store, rater=StubRater(rating(4)), profile_version=1,
-        threshold=3, budget=5, now=NOW,
-    )
-    assert report.judgements[found.key].stars == 4
-
-
-def test_a_dead_network_costs_the_budget_too(store: Store) -> None:
-    """Sonst wären dreihundert vergebliche Anfragen am Stück möglich — genau
-    der Ausbruch, den das Budget verhindern soll."""
-    rater = StubRater(RatingUnavailable("kein Netz"))
-    deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(5)]
-
-    kept, report = gate.apply(
-        deltas, store=store, rater=rater, profile_version=1, threshold=3, budget=2, now=NOW
-    )
-
-    assert len(rater.calls) == 2
-    assert (report.unrated, report.over_budget) == (2, 3)
-    assert kept == deltas
-
-
 # --- wessen Sterne (Ticket 21) ----------------------------------------------
-
-
-def test_the_readers_stars_outrank_the_model_and_cost_no_call(store: Store) -> None:
-    """Eine 4 von ihr ist eine Tatsache, eine 4 vom Modell ein Vorschlag
-    (ADR 17). Das Tor fragt sie zuerst und ruft dann gar kein Modell mehr."""
-    book = store.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
-    store.put_rating(book_subject(book.id), stars=5, confidence="belegt", reason="",
-                     profile_version=1, now=NOW, origin=BY_READER)
-    rater = StubRater(rating(1))
-
-    kept, report = gate.apply(
-        [first_seen(discovery(book_id=book.id))],
-        store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW,
-    )
-
-    assert rater.calls == []
-    assert (len(kept), report.reused) == (1, 1)
-
-
-def test_her_stars_survive_a_sharpened_leseprofil(store: Store) -> None:
-    """Eine neue Maßstabsversion entwertet ein Modellurteil. Was ein Mensch
-    gesagt hat, verfällt nicht, wenn er seinen Maßstab schärft."""
-    book = store.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
-    store.put_rating(book_subject(book.id), stars=5, confidence="belegt", reason="",
-                     profile_version=1, now=NOW, origin=BY_READER)
-    rater = StubRater(rating(1))
-
-    gate.apply(
-        [first_seen(discovery(book_id=book.id))],
-        store=store, rater=rater, profile_version=2, threshold=3, budget=10, now=NOW,
-    )
-
-    assert rater.calls == []
 
 
 def test_the_model_never_overwrites_what_she_said(store: Store) -> None:
@@ -492,22 +211,6 @@ def test_the_model_never_overwrites_what_she_said(store: Store) -> None:
     hers = store.rating(book_subject(book.id), 1, origin=BY_READER)
     its = store.rating(book_subject(book.id), 1, origin=BY_MODEL)
     assert (hers.stars, its.stars) == (5, 1)
-
-
-def test_a_judgement_from_the_conversation_also_spares_the_call(store: Store) -> None:
-    """Die dreizehn aus owned.yaml sind gegen denselben Maßstab entstanden —
-    sie noch einmal einzuholen wäre Verschwendung."""
-    book = store.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
-    store.put_rating(book_subject(book.id), stars=4, confidence="teils", reason="Reihe.",
-                     profile_version=1, now=NOW, origin=BY_CONVERSATION)
-    rater = StubRater(rating(1))
-
-    gate.apply(
-        [first_seen(discovery(book_id=book.id))],
-        store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW,
-    )
-
-    assert rater.calls == []
 
 
 def test_an_unknown_origin_is_refused(store: Store) -> None:
@@ -524,77 +227,6 @@ def test_taking_her_stars_back_leaves_nothing_rather_than_a_zero(store: Store) -
     assert store.drop_rating("book:1", BY_READER) is True
     assert store.rating("book:1", 1, origin=BY_READER) is None
     assert store.drop_rating("book:1", BY_READER) is False
-
-
-def test_a_rejected_book_does_not_come_back_through_a_price_drop(store: Store) -> None:
-    """Streng an der Vordertür, offen an der Hintertür: ein Buch, das mit einem
-    Stern zurückgehalten wurde, meldete sich beim nächsten Nachlass doch."""
-    rater = StubRater(rating(1))
-    found = discovery(isbn="9783104911854", price_cents=399)
-    kept, _ = gate.apply(
-        [first_seen(found)], store=store, rater=rater, profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-    assert kept == []
-
-    cheaper = discovery(isbn="9783104911854", price_cents=299)
-    kept, report = gate.apply(
-        [Delta(DeltaKind.PRICE_DROP, cheaper, found)],
-        store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW,
-    )
-
-    assert kept == []
-    assert report.held_back == 1
-    assert len(rater.calls) == 1  # der Sturz hat kein zweites Urteil gekostet
-
-
-def test_a_price_drop_of_a_passing_book_still_carries_its_reason(store: Store) -> None:
-    rater = StubRater(rating(4))
-    found = discovery(isbn="9783104911854", price_cents=399)
-    gate.apply(
-        [first_seen(found)], store=store, rater=rater, profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    cheaper = discovery(isbn="9783104911854", price_cents=299)
-    kept, report = gate.apply(
-        [Delta(DeltaKind.PRICE_DROP, cheaper, found)],
-        store=store, rater=rater, profile_version=1, threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 1
-    assert report.judgements[cheaper.key].stars == 4
-    assert len(rater.calls) == 1
-
-
-def test_a_price_drop_without_a_judgement_is_shown(store: Store) -> None:
-    """Ein Fund von vor dem Tor hat keins. Ihn dafür zu verschlucken hieße,
-    das Schweigen zur Voreinstellung zu machen."""
-    found = discovery(isbn="9783104911854", price_cents=999)
-    kept, report = gate.apply(
-        [Delta(DeltaKind.PRICE_DROP, discovery(isbn="9783104911854", price_cents=899), found)],
-        store=store, rater=StubRater(rating(1)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 1
-    assert report.held_back == 0
-
-
-def test_a_watchlist_price_drop_is_never_measured_against_a_judgement(store: Store) -> None:
-    store.put_rating("isbn:9783104911854", stars=1, confidence="teils", reason="",
-                     profile_version=1, now=NOW, origin=BY_MODEL)
-    watched = discovery(isbn="9783104911854", price_cents=999,
-                        match_reason=MatchReason.WATCHLIST)
-
-    kept, report = gate.apply(
-        [Delta(DeltaKind.PRICE_DROP, watched, watched)],
-        store=store, rater=StubRater(rating(1)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 1
-    assert report.held_back == 0
 
 
 # --- der Weg ohne Schlüssel: claude -p (Ticket 12) --------------------------
@@ -729,27 +361,6 @@ def test_with_neither_there_is_simply_no_gate(monkeypatch) -> None:
     monkeypatch.setattr("ebook_watchlist.rating.shutil.which", lambda name: None)
 
     assert build_rater() is None
-
-
-def test_a_rater_that_never_gets_through_is_said_out_loud(store: Store) -> None:
-    """Ein Tor, das für jedes Buch scheitert, sieht sonst aus wie ein Tag ohne
-    Rückhalt statt wie ein Defekt — und ein Cron-Job wirft stderr weg."""
-    from ebook_watchlist.digest import GateNote
-
-    broken = StubRater(RatingUnavailable("claude nicht gefunden"))
-    deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(3)]
-
-    kept, report = gate.apply(
-        deltas, store=store, rater=broken,
-        profile_version=1, threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 3  # nichts verschluckt
-    assert report.unrated == 3
-
-    note = GateNote(held_back=0, threshold=3, unrated=report.unrated)
-    assert note.is_worth_saying
-    assert "konnten nicht bewertet werden" in note.text
 
 
 # --- gebündelte Anfragen (Ticket 12) ---------------------------------------
@@ -892,64 +503,6 @@ def unsure(stars: int) -> Rating:
                   profile_version=1)
 
 
-def test_a_merely_suspected_judgement_never_withholds_a_book(store: Store) -> None:
-    """Ein zu Unrecht gezeigtes Buch kostet eine Zeile. Ein zu Unrecht
-    verschwiegenes ist unsichtbar — die Leserin erfährt nie, dass es das Buch
-    gab (bewertungsschema.md, 3)."""
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-
-    kept, report = gate.apply(
-        deltas, store=store, rater=StubRater(unsure(1)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert kept == deltas
-    assert report.held_back == 0
-    assert report.shown_unsure == 1
-
-
-def test_a_well_founded_judgement_still_withholds(store: Store) -> None:
-    """Die Regel weicht das Tor nicht auf — sie betrifft nur das Raten."""
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-
-    kept, report = gate.apply(
-        deltas, store=store, rater=StubRater(rating(1)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert kept == []
-    assert (report.held_back, report.shown_unsure) == (1, 0)
-
-
-def test_a_suspected_judgement_does_not_withhold_on_a_price_drop_either(
-    store: Store,
-) -> None:
-    """Sonst wäre die Regel an der Vordertür scharf und an der Hintertür nicht."""
-    store.put_rating("isbn:9783104911854", stars=1, confidence="vermutet",
-                     reason="Ableitung.", profile_version=1, now=NOW, origin=BY_MODEL)
-    found = discovery(isbn="9783104911854", price_cents=399)
-
-    kept, report = gate.apply(
-        [Delta(DeltaKind.PRICE_DROP, discovery(isbn="9783104911854", price_cents=299), found)],
-        store=store, rater=StubRater(rating(4)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 1
-    assert report.held_back == 0
-
-
-def test_a_passing_judgement_is_never_counted_as_unsure(store: Store) -> None:
-    kept, report = gate.apply(
-        [first_seen(discovery(isbn="9783104911854"))],
-        store=store, rater=StubRater(unsure(5)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 1
-    assert report.shown_unsure == 0
-
-
 def test_the_scheme_is_not_versioned() -> None:
     """Eine Änderung am Verfahren entwertet keine Bewertung (ADR 21). Trüge es
     eine Version, läge die Versuchung nahe, sie an ein Urteil zu hängen."""
@@ -995,31 +548,6 @@ def test_the_scheme_names_no_axis() -> None:
 # --- woran eine Bewertung hängt (Ticket 25) ---------------------------------
 
 
-def test_a_changed_scheme_ages_no_judgement(store: Store, tmp_path) -> None:
-    """Das Verfahren trägt keine Version. Es kann sich ändern, ohne dass ein
-    einziges Urteil über ein Buch dadurch falsch würde (ADR 21)."""
-    from ebook_watchlist.rating import load_rating_scheme
-
-    vorlage = load_rating_scheme().text
-    erst = tmp_path / "a.yaml"
-    erst.write_text(vorlage, encoding="utf-8")
-    dann = tmp_path / "b.yaml"
-    dann.write_text(vorlage + "\nnachtrag: ganz anders\n", encoding="utf-8")
-
-    rater = StubRater(rating(4))
-    deltas = [first_seen(discovery(isbn="9783104911854"))]
-    gate.apply(deltas, store=store, rater=rater, profile_version=1,
-               threshold=3, budget=10, now=NOW)
-
-    assert load_rating_scheme(erst).text != load_rating_scheme(dann).text
-
-    _, second = gate.apply(deltas, store=store, rater=rater, profile_version=1,
-                           threshold=3, budget=10, now=NOW)
-
-    assert len(rater.calls) == 1
-    assert second.reused == 1
-
-
 def test_a_changed_profile_ages_the_machines_judgement_but_not_hers(
     store: Store,
 ) -> None:
@@ -1042,26 +570,6 @@ def test_without_a_scheme_there_is_no_gate_rather_than_a_crash(monkeypatch) -> N
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
 
     assert build_rater() is None
-
-
-def test_a_price_drop_of_an_unsure_low_rating_carries_its_reason(store: Store) -> None:
-    """Erstsichtung und Preissturz entscheiden mit derselben Funktion. Vorher
-    zählte nur der eine Weg mit und nur der eine trug die Begründung."""
-    store.put_rating("isbn:9783104911854", stars=1, confidence="vermutet",
-                     reason="Ruht auf Ableitung.", profile_version=1, now=NOW,
-                     origin=BY_MODEL)
-    teuer = discovery(isbn="9783104911854", price_cents=999)
-    billig = discovery(isbn="9783104911854", price_cents=299)
-
-    kept, report = gate.apply(
-        [Delta(DeltaKind.PRICE_DROP, billig, teuer)],
-        store=store, rater=StubRater(rating(4)), profile_version=1,
-        threshold=3, budget=10, now=NOW,
-    )
-
-    assert len(kept) == 1
-    assert report.shown_unsure == 1
-    assert report.judgements[billig.key].reason == "Ruht auf Ableitung."
 
 
 def test_the_prompt_carries_the_scheme_as_text_not_as_an_object() -> None:

@@ -96,14 +96,16 @@ def gewichte():
     ("buch", "prozent", "sterne"),
     [
         # Seit #64 zählen gemochte Merkmale einzeln (0,1) statt als Teiltreffer
-        # einer Facette; jedes Urteil bleibt bei seinen Sternen.
+        # einer Facette; jedes Urteil bleibt bei seinen Sternen. Seit #48 wiegt das
+        # Gegengewicht 0,35 statt 0,2: Otherland, das in diesem Profil eines
+        # trifft, fällt von 67 auf 54 %, Herr der Ringe von 8 auf 6 %.
         (LEICHENBLAESSE, 97, 5),
         (LEOPARD, 87, 5),
         (CUPIDO, 85, 5),
-        (OTHERLAND, 67, 4),
+        (OTHERLAND, 54, 3),
         (DER_SCHWARM, 19, 1),
         (VON_ALLEM_EIN_BISSCHEN, 34, 2),
-        (HERR_DER_RINGE, 8, 1),
+        (HERR_DER_RINGE, 6, 1),
     ],
     ids=["Leichenblässe", "Leopard", "Cupido", "Otherland", "Der Schwarm",
          "von allem ein bisschen", "Herr der Ringe"],
@@ -204,7 +206,7 @@ def test_only_the_strongest_counterweight_counts(wort, gewichte) -> None:
     """Herr der Ringe trägt gemächlich und traurig — abgezogen wird einmal."""
     ergebnis = fit(HERR_DER_RINGE, PROFIL, wort, gewichte)
 
-    assert round(ergebnis.share, 2) == 0.08
+    assert round(ergebnis.share, 2) == 0.06
     assert ergebnis.against is not None
 
 
@@ -250,7 +252,14 @@ def test_the_reason_names_what_is_against(wort, gewichte) -> None:
 
 def test_the_weights_are_read_from_the_rating_scheme(gewichte) -> None:
     assert (gewichte.full, gewichte.single, gewichte.boost, gewichte.pattern,
-            gewichte.counterweight) == (0.8, 0.1, 0.1, 0.3, 0.2)
+            gewichte.counterweight) == (0.8, 0.1, 0.1, 0.3, 0.35)
+
+
+def test_the_gate_threshold_is_read_from_the_rating_scheme(gewichte) -> None:
+    """Ab wie vielen Sternen das Tor durchlässt (#48) — ein Wert des Schemas,
+    damit sich die Schwelle nach den ersten echten Funden ohne Codeänderung
+    anziehen lässt."""
+    assert gewichte.gate_stars == 3
 
 
 # --- ein Profil aus einer Datei -------------------------------------------------

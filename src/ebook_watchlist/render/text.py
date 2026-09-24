@@ -16,6 +16,8 @@ def _lines_for(entry: DigestEntry) -> list[str]:
     lines = ["  - " + " ".join(parts)]
     if entry.judgement:
         lines.append(f"    {entry.judgement}")
+    if entry.pitch:
+        lines.append(f"    {entry.pitch}")
     if entry.url:
         lines.append(f"    {entry.url}")
     return lines
