@@ -104,8 +104,6 @@ class Observation:
     keywords: tuple[str, ...] = ()
     #: Der Titel des Originals, bei einer Uebersetzung (DNB).
     original_title: str | None = None
-    #: Der Anfang des Buchs aus der Leseprobe.
-    sample: str | None = None
     #: Der Verlag, von der Detailseite oder aus der DNB (#28).
     publisher: str | None = None
 

@@ -25,10 +25,10 @@ def gather(store: Store, settings: Settings, observations, sources):
     Nur fuer die Buecher, die gleich ein Urteil bekommen; alles hier kostet
     Anfragen, und das Budget des Tors begrenzt, wie viele es sind.
 
-    Drei Belege neben dem Klappentext (#17): die Schlagwoerter der Detailseite,
-    die Leseprobe dahinter und was die DNB schon gesagt hat (Originaltitel,
-    Schlagwoerter des Verlags). Die DNB wird hier nicht gefragt — das tut der
-    Lauf an seiner eigenen Stelle, mit ihrem eigenen Budget.
+    Zwei Belege neben dem Klappentext (#17): die Schlagwoerter der Detailseite
+    und was die DNB schon gesagt hat (Originaltitel, Schlagwoerter des Verlags).
+    Die DNB wird hier nicht gefragt — das tut der Lauf an seiner eigenen Stelle,
+    mit ihrem eigenen Budget.
     """
     observations = _with_details(store, settings, observations, sources)
     dnb = store.dnb_facts(o.isbn for o in observations if o.isbn)
@@ -51,9 +51,10 @@ def gather(store: Store, settings: Settings, observations, sources):
 def _with_details(store: Store, settings: Settings, observations, sources):
     """Die Detailseite holen — eine Anfrage je Buch, und nur hier.
 
-    Fuer den ganzen Klappentext, die Schlagwoerter und die Leseprobe. Die
-    Probe wird gleich mitgeholt, solange die Quelle zur Hand ist: eine Anfrage
-    mehr, an dieselbe Quelle, mit derselben Hoeflichkeit.
+    Fuer den ganzen Klappentext und die Schlagwoerter. Die Leseprobe wird seit
+    #68 nicht mehr geholt: der Steckbrief liest sie nicht, und die Funde im Stapel
+    (Kleinverlage, Selbstverlag) tragen ohnehin keine — gemessen an acht von
+    acht. Trägt eine Quelle sie wieder, ist das ein neues Ticket.
 
     Angehängt statt überschrieben: der Snapshot wird nie umgeschrieben
     (ADR 5). Der Shop *hat* das gesagt, nur auf einer anderen Seite, und damit
@@ -62,18 +63,16 @@ def _with_details(store: Store, settings: Settings, observations, sources):
     keine erfundene.
 
     Frueher wurde nur geholt, was keinen ganzen Klappentext trug. Seit die
-    Seite auch Leseprobe und Schlagwoerter liefert, wird sie fuer jedes Buch
+    Seite auch Schlagwoerter liefert, wird sie fuer jedes Buch
     geholt, das beurteilt wird (#17) — ins Journal kommt sie nur, wenn sich
     Klappentext oder Titelbild geaendert haben.
     """
-    from .sample import fetch_opening
-
     by_name = {source.name: source for source in sources}
     offen = [o for o in observations if o.source in by_name]
     if not offen:
         return observations
 
-    print(f"{len(offen)} Detailseiten und Leseproben holen …")
+    print(f"{len(offen)} Detailseiten holen …")
     now = datetime.now()
     # Als Eintrag, nicht als Rundgang: die Beobachtungen brauchen eine Zeile
     # im Journal, aber diese Zeile darf nicht als *der* letzte Lauf gelten.
@@ -102,14 +101,6 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             continue
         if item is None:
             continue
-        probe = None
-        client = getattr(source, "client", None)
-        if item.sample_url and client is not None:
-            try:
-                probe = fetch_opening(client, item.sample_url)
-            except RateLimited:
-                print("Leseproben: die Quelle drosselt — Rest übersprungen", file=sys.stderr)
-                break
         # Die Detailseite traegt auch das groessere Titelbild (600x600 statt
         # 200x200 auf der Kachel). Sie ist schon geholt — es hier fallen zu
         # lassen hiesse, sie fuer dasselbe Bild ein zweites Mal zu holen.
@@ -119,7 +110,6 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             cover_url=item.cover_url or observation.cover_url,
             keywords=item.keywords,
             publisher=item.publisher,
-            sample=probe,
         )
         geholt[observation.key] = voller
         if (voller.blurb, voller.cover_url) != (observation.blurb, observation.cover_url):

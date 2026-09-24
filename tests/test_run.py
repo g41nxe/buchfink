@@ -436,11 +436,12 @@ def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> No
     assert bleibt == [gewollt]
 
 
-def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> None:
-    """Die Belege für den Bewerter (#17) kommen aus drei Ecken: Schlagwörter
-    und Leseprobe von der Detailseite, Originaltitel und weitere Schlagwörter
-    aus dem, was die DNB schon gesagt hat. Keine Anfrage an die DNB hier —
-    gefragt wird sie an ihrer eigenen Stelle im Lauf, mit ihrem Budget."""
+def test_the_portrayer_gets_keywords_and_original_title_but_no_sample(data_dir: Path) -> None:
+    """Die Belege für den Steckbrief (#17) kommen aus zwei Ecken: Schlagwörter
+    von der Detailseite, Originaltitel und weitere Schlagwörter aus dem, was die
+    DNB schon gesagt hat. Die Leseprobe wird seit #68 nicht mehr geholt — auch
+    nicht, wenn die Quelle einen Verweis darauf trägt. Keine Anfrage an die DNB
+    hier: gefragt wird sie an ihrer eigenen Stelle im Lauf, mit ihrem Budget."""
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_settings
     from ebook_watchlist.dnb import Record
@@ -448,7 +449,6 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.sources.base import Item
     from ebook_watchlist.store import Store
-    from test_sample import KAPITEL, epub
 
     store, settings = Store(paths.db_path()), load_settings()
     store.save_dnb(
@@ -458,9 +458,8 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
     )
 
     class Client:
-        def get_bytes(self, url: str) -> bytes:
-            assert url == "https://beam.invalid/probe.epub"
-            return epub(("k", "Eins. " + KAPITEL))
+        def get_bytes(self, url: str) -> bytes:  # pragma: no cover - darf nie gerufen werden
+            raise AssertionError(f"die Leseprobe wird nicht mehr geholt: {url}")
 
     class Quelle:
         name = "beam"
@@ -488,7 +487,6 @@ def test_the_rater_gets_sample_keywords_and_original_title(data_dir: Path) -> No
 
     assert belegt.keywords == ("Space Opera", "Dune", "Quantenphysik")
     assert belegt.original_title == "Dark Matter"
-    assert belegt.sample is not None and belegt.sample.startswith("Eins. Regen")
 
 
 def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:

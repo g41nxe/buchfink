@@ -584,17 +584,10 @@ vocabulary, in the Portrait prompt.
 
 What the Portrayer sees of a book beyond title, author and blurb, gathered right
 before a Portrait is made and never stored with the Observation: the
-**Keywords** and the original title of a translation (#17), and the full blurb.
+**Keywords** and the original title of a translation (#17), and the full blurb. The
+reading sample is no longer fetched (#68): the Portrait does not read it, and the
+finds on the pile, mostly small and self-publishers, carry none.
 Only books about to be described get it, because it costs requests.
-
-### Sample
-*deutsch: Leseprobe*
-
-The opening of the book itself, read from the EPUB sample that the shop and the
-library link on the detail page — the first couple of thousand words after the
-front matter. The only Evidence that shows *how* a book is written rather than
-what it promises. It is still gathered with the other Evidence, but the Portrayer
-does not read it yet (open, see the ticket on the sample).
 
 ### Keywords
 *deutsch: Schlagwörter*
