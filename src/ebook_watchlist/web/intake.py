@@ -46,12 +46,12 @@ from ..facets import (
 )
 from ..portrait import (
     Portrait,
+    PortrayalUnavailable,
     VocabularyError,
     fingerprint,
     load_vocabulary,
-    portray,
 )
-from ..rating import RatingUnavailable, build_rater
+from ..portrayer import build_portrayer
 from ..relations import RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait
@@ -200,12 +200,12 @@ def identify(store: Store, settings: Settings, entry_id: int, *, now: datetime) 
     subject = intake_subject(row.typed_title, row.typed_author)
     if store.portrait(subject, fingerprint(vocabulary)) is not None:
         return ""
-    rater = build_rater(settings.rating_model)
-    if rater is None:
-        return "Kein Bewerter eingerichtet: ohne Modell lässt sich kein Buch erkennen."
+    portrayer = build_portrayer(settings.rating_model, vocabulary)
+    if portrayer is None:
+        return "Kein Weg zum Modell: ohne Modell lässt sich kein Buch erkennen."
     try:
-        portrait = portray(row.typed_title, row.typed_author, None, rater.ask, vocabulary)
-    except RatingUnavailable as exc:
+        portrait = portrayer.portray(row.typed_title, row.typed_author, None)
+    except PortrayalUnavailable as exc:
         return str(exc)
     store.put_portrait(subject, portrait, now=now)
     return ""

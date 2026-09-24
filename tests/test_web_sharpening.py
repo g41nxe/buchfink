@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import needs_vocabulary
+from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile
@@ -94,7 +94,7 @@ def test_mag_ich_draws_the_portrait_it_needs(client, db, profil, monkeypatch) ->
             return json.dumps({"bekannt": True, "titel": "Neu", "autor": "A", "pitch": "x",
                                "merkmale": [{"id": "funny", "satz": "x", "beleg": "wissen"}]})
 
-    monkeypatch.setattr(view, "build_rater", lambda model: Stub())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(Stub()))
     b = db.find_or_create_book(isbn=None, title="Neu", author="A", now=NOW).id
 
     client.post(f"/book/{b}/relation", data={"kind": "liked", "active": "1"})
@@ -311,7 +311,7 @@ def test_a_failed_portrait_says_why_sharpening_waits(client, db, profil) -> None
     from test_web_book import steckbrief_abwarten
     body = steckbrief_abwarten(client, f"/book/{b}").split("data-nachschaerfen", 1)[1]
 
-    assert "Kein Bewerter" in body and "Sobald der Steckbrief" not in body
+    assert "Kein Weg zum Modell" in body and "Sobald der Steckbrief" not in body
 
 
 def test_after_a_change_the_page_jumps_back_to_the_section(client, db, profil) -> None:

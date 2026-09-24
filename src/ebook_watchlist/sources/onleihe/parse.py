@@ -57,7 +57,7 @@ class Detail:
     votes: int | None = None
     #: Der Klappentext. Kostet wie das Titelbild keine eigene Anfrage.
     blurb: str | None = None
-    #: Die Leseprobe als EPUB, fuer den Bewerter (#17).
+    #: Die Leseprobe als EPUB, fuer den `Portrayer` (#17).
     sample_url: str | None = None
     #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
     publisher: str | None = None

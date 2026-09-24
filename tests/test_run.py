@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from filelock import FileLock
 
-from conftest import needs_vocabulary
+from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.digest import build_digest
 from ebook_watchlist.models import SourceFailure
@@ -204,7 +205,7 @@ def test_the_gate_gets_the_sources_from_the_run(
         return echtes_tor(deltas, **kwargs)
 
     monkeypatch.setattr(run_modul.gate, "apply", beobachtet)
-    monkeypatch.setattr(run_modul, "build_rater", lambda modell: object())
+    monkeypatch.setattr(run_modul, "build_portrayer", portrayer_via(object()))
 
     assert main([]) == EXIT_OK
     assert gereicht == [True]
@@ -309,18 +310,18 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     vocabulary = load_vocabulary()
     asked: list[Observation] = []
 
-    def portray_find(observation, ask, vocab):
+    def portray_find(observation):
         asked.append(observation)
         traits = tuple(Trait(t, f"Satz zu {t}", "wissen") for t in ("quest", "adventure"))
         return Portrait(known=True, fingerprint=fingerprint(vocabulary), pitch="Neu.",
                         traits=traits)
 
-    class Rater:
-        def ask(self, prompt, max_tokens):  # pragma: no cover - portray_find ist ersetzt
-            raise AssertionError
-
-    monkeypatch.setattr(run_module, "build_rater", lambda model: Rater())
-    monkeypatch.setattr(run_module, "portray_find", portray_find)
+    monkeypatch.setattr(
+        run_module, "build_portrayer",
+        lambda model=None, vocabulary=None: SimpleNamespace(
+            vocabulary=vocabulary, portray_find=portray_find
+        ),
+    )
 
     assert main(["rate"]) == EXIT_OK
 
@@ -338,7 +339,7 @@ def test_describing_the_backlog_needs_a_profile(
     beschrieben, das sich nicht rechnen liesse."""
     from ebook_watchlist import run as run_module
 
-    monkeypatch.setattr(run_module, "build_rater", lambda model: object())
+    monkeypatch.setattr(run_module, "build_portrayer", portrayer_via(object()))
 
     assert main(["rate"]) == EXIT_CONFIG_ERROR
     assert "Leseprofil" in capsys.readouterr().err
@@ -590,13 +591,9 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
     portrayer = _portraits(
         vocabulary, {"Fund 1": ("brooding", "gritty"), "Fund 2": ("leisurely", "lyrical")}
     )
-    class Rater:
-        def ask(self, prompt, max_tokens):  # pragma: no cover - portray_find ist ersetzt
-            raise AssertionError
-
-    monkeypatch.setattr(run_modul, "build_rater", lambda modell: Rater())
     monkeypatch.setattr(
-        run_modul, "portray_find", lambda observation, ask, vocab: portrayer(observation)
+        run_modul, "build_portrayer",
+        lambda model=None, vocabulary=None: SimpleNamespace(portray_find=portrayer),
     )
 
     kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
@@ -613,10 +610,10 @@ def test_the_run_without_a_profile_judges_nothing_and_asks_nobody(
     from ebook_watchlist import run as run_modul
     from ebook_watchlist.config import load_settings
 
-    def never(modell):
-        raise AssertionError("ohne Profil braucht es keinen Bewerter")
+    def never(model=None, vocabulary=None):
+        raise AssertionError("ohne Profil braucht es keinen Steckbrief-Ersteller")
 
-    monkeypatch.setattr(run_modul, "build_rater", never)
+    monkeypatch.setattr(run_modul, "build_portrayer", never)
     store, settings = Store(paths.db_path()), load_settings()
     deltas = list(_finds())
 
@@ -642,7 +639,7 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
                                         "Fund 2": ("leisurely", "lyrical")})
     store.put_portrait(subject_of(poor.current), described(poor.current),
                        now=datetime.now())
-    monkeypatch.setattr(run_modul, "build_rater", lambda modell: None)
+    monkeypatch.setattr(run_modul, "build_portrayer", lambda model=None, vocabulary=None: None)
 
     kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
 

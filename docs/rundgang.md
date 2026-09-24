@@ -78,7 +78,7 @@ Lauf.
 > `403` ist genau die Antwort, mit der ein Shop einen Bot aussperrt.
 
 **7. Das Bewertungstor, dann der Tagesbericht.** Was die Preisregel durchgelassen hat,
-wird gegen dein Leseprofil geprüft. Übrig bleibt der Tagesbericht — Text auf die
+wird gegen dein Leseprofil gehalten: ein Modell beschreibt jeden neuen Fund einmal, den Rest rechnet der Code. Übrig bleibt der Tagesbericht — Text auf die
 Konsole, HTML nach `data/digests/`. Gibt es nichts zu sagen, sagt er nichts.
 
 ---
@@ -127,19 +127,24 @@ zu bekommen.
 
 *Gemessen:* entfernt 9 % — deutlich weniger, als beim Entwurf angenommen.
 
-### 3. Das Bewertungstor — **noch nie gelaufen**
+### 3. Das Bewertungstor — **noch nie gegen echte Funde gelaufen**
 
-Ein Modell bewertet jeden Fund von 0 bis 5 gegen dein schriftlich
-festgehaltenes Leseprofil ([`leseprofil.yaml`](leseprofil.yaml)), nach dem Verfahren
-aus dem [Bewertungsschema](bewertungsschema.yaml), und begründet das Urteil. Unter
-dem Schwellwert kommt sie nicht auf den Stapel — es sei denn, das Urteil ruht
-nur auf Vermutung, dann wird gezeigt statt verschwiegen. Höchstens 40 Urteile
-pro Lauf; gespeicherte kosten nichts.
+Ein Modell beschreibt jeden neuen Fund **einmal** mit Merkmalen aus einem festen
+Vokabular (der Steckbrief), und der **Code** rechnet daraus die Übereinstimmung
+mit deinem Leseprofil: Prozent, Sterne und eine Begründung aus Daten. Unter drei
+Sternen (die Schwelle steht im [Bewertungsschema](bewertungsschema.yaml)) kommt
+ein Fund nicht auf den Stapel. Ein Fund ohne Urteil — kein Profil, noch kein
+Steckbrief, ein Buch, das das Modell nicht kennt — wird gezeigt, nie
+verschwiegen. Höchstens 40 Steckbriefe pro Lauf; ein vorhandener kostet nichts,
+und eine neue Fassung deines Profils rechnet alles sofort neu, ohne das Modell
+zu fragen.
 
-Gebaut, getestet, eingebunden — und noch nie ausgeführt. Ein Schlüssel wird
-dafür nicht gebraucht: fehlt er, benutzt das Tor die lokal angemeldete
-Claude-Code-Installation. Alles, was über sein Verhalten gesagt wird, stammt aus
-Tests mit einem Stellvertreter, nicht aus Betrieb.
+Ohne Schlüssel benutzt das Tor die lokal angemeldete Claude-Code-Installation
+für neue Steckbriefe; wo es gar keinen Weg zum Modell gibt, urteilt es über
+die Funde, die schon einen Steckbrief haben. Den Rückstand eines ersten Laufs
+beschreibt `ebw rate` außerhalb des Laufbudgets. Alles, was über das Verhalten
+mit echten Funden gesagt wird, stammt aus Tests mit einem Stellvertreter, nicht
+aus Betrieb.
 
 ---
 
@@ -166,17 +171,18 @@ Auskunft.
 Interesse wird beim ersten Mal still angesät, sonst meldete eine frisch
 hinzugefügte Autorin ihre gesamte Backlist als Neuzugänge.
 
-**Urteil** — Sterne, Begründung und Sicherheit, gegen eine nummerierte Fassung
-deines Leseprofils. Wie geurteilt wird, steht getrennt davon im
-[Bewertungsschema](bewertungsschema.yaml) und ist nicht versioniert (ADR 21).
-Dazu die Herkunft, und die ist Teil des Schlüssels:
+**Urteil** — gespeichert wird nur, was ein Mensch sagt: deine eigenen Sterne und
+der Durchschnitt fremder Leser:innen. Was das Werkzeug selbst von einem Buch
+hält, wird aus Steckbrief und Leseprofil **gerechnet**, nie gespeichert; die
+Zahlen dafür stehen im [Bewertungsschema](bewertungsschema.yaml). Die Herkunft
+ist Teil des Schlüssels:
 
-> „Eine 4 von dir ist eine Tatsache. Eine 4 von einem Modell ist ein Vorschlag."
+> „Eine 4 von dir ist eine Tatsache. Eine fremde Durchschnittsnote sagt etwas über das Buch, nicht darüber, ob es zu dir passt."
 
-Deshalb stehen `reader`, `conversation` und `model` nebeneinander, überschreiben
+Deshalb stehen `reader` und `onleihe_readers` nebeneinander, überschreiben
 einander nie und sehen auf der Buchseite verschieden aus. Eine neue
-Profilversion entwertet Maschinenurteile — und nur die (ADR 17). Eine Änderung
-am Verfahren entwertet gar nichts.
+Profilversion entwertet nichts: deine Sterne bleiben, und die gerechnete
+Übereinstimmung ist sofort neu (ADR 33).
 
 Die zwei Regeln, die zählen: **die Aufzeichnung wird nur angehängt**, und **eine
 Buchzeile entsteht nur, wo du eine Beziehung hast**.
@@ -259,7 +265,7 @@ Ehrlicher Stand, damit dieser Rundgang nicht mehr verspricht, als es gibt. Die
 ausführliche Fassung mitsamt der Liste widerlegter Behauptungen steht in
 [`offene-punkte.md`](offene-punkte.md).
 
-- **Das Bewertungstor hat nie gelaufen.** Es braucht einen API-Schlüssel.
+- **Das Bewertungstor hat nie gegen echte Funde gerechnet.** Die Rechnung ist an deinen sieben Büchern und an Zufallsbüchern gemessen; ob die Schwelle von drei Sternen stimmt, zeigt erst ein echter Lauf.
 - **Es liegt kein einziges Titelbild da.** Der Weg steht, aber Bilder werden
   beim Lauf geholt, und seither lief keiner. Die Oberfläche zeigt durchweg
   Platzhalter.

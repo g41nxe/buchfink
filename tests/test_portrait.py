@@ -16,15 +16,15 @@ import pytest
 from conftest import needs_vocabulary
 from ebook_watchlist.portrait import (
     Portrait,
+    PortrayalUnavailable,
     Trait,
     VocabularyError,
     fingerprint,
     load_vocabulary,
     parse_answer,
-    portray,
     prompt,
 )
-from ebook_watchlist.rating import RatingUnavailable
+from ebook_watchlist.portrayer import Portrayer
 from ebook_watchlist.store import Store
 
 pytestmark = needs_vocabulary
@@ -255,21 +255,22 @@ def test_unknown_but_with_traits_is_a_violation() -> None:
 
 
 def test_no_json_is_no_portrait() -> None:
-    with pytest.raises(RatingUnavailable):
+    with pytest.raises(PortrayalUnavailable):
         parse_answer("Dazu kann ich nichts sagen.", load_vocabulary())
 
 
 # --- ein Aufruf -------------------------------------------------------------
 
 
-def test_portray_asks_once_and_reads_the_answer() -> None:
+def test_a_portrayer_asks_once_and_reads_the_answer() -> None:
     gefragt: list[str] = []
 
-    def ask(text: str, max_tokens: int) -> str:
-        gefragt.append(text)
-        return antwort()
+    class Leitung:
+        def ask(self, text: str, max_tokens: int = 2000) -> str:
+            gefragt.append(text)
+            return antwort()
 
-    bild = portray("Leopard", "Jo Nesbø", None, ask, load_vocabulary())
+    bild = Portrayer(Leitung(), load_vocabulary()).portray("Leopard", "Jo Nesbø", None)
 
     assert len(gefragt) == 1 and "Titel: Leopard" in gefragt[0]
     assert bild.known and len(bild.traits) == 6
@@ -430,25 +431,3 @@ def test_the_fingerprint_is_computed_once_per_vocabulary(monkeypatch) -> None:
     monkeypatch.setattr(type(wort), "prompt_text", lambda self: pytest.fail("neu gerechnet"))
 
     assert fingerprint(wort) == fingerprint(load_vocabulary())
-
-
-def test_a_find_is_described_with_its_original_title_and_keywords(monkeypatch) -> None:
-    """Ein Buch, das das Modell nur unter dem englischen Titel kennt, bliebe
-    sonst unbekannt (#17)."""
-    from ebook_watchlist import portrait as portrait_modul
-    from ebook_watchlist.models import MatchReason, Observation
-
-    seen: list[tuple] = []
-    monkeypatch.setattr(portrait_modul, "portray", lambda *args: seen.append(args) or "Steckbrief")
-    observation = Observation(
-        source="beam", source_item_id="7", title="Der Zeitenläufer", author="Blake Crouch",
-        match_reason=MatchReason.GENRE_CATEGORY, blurb="Ein Physiker.",
-        original_title="Dark Matter", keywords=("Space Opera", "Dune"),
-    )
-
-    assert portrait_modul.portray_find(observation, lambda p, n: "", object()) == "Steckbrief"
-
-    title, author, blurb, _, _ = seen[0]
-    assert title == "Der Zeitenläufer (Originaltitel: Dark Matter)"
-    assert author == "Blake Crouch"
-    assert blurb == "Ein Physiker.\nSchlagwörter: Space Opera, Dune"

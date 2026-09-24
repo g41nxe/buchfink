@@ -274,7 +274,7 @@ def create_app() -> FastAPI:
             return Report(trouble=book.portray(store, settings, key[1], now=now))
         return Report(trouble=discovery.portray(store, settings, key[1], key[2], now=now))
 
-    portrayer = Rechecker(work=_portray_work)
+    portrait_jobs = Rechecker(work=_portray_work)
 
     def _portrait_status(request: Request, key, url: str) -> Response:
         """Das Fragment neben *Steckbrief*, solange einer entsteht.
@@ -284,7 +284,7 @@ def create_app() -> FastAPI:
         der ganze Abschnitt. Solange er läuft, fragt die Seite alle zwei
         Sekunden nach (ADR 3, kein Websocket).
         """
-        job = portrayer.state(key)
+        job = portrait_jobs.state(key)
         if job is None or not job.busy:
             return Response(status_code=204, headers={"HX-Refresh": "true"})
         return TEMPLATES.TemplateResponse(
@@ -459,7 +459,7 @@ def create_app() -> FastAPI:
         # Und gleich ein Steckbrief dazu (#38, #48): das Tor beschreibt nur
         # Funde, und ein Watchlist-Titel ist keiner. Er ruht auf Titel und
         # Autor:in, denn mehr gibt es in dieser Sekunde nicht.
-        portrayer.start(("book", book_id))
+        portrait_jobs.start(("book", book_id))
         return RedirectResponse("/watchlist", status_code=303)
 
     @app.post("/watchlist/{book_id}/active")
@@ -742,7 +742,7 @@ def create_app() -> FastAPI:
                 "icons": symbols.RELATION_ICONS,
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
-                "portrait_job": portrayer.state(("book", book_id)),
+                "portrait_job": portrait_jobs.state(("book", book_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
                 "sharpening": sharpening.build(store, settings, book_id),
             },
@@ -755,7 +755,7 @@ def create_app() -> FastAPI:
         Im Hintergrund wie das Urteil. Gibt es schon einen, kostet der Klick
         keinen Aufruf: dasselbe Buch trägt immer denselben Steckbrief.
         """
-        portrayer.start(("book", book_id))
+        portrait_jobs.start(("book", book_id))
         return _portrait_status(request, ("book", book_id), f"/book/{book_id}/portrait")
 
     @app.get("/book/{book_id}/portrait")
@@ -836,7 +836,7 @@ def create_app() -> FastAPI:
             and kind in (str(RelationKind.LIKED), str(RelationKind.DISLIKED))
             and store.reading_profile(settings.slug) is not None
         ):
-            portrayer.start(("book", book_id))
+            portrait_jobs.start(("book", book_id))
         return RedirectResponse(f"/book/{book_id}", status_code=303)
 
     # --- Nachschärfen (#51) --------------------------------------------------
@@ -894,7 +894,7 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="keine Sternzahl") from None
         try:
             book.set_stars(
-                _store_for(paths.db_path()), book_id, value, now=datetime.now()
+                _store_for(paths.db_path()), load_settings(), book_id, value, now=datetime.now()
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -937,7 +937,7 @@ def create_app() -> FastAPI:
                 "page": page,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
-                "portrait_job": portrayer.state(("item", source, item_id)),
+                "portrait_job": portrait_jobs.state(("item", source, item_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
             },
         )
@@ -946,7 +946,7 @@ def create_app() -> FastAPI:
     def discovery_portray(request: Request, source: str, item_id: str) -> Response:
         """Einen Fund beschreiben lassen — derselbe Weg wie auf der Buchseite (#48)."""
         key = ("item", source, item_id)
-        portrayer.start(key)
+        portrait_jobs.start(key)
         return _portrait_status(request, key, f"/discovery/{source}/{item_id}/portrait")
 
     @app.get("/discovery/{source}/{item_id}/portrait")

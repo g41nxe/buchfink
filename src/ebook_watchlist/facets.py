@@ -42,7 +42,6 @@ from pathlib import Path
 import yaml
 
 from .portrait import Portrait, Vocabulary, load_vocabulary
-from .rating import SCHEME_PATH
 
 #: Wie viele Familien eine Facette mindestens braucht. Eine einzelne ist zu
 #: breit: im Versuch ließ "große Ideen" allein einen enttäuschenden
@@ -55,6 +54,11 @@ MOST_BOOSTED = 3
 
 class ProfileError(Exception):
     """Ein Profil widerspricht dem Vokabular oder den Regeln."""
+
+
+#: Die Gewichte, mit denen der Code urteilt — und nichts sonst (ADR 33). Sie
+#: nennen keinen Geschmack und gelten für jede Leserin gleich.
+SCHEME_PATH = Path(__file__).resolve().parents[2] / "docs" / "bewertungsschema.yaml"
 
 
 @dataclass(frozen=True, slots=True)

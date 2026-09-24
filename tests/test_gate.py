@@ -14,9 +14,14 @@ from conftest import needs_vocabulary
 from ebook_watchlist import gate
 from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
 from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
-from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
-from ebook_watchlist.rating import RatingUnavailable
-from ebook_watchlist.ratings import BY_CONVERSATION, BY_MODEL, BY_READER, book_subject
+from ebook_watchlist.portrait import (
+    Portrait,
+    PortrayalUnavailable,
+    Trait,
+    fingerprint,
+    load_vocabulary,
+)
+from ebook_watchlist.ratings import BY_READER, book_subject
 
 pytestmark = needs_vocabulary
 
@@ -195,7 +200,7 @@ def test_the_gate_never_fails_closed(store, vocabulary, weights) -> None:
     """Ohne Steckbrief wird gezeigt. Ein Tor, das im Zweifel schließt,
     verschluckt Neuzugänge stillschweigend — das eine verbotene Verhalten."""
     deltas = [first_seen(discovery(isbn="9783104911854"))]
-    broken = Portrayer(vocabulary, error=RatingUnavailable("kein Netz"))
+    broken = Portrayer(vocabulary, error=PortrayalUnavailable("kein Netz"))
 
     kept, report = run(store, vocabulary, weights, deltas, broken)
 
@@ -208,7 +213,7 @@ def test_a_rater_that_never_gets_through_is_said_out_loud(store, vocabulary, wei
     Rückhalt statt wie ein Defekt — und ein Cron-Job wirft stderr weg."""
     from ebook_watchlist.digest import GateNote
 
-    broken = Portrayer(vocabulary, error=RatingUnavailable("claude nicht gefunden"))
+    broken = Portrayer(vocabulary, error=PortrayalUnavailable("claude nicht gefunden"))
     deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(3)]
 
     kept, report = run(store, vocabulary, weights, deltas, broken)
@@ -320,7 +325,7 @@ def test_a_stored_portrait_does_not_cost_budget(store, vocabulary, weights) -> N
 def test_a_dead_network_costs_the_budget_too(store, vocabulary, weights) -> None:
     """Sonst wären dreihundert vergebliche Anfragen am Stück möglich — genau der
     Ausbruch, den das Budget verhindern soll."""
-    broken = Portrayer(vocabulary, error=RatingUnavailable("kein Netz"))
+    broken = Portrayer(vocabulary, error=PortrayalUnavailable("kein Netz"))
     deltas = [first_seen(discovery(source_item_id=str(n))) for n in range(5)]
 
     kept, report = run(store, vocabulary, weights, deltas, broken, budget=2)
@@ -372,22 +377,6 @@ def test_her_stars_survive_a_new_profile_version(store, vocabulary, weights) -> 
         profile=replace(PROFILE, version=7))
 
     assert portrayer.calls == []
-
-
-@pytest.mark.parametrize("origin", [BY_MODEL, BY_CONVERSATION])
-def test_the_old_machine_judgements_are_never_read(store, vocabulary, weights, origin) -> None:
-    """Sie tragen die Fassungsnummer des Prosa-Profils, und die hat das
-    Datenbankprofil zufällig auch (ADR 33, Nachtrag zu #48)."""
-    book = store.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
-    store.put_rating(book_subject(book.id), stars=0, confidence="belegt", reason="alt",
-                     profile_version=1, now=NOW, origin=origin)
-    portrayer = Portrayer(vocabulary, GOOD)
-
-    kept, _ = run(
-        store, vocabulary, weights, [first_seen(discovery(book_id=book.id))], portrayer
-    )
-
-    assert len(kept) == 1 and len(portrayer.calls) == 1
 
 
 # --- Preissturz -------------------------------------------------------------------

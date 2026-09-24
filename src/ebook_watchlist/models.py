@@ -96,7 +96,7 @@ class Observation:
     #: Nur gesetzt, wo eine Source die Reihe ausdrücklich benennt.
     series: str | None = None
     observed_at: datetime | None = None
-    # --- Belege fuer den Bewerter (#17) ---------------------------------
+    # --- Belege fuer den `Portrayer` (#17) ---------------------------------
     # Nicht gespeichert und nicht verglichen: sie werden erst unmittelbar vor
     # einem Urteil zusammengetragen, und nur fuer die Buecher, die eins
     # bekommen. Im Journal stuenden sonst taeglich fuenfzig Seiten Text.

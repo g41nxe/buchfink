@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import needs_vocabulary
+from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.facets import Liked
@@ -79,7 +79,7 @@ class Modell:
 @pytest.fixture
 def modell(monkeypatch: pytest.MonkeyPatch) -> Modell:
     m = Modell()
-    monkeypatch.setattr(intake, "build_rater", lambda model: m)
+    monkeypatch.setattr(intake, "build_portrayer", portrayer_via(m))
     return m
 
 
@@ -145,7 +145,7 @@ def test_the_same_title_is_not_asked_twice(client, modell) -> None:
 def test_without_a_model_the_entry_says_why_and_can_be_retried(client) -> None:
     body = nennen(client, "Otherland")
 
-    assert "Kein Bewerter eingerichtet" in body and "Nochmal" in body
+    assert "Kein Weg zum Modell" in body and "Nochmal" in body
 
 
 # --- bestätigen --------------------------------------------------------------------

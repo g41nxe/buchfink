@@ -45,12 +45,8 @@ class Settings:
     #: DNB dokumentiert keine zulaessige Anfragefrequenz — der Rueckstand
     #: wird deshalb ueber mehrere Laeufe abgearbeitet (Ticket 42).
     dnb_budget: int = 50
-    #: Wieviele Bücher in einen Modellaufruf gehen. Profil und Verfahren sind
-    #: der weitaus größte Teil des Prompts, also spart ein Bündel den Großteil.
-    #: Aber ein Modell, das zwanzig Dinge in einer Antwort beurteilt, ankert
-    #: aneinander — deshalb einstellbar, damit sich das messen lässt.
-    rating_batch_size: int = 20
-    #: Welches Modell urteilt. ``None`` heißt: das voreingestellte kleine.
+    #: Welches Modell die Steckbriefe anlegt. ``None`` heißt: das voreingestellte
+    #: kleine.
     rating_model: str | None = None
     #: Wie viele Zeilen die Startseite je Spalte zeigt. Fünf Angebote und drei
     #: Entscheidungen: StoryGraph und BookWyrm ziehen bei fünf dieselbe Linie,
@@ -183,16 +179,14 @@ class WatchlistEntry:
 class OwnedBook:
     """Eine Zeile aus ``owned.yaml``.
 
-    ``stars`` und ``why`` sind das Urteil eines Modells, nicht das der Leserin
-    — siehe :func:`load_owned`. ``hinweis`` ist etwas anderes als eine
-    Unsicherheit über das Urteil: er bittet um Gegenprüfung der *Identifikation*
-    ("heißt der Band im Handel wirklich so?").
+    ``hinweis`` bittet um Gegenprüfung der *Identifikation* ("heißt der Band im
+    Handel wirklich so?"). ``stars`` und ``why``, die ältere Dateien noch
+    tragen, werden nicht mehr gelesen (#52): es waren Maschinenurteile aus dem
+    Gespräch gegen das alte Prosa-Profil.
     """
 
     title: str
     author: str | None = None
-    stars: int | None = None
-    why: str | None = None
     hinweis: str | None = None
 
 
@@ -311,7 +305,6 @@ def load_settings(path: Path | None = None) -> Settings:
         min_discount_pct=_percentage(data, "min_discount_pct", 25, what),
         rating_budget=_positive_int(data, "rating_budget", 40, what),
         dnb_budget=_positive_int(data, "dnb_budget", 50, what),
-        rating_batch_size=_positive_int(data, "rating_batch_size", 20, what),
         rating_model=str(data["rating_model"]) if data.get("rating_model") else None,
         home_offers=_positive_int(data, "home_offers", 5, what),
         home_suggestions=_positive_int(data, "home_suggestions", 3, what),
@@ -408,13 +401,11 @@ def load_dismissals(path: Path | None = None) -> dict[str, frozenset[str]]:
 
 
 def load_owned(path: Path | None = None) -> list[OwnedBook]:
-    """Bücher im Besitz, mit einem Urteil dazu — ``owned.yaml`` (Ticket 21).
+    """Bücher im Besitz — ``owned.yaml`` (Ticket 21).
 
-    Die Sterne darin sind **Maschinenurteile**. Sie entstanden im Gespräch,
-    gegen dasselbe Profil, das das Bewertungstor benutzt, und nicht dadurch,
-    dass die Leserin sie vergeben hätte. Der Unterschied ist der Grund, aus dem
-    die Herkunft im Schlüssel steht (ADR 17): eine 4 von ihr ist eine Tatsache,
-    eine 4 von einem Modell ein Vorschlag.
+    Ein Eintrag nennt Titel und Autor:in. Die Sterne und Begründungen, die die
+    Datei früher trug, sind Maschinenurteile gegen das alte Prosa-Profil und
+    werden ignoriert, nicht abgelehnt (#52).
 
     Optional wie ``dismissed.yaml``: wer nichts einträgt, besitzt nichts, was
     das Werkzeug wissen müsste.
@@ -432,17 +423,10 @@ def load_owned(path: Path | None = None) -> list[OwnedBook]:
         what = f"owned.yaml entry #{index}"
         if not isinstance(raw, dict):
             raise ConfigError(f"{what} must be a mapping")
-        stars = raw.get("stars")
-        if stars is not None and (
-            not isinstance(stars, int) or isinstance(stars, bool) or not 0 <= stars <= 5
-        ):
-            raise ConfigError(f"{what}: 'stars' must be a whole number from 0 to 5, got {stars!r}")
         owned.append(
             OwnedBook(
                 title=str(_require(raw, "title", what)).strip(),
                 author=str(raw.get("author") or "").strip() or None,
-                stars=stars,
-                why=str(raw["why"]).strip() if raw.get("why") else None,
                 hinweis=str(raw["hinweis"]).strip() if raw.get("hinweis") else None,
             )
         )

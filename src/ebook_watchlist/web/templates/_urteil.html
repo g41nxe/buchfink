@@ -23,21 +23,7 @@
   <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft">
     {{ judgement.votes }} Stimmen</span>
   {% endif %}
-  {# Was der Code nach dem Urteil abzog (#28). Ohne das stuende ein Buch mit
-     drei Sternen da, und niemand saehe, dass das Modell vier gegeben hatte. #}
-  {% if judgement.deductions %}
-  <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft">
-    {{ judgement.model_stars | sterne }} vom Modell,
-    {% for abzug in judgement.deductions %}−1 {{ abzug }}{% if not loop.last %}, {% endif %}{% endfor %}</span>
-  {% endif %}
   <span class="text-sm text-soft">{{ judgement.label }}</span>
-  {# Worauf das Urteil ruht — nur bei den eigenen. Eine fremde Stimme ist ein
-     Durchschnitt aus Stimmen, und "im Text belegt" daneben behauptete, jemand
-     habe für sie im Klappentext nachgesehen. #}
-  {% if judgement.confidence and not judgement.is_foreign %}
-  <span class="rounded bg-hair px-1.5 py-0.5 text-xs text-soft"
-        >{{ judgement.confidence_label }}</span>
-  {% endif %}
   {% if judgement.when %}
   <span class="text-xs text-soft">{{ judgement.when.strftime("%d.%m.%Y") }}</span>
   {% endif %}
@@ -45,25 +31,6 @@
 {# Die Begruendung einer fremden Stimme lautet "Durchschnitt der Leser:innen
    aus 22 Stimmen" — das steht schon in der Pille daneben. Zweimal dasselbe
    ist keine zweite Auskunft. #}
-{# Die Achsen als Marken ueber dem Text (#12): die Marke traegt den Namen, der
-   Satz darunter den Beleg — nicht dasselbe zweimal. Vorher stand der Name im
-   Fliesstext ("trifft Katz und Maus woertlich") und las sich wie ein
-   Protokoll statt wie eine Empfehlung. Getroffen und verfehlt sehen
-   verschieden aus; beides ist eine Auskunft. #}
-{% if judgement.hits or judgement.misses %}
-<ul class="mt-2 flex flex-wrap gap-1.5 text-xs">
-  {% for achse in judgement.hits %}
-  <li data-achse="trifft" class="inline-flex items-center gap-1 rounded bg-accent/15 px-1.5
-                                  py-0.5 text-accent">
-    <svg class="i"><use href="#ic-check"/></svg>{{ achse }}</li>
-  {% endfor %}
-  {% for achse in judgement.misses %}
-  <li data-achse="fehlt" class="inline-flex items-center gap-1 rounded bg-hair px-1.5 py-0.5
-                                 text-soft">
-    <svg class="i"><use href="#ic-x"/></svg>{{ achse }}</li>
-  {% endfor %}
-</ul>
-{% endif %}
 {% if judgement.reason and not judgement.is_foreign %}
 <p class="mt-1.5 max-w-prose text-sm text-ink">{{ judgement.reason }}</p>
 {% endif %}

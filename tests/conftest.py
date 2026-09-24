@@ -260,7 +260,7 @@ def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.fixture(autouse=True)
-def kein_bewerter(monkeypatch: pytest.MonkeyPatch) -> None:
+def kein_portrayer(monkeypatch: pytest.MonkeyPatch) -> None:
     """Kein Test ruft das Modell.
 
     Die Socket-Sperre oben reicht dafuer nicht: ohne API-Schluessel laeuft der
@@ -270,25 +270,36 @@ def kein_bewerter(monkeypatch: pytest.MonkeyPatch) -> None:
     der Testlauf dauerte danach zwanzig Minuten statt siebzig Sekunden, und
     jede dieser Minuten war ein echter Aufruf.
 
-    Voreingestellt gibt es also keinen Bewerter — derselbe Zustand wie auf
+    Voreingestellt gibt es also keinen Weg zum Modell — derselbe Zustand wie auf
     einem Rechner ohne Schluessel, und er ist ausdruecklich erlaubt. Wer das
     Urteilen pruefen will, setzt seine eigene Attrappe; sie kommt nach dieser
     Fixture und gewinnt.
 
-    Abgeschaltet wird in **jedem** Modul, das ``build_rater`` importiert hat,
+    Abgeschaltet wird in **jedem** Modul, das ``build_portrayer`` importiert hat,
     nicht in einer festen Liste: die Erstaufnahme (#47) kam als drittes Modul
     dazu, stand nicht in der Liste, und ihr erster Test rief das Modell
     wirklich.
     """
     import sys
 
-    from ebook_watchlist import rating, run  # noqa: F401 - laden, damit sie erfasst werden
+    from ebook_watchlist import portrayer, run  # noqa: F401 - laden, damit sie erfasst werden
     from ebook_watchlist.web import book, intake  # noqa: F401
 
-    echt = rating.build_rater
+    echt = portrayer.build_portrayer
     for name, modul in list(sys.modules.items()):
-        if name.startswith("ebook_watchlist") and getattr(modul, "build_rater", None) is echt:
-            monkeypatch.setattr(modul, "build_rater", lambda model=None: None)
+        if name.startswith("ebook_watchlist") and getattr(modul, "build_portrayer", None) is echt:
+            monkeypatch.setattr(modul, "build_portrayer", lambda model=None, vocabulary=None: None)
+
+
+def portrayer_via(channel):
+    """Ein ``build_portrayer``, das einen Steckbrief-Ersteller über diese Leitung baut.
+
+    Für ``monkeypatch.setattr(modul, "build_portrayer", portrayer_via(stub))``: der
+    Stub muss nur ``ask(text, max_tokens)`` können.
+    """
+    from ebook_watchlist.portrayer import Portrayer
+
+    return lambda model=None, vocabulary=None: Portrayer(channel, vocabulary)
 
 
 @pytest.fixture(autouse=True)

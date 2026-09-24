@@ -124,9 +124,13 @@ Pi: [docs/betrieb.md](docs/betrieb.md).
 
 **Den Geschmack einstellen**
 
-- [docs/leseprofil.yaml](docs/leseprofil.yaml) — der Lesegeschmack, als Prosa
-- [docs/bewertungsschema.yaml](docs/bewertungsschema.yaml) — wie ein Buch
-  dagegen gehalten und in Sterne übersetzt wird
+Dein Leseprofil entsteht in der Oberfläche, aus deinen Büchern (Erstaufnahme)
+und ändert sich beim Nachschärfen auf der Buchseite; es liegt in der Datenbank.
+Eine Datei dafür gibt es nicht.
+
+- [docs/bewertungsschema.yaml](docs/bewertungsschema.yaml) — die Zahlen, mit
+  denen der Code daraus Sterne rechnet: Gewichte, Sternetabelle und die
+  Schwelle, ab der ein Vorschlag im Stapel bleibt
 
 **Geschichte und Recherche**
 

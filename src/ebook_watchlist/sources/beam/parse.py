@@ -224,7 +224,7 @@ class Detail:
     #: Anrisse sind abgeschnitten. Er wurde hier bisher nicht gelesen, obwohl
     #: die Seite fuer jeden Watchlist-Titel ohnehin geholt wird.
     blurb: str | None = None
-    #: Die Leseprobe als EPUB, fuer den Bewerter (#17).
+    #: Die Leseprobe als EPUB, fuer den `Portrayer` (#17).
     sample_url: str | None = None
     #: Die Schlagwoerter des Shops, ohne Autor und Titel (#17).
     keywords: tuple[str, ...] = ()
@@ -316,7 +316,7 @@ def _fact(page, label: str) -> str | None:
 def _keywords(page, *, leave_out) -> tuple[str, ...]:
     """Die Schlagwoerter aus dem Kopf der Seite (#17).
 
-    Autor und Titel stehen auch darin; die kennt der Bewerter schon, und sie
+    Autor und Titel stehen auch darin; die kennt der `Portrayer` schon, und sie
     als "Schlagwort" noch einmal zu nennen, hiesse ihm Gewicht zu geben.
     """
     meta = page.select_one(sel.DETAIL_KEYWORDS)

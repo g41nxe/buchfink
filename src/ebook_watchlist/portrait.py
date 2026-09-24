@@ -25,16 +25,14 @@ vier bis acht Merkmale und dazu ein bis drei Muster.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from collections import Counter
-from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
-
-from .rating import RatingUnavailable, _json_object
 
 #: Wo das Vokabular liegt. Nicht in Git: es beruht auf NoveList, und ob es
 #: veröffentlicht werden darf, ist ungeklärt (#59). Ein anderes Verzeichnis
@@ -53,11 +51,16 @@ EVIDENCE = ("klappentext", "leseprobe", "wissen")
 FEWEST, MOST = 4, 8
 MIN_DIMENSIONS, MOST_PER_DIMENSION = 3, 3
 FEWEST_PATTERNS, MOST_PATTERNS = 1, 3
-#: Dieselbe Grenze wie im Bewertungsschema (#29).
+#: Wie lang der Kurztext höchstens sein darf.
 PITCH_MAX = 200
 #: Eine Antwort mit acht Merkmalen, drei Mustern und ihren Sätzen braucht rund
 #: 1000 Tokens.
 MAX_TOKENS = 2000
+
+
+class PortrayalUnavailable(Exception):
+    """Kein Steckbrief: kein Schlüssel, kein Netz, eine Absage, eine unlesbare
+    Antwort. Das Buch bleibt unbeschrieben und wird trotzdem gezeigt (ADR 7)."""
 
 
 class VocabularyError(Exception):
@@ -397,6 +400,32 @@ def _text(value) -> str | None:
     return None if not text or text.lower() == "null" else text
 
 
+def _json_object(text: str):
+    """Das JSON-Objekt aus einer Modellantwort — mit einer einzigen Nachsicht.
+
+    Das Modell schützt Apostrophe mitunter mit einem Backslash, und das ist in
+    JSON kein Escape. Genau diese eine Lesart wird nachgesehen, weil sie keine
+    zweite hat. Wer weiter flickt, fängt an zu raten, und dann ist unbewertet
+    ehrlicher (ADR 7).
+
+    Gelesen wird das erste vollständige Objekt; was danach kommt, bleibt liegen.
+    Ein Hinweis hinter der Antwort kostete sonst den ganzen Steckbrief ("Extra
+    data", gemessen am 19.09.2026). Das ist kein Flicken: das Objekt selbst
+    bleibt, wie es kam.
+    """
+    start = text.find("{")
+    if start < 0:
+        raise PortrayalUnavailable("Antwort enthält kein JSON")
+    read = json.JSONDecoder().raw_decode
+    try:
+        return read(text, start)[0]
+    except ValueError as exc:
+        try:
+            return read(text.replace(r"\'", "'"), start)[0]
+        except ValueError:
+            raise PortrayalUnavailable(f"Antwort ist kein gültiges JSON: {exc}") from exc
+
+
 def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
     """Die Antwort des Modells als Steckbrief, mit den Regeln daneben geprüft.
 
@@ -406,7 +435,7 @@ def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
     """
     daten = _json_object(text)
     if not isinstance(daten, dict):
-        raise RatingUnavailable("Antwort ist kein JSON-Objekt")
+        raise PortrayalUnavailable("Antwort ist kein JSON-Objekt")
     abdruck = fingerprint(vocabulary)
     roh = daten.get("merkmale") or []
     roh_muster = daten.get("erzaehlmuster") or []
@@ -470,31 +499,3 @@ def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
         traits=tuple(traits),
         violations=tuple(verstoesse),
     )
-
-
-def portray(
-    title: str,
-    author: str | None,
-    blurb: str | None,
-    ask: Callable[[str, int], str],
-    vocabulary: Vocabulary,
-) -> Portrait:
-    """Einmal fragen, die Antwort lesen. Speichern tut der Aufrufer."""
-    return parse_answer(ask(prompt(title, author, blurb, vocabulary), MAX_TOKENS), vocabulary)
-
-
-def portray_find(observation, ask: Callable[[str, int], str], vocabulary: Vocabulary) -> Portrait:
-    """Einen Fund beschreiben: einmal fragen, die Antwort lesen (#48).
-
-    Titel und Klappentext gehen mit; wo es sie gibt, auch der Originaltitel und
-    die Schlagwörter (#17) — ein Buch, das das Modell nur unter dem englischen
-    Titel kennt, bliebe sonst unbekannt.
-    """
-    title = observation.title
-    if observation.original_title:
-        title += f" (Originaltitel: {observation.original_title})"
-    blurb = observation.blurb
-    if observation.keywords:
-        keywords = f"Schlagwörter: {', '.join(observation.keywords)}"
-        blurb = f"{blurb}\n{keywords}" if blurb else keywords
-    return portray(title, observation.author, blurb, ask, vocabulary)

@@ -65,7 +65,7 @@ class GateNote:
     threshold: int = 0
     #: Über dem Budget: nicht bewertet, aber gezeigt.
     over_budget: int = 0
-    #: Kein Urteil möglich — der Bewerter kam nicht durch (kein Schlüssel, keine
+    #: Kein Urteil möglich — der `Portrayer` kam nicht durch (kein Schlüssel, keine
     #: Anmeldung, eine Zeitüberschreitung, eine unlesbare Antwort) oder das Buch
     #: ist dem Modell unbekannt. Das Buch wird gezeigt, und **das muss
     #: dastehen**: ein Tor, das für jedes Buch scheitert, sieht sonst aus wie

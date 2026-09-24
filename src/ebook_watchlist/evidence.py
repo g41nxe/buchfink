@@ -1,4 +1,4 @@
-"""Belege für den Bewerter — zusammengetragen unmittelbar vor einem Urteil (#17).
+"""Belege für den `Portrayer` — zusammengetragen unmittelbar vor einem Urteil (#17).
 
 Eine Stelle für Lauf und Buchseite: beide sollen dieselbe Frage mit derselben
 Grundlage beantworten. Vorher urteilte die Buchseite ohne Detailseite, und
@@ -20,7 +20,7 @@ from .store import ENTRY_TRIGGER, Store
 
 
 def gather(store: Store, settings: Settings, observations, sources):
-    """Was der Bewerter zu sehen bekommt — zusammengetragen unmittelbar davor.
+    """Was der `Portrayer` zu sehen bekommt — zusammengetragen unmittelbar davor.
 
     Nur fuer die Buecher, die gleich ein Urteil bekommen; alles hier kostet
     Anfragen, und das Budget des Tors begrenzt, wie viele es sind.

@@ -23,14 +23,13 @@ from ..http import HttpClient, build_user_agent
 from ..models import Availability, MatchReason
 from ..portrait import (
     Portrait,
+    PortrayalUnavailable,
     Vocabulary,
     VocabularyError,
     fingerprint,
     load_vocabulary,
-    portray_find,
 )
-from ..portrait import portray as draw_portrait
-from ..rating import RatingUnavailable, build_rater, confidence_label, load_leseprofil
+from ..portrayer import build_portrayer
 from ..ratings import (
     BY_ONLEIHE_READERS,
     BY_READER,
@@ -178,34 +177,20 @@ class Origin:
 
 @dataclass(frozen=True, slots=True)
 class Judgement:
-    """Ein Urteil über dieses Buch, mit der Angabe, wer es gefällt hat.
+    """Ein gespeichertes Urteil über dieses Buch, mit der Angabe, wer es gefällt hat.
 
-    Der Unterschied ist der ganze Zweck der Zeile: eine 4 von der Leserin ist
-    eine Tatsache, eine 4 vom Modell ein Vorschlag (ADR 17). Sie dürfen
-    deswegen nicht gleich aussehen.
+    Nur, was ein Mensch sagt: die eigenen Sterne der Leserin und der Durchschnitt
+    fremder Leser:innen. Die Übereinstimmung mit dem Profil rechnet der Code und
+    steht als ``FitView`` daneben (ADR 33).
     """
 
     origin: str
     label: str
     stars: float
     reason: str
-    confidence: str
-    profile_version: int
     when: datetime | None
     #: Auf wie vielen Stimmen die Angabe ruht — nur bei fremden Urteilen.
     votes: int | None = None
-    #: Welche Achsen das Urteil trifft und verfehlt (#12). Leer bei Urteilen
-    #: von vorher und bei allem, was kein Modell gefaellt hat.
-    hits: tuple[str, ...] = ()
-    misses: tuple[str, ...] = ()
-    #: Was der Code nach dem Urteil abzog, und die Sterne des Modells davor (#28).
-    deductions: tuple[str, ...] = ()
-    model_stars: float | None = None
-
-    @property
-    def confidence_label(self) -> str:
-        """Worauf das Urteil ruht, in einem Wort, das fuer sich steht."""
-        return confidence_label(self.confidence)
 
     @property
     def is_human(self) -> bool:
@@ -595,14 +580,8 @@ def _judgements(
             label=LABELS[origin],
             stars=row.stars,
             reason=row.reason,
-            confidence=row.confidence,
-            profile_version=row.profile_version,
             when=row.rated_at,
             votes=row.votes,
-            hits=row.hits,
-            misses=row.misses,
-            deductions=row.deductions,
-            model_stars=row.model_stars,
         )
         for origin in ORIGIN_ORDER
         if (row := found.get(origin)) is not None
@@ -766,15 +745,15 @@ def portray(store: Store, settings: Settings, book_id: int, *, now: datetime) ->
     if _stored_portrait(store, book, fingerprint(vocabulary)) is not None:
         return ""
 
-    rater = build_rater(settings.rating_model)
-    if rater is None:
+    portrayer = build_portrayer(settings.rating_model, vocabulary)
+    if portrayer is None:
         return (
-            "Kein Bewerter eingerichtet: weder ein API-Schlüssel in der Umgebung "
+            "Kein Weg zum Modell: weder ein API-Schlüssel in der Umgebung "
             "noch eine angemeldete Claude-Code-Installation."
         )
     try:
-        portrait = draw_portrait(book.title, book.author, book.blurb, rater.ask, vocabulary)
-    except RatingUnavailable as exc:
+        portrait = portrayer.portray(book.title, book.author, book.blurb)
+    except PortrayalUnavailable as exc:
         return str(exc)
     store.put_portrait(subject, portrait, now=now)
     return ""
@@ -843,10 +822,10 @@ def portray_observation(
     subject = subject or subject_of(observation)
     if store.portrait(subject, fingerprint(vocabulary)) is not None:
         return ""
-    rater = build_rater(settings.rating_model)
-    if rater is None:
+    portrayer = build_portrayer(settings.rating_model, vocabulary)
+    if portrayer is None:
         return (
-            "Kein Bewerter eingerichtet: weder ein API-Schlüssel in der Umgebung "
+            "Kein Weg zum Modell: weder ein API-Schlüssel in der Umgebung "
             "noch eine angemeldete Claude-Code-Installation."
         )
     if with_evidence:
@@ -857,8 +836,8 @@ def portray_observation(
     if thin and blurb:
         observation = replace(observation, blurb=blurb)
     try:
-        portrait = portray_find(observation, rater.ask, vocabulary)
-    except RatingUnavailable as exc:
+        portrait = portrayer.portray_find(observation)
+    except PortrayalUnavailable as exc:
         # Das Tor scheitert nie zu (ADR 7): der Grund wird genannt, das Buch
         # bleibt sichtbar und unbeschrieben.
         return str(exc)
@@ -866,7 +845,9 @@ def portray_observation(
     return ""
 
 
-def set_stars(store: Store, book_id: int, stars: int | None, *, now: datetime) -> None:
+def set_stars(
+    store: Store, settings: Settings, book_id: int, stars: int | None, *, now: datetime
+) -> None:
     """Die eigenen Sterne der Leserin setzen oder zurücknehmen.
 
     Sie stehen unter ihrer eigenen Herkunft und damit neben dem Modellurteil,
@@ -879,12 +860,11 @@ def set_stars(store: Store, book_id: int, stars: int | None, *, now: datetime) -
         return
     if not 0 <= stars <= 5:
         raise ValueError(f"Sterne müssen zwischen 0 und 5 liegen, nicht {stars}")
-    try:
-        _, version = load_leseprofil()
-    except RatingUnavailable:
-        # Ohne lesbares Profil bleibt ihre Bewertung trotzdem gültig — sie
-        # hängt nicht an ihm. Die 0 sagt: unter keiner bekannten Fassung.
-        version = 0
+    # Festgehalten wird, gegen welche Fassung des Profils sie das sagte, damit
+    # später nachvollziehbar bleibt, wovon die Rede war. Verfallen tut ihr
+    # Urteil deswegen nicht. Ohne Profil: 0, unter keiner bekannten Fassung.
+    profile = store.reading_profile(settings.slug)
+    version = profile.version if profile is not None else 0
     store.put_rating(
         book_subject(book_id),
         stars=stars,

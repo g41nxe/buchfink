@@ -13,11 +13,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import needs_vocabulary
+from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.config import Settings, load_settings
 from ebook_watchlist.models import Availability, LinkOutcome, MatchReason, Observation
-from ebook_watchlist.rating import RatingUnavailable
+from ebook_watchlist.portrait import PortrayalUnavailable
 from ebook_watchlist.ratings import BY_READER, book_subject
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
@@ -324,7 +324,7 @@ def test_she_can_set_her_own_stars(client: TestClient, db: Store) -> None:
 
     client.post(f"/book/{book.id}/stars", data={"stars": "4"})
 
-    row = db.rating(book_subject(book.id), 1, origin=BY_READER)
+    row = db.rating(book_subject(book.id), origin=BY_READER)
     assert row.stars == 4
     assert "zurücknehmen" in client.get(f"/book/{book.id}").text
 
@@ -335,7 +335,7 @@ def test_taking_them_back_writes_no_zero(client: TestClient, db: Store) -> None:
 
     client.post(f"/book/{book.id}/stars", data={"stars": ""})
 
-    assert db.rating(book_subject(book.id), 1, origin=BY_READER) is None
+    assert db.rating(book_subject(book.id), origin=BY_READER) is None
     assert "Noch nicht bewertet" in client.get(f"/book/{book.id}").text
 
 
@@ -923,7 +923,7 @@ def test_the_button_draws_a_portrait_once(
     kostet keinen Aufruf (ADR 33)."""
     buch = db.books()[0]
     fragt = StubAsker(_leopard())
-    monkeypatch.setattr(view, "build_rater", lambda model: fragt)
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
 
     body = steckbrief_abwarten(client, f"/book/{buch.id}")
     steckbrief_abwarten(client, f"/book/{buch.id}")
@@ -941,7 +941,7 @@ def test_a_book_the_model_does_not_know_says_so(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     buch = db.books()[0]
-    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker('{"bekannt": false}'))
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker('{"bekannt": false}')))
 
     body = steckbrief_abwarten(client, f"/book/{buch.id}")
 
@@ -957,7 +957,7 @@ def test_without_a_model_nothing_changes_and_the_page_says_why(
 
     body = steckbrief_abwarten(client, f"/book/{buch.id}")
 
-    assert "Kein Bewerter eingerichtet" in body
+    assert "Kein Weg zum Modell" in body
 
 
 @needs_vocabulary
@@ -966,7 +966,7 @@ def test_a_failed_call_stores_nothing(db: Store, monkeypatch: pytest.MonkeyPatch
 
     buch = db.books()[0]
     monkeypatch.setattr(
-        view, "build_rater", lambda model: StubAsker(RatingUnavailable("Zeit abgelaufen"))
+        view, "build_portrayer", portrayer_via(StubAsker(PortrayalUnavailable("Zeit abgelaufen")))
     )
 
     grund = view.portray(db, load_settings(), buch.id, now=NOW)
@@ -982,7 +982,7 @@ def test_a_book_with_an_isbn_keeps_its_portrait_at_the_isbn(
     """Wie ein Urteil des Tors: so findet der Lauf denselben Steckbrief wieder."""
     buch = db.find_or_create_book(isbn="9783548289441", title="Leopard",
                                   author="Jo Nesbø", now=NOW)
-    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
 
     view.portray(db, load_settings(), buch.id, now=NOW)
 
@@ -1004,7 +1004,7 @@ def test_a_portrait_survives_the_book_getting_an_isbn(
 
     buch = db.find_or_create_book(isbn=None, title="Leopard", author="Jo Nesbø", now=NOW)
     fragt = StubAsker(_leopard())
-    monkeypatch.setattr(view, "build_rater", lambda model: fragt)
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
     view.portray(db, load_settings(), buch.id, now=NOW)
     with db.session() as session:
         session.execute(update(BookRow).where(BookRow.id == buch.id).values(isbn="9783548289441"))
@@ -1034,7 +1034,7 @@ def test_with_profile_and_portrait_the_page_shows_the_fit(
 ) -> None:
     """Leopard trägt "hart" und "gezeichnete Figur" und trifft die Facette ganz."""
     buch = db.books()[0]
-    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
     view.portray(db, load_settings(), buch.id, now=NOW)
     db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
 
@@ -1049,7 +1049,7 @@ def test_the_fit_stands_under_the_judgement(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     buch = db.books()[0]
-    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
     view.portray(db, load_settings(), buch.id, now=NOW)
     db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
 
@@ -1065,7 +1065,7 @@ def test_without_a_profile_there_is_no_fit(
 ) -> None:
     """Ohne Profil kein Urteil (ADR 33, Punkt 8) — auch nicht "passt nicht"."""
     buch = db.books()[0]
-    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
     view.portray(db, load_settings(), buch.id, now=NOW)
 
     assert view.build(db, load_settings(), buch.id).fit is None
@@ -1085,7 +1085,7 @@ def test_story_patterns_stand_apart_from_the_terms(
 ) -> None:
     """Merkmale sagen, wie es sich liest; Muster, was es erzählt (#49)."""
     buch = db.books()[0]
-    monkeypatch.setattr(view, "build_rater", lambda model: StubAsker(_leopard()))
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
     view.portray(db, load_settings(), buch.id, now=NOW)
 
     bild = view.build(db, load_settings(), buch.id).portrait

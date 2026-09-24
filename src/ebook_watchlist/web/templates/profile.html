@@ -205,60 +205,14 @@
     <dt class="w-52 shrink-0 text-soft">Wöchentlicher Durchgang</dt>
     <dd>{{ view.next_sweep }}</dd>
   </div>
+  {# Wie streng das Tor ist (Bewertungsschema, ADR 19): darunter bleibt ein
+     Vorschlag aus dem Stapel. Eine Zahl, die sich nach den ersten echten
+     Funden verstellen lässt, und deshalb sichtbar. #}
+  {% if view.gate_stars %}
+  <div class="flex flex-wrap gap-x-3">
+    <dt class="w-52 shrink-0 text-soft">Vorschläge</dt>
+    <dd>ab <span class="font-medium text-ink">{{ view.gate_stars }}</span> Sternen</dd>
+  </div>
+  {% endif %}
 </dl>
-
-{# Zwei Dokumente, nicht eins (ADR 21): das Leseprofil sagt, wonach geurteilt
-   wird, das Bewertungsschema wie. Nur das erste traegt eine Version. #}
-{{ abschnitt("Das Leseprofil", "ic-doc") }}
-{% if view.leseprofil %}
-<div class="rounded-lg border border-rule bg-card px-5 py-4">
-  <p class="mb-3 max-w-prose text-sm text-soft">
-    Profilversion <span class="font-medium text-ink">{{ view.profile_version }}</span>.
-    <strong class="text-ink">Hier nicht änderbar</strong> — und das ist Absicht:
-    es liegt als <code class="rounded bg-hair px-1">docs/{{ view.leseprofil_path }}</code>
-    im Repository, mit eigenem Änderungsverfahren und einer asymmetrischen
-    Beweislast (ADR 17). Ein Formular an dieser Stelle würde das umgehen.
-    Geändert wird es über den Skill <code class="rounded bg-hair px-1">leseprofil-schaerfen</code>,
-    der dich vorher um Zustimmung bittet.
-  </p>
-  <p class="mb-3 max-w-prose text-sm text-soft">
-    Eine neue Profilversion entwertet die Urteile des Werkzeugs — deine eigenen
-    Sterne bleiben. Wie geurteilt wird, steht getrennt davon im
-    <strong class="text-ink">Bewertungsschema</strong> unten; eine Änderung dort
-    entwertet nichts.
-  </p>
-  {# Als Quelltext gezeigt statt gerendert: Markdown liest sich so, und eine
-     Bibliothek für eine einzige Ansichtsseite wäre eine Abhängigkeit zu viel. #}
-  <details>
-    <summary class="cursor-pointer text-sm text-accent">Leseprofil anzeigen</summary>
-    <pre class="mt-3 max-h-[32rem] overflow-auto rounded bg-paper p-4 text-xs
-                leading-relaxed whitespace-pre-wrap text-ink">{{ view.leseprofil }}</pre>
-  </details>
-</div>
-{% else %}
-<p class="py-2 text-sm text-danger">
-  Das Leseprofil ist nicht lesbar — ohne es kann nichts bewertet werden.
-</p>
-{% endif %}
-
-{{ abschnitt("Das Bewertungsschema", "ic-star") }}
-{% if view.scheme %}
-<div class="rounded-lg border border-rule bg-card px-5 py-4">
-  <p class="mb-3 max-w-prose text-sm text-soft">
-    Das Verfahren: was ein Stern bedeutet, was eine Begründung leisten muss,
-    worauf ein Urteil ruhen darf. <strong class="text-ink">Ohne Version</strong>
-    — es nennt nichts, was mit deinem Geschmack zu tun hat, und würde für eine
-    andere Leserin unverändert taugen.
-  </p>
-  <details>
-    <summary class="cursor-pointer text-sm text-accent">Bewertungsschema anzeigen</summary>
-    <pre class="mt-3 max-h-[32rem] overflow-auto rounded bg-paper p-4 text-xs
-                leading-relaxed whitespace-pre-wrap text-ink">{{ view.scheme }}</pre>
-  </details>
-</div>
-{% else %}
-<p class="py-2 text-sm text-danger">
-  Das Bewertungsschema ist nicht lesbar — ohne es kann nichts bewertet werden.
-</p>
-{% endif %}
 {% endblock %}

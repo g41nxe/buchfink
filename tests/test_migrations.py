@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine, inspect
 
-from ebook_watchlist.migrations import SchemaTooNew, add_column, migrate
+from ebook_watchlist.migrations import SCHEMA_VERSION, SchemaTooNew, add_column, migrate
 from ebook_watchlist.store import Base, Store
 
 
@@ -161,11 +161,12 @@ def test_the_observations_survive_the_upgrade(tmp_path: Path) -> None:
         assert connection.execute("SELECT count(*) FROM observation").fetchone()[0] == 1
 
 
-def test_the_rating_table_is_rebuilt_and_keeps_its_rows(tmp_path: Path) -> None:
+def test_the_rating_table_is_rebuilt_from_the_old_shape(tmp_path: Path) -> None:
     """Die einzige Migration, die Daten umkopiert — und die einzige, die kein
     Test berührte: die Aufwärtstests starten von einer Datenbank *heutiger*
     Form, in der ``origin`` schon steht, und lösen damit nur den Frühausstieg
-    aus."""
+    aus. Die umkopierte Zeile ist ein Modellurteil, und das räumt seit #52 die
+    letzte Migration der Kette wieder weg."""
     path = tmp_path / "s.db"
     with sqlite3.connect(path) as connection:
         connection.executescript(
@@ -195,9 +196,10 @@ def test_the_rating_table_is_rebuilt_and_keeps_its_rows(tmp_path: Path) -> None:
         assert "profile_version" in {
             row[1] for row in connection.execute("PRAGMA table_info(rating)")
         }
-        # Die Zeile wandert mit, behält ihre id und gilt als Modellurteil —
-        # die einzige Herkunft, die es bis dahin gab.
-        assert rows == [(7, "isbn:9783104911854", "model", 4, "Achse D")]
+        # Die Zeile wanderte mit und galt als Modellurteil, die einzige Herkunft,
+        # die es bis dahin gab — und das Modellurteil fällt am Ende der Kette
+        # weg (#52). Dass die Tabelle sauber neu gebaut wurde, sagen die Spalten.
+        assert rows == []
         assert "rating_old" not in {
             name for (name,) in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
@@ -221,17 +223,19 @@ def test_after_the_rebuild_two_origins_stand_side_by_side(tmp_path: Path) -> Non
                 rubric_version INTEGER NOT NULL,
                 rated_at DATETIME NOT NULL
             );
-            INSERT INTO rating VALUES (1, 'book:5', 2, 'teils', 'Modell', 1, '2026-09-01');
             PRAGMA user_version = 0;
             """
         )
 
     store = Store(path)
+    now = datetime(2026, 9, 4, 20, 0)
     store.put_rating("book:5", stars=5, confidence="belegt", reason="", profile_version=1,
-                     now=datetime(2026, 9, 4, 20, 0), origin="reader")
+                     now=now, origin="reader")
+    store.put_rating("book:5", stars=3.4, confidence="belegt", reason="", profile_version=0,
+                     now=now, origin="onleihe_readers", votes=12)
 
-    assert store.rating("book:5", 1, origin="model").stars == 2
-    assert store.rating("book:5", 1, origin="reader").stars == 5
+    assert store.rating("book:5", origin="reader").stars == 5
+    assert store.rating("book:5", origin="onleihe_readers").stars == 3.4
 
 
 def test_a_doubled_blurb_is_cut_down_to_one(tmp_path: Path) -> None:
@@ -419,3 +423,31 @@ def test_the_readers_are_named_after_their_library_again(tmp_path: Path) -> None
 
     with sqlite3.connect(path) as connection:
         assert connection.execute("SELECT origin FROM rating").fetchone()[0] == "onleihe_readers"
+
+
+def test_the_old_machine_judgements_are_deleted_and_hers_stay(tmp_path: Path) -> None:
+    """Die Urteile des alten Sterne-Modells fallen weg (#52): das Tor
+    (``model``) und die Sterne aus ``owned.yaml`` (``conversation``). Die
+    eigenen Sterne der Leserin und die fremden Stimmen bleiben."""
+    path = tmp_path / "s.db"
+    Store(path)  # legt das aktuelle Schema an
+    version = SCHEMA_VERSION
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            f"""
+            INSERT INTO rating
+              (subject, origin, stars, confidence, reason, pitch, profile_version, rated_at)
+            VALUES
+              ('isbn:1', 'model', 4, 'teils', '', '', 4, '2026-09-01'),
+              ('book:2', 'conversation', 5, 'teils', '', '', 1, '2026-09-01'),
+              ('book:3', 'reader', 3, 'belegt', '', '', 4, '2026-09-01'),
+              ('isbn:4', 'onleihe_readers', 2.8, 'belegt', '', '', 0, '2026-09-01');
+            PRAGMA user_version = {version - 1};
+            """
+        )
+
+    Store(path)
+
+    with sqlite3.connect(path) as connection:
+        origins = sorted(o for (o,) in connection.execute("SELECT origin FROM rating"))
+    assert origins == ["onleihe_readers", "reader"]

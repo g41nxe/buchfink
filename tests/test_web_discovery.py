@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import describe, give_profile, needs_vocabulary
+from conftest import describe, give_profile, needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.ratings import subject_of
@@ -271,7 +271,7 @@ def test_a_find_can_be_described_from_its_page(
     observation = fund(db, item_id="7")
     give_profile(db)
     asker = StubAsker(_leopard())
-    monkeypatch.setattr(book_page, "build_rater", lambda model: asker)
+    monkeypatch.setattr(book_page, "build_portrayer", portrayer_via(asker))
 
     assert "Noch kein Steckbrief." in client.get("/discovery/beam/7").text
 
@@ -298,7 +298,7 @@ def test_a_second_click_costs_no_second_call(
 
     fund(db, item_id="7")
     asker = StubAsker(_leopard())
-    monkeypatch.setattr(book_page, "build_rater", lambda model: asker)
+    monkeypatch.setattr(book_page, "build_portrayer", portrayer_via(asker))
     from ebook_watchlist.config import load_settings
 
     for _ in range(2):

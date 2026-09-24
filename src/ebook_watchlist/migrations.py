@@ -587,6 +587,22 @@ def _a_judgement_shows_what_came_off(connection: Connection) -> None:
     add_column(connection, "rating", "model_stars", "FLOAT")
 
 
+def _the_old_machine_judgements_are_gone(connection: Connection) -> None:
+    """Die Urteile des alten Sterne-Modells fallen weg (#52, ADR 33).
+
+    Sie entstanden gegen das Prosa-Profil, tragen dessen Fassungsnummer, und
+    seit #48 liest sie nichts mehr: der Code rechnet das Urteil aus dem
+    Steckbrief. Gelöscht werden genau die Herkünfte ``model`` (das Tor) und
+    ``conversation`` (die Sterne aus ``owned.yaml``); die eigenen Sterne der
+    Leserin und die fremden Stimmen bleiben.
+
+    Vor dem ersten Lauf steht ein Backup: die Datenbank und ein YAML-Export der
+    Zeilen unter ``data/backups/``.
+    """
+    if _has_table(connection, "rating"):
+        connection.exec_driver_sql("DELETE FROM rating WHERE origin IN ('model', 'conversation')")
+
+
 MIGRATIONS: tuple[Migration, ...] = (
     _backfill_seeded_scopes,
     _add_blurb_columns,
@@ -620,6 +636,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _the_library_reads_more,
     _the_library_names_the_publisher,
     _a_judgement_shows_what_came_off,
+    _the_old_machine_judgements_are_gone,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

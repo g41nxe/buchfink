@@ -10,7 +10,7 @@ from datetime import datetime
 import pytest
 
 from ebook_watchlist.config import OwnedBook, Seed, Settings, WatchlistEntry
-from ebook_watchlist.ratings import BY_CONVERSATION, BY_READER, book_subject
+from ebook_watchlist.ratings import book_subject
 from ebook_watchlist.relations import (
     ConfigurationError,
     InterestKey,
@@ -19,7 +19,7 @@ from ebook_watchlist.relations import (
     check_interest_key,
     check_relation_kind,
 )
-from ebook_watchlist.seed import OWNED_PROFILE_VERSION, sow, split_free_text
+from ebook_watchlist.seed import sow, split_free_text
 from ebook_watchlist.store import Store
 
 NOW = datetime(2026, 9, 4, 20, 0)
@@ -318,27 +318,25 @@ def test_deactivating_takes_the_clock_rather_than_reading_it(store: Store) -> No
     assert store.relations("t", kind=str(RelationKind.WATCHING)) == []
 
 
-# --- owned.yaml: Urteile, aber Maschinenurteile ------------------------------
+# --- owned.yaml: nur noch der Besitz -------------------------------------------
 
 
-def test_owned_becomes_a_relation_and_a_machine_judgement(store: Store) -> None:
-    """Die Datei trug ihren eigenen Hinweis, dass sie von nichts gelesen wird.
-    Jetzt wird sie gelesen — aber als das, was sie ist."""
+def test_owned_becomes_a_relation_and_no_judgement(store: Store) -> None:
+    """Die Sterne in der Datei waren Maschinenurteile gegen das alte Prosa-Profil
+    (ADR 17, Ticket 21). Seit #52 zählt der Besitz, das Urteil rechnet der Code."""
     report = sow(
         store,
         settings(),
         saat(),
         [],
-        owned=[OwnedBook(title="Knochenbrecher", author="Chris Carter", stars=5, why="Hunter.")],
+        owned=[OwnedBook(title="Knochenbrecher", author="Chris Carter")],
         now=NOW,
     )
-    assert (report.books, report.relations, report.ratings) == (1, 1, 1)
+    assert (report.books, report.relations) == (1, 1)
 
     book = store.books()[0]
     assert {row.kind for row in store.relations_of("t", book.id)} == {str(RelationKind.OWNED)}
-
-    row = store.rating(book_subject(book.id), OWNED_PROFILE_VERSION, origin=BY_CONVERSATION)
-    assert (row.stars, row.reason) == (5, "Hunter.")
+    assert store.ratings_for([book_subject(book.id)]) == {}
 
 
 def test_owning_a_watched_book_stops_watching_it(store: Store) -> None:
@@ -386,15 +384,6 @@ def test_a_second_import_keeps_watching_that_the_reader_resumed(store: Store) ->
     ]
 
 
-def test_owned_stars_are_not_the_readers_own(store: Store) -> None:
-    """Der ganze Zweck von Ticket 21: dreizehn Vorschläge wären sonst dauerhaft
-    zu dreizehn Tatsachen geworden (ADR 17)."""
-    sow(store, settings(), saat(), [], owned=[OwnedBook(title="Views", stars=4)], now=NOW)
-    book = store.books()[0]
-
-    assert store.rating(book_subject(book.id), 1, origin=BY_READER) is None
-
-
 def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store) -> None:
     """Er bittet um Gegenprüfung, ob der Band im Handel so heißt — das gehört
     an die Beziehung, wo die Leserin es beim Nachsehen findet."""
@@ -403,26 +392,17 @@ def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store)
         settings(),
         saat(),
         [],
-        owned=[OwnedBook(title="Off-Line", stars=3, hinweis="Bitte gegenprüfen.")],
+        owned=[OwnedBook(title="Off-Line", hinweis="Bitte gegenprüfen.")],
         now=NOW,
     )
     relation = store.relations("t", kind=str(RelationKind.OWNED))[0]
     assert "gegenpr" in relation.details
 
 
-def test_an_entry_without_stars_gets_no_judgement(store: Store) -> None:
-    """Kein Urteil ist etwas anderes als null Sterne."""
-    report = sow(store, settings(), saat(), [], owned=[OwnedBook(title="Nur ein Titel")], now=NOW)
-
-    assert report.ratings == 0
-    book = store.books()[0]
-    assert store.ratings_for([book_subject(book.id)]) == {}
-
-
-def test_importing_twice_leaves_one_judgement(store: Store) -> None:
-    entries = [OwnedBook(title="Rosewater", author="Tade Thompson", stars=4, why="Wormwood.")]
+def test_importing_twice_leaves_one_relation(store: Store) -> None:
+    entries = [OwnedBook(title="Rosewater", author="Tade Thompson")]
     sow(store, settings(), saat(), [], owned=entries, now=NOW)
     sow(store, settings(), saat(), [], owned=entries, now=NOW)
 
     book = store.books()[0]
-    assert len(store.ratings_for([book_subject(book.id)])) == 1
+    assert len(store.relations_of("t", book.id)) == 1

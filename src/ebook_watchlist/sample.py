@@ -1,4 +1,4 @@
-"""Die Leseprobe — der Anfang des Buchs, für den Bewerter (#17).
+"""Die Leseprobe — der Anfang des Buchs, für den `Portrayer` (#17).
 
 Der Klappentext ist Werbung: er verspricht Tempo und eine kaputte Hauptfigur,
 ob das Buch sie hat oder nicht. Die Achsen des Leseprofils fragen aber, *wie*
@@ -6,7 +6,7 @@ ein Buch erzählt, und das zeigt nur der Text selbst. Shop und Bibliothek
 verlinken auf der Detailseite, die der Lauf ohnehin holt, eine Probe als EPUB:
 gemessen eine Datei von einem Megabyte, rund fünfzig Seiten Text.
 
-Davon bekommt der Bewerter den Anfang — genug für Stimme, Figur und das Tempo
+Davon bekommt der `Portrayer` den Anfang — genug für Stimme, Figur und das Tempo
 des Einstiegs, und nicht so viel, dass jedes Buch den Prompt verzehnfacht.
 
 Kein EPUB-Paket: eine EPUB-Datei ist ein Zip mit XHTML-Seiten, und die
@@ -26,7 +26,7 @@ from bs4 import BeautifulSoup
 
 from .http import FetchError, NotFound
 
-#: So viele Wörter bekommt der Bewerter vom Anfang des Buchs. Rund zehn
+#: So viele Wörter bekommt der `Portrayer` vom Anfang des Buchs. Rund zehn
 #: Seiten: genug, um zu sehen, ob der Einstieg zieht und wer da erzählt.
 SAMPLE_WORDS = 2500
 

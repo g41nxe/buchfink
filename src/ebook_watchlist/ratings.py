@@ -1,30 +1,19 @@
 """Woher ein Urteil über ein Buch stammt (Ticket 21, ADR 17).
 
-Solange es nur eine Herkunft gab — das Bewertungstor —, war die Frage
-entbehrlich. Mit den dreizehn Urteilen aus ``owned.yaml`` und den Sternen, die
-die Leserin selbst vergibt, sind es drei, und der Unterschied ist nicht
-kosmetisch:
+Ein Urteil, das die Anwendung selbst fällt, wird seit ADR 33 gerechnet und nie
+gespeichert (``judging``). Gespeichert wird nur, was ein Mensch sagt: die Sterne
+der Leserin und die Durchschnitte fremder Leser:innen. Die Herkunft gehört in
+den Schlüssel und nicht in eine Spalte daneben, denn beide dürfen zu einem Buch
+nebeneinander stehen, und keines überschreibt das andere.
 
-    Eine 4 von der Leserin ist eine Tatsache.
-    Eine 4 vom Modell ist ein Vorschlag.
-
-Deshalb gehört die Herkunft in den Schlüssel und nicht in eine Spalte daneben:
-beide dürfen zu einem Buch nebeneinander stehen, und keines überschreibt das
-andere.
-
-Dieses Modul steht für sich, damit ``store`` es kennt, ohne ``rating`` zu
-importieren — dort hängt das Modell dran, und der Store hat damit nichts zu tun.
+Dieses Modul steht für sich, damit ``store`` es kennt, ohne das Modell zu
+importieren — der Store hat damit nichts zu tun.
 """
 
 from __future__ import annotations
 
 from .models import Observation
 
-#: Das Bewertungstor im Lauf (ADR 19).
-BY_MODEL = "model"
-#: Im Gespräch vergeben, gegen dasselbe Profil — die dreizehn aus
-#: ``owned.yaml``. Maschinenurteile, auch wenn sie im Gespräch entstanden.
-BY_CONVERSATION = "conversation"
 #: Die Leserin selbst.
 BY_READER = "reader"
 #: Die Leserschaft der Onleihe — ein Durchschnitt aus vielen fremden Stimmen,
@@ -40,47 +29,17 @@ BY_READER = "reader"
 #: fuenf Zeilen im echten Bestand sind ISBN-Zeilen; es waere der Normalfall.
 BY_ONLEIHE_READERS = "onleihe_readers"
 
-#: Auf welchem Weg ein Modellurteil entstand (#10). Die Herkunft sagt, *wer*
-#: geurteilt hat; dies sagt, *wann und wozu*. Ohne das war nicht zu beantworten,
-#: ob das Tor im Lauf ueberhaupt etwas entscheidet — alle drei Wege schrieben
-#: dasselbe ``model``. Aeltere Urteile tragen keinen Weg; geraten wird nichts.
-VIA_RUN = "run"
-VIA_BACKLOG = "backlog"
-VIA_BOOK_PAGE = "book_page"
-#: Von der Seite eines Funds aus, per Knopf (#15).
-VIA_DISCOVERY_PAGE = "discovery_page"
-
-RATING_ORIGINS: frozenset[str] = frozenset(
-    {BY_MODEL, BY_CONVERSATION, BY_READER, BY_ONLEIHE_READERS}
-)
+RATING_ORIGINS: frozenset[str] = frozenset({BY_READER, BY_ONLEIHE_READERS})
 
 #: Fremde Stimmen: kein Urteil gegen das Leseprofil, also auch nicht an eine
 #: Profilversion gebunden und von keiner neuen Fassung entwertet.
 FOREIGN_ORIGINS: frozenset[str] = frozenset({BY_ONLEIHE_READERS})
-
-#: Wessen Urteil ueberhaupt gegen das Leseprofil faellt — und deshalb mit einer
-#: neuen Fassung veraltet. Weder was ein Mensch sagt noch was fremde Leser:innen
-#: im Schnitt vergeben, gehoert dazu. Eine Liste, damit die Versionspruefung
-#: nicht an drei Stellen verschieden gezogen wird (Ticket 54).
-PROFILE_BOUND: frozenset[str] = frozenset({BY_MODEL, BY_CONVERSATION})
 
 #: Was ein Mensch gesagt hat. Verfällt nicht mit einer neuen Profilversion,
 #: und wird von keinem Modellurteil überschrieben.
 HUMAN_ORIGINS: frozenset[str] = frozenset({BY_READER})
 
 LABELS: dict[str, str] = {
-    # Nicht "vom Werkzeug bewertet": *wer* gemessen hat, ist die kleinere
-    # Auskunft — die groessere ist, *woran* gemessen wurde. Und ein Wort statt
-    # dreien: neben den Sternen steht ohnehin, worauf das Urteil ruht.
-    BY_MODEL: "Leseprofil",
-    # Dieselbe Beschriftung wie das Tor: die dreizehn Urteile aus
-    # ``owned.yaml`` sind im Gespraech entstanden, gefaellt hat sie aber das
-    # Modell, gegen dasselbe Leseprofil. Bis #13 hiessen sie "deine
-    # Bewertung", genau wie die Sterne, die die Leserin selbst vergibt — und
-    # verhielten sich doch anders: sie veralten mit dem Profil
-    # (PROFILE_BOUND), ihre eigenen Sterne nie. Der Schluessel bleibt
-    # getrennt, damit man ihre Herkunft weiterhin findet.
-    BY_CONVERSATION: "Leseprofil",
     BY_READER: "deine Bewertung",
     BY_ONLEIHE_READERS: "Leser:innen der Onleihe",
 }

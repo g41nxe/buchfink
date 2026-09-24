@@ -41,8 +41,8 @@ from .evidence import gather as gather_evidence
 from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
-from .portrait import VocabularyError, load_vocabulary, portray_find
-from .rating import RatingUnavailable, build_rater
+from .portrait import PortrayalUnavailable, VocabularyError, load_vocabulary
+from .portrayer import build_portrayer
 from .render import render_html, render_text
 from .seed import sow
 from .sources import build_sources
@@ -306,7 +306,7 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         return deltas, gate.unrated_report(deltas)
 
     profile = store.reading_profile(settings.slug)
-    rater = build_rater(settings.rating_model) if profile is not None else None
+    portrayer = build_portrayer(settings.rating_model, vocabulary) if profile is not None else None
 
     kept, report = gate.apply(
         deltas,
@@ -314,11 +314,7 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         profile=profile,
         vocabulary=vocabulary,
         weights=weights,
-        portrayer=(
-            (lambda observation: portray_find(observation, rater.ask, vocabulary))
-            if rater is not None
-            else None
-        ),
+        portrayer=portrayer.portray_find if portrayer is not None else None,
         threshold=weights.gate_stars,
         budget=settings.rating_budget,
         now=now,
@@ -515,8 +511,7 @@ def _record_foreign_ratings(store: Store, observations: Sequence[Observation]) -
 
     ``profile_version`` ist **0**: eine fremde Durchschnittsnote ist kein
     Urteil gegen das Leseprofil und veraltet deshalb auch nicht mit einer
-    neuen Fassung. Und ``ebw rate`` schlaegt ausdruecklich ``(subject,
-    BY_MODEL)`` nach, sieht diese Zeilen also gar nicht.
+    neuen Fassung.
 
     Die Anzahl steht daneben und wird nicht in eine Stufe uebersetzt: gemessen
     an Google Books ruhen fuenf von sieben Bewertungen unseres Korpus auf einer
@@ -628,10 +623,10 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
             file=sys.stderr,
         )
         return EXIT_CONFIG_ERROR
-    rater = build_rater(settings.rating_model)
-    if rater is None:
+    portrayer = build_portrayer(settings.rating_model, judge.vocabulary)
+    if portrayer is None:
         print(
-            "Kein Bewerter: weder ANTHROPIC_API_KEY noch eine angemeldete "
+            "Kein Weg zum Modell: weder ANTHROPIC_API_KEY noch eine angemeldete "
             "Claude-Code-Installation gefunden.",
             file=sys.stderr,
         )
@@ -668,8 +663,8 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
     distribution: dict[int, int] = {}
     for observation in finds:
         try:
-            portrait = portray_find(observation, rater.ask, judge.vocabulary)
-        except RatingUnavailable as exc:
+            portrait = portrayer.portray_find(observation)
+        except PortrayalUnavailable as exc:
             print(f"  ohne Steckbrief  {observation.title[:52]} ({exc})")
             continue
         store.put_portrait(subject_of(observation), portrait, now=now)
@@ -714,7 +709,6 @@ def _seed(settings, watchlist) -> int:
     print(f"  {report.books:>4}  Bücher neu angelegt")
     print(f"  {report.relations:>4}  Beziehungen")
     print(f"  {report.interests:>4}  Interessen")
-    print(f"  {report.ratings:>4}  Urteile aus owned.yaml (im Gespräch vergeben)")
     if report.needs_attention:
         print(f"\n  {len(report.unresolved)} Einträge brauchen Aufmerksamkeit:")
         for item in report.unresolved:

@@ -18,7 +18,7 @@ effect at once beside fields that had stopped meaning anything:
 
 - **Settings** (*Einstellungen*) — `data/settings.yaml`, below;
 - **Seed** (*Saatgut*) — `data/seed.yaml`, see *Seed file*;
-- **Reading Profile** (*Leseprofil*) — `docs/leseprofil.yaml`, see below.
+- **Reading Profile** (*Leseprofil*) — in the database, see below.
 
 ### Settings
 *deutsch: Einstellungen*
@@ -230,26 +230,18 @@ suggestions beats a pile of poor ones, and an empty pile is a good result.
 ### Rating
 *deutsch: Urteil*
 
-What someone thinks of a book, on the Rubric's 0–5 scale, with a justification
-and a confidence (`belegt` | `teils` | `vermutet`).
+What a person says about a book, on a 0–5 scale: the reader's own stars, or the
+average of foreign readers (the Onleihe). A Rating carries an **Origin** — who
+said it: `reader` or `onleihe_readers`. The Origin is part of the key: a 4 from
+the reader is a fact, a foreign average says something about the book and not
+about the fit to the reader. Both may stand side by side, neither overwrites the
+other, and they never render the same.
 
-A Rating carries an **Origin** — who judged: `model` (the Rating Gate in a
-Run), `conversation` (judged against the same Rubric in conversation; the
-entries in `owned.yaml`), or `reader` (the reader's own stars, set on the book
-page). The Origin is part of the key, because the difference is the point: a 4
-from the reader is a fact, a 4 from a model is a suggestion (ADR 17). Both may
-stand side by side, neither overwrites the other, and the two never render the
-same.
-
-A machine Rating is keyed to the *find* — the ISBN, else `(Source, item id)` —
-because most finds never become a Book. A human Rating is keyed to the **Book**,
-because that is where a person gives it and it should hold whichever Source the
-book next arrives through.
-
-A machine Rating is **computed by the code** from the Appeal Terms a model has
-assigned to the book once and the reader's Facets and counterweights (ADR 33).
-A new Reading Profile version therefore voids nothing: machine Ratings are
-recomputed, and the reader's own stars stay as they are.
+A Rating is keyed to the **Book**, because that is where a person gives it and it
+should hold whichever Source the book next arrives through. What the application
+itself thinks of a book is not stored as a Rating: it is a **Verdict**, computed
+by the code from the Portrait and the Reading Profile (ADR 33, #52). The old
+machine origins (`model`, `conversation`) were deleted with #52.
 
 ### Reading Profile
 *deutsch: Leseprofil*
@@ -267,10 +259,6 @@ taste — but a new version no longer voids any Rating, because the code
 recomputes them.
 
 Without a Reading Profile nothing is judged.
-
-Until ADR 33 is built, the code still reads the old prose profile from
-`docs/leseprofil.yaml`, changed through the `leseprofil-schaerfen` skill
-(ADR 17, ADR 21).
 
 **Reader-facing name: *Leseprofil*.**
 
@@ -477,6 +465,17 @@ Discovery came in.
 
 **Reader-facing name: *Übereinstimmung*.**
 
+### Portrayer
+*deutsch: Steckbrief-Ersteller*
+
+The one place that asks a language model (*deutsch: das Modell*): a book goes in
+(title, author, blurb — for a find also original title and keywords), a Portrait
+comes out. It holds the vocabulary, the instruction and the reading of the
+answer; how the text reaches the model — through the API with a key from the
+environment, or through the locally signed-in Claude Code installation — is its
+own business (#52). Without either it does not exist, and everything stays
+undescribed and is shown (ADR 7).
+
 ### Verdict
 *deutsch: Urteil (des Tors)*
 
@@ -568,30 +567,25 @@ shown by the strength scale.
 ### Rating Scheme
 *deutsch: Bewertungsschema*
 
-How a book is held against a Reading Profile and turned into stars: what a star
-means, what a justification has to contain, what `confidence` means and what a
-merely-suspected judgement may be used for, the counter-check, and the rule
-against inventing facts.
+The numbers with which the code turns Facets and Liked Terms into a Fit
+(ADR 33): what a Facet hit in full weighs, what a single Liked Appeal Term or
+Story Pattern weighs (boosted or not), what a counterweight takes off, where the
+star thresholds lie, and from how many stars the Rating Gate lets a find through.
 
-It names **no** axis of taste — it is the procedure, not the content, and it
-would work unchanged for a different reader. It is therefore **not** versioned
-alongside the profile: a change to the scheme invalidates no Rating (ADR 21).
-
-Since ADR 33 it holds, machine-readable, how the code turns Facets and Liked
-Terms into a Rating: what a Facet hit in full weighs, what a single Liked
-Appeal Term or Story Pattern weighs (boosted or not), what a counterweight
-takes off, where the star thresholds lie. It also holds the rules for what the
-model writes once per book, the pitch among them.
+It names **no** axis of taste and would work unchanged for a different reader.
+The instructions to the old star-giving model that once stood here are gone
+(#52); the instruction for the model that describes a book lives with the
+vocabulary, in the Portrait prompt.
 
 **Reader-facing name: *Bewertungsschema*.**
 
 ### Evidence
 *deutsch: Belege*
 
-What a rater sees of a book beyond title, author and blurb, gathered right
-before a Rating and never stored with the Observation: the **Sample**, the
-**Keywords**, and the original title of a translation (#17). Only books about
-to be rated get it, because it costs requests.
+What the Portrayer sees of a book beyond title, author and blurb, gathered right
+before a Portrait is made and never stored with the Observation: the
+**Keywords** and the original title of a translation (#17), and the full blurb.
+Only books about to be described get it, because it costs requests.
 
 ### Sample
 *deutsch: Leseprobe*
@@ -599,8 +593,8 @@ to be rated get it, because it costs requests.
 The opening of the book itself, read from the EPUB sample that the shop and the
 library link on the detail page — the first couple of thousand words after the
 front matter. The only Evidence that shows *how* a book is written rather than
-what it promises. Without it, a Rating is at most `teils`: `belegt` needs the
-Sample.
+what it promises. It is still gathered with the other Evidence, but the Portrayer
+does not read it yet (open, see the ticket on the sample).
 
 ### Keywords
 *deutsch: Schlagwörter*
@@ -608,16 +602,6 @@ Sample.
 What publisher and shop tag a book with — motifs and comparable titles ("Space
 Opera", "Dune"). From the shop's detail page and from the DNB record (MARC
 `653`, the publisher's own words from the VLB), without trade codes.
-
-### Deduction
-*deutsch: Abzug*
-
-A star taken off a machine Rating by the code, after the model has judged —
-for a rule that hangs on a list rather than on judgement, so it applies the
-same to every book (#28). The one today: **Selbstverlag**, when the publisher
-is a self-publishing platform (neobooks, epubli, tredition, BoD, …). Small
-presses are not on the list. The Rating keeps the model's own stars beside it,
-and the page shows both.
 
 ### Reference Author
 *deutsch: Referenzautor:in*

@@ -12,6 +12,8 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import yaml
+
 from ..config import Settings
 from ..facets import (
     STRENGTHS,
@@ -19,15 +21,10 @@ from ..facets import (
     family_name,
     family_names,
     is_pattern,
+    load_weights,
     strength,
 )
 from ..portrait import VocabularyError, load_vocabulary
-from ..rating import (
-    LESEPROFIL_PATH,
-    RatingUnavailable,
-    load_leseprofil,
-    load_rating_scheme,
-)
 from ..reasons import thema_name
 from ..relations import InterestKey, RelationKind, labelled
 from ..store import Store
@@ -129,11 +126,9 @@ class Overview:
     min_discount: int
     sweep_weekday: str
     last_sweep: datetime | None
-    leseprofil: str | None
-    profile_version: int | None
-    leseprofil_path: str
-    #: Das Verfahren, ohne Version (ADR 21).
-    scheme: str | None
+    #: Ab wie vielen Sternen ein Vorschlag im Stapel bleibt (Bewertungsschema),
+    #: oder ``None``, wenn das Schema nicht lesbar ist.
+    gate_stars: int | None
     #: Die Fassung des Leseprofils aus Facetten (ADR 33), oder keine.
     facet_profile: int | None = None
     #: Wie viele Bücher in der Erstaufnahme schon genannt sind (#47).
@@ -203,17 +198,9 @@ def build(store: Store, settings: Settings) -> Overview:
     )
 
     try:
-        # Die Datei, wie sie auf der Platte liegt — nicht die für das Modell
-        # gerenderte Fassung. Geändert wird das Dokument, also gehört das
-        # Dokument auf die Seite.
-        _, version = load_leseprofil()
-        leseprofil = LESEPROFIL_PATH.read_text(encoding="utf-8")
-    except RatingUnavailable:
-        leseprofil, version = None, None
-    try:
-        scheme = load_rating_scheme().text
-    except RatingUnavailable:
-        scheme = None
+        gate_stars = load_weights().gate_stars
+    except (OSError, KeyError, ValueError, yaml.YAMLError):
+        gate_stars = None
 
     facets, counterweights, liked = _facet_profile(store, settings)
 
@@ -226,10 +213,7 @@ def build(store: Store, settings: Settings) -> Overview:
         min_discount=settings.min_discount_pct,
         sweep_weekday=_WEEKDAYS[settings.extended_sweep_weekday % 7],
         last_sweep=store.get_state(settings.slug, EXTENDED_SWEEP_KEY),
-        leseprofil=leseprofil,
-        profile_version=version,
-        leseprofil_path=str(LESEPROFIL_PATH.name),
-        scheme=scheme,
+        gate_stars=gate_stars,
         facet_profile=(
             profile.version if (profile := store.reading_profile(settings.slug)) else None
         ),

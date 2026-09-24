@@ -87,17 +87,24 @@ def test_the_counts_cover_every_relation(client: TestClient, db: Store) -> None:
         assert label in body
 
 
-def test_the_leseprofil_is_shown_with_its_version(client: TestClient) -> None:
+def test_the_old_prose_profile_and_the_scheme_text_are_gone(client: TestClient) -> None:
+    """Seit #52 zeigt die Seite nur noch das Profil aus der Datenbank: den alten
+    Prosa-Text, den Verweis auf den Skill und die Rohfassung des Schemas gibt es
+    nicht mehr."""
     body = client.get("/profile").text
-    assert "Profilversion" in body  # Beschriftung der Seite
-    assert "Die Figur trägt alles" in body
+
+    assert "Das Bewertungsschema" not in body
+    assert "leseprofil-schaerfen" not in body
+    assert "Die Figur trägt alles" not in body
+    assert "Profilversion" not in body
 
 
-def test_the_page_says_the_leseprofil_is_not_editable_here(client: TestClient) -> None:
-    """Ein Formular hier würde das Änderungsverfahren aus ADR 17 umgehen."""
+def test_the_gate_threshold_is_stated(client: TestClient) -> None:
+    """Die Schwelle ist ein Wert des Schemas und lässt sich nach den ersten
+    echten Funden verstellen — sonst stünde sie nirgends (#52)."""
     body = client.get("/profile").text
-    assert "nicht änderbar" in body
-    assert "leseprofil-schaerfen" in body
+
+    assert "Vorschläge" in body and "Sternen" in body
 
 
 def test_no_write_route_exists_for_the_profile(client: TestClient) -> None:
@@ -109,27 +116,6 @@ def test_no_write_route_exists_for_the_profile(client: TestClient) -> None:
         if getattr(route, "methods", set()) - {"GET", "HEAD"}
     ]
     assert not any(path.startswith("/profile") for path in writable)
-
-
-def test_the_scheme_is_shown_beside_the_profile_and_without_a_version(
-    client: TestClient,
-) -> None:
-    """Zwei Dokumente, nicht eins (ADR 21). Nur eines trägt eine Version — und
-    die Seite muss sagen, welches, sonst hilft die Trennung niemandem."""
-    body = client.get("/profile").text
-
-    assert "Das Leseprofil" in body
-    assert "Das Bewertungsschema" in body
-    assert "Ohne Version" in body
-
-
-def test_neither_document_is_shown_as_a_python_object(client: TestClient) -> None:
-    """Die Seite zeigte eine Weile Scheme(text='…', min_stars=0, …) — dasselbe
-    Datenobjekt, das schon einmal im Prompt gelandet war."""
-    body = client.get("/profile").text
-
-    assert "Scheme(" not in body
-    assert "withhold_from" not in body
 
 
 # --- die Bücher hinter den Zahlen (Ticket 49) -------------------------------

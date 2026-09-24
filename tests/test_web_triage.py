@@ -581,10 +581,10 @@ def test_an_unjudged_find_is_never_hidden_as_weak(client: TestClient, db: Store)
 def test_the_page_uses_the_same_threshold_as_the_digest(client: TestClient, db: Store) -> None:
     """Zwei Ansichten desselben Stapels mit zwei Schwellen waeren genau die
     Drift, die dieses Projekt schon dreimal eingefangen hat."""
-    from ebook_watchlist.rating import DEFAULT_THRESHOLD
+    from ebook_watchlist.facets import load_weights
 
     knapp = found(db, item_id="a", title="Genau an der Schwelle")
-    urteil(db, knapp, stars=DEFAULT_THRESHOLD, pitch="Gerade so.")
+    urteil(db, knapp, stars=load_weights().gate_stars, pitch="Gerade so.")
 
     assert [i.title for i in view.pending(db, load_settings()).items] == ["Genau an der Schwelle"]
 

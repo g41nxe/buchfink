@@ -20,8 +20,7 @@ from datetime import datetime
 from .facets import ReadingProfile, Weights
 from .judging import Verdict, judge, readers_verdict
 from .models import Delta, DeltaKind, MatchReason, Observation
-from .portrait import Portrait, Vocabulary, fingerprint
-from .rating import RatingUnavailable
+from .portrait import Portrait, PortrayalUnavailable, Vocabulary, fingerprint
 from .ratings import BY_READER, book_subject, subject_of
 from .store import Store
 
@@ -42,7 +41,7 @@ class GateReport:
     #: Urteile, die ein schon vorhandener Steckbrief oder die eigenen Sterne
     #: der Leserin ohne Aufruf lieferten.
     reused: int = 0
-    #: Kein Urteil möglich — der Bewerter kam nicht durch, das Buch ist dem
+    #: Kein Urteil möglich — der `Portrayer` kam nicht durch, das Buch ist dem
     #: Modell unbekannt, oder es ist keiner eingerichtet — und deshalb gezeigt.
     unrated: int = 0
     #: Über dem Budget und deshalb ungefragt durchgelassen — unbewertet und
@@ -68,11 +67,11 @@ def unrated_report(deltas: list[Delta]) -> GateReport:
     return GateReport(unrated=sum(1 for delta in deltas if _is_discovery(delta)))
 
 
-def _readers_verdict(store: Store, observation: Observation, version: int) -> Verdict | None:
+def _readers_verdict(store: Store, observation: Observation) -> Verdict | None:
     """Was die Leserin selbst gesagt hat, schlägt jede Rechnung (ADR 17)."""
     if observation.book_id is None:
         return None
-    stored = store.rating(book_subject(observation.book_id), version, origin=BY_READER)
+    stored = store.rating(book_subject(observation.book_id), origin=BY_READER)
     return readers_verdict(stored.stars) if stored is not None else None
 
 
@@ -142,7 +141,7 @@ def apply(
         if not _is_discovery(delta):
             continue
         observation = delta.current
-        if _readers_verdict(store, observation, profile.version) is not None:
+        if _readers_verdict(store, observation) is not None:
             continue
         subject = subject_of(observation)
         existing = store.portrait(subject, stamp)
@@ -168,7 +167,7 @@ def apply(
         for observation, full in zip(wanted, described, strict=True):
             try:
                 portrait = portrayer(full)
-            except RatingUnavailable:
+            except PortrayalUnavailable:
                 continue
             subject = subject_of(observation)
             store.put_portrait(subject, portrait, now=now)
@@ -186,7 +185,7 @@ def apply(
             continue
 
         observation = delta.current
-        verdict = _readers_verdict(store, observation, profile.version)
+        verdict = _readers_verdict(store, observation)
         if verdict is None:
             portrait = portraits.get(observation.key)
             if portrait is None and delta.kind is not DeltaKind.FIRST_SEEN:
@@ -201,7 +200,7 @@ def apply(
                     or portrayer is None
                 ):
                     # Gefragt, aber ohne Antwort (kein Netz, unlesbare Antwort),
-                    # dem Modell unbekannt, oder es ist kein Bewerter
+                    # dem Modell unbekannt, oder es ist kein `Portrayer`
                     # eingerichtet: unbewertet und trotzdem gezeigt — ein Tor,
                     # das im Zweifel schließt, verschluckt Neuzugänge.
                     report.unrated += 1

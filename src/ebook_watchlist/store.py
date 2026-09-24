@@ -39,7 +39,7 @@ from .facets import Counterweight, Facet, Liked, ReadingProfile
 from .migrations import migrate
 from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
-from .ratings import PROFILE_BOUND, RATING_ORIGINS
+from .ratings import RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
 
 #: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
@@ -1013,7 +1013,7 @@ class Store:
             session.commit()
 
     def dnb_facts(self, isbns: Iterable[str]) -> dict[str, Record]:
-        """ISBN -> was die DNB fuer den Bewerter weiss, wo sie etwas davon weiss.
+        """ISBN -> was die DNB fuer den `Portrayer` weiss, wo sie etwas davon weiss.
 
         Originaltitel und Schlagwoerter (#17): was der Verlag selbst an Motiven
         und Vergleichstiteln angibt, steht weder im Titel noch im Klappentext.
@@ -1546,15 +1546,12 @@ class Store:
 
     # --- Bewertungen (Ticket 12) -------------------------------------------
 
-    def rating(
-        self, subject: str, profile_version: int, *, origin: str = "model"
-    ) -> RatingRow | None:
-        """Das gespeicherte Urteil einer Herkunft — wenn es zum Profil passt.
+    def rating(self, subject: str, *, origin: str) -> RatingRow | None:
+        """Das gespeicherte Urteil einer Herkunft, oder keines.
 
-        Die Versionsprüfung gilt nur für Maschinenurteile; was die Leserin
-        selbst gesagt hat, verfällt nicht, wenn sie ihr Profil schärft. Und sie
-        gilt gegen das **Leseprofil**, nicht gegen das Bewertungsschema — das
-        trägt gar keine Version (ADR 21).
+        Gespeichert wird nur, was ein Mensch oder fremde Leser:innen sagen; das
+        Urteil der Anwendung wird gerechnet (ADR 33). Beides verfällt nicht mit
+        einer neuen Profilfassung, und deshalb fragt niemand mehr nach einer.
         """
         with self.session() as session:
             row = session.scalars(
@@ -1563,12 +1560,6 @@ class Store:
                 )
             ).first()
             if row is None:
-                return None
-            # Nur profilgebundene Urteile veralten mit einer neuen Fassung.
-            # Vorher stand hier "nicht menschlich" — und liess damit eine
-            # fremde Leserstimme durchfallen, die mit dem Profil nie etwas zu
-            # tun hatte (Ticket 54).
-            if origin in PROFILE_BOUND and row.profile_version != profile_version:
                 return None
             session.expunge(row)
             return row
@@ -1614,20 +1605,14 @@ class Store:
         reason: str,
         profile_version: int,
         now: datetime,
-        origin: str = "model",
-        pitch: str = "",
+        origin: str,
         votes: int | None = None,
-        via: str | None = None,
-        hits: Sequence[str] = (),
-        misses: Sequence[str] = (),
-        model_stars: float | None = None,
-        deductions: Sequence[str] = (),
     ) -> None:
-        """Ein Urteil festhalten.
+        """Ein Urteil festhalten — der Leserin oder fremder Leser:innen.
 
-        Der Schlüssel ist ``(subject, origin)``: das Urteil der Leserin und das
-        des Modells stehen nebeneinander, und keines überschreibt das andere
-        (ADR 17, Ticket 21).
+        Der Schlüssel ist ``(subject, origin)``: beide stehen nebeneinander, und
+        keines überschreibt das andere (ADR 17, Ticket 21). Die Anwendung
+        speichert kein eigenes Urteil mehr (ADR 33).
         """
         if origin not in RATING_ORIGINS:
             raise ValueError(
@@ -1646,15 +1631,6 @@ class Store:
             row.stars = stars
             row.confidence = confidence
             row.votes = votes
-            row.via = via
-            row.axes = (
-                json.dumps({"trifft": list(hits), "fehlt": list(misses)}, ensure_ascii=False)
-                if hits or misses
-                else None
-            )
-            row.model_stars = model_stars
-            row.deducted = json.dumps(list(deductions), ensure_ascii=False) if deductions else None
-            row.pitch = pitch
             row.reason = reason
             row.profile_version = profile_version
             row.rated_at = now
