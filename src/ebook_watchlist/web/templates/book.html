@@ -69,7 +69,7 @@
      deal=page.deal,
      kacheln=kacheln,
      herkunft=herkunft,
-     lauf_unterwegs=lauf_unterwegs) }}
+     run_in_progress=run_in_progress) }}
 
 {% if page.note %}
 {# Die wertvollste Zeile des Eintrags, und bis Ticket 52 unsichtbar: bei 15
@@ -162,8 +162,8 @@
         class="{{ 'col-span-2' if loop.index <= 3 else 'col-span-3' }} sm:col-auto">
     <input type="hidden" name="kind" value="{{ kind }}">
     <input type="hidden" name="active" value="{{ '0' if on else '1' }}">
-    {{ zustandsknopf(kind, label, zeichen=icons[kind], aktiv=on,
-                     zusatz="w-full sm:w-auto") }}
+    {{ zustandsknopf(kind, label, icon=icons[kind], active=on,
+                     extra="w-full sm:w-auto") }}
   </form>
   {% endfor %}
 </div>
@@ -181,7 +181,7 @@
   {% for value, label in (("", "allen Quellen"), ("library", "nur Bibliothek"), ("shop", "nur Shop")) %}
   <form method="post" action="/book/{{ page.book_id }}/restrict">
     <input type="hidden" name="restrict" value="{{ value }}">
-    {{ pille(label, aktiv=(page.restrict or "") == value, ton="amber") }}
+    {{ pille(label, active=(page.restrict or "") == value, tone="amber") }}
   </form>
   {% endfor %}
 </div>

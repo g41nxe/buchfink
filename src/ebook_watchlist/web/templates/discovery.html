@@ -51,7 +51,7 @@
      cover_file=page.cover_file,
      deal=page.deal,
      kacheln=kacheln,
-     lauf_unterwegs=lauf_unterwegs) }}
+     run_in_progress=run_in_progress) }}
 
 {# Die drei Entscheidungen, dieselben wie im Stapel und auf der Startseite.
    Hier mit Wort: eine Detailseite hat Platz, und wer hier gelandet ist, ist
@@ -66,10 +66,10 @@
   <input type="hidden" name="keys" value="{{ page.key }}">
   {# Nach der Entscheidung auf die Buchseite: den Fund gibt es dann nicht mehr,
      das Buch schon. #}
-  <input type="hidden" name="zurueck" value="buch">
+  <input type="hidden" name="back" value="buch">
   {% for kind, label in actions %}
-  {{ zustandsknopf(kind, label, zeichen=icons[kind], wert=kind,
-                   zusatz="w-full sm:w-auto") }}
+  {{ zustandsknopf(kind, label, icon=icons[kind], value=kind,
+                   extra="w-full sm:w-auto") }}
   {% endfor %}
 </form>
 

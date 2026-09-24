@@ -24,14 +24,14 @@
 {% call abschnitt("Geliebt", "ic-heart") %}
   <span class="text-xs font-normal text-soft">drei bis fünf</span>
 {% endcall %}
-{% with side=seite.liked, oob=false, fehler=none %}
+{% with side=page.liked, oob=false, error=none %}
 {% include "_intake_side.html" %}
 {% endwith %}
 
 {% call abschnitt("Enttäuscht", "ic-ban") %}
   <span class="text-xs font-normal text-soft">bis zu fünf — oder keins</span>
 {% endcall %}
-{% with side=seite.disliked, oob=false, fehler=none %}
+{% with side=page.disliked, oob=false, error=none %}
 {% include "_intake_side.html" %}
 {% endwith %}
 

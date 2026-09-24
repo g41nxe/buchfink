@@ -8,7 +8,7 @@
    Häufiges trägt den Zusatz „bei vielen Büchern" und steht am Ende; ein
    Erzählmuster sagt, dass es eins ist. Ausgeblendet wird nichts (#44).
 
-   Erwartet: `p` (die Pille), `seite` (loved oder lost), `step`. #}
+   Erwartet: `p` (die Pille), `side` (loved oder lost), `step`. #}
 {% macro titelreihe(titel) -%}
 {% for t in titel %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
 {%- endmacro %}

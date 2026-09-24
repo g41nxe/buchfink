@@ -33,7 +33,7 @@ RESTRICTIONS = ("library", "shop")
 #: Ausschließen zuerst, wie in der Reihe der Vorschlagsseite (``triage.ACTIONS``):
 #: dieselben zwei Zeichen stehen jetzt in beiden Listen, und sie sollen in
 #: derselben Reihenfolge stehen (#22).
-ABSCHLUSS: tuple[tuple[str, str], ...] = labelled_actions(
+CLOSINGS: tuple[tuple[str, str], ...] = labelled_actions(
     RelationKind.DISMISSED, RelationKind.OWNED
 )
 

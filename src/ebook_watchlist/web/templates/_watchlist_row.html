@@ -56,7 +56,7 @@
     {% endset %}
 
     {% set aktionen %}
-    {{ watchlist_aktionen(entry, abschluss, icons, zurueck=zurueck | default("/watchlist")) }}
+    {{ watchlist_aktionen(entry, closings, icons, back=back | default("/watchlist")) }}
     {% endset %}
 
     {# Dieselbe Spalte wie im Stapel (#16): was das Werkzeug urteilt, steht
@@ -157,8 +157,8 @@
             class="mt-1 rounded-lg border border-rule bg-paper p-3">
         <input type="hidden" name="source" value="{{ entry.choice_source }}">
         {# Zurueck dorthin, wo entschieden wurde — nicht immer in den Filter. #}
-        <input type="hidden" name="zurueck"
-               value="{{ '/watchlist?nur=unklar' if nur_unklar else '/watchlist' }}">
+        <input type="hidden" name="back"
+               value="{{ '/watchlist?nur=unklar' if only_unsure else '/watchlist' }}">
 
         <div class="streifen">
           {% for kandidat in entry.candidates %}

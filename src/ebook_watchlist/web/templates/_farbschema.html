@@ -16,30 +16,30 @@
 {% macro farbschema() %}
 <div x-cloak
      x-data="{
-       wahl: document.documentElement.dataset.theme || 'system',
-       setze(gewaehlt) {
-         this.wahl = gewaehlt;
-         const wurzel = document.documentElement;
+       choice: document.documentElement.dataset.theme || 'system',
+       choose(chosen) {
+         this.choice = chosen;
+         const root = document.documentElement;
          try {
-           if (gewaehlt === 'system') localStorage.removeItem('theme');
-           else localStorage.setItem('theme', gewaehlt);
+           if (chosen === 'system') localStorage.removeItem('theme');
+           else localStorage.setItem('theme', chosen);
          } catch (e) {}
-         if (gewaehlt === 'system') delete wurzel.dataset.theme;
-         else wurzel.dataset.theme = gewaehlt;
+         if (chosen === 'system') delete root.dataset.theme;
+         else root.dataset.theme = chosen;
        }
      }"
      role="group" aria-label="Farbschema"
      class="inline-flex overflow-hidden rounded border border-rule">
-  {% for wert, wort in (("system", "System"), ("light", "Hell"), ("dark", "Dunkel")) %}
+  {% for value, word in (("system", "System"), ("light", "Hell"), ("dark", "Dunkel")) %}
   {# Getrennt durch den Rahmen des Nachbarn, nicht durch einen Abstand: drei
      Pillen nebeneinander sähen aus wie drei Entscheidungen, und es ist eine. #}
-  <button type="button" @click="setze('{{ wert }}')"
-          :aria-pressed="wahl === '{{ wert }}'"
-          :class="wahl === '{{ wert }}'
+  <button type="button" @click="choose('{{ value }}')"
+          :aria-pressed="choice === '{{ value }}'"
+          :class="choice === '{{ value }}'
                   ? 'bg-accent-bg text-accent font-medium'
                   : 'text-soft hover:text-ink'"
           class="tun inline-flex h-8 items-center px-3 text-xs
-                 {{ 'border-l border-rule' if not loop.first }}">{{ wort }}</button>
+                 {{ 'border-l border-rule' if not loop.first }}">{{ word }}</button>
   {% endfor %}
 </div>
 {% endmacro %}

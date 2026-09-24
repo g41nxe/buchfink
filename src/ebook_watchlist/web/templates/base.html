@@ -24,9 +24,9 @@
    dem System folgen ist die Voreinstellung, nicht ein dritter Sonderfall. #}
 <script>
   try {
-    var gewaehlt = localStorage.getItem("theme");
-    if (gewaehlt === "light" || gewaehlt === "dark") {
-      document.documentElement.dataset.theme = gewaehlt;
+    var chosen = localStorage.getItem("theme");
+    if (chosen === "light" || chosen === "dark") {
+      document.documentElement.dataset.theme = chosen;
     }
   } catch (e) {}
 </script>
@@ -118,7 +118,7 @@
        sie rechts in derselben Zeile. #}
     <nav class="flex flex-1 flex-wrap justify-end gap-1 text-sm
                 sm:ml-auto sm:flex-none sm:justify-start">
-      {% set pfad = request.url.path %}
+      {% set path = request.url.path %}
       {# Die Uebersicht traegt auf dem Telefon nur ihr Zeichen (#25). Sie ist
          der fuenfte Punkt, und fuer den ist in der Rechnung oben kein Wort
          mehr frei: "Uebersicht" misst rund 75 px, das Zeichen 28. Dasselbe
@@ -127,21 +127,21 @@
 
          Bis dahin fuehrten nur zwei Verweise der Startseite dorthin; wer auf
          der Watchlist stand, musste erst zurueck. #}
-      {% for ziel, name, zeichen in (("/", "Home", none),
+      {% for target, name, icon in (("/", "Home", none),
                                      ("/watchlist", "Watchlist", none),
                                      ("/suggestions", "Vorschläge", none),
                                      ("/profile", "Profil", none),
                                      ("/overview", "Übersicht", "ic-clock")) %}
       {# Wo man steht, stand bisher nirgends — gleich aussehende Links.
          `aria-current` sagt es der Vorlesehilfe, die Farbe dem Auge. #}
-      {% set aktiv = pfad == ziel %}
-      <a href="{{ ziel }}"{% if aktiv %} aria-current="page"{% endif %}
-         {% if zeichen %}title="{{ name }} — Läufe, Quellen und Tagesberichte"
+      {% set active = path == target %}
+      <a href="{{ target }}"{% if active %} aria-current="page"{% endif %}
+         {% if icon %}title="{{ name }} — Läufe, Quellen und Tagesberichte"
          aria-label="{{ name }}"{% endif %}
          class="tun inline-flex h-7 items-center rounded px-1.5 sm:px-2.5
                 hover:bg-hair hover:text-ink
-                {{ 'bg-hair text-ink' if aktiv else 'text-soft' }}">
-        {%- if zeichen %}<svg class="i sm:hidden"><use href="#{{ zeichen }}"/></svg>
+                {{ 'bg-hair text-ink' if active else 'text-soft' }}">
+        {%- if icon %}<svg class="i sm:hidden"><use href="#{{ icon }}"/></svg>
         <span class="hidden sm:inline">{{ name }}</span>
         {%- else %}{{ name }}{% endif %}</a>
       {% endfor %}

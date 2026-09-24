@@ -4,15 +4,15 @@
    Einträgen zurückbleibt. Weiter geht es, sobald drei geliebte Bücher
    bestätigt sind und keines mehr auf eine Antwort wartet.
 
-   Erwartet: `seite`, `oob`. #}
-{% set fehlen = seite.liked.fewest - seite.liked.confirmed %}
+   Erwartet: `page`, `oob`. #}
+{% set lacking = page.liked.fewest - page.liked.confirmed %}
 <div id="erstaufnahme-weiter" {% if oob %}hx-swap-oob="true"{% endif %}
      class="mt-8 rounded-lg border border-rule bg-card px-5 py-4 text-sm">
-  {% if seite.ready %}
+  {% if page.ready %}
   <p class="flex items-center gap-2 text-ink">
     <svg class="i text-accent"><use href="#ic-check"/></svg>
-    {{ seite.liked.confirmed }} geliebte{% if seite.disliked.confirmed %} und
-    {{ seite.disliked.confirmed }} enttäuschende{% endif %} Bücher stehen in deinen Regalen.
+    {{ page.liked.confirmed }} geliebte{% if page.disliked.confirmed %} und
+    {{ page.disliked.confirmed }} enttäuschende{% endif %} Bücher stehen in deinen Regalen.
   </p>
   <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
     <p class="text-soft">Als Nächstes: was deine Bücher gemeinsam haben.</p>
@@ -20,9 +20,9 @@
        class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
               font-medium text-accent hover:bg-accent/25">Weiter</a>
   </div>
-  {% elif fehlen > 0 %}
+  {% elif lacking > 0 %}
   <p class="text-soft">
-    Noch {{ "ein geliebtes Buch" if fehlen == 1 else fehlen ~ " geliebte Bücher" }}
+    Noch {{ "ein geliebtes Buch" if lacking == 1 else lacking ~ " geliebte Bücher" }}
     bestätigen, dann geht es weiter.
   </p>
   {% else %}

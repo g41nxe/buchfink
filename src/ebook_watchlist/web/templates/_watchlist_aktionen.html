@@ -12,20 +12,20 @@
    Zwei davon beenden den Eintrag und nehmen ihn aus der Liste. Bisher standen
    sie im Menü hinter einer Trennlinie; offen in der Zeile brauchen sie einen
    Weg zurück statt einer Nachfrage (ADR 30) — gelöscht wird nichts (ADR 18).
-   `zurueck` sagt, auf welcher Seite dieser Weg angeboten wird.
+   `back` sagt, auf welcher Seite dieser Weg angeboten wird.
 
    Bei einem pausierten Eintrag wird aus ⏸ ein ▶. Nachsehen bleibt auch dort
    möglich: ein Lauf hängt nicht daran, ob der Eintrag ruht.
 #}
 {% from "_zeichenknopf.html" import zeichenknopf %}
 
-{% macro watchlist_aktionen(entry, abschluss, icons, zurueck="/watchlist") %}
+{% macro watchlist_aktionen(entry, closings, icons, back="/watchlist") %}
 <span class="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
-  {% for kind, label in abschluss %}
+  {% for kind, label in closings %}
   <form method="post" action="/watchlist/{{ entry.book_id }}/finish"
         class="contents">
     <input type="hidden" name="kind" value="{{ kind }}">
-    <input type="hidden" name="zurueck" value="{{ zurueck }}">
+    <input type="hidden" name="back" value="{{ back }}">
     {% set attrs %}type="submit"{% endset %}
     {{ zeichenknopf(label, icons[kind],
                     ton=("danger" if kind == "dismissed" else "amber"),
@@ -35,21 +35,21 @@
 
   {# Der enge Lauf tauscht die Zeile gegen sich selbst aus, wie das Menü es
      vorher tat (Ticket 51). Die Zeile trägt dafür auf beiden Seiten dieselbe
-     Kennung, und `zurueck` reist mit: sonst zeigte die nachgeladene Zeile auf
+     Kennung, und `back` reist mit: sonst zeigte die nachgeladene Zeile auf
      der Startseite plötzlich auf die Watchlist. #}
-  {% set nachsehen %}type="button"
-    hx-post="/watchlist/{{ entry.book_id }}/recheck?zurueck={{ zurueck }}"
+  {% set recheck %}type="button"
+    hx-post="/watchlist/{{ entry.book_id }}/recheck?back={{ back }}"
     hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
-  {{ zeichenknopf("jetzt nachsehen", "ic-refresh", attrs=nachsehen) }}
+  {{ zeichenknopf("jetzt nachsehen", "ic-refresh", attrs=recheck) }}
 
   <form method="post" action="/watchlist/{{ entry.book_id }}/active"
         class="contents">
     <input type="hidden" name="active" value="{{ '0' if entry.active else '1' }}">
-    <input type="hidden" name="zurueck" value="{{ zurueck }}">
-    {% set umschalten %}type="submit"{% endset %}
+    <input type="hidden" name="back" value="{{ back }}">
+    {% set toggle %}type="submit"{% endset %}
     {{ zeichenknopf("pausieren" if entry.active else "fortsetzen",
                     "ic-pause" if entry.active else "ic-play",
-                    attrs=umschalten) }}
+                    attrs=toggle) }}
   </form>
 </span>
 {% endmacro %}

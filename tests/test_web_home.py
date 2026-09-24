@@ -243,7 +243,7 @@ def test_finishing_an_offer_stays_on_the_start_page(client: TestClient, db: Stor
 
     antwort = client.post(
         f"/watchlist/{schwestern.id}/finish",
-        data={"kind": "owned", "zurueck": "/"},
+        data={"kind": "owned", "back": "/"},
     )
 
     assert antwort.url.path == "/"
@@ -372,7 +372,7 @@ def test_deciding_from_the_start_page_returns_to_the_start_page(
 
     response = client.post(
         "/suggestions/decide",
-        data={"kind": "owned", "keys": ["beam:7"], "zurueck": "/"},
+        data={"kind": "owned", "keys": ["beam:7"], "back": "/"},
     )
 
     assert response.status_code == 303
@@ -388,7 +388,7 @@ def test_a_foreign_return_address_leads_back_to_the_pile(data_dir: Path, db: Sto
 
     response = client.post(
         "/suggestions/decide",
-        data={"kind": "dismissed", "keys": ["beam:7"], "zurueck": "https://boese.invalid/"},
+        data={"kind": "dismissed", "keys": ["beam:7"], "back": "https://boese.invalid/"},
     )
 
     assert response.headers["location"] == "/suggestions"
@@ -408,7 +408,7 @@ def test_after_a_decision_the_start_page_offers_to_take_it_back(
 
     body = client.post(
         "/suggestions/decide",
-        data={"kind": "dismissed", "keys": ["beam:7"], "zurueck": "/"},
+        data={"kind": "dismissed", "keys": ["beam:7"], "back": "/"},
     ).text
 
     assert "Rückgängig" in body
@@ -424,11 +424,11 @@ def test_taking_a_decision_back_puts_the_find_back_on_the_pile(
     found(db, item_id="7", title="Der Kannibalenhügel")
     client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=True)
     client.post(
-        "/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"], "zurueck": "/"}
+        "/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"], "back": "/"}
     )
 
     body = client.post(
-        "/suggestions/undo", data={"key": "beam:7", "kind": "owned", "zurueck": "/"}
+        "/suggestions/undo", data={"key": "beam:7", "kind": "owned", "back": "/"}
     ).text
 
     assert "1 von 1 zu entscheiden" in body

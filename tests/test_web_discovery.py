@@ -173,7 +173,7 @@ def test_a_taken_back_decision_leads_to_the_find_again(
     book_id = db.book_by_source_item("beam", "7")
     client.post(
         "/suggestions/undo",
-        data={"key": "beam:7", "kind": "watching", "zurueck": "/suggestions"},
+        data={"key": "beam:7", "kind": "watching", "back": "/suggestions"},
     )
 
     antwort = client.get("/discovery/beam/7")
@@ -219,7 +219,7 @@ def test_deciding_here_leads_to_the_new_book(client: TestClient, db: Store) -> N
 
     antwort = client.post(
         "/suggestions/decide",
-        data={"kind": "watching", "keys": ["beam:7"], "zurueck": "buch"},
+        data={"kind": "watching", "keys": ["beam:7"], "back": "buch"},
     )
 
     book_id = db.book_by_source_item("beam", "7")

@@ -291,7 +291,7 @@ def create_app() -> FastAPI:
             request, "_portrait_status.html", {"url": url, "job": job, "vorhanden": False}
         )
 
-    def _lauf_unterwegs(store: Store, settings) -> bool:
+    def _run_in_progress(store: Store, settings) -> bool:
         """Ob gerade ein grosser Lauf jedes Buch anfasst — fuer den Kopf der Seite."""
         return launcher.state(store, settings.slug).busy
 
@@ -335,8 +335,8 @@ def create_app() -> FastAPI:
                 "asset_version": asset_version(),
                 "view": home.build(store, settings, now=datetime.now()),
                 "undo": home.undo_for(store, rueckgaengig, art) if rueckgaengig else None,
-                "undo_eintrag": watchlist.undo_for(store, undo, kind) if undo else None,
-                "abschluss": watchlist.ABSCHLUSS,
+                "undo_entry": watchlist.undo_for(store, undo, kind) if undo else None,
+                "closings": watchlist.CLOSINGS,
                 # Der juengste Tagesbericht ist der Weg hinter "N Aenderungen";
                 # der Lauf-Knopf ist derselbe wie auf der Uebersicht.
                 "digest": next(iter(digest_files(limit=1)), None),
@@ -393,28 +393,28 @@ def create_app() -> FastAPI:
         store = _store_for(paths.db_path())
         # Der aufgeloeste Schluessel, nicht der aus der Adresse: die Seite soll
         # auch bei einem Tippfehler die Reihenfolge anzeigen, die sie benutzt.
-        ordnung, gewaehlt = sorting.chosen(sorting.WATCHLIST, sortiert)
-        alle = watchlist.entries(store, settings, sort=ordnung.slug)
-        offen = sum(1 for eintrag in alle if eintrag.needs_choice)
-        nur_unklar = nur == "unklar"
+        order, chosen = sorting.chosen(sorting.WATCHLIST, sortiert)
+        rows = watchlist.entries(store, settings, sort=order.slug)
+        open_count = sum(1 for entry in rows if entry.needs_choice)
+        only_unsure = nur == "unklar"
         return TEMPLATES.TemplateResponse(
             request,
             "watchlist.html",
             {
                 "settings": settings,
                 "asset_version": asset_version(),
-                "entries": [e for e in alle if e.needs_choice] if nur_unklar else alle,
+                "entries": [e for e in rows if e.needs_choice] if only_unsure else rows,
                 "message": message,
-                "offene_wahl": offen,
-                "nur_unklar": nur_unklar,
-                "abschluss": watchlist.ABSCHLUSS,
+                "open_choices": open_count,
+                "only_unsure": only_unsure,
+                "closings": watchlist.CLOSINGS,
                 "icons": symbols.RELATION_ICONS,
                 "undo": watchlist.undo_for(store, undo, kind) if undo else None,
-                "sortierungen": sorting.WATCHLIST,
-                "sortiert": ordnung.slug,
+                "orders": sorting.WATCHLIST,
+                "sort": order.slug,
                 "links": {
-                    "alle": _link("/watchlist", sortiert=gewaehlt),
-                    "unklar": _link("/watchlist", nur="unklar", sortiert=gewaehlt),
+                    "alle": _link("/watchlist", sortiert=chosen),
+                    "unklar": _link("/watchlist", nur="unklar", sortiert=chosen),
                 },
             },
         )
@@ -464,7 +464,7 @@ def create_app() -> FastAPI:
 
     @app.post("/watchlist/{book_id}/active")
     def watchlist_active(
-        book_id: int, active: str = Form(""), zurueck: str = Form("/watchlist")
+        book_id: int, active: str = Form(""), back: str = Form("/watchlist")
     ) -> RedirectResponse:
         """Pausieren und fortsetzen — nie loeschen (ADR 18)."""
         settings = load_settings()
@@ -478,7 +478,7 @@ def create_app() -> FastAPI:
             store.deactivate_relation(
                 settings.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
             )
-        return RedirectResponse(_seite_zurueck(zurueck), status_code=303)
+        return RedirectResponse(_page_back(back), status_code=303)
 
     @app.post("/book/{book_id}/restrict")
     def book_restrict(book_id: int, restrict: str = Form("")) -> RedirectResponse:
@@ -503,7 +503,7 @@ def create_app() -> FastAPI:
 
     @app.post("/watchlist/{book_id}/recheck")
     def watchlist_recheck(
-        request: Request, book_id: int, zurueck: str = "/watchlist"
+        request: Request, book_id: int, back: str = "/watchlist"
     ) -> HTMLResponse:
         """Genau diesen einen Eintrag jetzt pruefen (Ticket 51).
 
@@ -512,16 +512,16 @@ def create_app() -> FastAPI:
         vorbei sein.
         """
         rechecker.start(book_id)
-        return _zeile(request, book_id, zurueck=zurueck)
+        return _zeile(request, book_id, back=back)
 
     @app.get("/watchlist/{book_id}/recheck")
     def watchlist_recheck_status(
-        request: Request, book_id: int, zurueck: str = "/watchlist"
+        request: Request, book_id: int, back: str = "/watchlist"
     ) -> HTMLResponse:
         """Dasselbe Fragment, das der POST liefert — htmx fragt hier nach."""
-        return _zeile(request, book_id, zurueck=zurueck)
+        return _zeile(request, book_id, back=back)
 
-    def _zeile(request: Request, book_id: int, zurueck: str = "/watchlist") -> HTMLResponse:
+    def _zeile(request: Request, book_id: int, back: str = "/watchlist") -> HTMLResponse:
         """Die eine Zeile, frisch gelesen, mit dem Stand ihres engen Laufs.
 
         Beide Routen liefern genau dieses Fragment, damit Knopf und Anzeige
@@ -529,39 +529,39 @@ def create_app() -> FastAPI:
         """
         settings = load_settings()
         store = _store_for(paths.db_path())
-        eintrag = next(
+        entry = next(
             (e for e in watchlist.entries(store, settings) if e.book_id == book_id), None
         )
-        if eintrag is None:
+        if entry is None:
             raise HTTPException(status_code=404, detail="kein solcher Eintrag")
         return TEMPLATES.TemplateResponse(
             request,
             "_watchlist_row.html",
             {
-                "entry": eintrag,
+                "entry": entry,
                 "check": rechecker.state(book_id),
                 "now": datetime.now(),
                 "settings": settings,
-                "abschluss": watchlist.ABSCHLUSS,
+                "closings": watchlist.CLOSINGS,
                 "icons": symbols.RELATION_ICONS,
                 # Die nachgeladene Zeile muss wissen, auf welcher Seite sie steht:
                 # sonst fuehrt der Weg zurueck von der Startseite auf die
                 # Watchlist (#22).
-                "zurueck": _seite_zurueck(zurueck),
+                "back": _page_back(back),
             },
         )
 
-    def _seite_zurueck(ziel: str) -> str:
+    def _page_back(target: str) -> str:
         """Startseite oder Watchlist — ein Formularfeld ist kein Ziel.
 
         Beide Seiten zeigen dieselbe Zeile mit denselben Zeichen (#22), und nach
         einer Entscheidung soll man dort stehen, wo man sie getroffen hat.
         """
-        return "/" if ziel == "/" else "/watchlist"
+        return "/" if target == "/" else "/watchlist"
 
     @app.post("/watchlist/{book_id}/finish")
     def watchlist_finish(
-        book_id: int, kind: str = Form(...), zurueck: str = Form("/watchlist")
+        book_id: int, kind: str = Form(...), back: str = Form("/watchlist")
     ) -> RedirectResponse:
         """Gekauft, oder nicht mehr interessant — und damit von der Liste.
 
@@ -579,15 +579,12 @@ def create_app() -> FastAPI:
         # Der Weg zurueck steht danach ueber der Liste: die zwei Zeichen stehen
         # jetzt offen in der Zeile statt hinter einem Menue, und eine Handlung
         # ohne Nachfrage braucht einen Weg zurueck (ADR 30, #22).
-        ziel = _seite_zurueck(zurueck)
-        trenner = "?" if ziel == "/" else "?"
-        return RedirectResponse(
-            f"{ziel}{trenner}undo={book_id}&kind={kind}", status_code=303
-        )
+        target = _page_back(back)
+        return RedirectResponse(f"{target}?undo={book_id}&kind={kind}", status_code=303)
 
     @app.post("/watchlist/undo")
     def watchlist_undo(
-        book_id: int = Form(...), kind: str = Form(...), zurueck: str = Form("/watchlist")
+        book_id: int = Form(...), kind: str = Form(...), back: str = Form("/watchlist")
     ) -> RedirectResponse:
         """Einen Abschluss zuruecknehmen — der Eintrag steht wieder auf der Liste.
 
@@ -601,7 +598,7 @@ def create_app() -> FastAPI:
             kind,
             now=datetime.now(),
         )
-        return RedirectResponse(_seite_zurueck(zurueck), status_code=303)
+        return RedirectResponse(_page_back(back), status_code=303)
 
     @app.post("/watchlist/{book_id}/confirm")
     def watchlist_confirm(
@@ -624,13 +621,13 @@ def create_app() -> FastAPI:
         )
         return RedirectResponse("/watchlist", status_code=303)
 
-    def _zurueck(ziel: str) -> str:
+    def _back(target: str) -> str:
         """Nur zurueck auf die Watchlist — ein Formularfeld ist kein Ziel.
 
         Ohne die Pruefung liesse sich ueber ein untergeschobenes Feld auf eine
         fremde Adresse umleiten.
         """
-        return ziel if ziel in ("/watchlist", "/watchlist?nur=unklar") else "/watchlist"
+        return target if target in ("/watchlist", "/watchlist?nur=unklar") else "/watchlist"
 
     @app.post("/watchlist/{book_id}/rename")
     def watchlist_rename(
@@ -680,7 +677,7 @@ def create_app() -> FastAPI:
         source: str = Form(...),
         url: str = Form(""),
         was: str = Form(...),
-        zurueck: str = Form("/watchlist"),
+        back: str = Form("/watchlist"),
     ) -> RedirectResponse:
         """Bestaetigen, ablehnen, oder eine Ablehnung zuruecknehmen.
 
@@ -702,16 +699,16 @@ def create_app() -> FastAPI:
         # Dorthin zurueck, wo entschieden wurde. Vorher stand hier fest
         # ``?nur=unklar``: wer aus der vollen Liste heraus bestaetigte, landete
         # danach in der gefilterten — und sah seinen Eintrag nicht mehr.
-        ziel = _zurueck(zurueck)
+        target = _back(back)
         # War es die letzte offene Frage, fuehrt der Filter in eine leere
         # Liste. Das ist kein Fehler, aber eine Sackgasse: die Seite sagt
         # "Nichts offen" und verlangt einen weiteren Klick, um wieder etwas
         # zu sehen. Dann lieber gleich die ganze Liste.
-        if ziel.endswith("?nur=unklar") and not any(
-            eintrag.needs_choice for eintrag in watchlist.entries(store, load_settings())
+        if target.endswith("?nur=unklar") and not any(
+            entry.needs_choice for entry in watchlist.entries(store, load_settings())
         ):
-            ziel = "/watchlist"
-        return RedirectResponse(ziel, status_code=303)
+            target = "/watchlist"
+        return RedirectResponse(target, status_code=303)
 
 
     # --- Buchseite (Ticket 07) ---------------------------------------------
@@ -743,7 +740,7 @@ def create_app() -> FastAPI:
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
                 "portrait_job": portrait_jobs.state(("book", book_id)),
-                "lauf_unterwegs": _lauf_unterwegs(store, settings),
+                "run_in_progress": _run_in_progress(store, settings),
                 "sharpening": sharpening.build(store, settings, book_id),
             },
         )
@@ -938,7 +935,7 @@ def create_app() -> FastAPI:
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
                 "portrait_job": portrait_jobs.state(("item", source, item_id)),
-                "lauf_unterwegs": _lauf_unterwegs(store, settings),
+                "run_in_progress": _run_in_progress(store, settings),
             },
         )
 
@@ -969,12 +966,12 @@ def create_app() -> FastAPI:
                 {"message": str(exc), "asset_version": asset_version()},
                 status_code=500,
             )
-        ordnung, gewaehlt = sorting.chosen(sorting.SUGGESTIONS, sortiert)
+        order, chosen = sorting.chosen(sorting.SUGGESTIONS, sortiert)
         pile = triage.pending(
             _store_for(paths.db_path()),
             settings,
             reason=anlass or None,
-            sort=ordnung.slug,
+            sort=order.slug,
         )
         return TEMPLATES.TemplateResponse(
             request,
@@ -985,20 +982,20 @@ def create_app() -> FastAPI:
                 "pile": pile,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
-                "anlass": anlass,
-                "sortierungen": sorting.SUGGESTIONS,
-                "sortiert": ordnung.slug,
+                "reason": anlass,
+                "orders": sorting.SUGGESTIONS,
+                "sort": order.slug,
                 # Das Formular schickt es mit, damit die Entscheidung in
                 # derselben Reihenfolge endet, in der sie getroffen wurde.
-                "gewaehlt": gewaehlt,
+                "chosen": chosen,
                 # Ein Filter wirft die Sortierung nicht weg und umgekehrt.
                 "links": {
-                    "alle": _link("/suggestions", sortiert=gewaehlt),
+                    "alle": _link("/suggestions", sortiert=chosen),
                     "profile_author": _link(
-                        "/suggestions", anlass="profile_author", sortiert=gewaehlt
+                        "/suggestions", anlass="profile_author", sortiert=chosen
                     ),
                     "genre_category": _link(
-                        "/suggestions", anlass="genre_category", sortiert=gewaehlt
+                        "/suggestions", anlass="genre_category", sortiert=chosen
                     ),
                 },
             },
@@ -1010,7 +1007,7 @@ def create_app() -> FastAPI:
         keys: list[str] = _SELECTED,
         anlass: str = Form(""),
         sortiert: str = Form(""),
-        zurueck: str = Form("/suggestions"),
+        back: str = Form("/suggestions"),
     ) -> RedirectResponse:
         """Eine Entscheidung auf die Auswahl anwenden.
 
@@ -1031,12 +1028,12 @@ def create_app() -> FastAPI:
             triage.decide(store, load_settings(), keys, kind, now=datetime.now())
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if zurueck == "buch" and len(keys) == 1:
+        if back == "buch" and len(keys) == 1:
             source, _, item_id = keys[0].partition(":")
             book_id = store.book_by_source_item(source, item_id)
             if book_id is not None:
                 return RedirectResponse(f"/book/{book_id}", status_code=303)
-        if zurueck == "/":
+        if back == "/":
             if len(keys) == 1:
                 return RedirectResponse(
                     "/?" + urlencode({"rueckgaengig": keys[0], "art": kind}), status_code=303
@@ -1077,14 +1074,14 @@ def create_app() -> FastAPI:
 
     @app.post("/suggestions/undo")
     def triage_undo(
-        key: str = Form(...), kind: str = Form(...), zurueck: str = Form("/")
+        key: str = Form(...), kind: str = Form(...), back: str = Form("/")
     ) -> RedirectResponse:
         """Eine Entscheidung zuruecknehmen: die Beziehung wird stillgelegt,
         nicht geloescht (ADR 18) — und der Fund steht wieder im Stapel."""
         home.undo(
             _store_for(paths.db_path()), load_settings(), key, kind, now=datetime.now()
         )
-        return RedirectResponse("/" if zurueck == "/" else "/suggestions", status_code=303)
+        return RedirectResponse("/" if back == "/" else "/suggestions", status_code=303)
 
     # --- Profiluebersicht (Ticket 09) ---------------------------------------
 
@@ -1141,33 +1138,33 @@ def create_app() -> FastAPI:
             jobs[e.id] = job if job is not None else identifier.start(("intake", e.id))
         return jobs
 
-    def _intake_side(request: Request, kind: str, fehler: str | None = None) -> Response:
+    def _intake_side(request: Request, kind: str, error: str | None = None) -> Response:
         """Eine Seite der Erstaufnahme als Bruchstück, nach jeder Handlung."""
-        seite = intake.build(_store_for(paths.db_path()), load_settings())
-        side = seite.liked if kind == str(RelationKind.LIKED) else seite.disliked
+        page = intake.build(_store_for(paths.db_path()), load_settings())
+        side = page.liked if kind == str(RelationKind.LIKED) else page.disliked
         return TEMPLATES.TemplateResponse(
             request,
             "_intake_side.html",
-            {"side": side, "seite": seite, "jobs": _intake_jobs(side.entries),
-             "fehler": fehler, "oob": True},
+            {"side": side, "page": page, "jobs": _intake_jobs(side.entries),
+             "error": error, "oob": True},
         )
 
-    def _intake_answer(request: Request, kind: str, fehler: str | None = None) -> Response:
+    def _intake_answer(request: Request, kind: str, error: str | None = None) -> Response:
         """Mit htmx das Bruchstück, ohne die ganze Seite neu."""
         if request.headers.get("HX-Request"):
-            return _intake_side(request, kind, fehler)
+            return _intake_side(request, kind, error)
         return RedirectResponse("/intake", status_code=303)
 
     @app.get("/intake", response_class=HTMLResponse)
     def intake_page(request: Request) -> HTMLResponse:
         """Bücher nennen und bestätigen — die ersten Schritte zum Leseprofil."""
-        seite = intake.build(_store_for(paths.db_path()), load_settings())
+        page = intake.build(_store_for(paths.db_path()), load_settings())
         return TEMPLATES.TemplateResponse(
             request,
             "intake.html",
             {
-                "seite": seite,
-                "jobs": _intake_jobs((*seite.liked.entries, *seite.disliked.entries)),
+                "page": page,
+                "jobs": _intake_jobs((*page.liked.entries, *page.disliked.entries)),
                 "asset_version": asset_version(),
             },
         )
@@ -1177,7 +1174,7 @@ def create_app() -> FastAPI:
         request: Request, side: str = Form(...), title: str = Form(""), author: str = Form("")
     ) -> Response:
         try:
-            eintrag = intake.add(
+            entry = intake.add(
                 _store_for(paths.db_path()), load_settings(), side, title, author,
                 now=datetime.now(),
             )
@@ -1185,7 +1182,7 @@ def create_app() -> FastAPI:
             if side not in intake.SIDES:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             return _intake_answer(request, side, str(exc))
-        identifier.start(("intake", eintrag))
+        identifier.start(("intake", entry))
         return _intake_answer(request, side)
 
     def _intake_row(entry_id: int):

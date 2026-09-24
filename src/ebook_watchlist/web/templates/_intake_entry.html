@@ -12,7 +12,7 @@
    Erwartet: `e`, `jobs`. #}
 {% set job = jobs.get(e.id) %}
 {% set basis = "/intake/entry/" ~ e.id %}
-{% set ziel = "#seite-" ~ e.side %}
+{% set target = "#side-" ~ e.side %}
 <li id="eintrag-{{ e.id }}" data-zustand="{{ e.state }}"
     class="rounded-lg border border-rule bg-card px-4 py-3 text-sm"
     {% if e.state == "asking" and job and job.busy %}

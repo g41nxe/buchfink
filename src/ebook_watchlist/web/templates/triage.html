@@ -29,14 +29,14 @@
 
 {% if pile.is_empty %}
 <p class="rounded-lg border border-rule bg-card px-4 py-6 text-center text-sm text-soft">
-  {% if anlass %}
+  {% if reason %}
   Zu diesem Anlass ist nichts offen.
   {% else %}
   Nichts offen.
   {% if pile.hidden %}
   {# Verschwunden ist nichts: faellt ein Preis, steht das Buch wieder da. #}
   <span class="block mt-1 text-xs">
-    {% for zahl, wort in pile.hidden %}{{ zahl }} {{ wort }}
+    {% for count, word in pile.hidden %}{{ count }} {{ word }}
     {%- if not loop.last %}, {% endif %}{% endfor %}
     — ausgeblendet, nicht verworfen.</span>
   {% endif %}
@@ -51,23 +51,23 @@
    Der Filter ist ein Pillenband, die Sortierung ein Auswahlfeld. Zwei gleich
    aussehende Pillenreihen untereinander waeren die schlechtere Wahl gewesen:
    die eine wirft Zeilen weg, die andere ordnet sie nur um. #}
-{% set sortier_felder %}
-{% if anlass %}<input type="hidden" name="anlass" value="{{ anlass }}">{% endif %}
+{% set sort_fields %}
+{% if reason %}<input type="hidden" name="anlass" value="{{ reason }}">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
-  {{ pille("alle", url=links["alle"], aktiv=not anlass) }}
+  {{ pille("alle", url=links["alle"], active=not reason) }}
   {{ pille("Autor:innen", url=links["profile_author"],
-           aktiv=anlass == "profile_author") }}
+           active=reason == "profile_author") }}
   {{ pille("Themen", url=links["genre_category"],
-           aktiv=anlass == "genre_category", ton="amber") }}
+           active=reason == "genre_category", tone="amber") }}
 
-  {{ sortierung(sortierungen, sortiert, "/suggestions", sortier_felder) }}
+  {{ sortierung(orders, sort, "/suggestions", sort_fields) }}
 
   <span class="ml-auto text-xs text-soft">
     {{ pile.total }} offen{% if pile.items | length < pile.total %},
     {{ pile.items | length }} gezeigt{% endif %}
     {%- if pile.hidden %} · ausgeblendet:
-    {% for zahl, wort in pile.hidden %}{{ zahl }} {{ wort }}
+    {% for count, word in pile.hidden %}{{ count }} {{ word }}
     {%- if not loop.last %} · {% endif %}{% endfor %}{% endif %}
   </span>
 </div>
@@ -104,8 +104,8 @@
       {# Verschwindet eine angehakte Zeile durch einen Zeilenknopf, zaehlte
          der Zaehler sonst Geister: das Entfernen loest kein `change` aus. #}
       @htmx:after-swap.window="recount()">
-<input type="hidden" name="anlass" value="{{ anlass }}">
-<input type="hidden" name="sortiert" value="{{ gewaehlt }}">
+<input type="hidden" name="anlass" value="{{ reason }}">
+<input type="hidden" name="sortiert" value="{{ chosen }}">
 
 <ul class="divide-y divide-hair">
   {% for item in pile.items %}
@@ -225,8 +225,8 @@
        Zeichen, dieselbe Farbe (ADR 29). Ohne Alpine bleibt er klickbar und
        tut wie bisher nichts, wenn nichts angehakt ist — das ist der heutige
        Zustand, nicht schlechter. #}
-    {{ zustandsknopf(kind, label, zeichen=icons[kind], wert=kind,
-                     aus_wenn="chosen === 0") }}
+    {{ zustandsknopf(kind, label, icon=icons[kind], value=kind,
+                     off_when="chosen === 0") }}
     {% endfor %}
   </span>
 </div>

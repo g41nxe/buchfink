@@ -8,12 +8,12 @@
 
    Ein GET-Formular, kein Zustand: die Adresse trägt die Wahl
    (`?sortiert=preis`), damit sie teilbar ist und der Zurück-Knopf stimmt.
-   Die anderen Parameter der Seite — `anlass`, `nur` — reisen als `felder` mit,
+   Die anderen Parameter der Seite — `anlass`, `nur` — reisen als `fields` mit,
    sonst fiele beim Sortieren der Filter weg.
 
    `onchange` statt Alpine: hier ist nichts zu verwalten, nur abzuschicken.
 #}
-{% macro sortierung(orders, aktiv, ziel, felder="") %}
+{% macro sortierung(orders, active, target, fields="") %}
 {# Die Adresse ist die Wahrheit, der Browserspeicher füllt nur ihre Lücke: wer
    `/watchlist` ohne Angabe öffnet, bekommt den zuletzt gewählten Schlüssel —
    und die Adresse wird dabei mitgeschrieben, damit sie nie etwas anderes
@@ -25,27 +25,27 @@
    Zugriff steht in einem `try`, und in einem privaten Fenster wirft er. #}
 <script>
 (function () {
-  var name = "sortiert:{{ ziel }}";
-  var erlaubt = [{% for order in orders %}"{{ order.slug }}"{% if not loop.last %}, {% endif %}{% endfor %}];
-  var adresse = new URL(location.href);
-  if (adresse.searchParams.has("sortiert")) return;
-  var gemerkt = null;
-  try { gemerkt = localStorage.getItem(name); } catch (e) { return; }
-  if (!gemerkt || gemerkt === erlaubt[0] || erlaubt.indexOf(gemerkt) < 0) return;
-  adresse.searchParams.set("sortiert", gemerkt);
-  location.replace(adresse.toString());
+  var name = "sortiert:{{ target }}";
+  var allowed = [{% for order in orders %}"{{ order.slug }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+  var address = new URL(location.href);
+  if (address.searchParams.has("sortiert")) return;
+  var remembered = null;
+  try { remembered = localStorage.getItem(name); } catch (e) { return; }
+  if (!remembered || remembered === allowed[0] || allowed.indexOf(remembered) < 0) return;
+  address.searchParams.set("sortiert", remembered);
+  location.replace(address.toString());
 })();
 </script>
-<form method="get" action="{{ ziel }}" class="flex w-full items-center gap-2 sm:w-auto">
-  {{ felder }}
+<form method="get" action="{{ target }}" class="flex w-full items-center gap-2 sm:w-auto">
+  {{ fields }}
   <label class="flex w-full items-center gap-2 sm:w-auto">
     <span class="shrink-0 text-xs text-soft">Sortiert nach</span>
     <select name="sortiert"
-            onchange="try { localStorage.setItem('sortiert:{{ ziel }}', this.value) } catch (e) {}; this.form.submit()"
+            onchange="try { localStorage.setItem('sortiert:{{ target }}', this.value) } catch (e) {}; this.form.submit()"
             class="h-10 w-full rounded border border-rule bg-card px-2 text-sm text-ink
                    outline-none focus:border-accent sm:h-8 sm:w-auto">
       {% for order in orders %}
-      <option value="{{ order.slug }}"{% if order.slug == aktiv %} selected{% endif %}>
+      <option value="{{ order.slug }}"{% if order.slug == active %} selected{% endif %}>
         {{ order.label }}</option>
       {% endfor %}
     </select>

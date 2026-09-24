@@ -198,7 +198,7 @@ def test_confirming_returns_to_the_list_you_came_from(client: TestClient, db: St
     antwort = client.post(
         f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "url": "https://beam.invalid/1", "was": "bestaetigen",
-              "zurueck": "/watchlist"},
+              "back": "/watchlist"},
         follow_redirects=False,
     )
 
@@ -210,7 +210,7 @@ def test_a_smuggled_destination_is_ignored(client: TestClient, db: Store) -> Non
 
     antwort = client.post(
         f"/watchlist/{buch_id}/assign",
-        data={"source": "beam", "was": "keiner", "zurueck": "https://woanders.invalid"},
+        data={"source": "beam", "was": "keiner", "back": "https://woanders.invalid"},
         follow_redirects=False,
     )
 
@@ -256,7 +256,7 @@ def test_the_last_decision_does_not_land_on_an_empty_filter(
 
     antwort = client.post(
         f"/watchlist/{buch_id}/assign",
-        data={"source": "beam", "was": "keiner", "zurueck": "/watchlist?nur=unklar"},
+        data={"source": "beam", "was": "keiner", "back": "/watchlist?nur=unklar"},
         follow_redirects=False,
     )
 
@@ -277,7 +277,7 @@ def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store)
 
     antwort = client.post(
         f"/watchlist/{erstes}/assign",
-        data={"source": "beam", "was": "keiner", "zurueck": "/watchlist?nur=unklar"},
+        data={"source": "beam", "was": "keiner", "back": "/watchlist?nur=unklar"},
         follow_redirects=False,
     )
 

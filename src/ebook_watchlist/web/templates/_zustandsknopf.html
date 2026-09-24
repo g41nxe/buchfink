@@ -14,29 +14,29 @@
    gefüllt. Die Klassen stehen ausgeschrieben, weil Tailwind nur findet, was
    wörtlich dasteht.
 #}
-{% macro zustandsknopf(kind, label, zeichen=none, aktiv=false, wert=none, aus_wenn=none,
-                       zusatz="") %}
+{% macro zustandsknopf(kind, label, icon=none, active=false, value=none, off_when=none,
+                       extra="") %}
 {# Engeres Polster und kleinere Schrift auf dem Telefon: mit `px-3` und
    `text-sm` messen die drei Knoepfe des Stapels zusammen 346 px und brauchen
    bei 327 px Platz zwei Reihen. Mit `px-2` und `text-xs` sind es 276.
-   Auf dem Telefon 40 Pixel hoch und so breit wie seine Spalte (`zusatz`):
+   Auf dem Telefon 40 Pixel hoch und so breit wie seine Spalte (`extra`):
    dort ordnen die Seiten die Knoepfe im Raster an, damit der Umbruch der
    Bedeutung folgt und nicht der Wortlaenge (#22).
 
-   `aus_wenn` traegt die Alpine-Bedingung, unter der der Knopf ruht — der
+   `off_when` traegt die Alpine-Bedingung, unter der der Knopf ruht — der
    Stapel schaltet ihn aus, solange nichts angehakt ist. `|safe`, weil Jinja
    den Wert sonst als Text maskiert: aus `a && b` wuerde `a &amp;&amp; b`,
    und Alpine wertet das stumm nicht aus. Der Wert kommt aus der Vorlage,
    nie von aussen. #}
-<button type="submit"{% if wert %} name="kind" value="{{ wert }}"{% endif %}
-        {%- if aus_wenn %} :disabled="{{ aus_wenn|safe }}"{% endif %}
+<button type="submit"{% if value %} name="kind" value="{{ value }}"{% endif %}
+        {%- if off_when %} :disabled="{{ off_when|safe }}"{% endif %}
         class="tun inline-flex h-10 items-center justify-center gap-1.5 rounded border
                px-2 text-xs font-medium transition disabled:opacity-40
-               sm:h-9 sm:px-3 sm:text-sm {{ zusatz }}
-               {% if aktiv %}border-accent bg-accent/10 text-accent
+               sm:h-9 sm:px-3 sm:text-sm {{ extra }}
+               {% if active %}border-accent bg-accent/10 text-accent
                {% elif kind in ('dismissed', 'disliked') %}border-rule text-soft hover:border-danger hover:text-danger
                {% elif kind in ('owned', 'liked') %}border-rule text-ink hover:border-amber hover:text-amber
                {% else %}border-rule text-ink hover:border-accent hover:text-accent{% endif %}">
-  {% if zeichen %}<svg class="i"><use href="#{{ zeichen }}"/></svg>{% endif %}{{ label }}
+  {% if icon %}<svg class="i"><use href="#{{ icon }}"/></svg>{% endif %}{{ label }}
 </button>
 {% endmacro %}

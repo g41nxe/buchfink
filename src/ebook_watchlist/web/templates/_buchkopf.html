@@ -15,7 +15,7 @@
 
 {% macro kopf(titel, autor=none, reihe=none, cover_file=none, borrowable=false,
               deal=false, pille=none, kacheln=none, herkunft=none,
-              lauf_unterwegs=false) %}
+              run_in_progress=false) %}
 {# Zwei Breiten, eine Vorlage — dieselben zwei wie ueberall (`sm`, 48rem).
 
    Telefon: Cover links, Titel und Autor:in rechts daneben, die Kacheln
@@ -70,7 +70,7 @@
     {# Der grosse Lauf fasst jedes Buch an. Bisher sah man auf dieser Seite
        nicht, dass sich die Angaben gleich aendern koennen (#15). Steht im
        Kopf und nicht bei einem Abschnitt: er betrifft die ganze Seite. #}
-    {% if lauf_unterwegs %}
+    {% if run_in_progress %}
     <p class="mt-3 flex items-center gap-1.5 text-xs text-soft">
       <svg class="i animate-spin text-accent"><use href="#ic-spin"/></svg>
       Ein Lauf ist gerade unterwegs — die Angaben können sich gleich ändern.</p>

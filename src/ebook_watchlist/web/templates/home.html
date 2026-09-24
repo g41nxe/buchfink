@@ -3,7 +3,7 @@
 {% macro felder_ruecknahme(undo) %}
 <input type="hidden" name="key" value="{{ undo.key }}">
 <input type="hidden" name="kind" value="{{ undo.kind }}">
-<input type="hidden" name="zurueck" value="/">
+<input type="hidden" name="back" value="/">
 {% endmacro %}
 
 {% block content %}
@@ -131,13 +131,13 @@
 {{ ruecknahme(undo.title, undo.done, "/suggestions/undo", felder_ruecknahme(undo)) }}
 {% endif %}
 
-{% if undo_eintrag %}
-{% set felder %}
-<input type="hidden" name="book_id" value="{{ undo_eintrag.book_id }}">
-<input type="hidden" name="kind" value="{{ undo_eintrag.kind }}">
-<input type="hidden" name="zurueck" value="/">
+{% if undo_entry %}
+{% set fields %}
+<input type="hidden" name="book_id" value="{{ undo_entry.book_id }}">
+<input type="hidden" name="kind" value="{{ undo_entry.kind }}">
+<input type="hidden" name="back" value="/">
 {% endset %}
-{{ ruecknahme(undo_eintrag.title, undo_eintrag.done, "/watchlist/undo", felder) }}
+{{ ruecknahme(undo_entry.title, undo_entry.done, "/watchlist/undo", fields) }}
 {% endif %}
 
 {# Untereinander, nicht nebeneinander: die geteilte Buchzeile (Issue #9)
@@ -172,7 +172,7 @@
          Zeile, und bei einem Schnaeppchen ist "Hab ich" die wahrscheinlichste
          Handlung ueberhaupt. #}
       {% set aktionen %}
-      {{ watchlist_aktionen(entry, abschluss, icons, zurueck="/") }}
+      {{ watchlist_aktionen(entry, closings, icons, back="/") }}
       {% endset %}
       {# Dieselbe Spalte wie auf der Watchlist und im Stapel (#16): es ist
          dieselbe Zeile, und sie soll ueberall dasselbe sagen. #}
@@ -239,14 +239,14 @@
       {# Ein Klick, keine Nachfrage — die Beziehung laesst sich stilllegen
          (ADR 18), und die Zeile darueber bietet genau das an. Dieselben drei
          Zeichen wie im Stapel, nur als gewoehnliche Absende-Knoepfe: das
-         Formular schickt `zurueck=/`, damit die Seite danach das
+         Formular schickt `back=/`, damit die Seite danach das
          Zuruecknehmen anbieten kann. #}
       {# Volle Breite auf dem Telefon: das Formular steht zwischen der Zeile und
          den Zeichen, und ohne diese Zeile blieb die Reihe so schmal wie ihr
          Inhalt statt so breit wie die Zeile (#22). #}
       <form method="post" action="/suggestions/decide" class="w-full sm:w-auto">
         <input type="hidden" name="keys" value="{{ item.key }}">
-        <input type="hidden" name="zurueck" value="/">
+        <input type="hidden" name="back" value="/">
         {{ entscheidungen(item.source, item.source_item_id, actions, icons,
                           absenden=true) }}
       </form>
