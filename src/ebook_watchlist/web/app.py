@@ -1288,14 +1288,14 @@ def create_app() -> FastAPI:
     _STEPS = {3: "/intake/common", 4: "/intake/lost",
                  5: "/intake/profile"}
 
-    def _choosing(request: Request, schritt: int, *, fragment: bool) -> Response:
+    def _choosing(request: Request, step: int, *, fragment: bool) -> Response:
         """Bildschirm 3 oder 4 — ganz, oder als Bruchstück nach einem Tipp."""
-        wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
-        kontext = {"wahl": wahl, "schritt": schritt}
+        choice = intake.choosing(_store_for(paths.db_path()), load_settings())
+        context = {"wahl": choice, "schritt": step}
         if fragment:
-            return TEMPLATES.TemplateResponse(request, "_intake_choices.html", kontext)
+            return TEMPLATES.TemplateResponse(request, "_intake_choices.html", context)
         return TEMPLATES.TemplateResponse(
-            request, "intake_choice.html", {**kontext, "asset_version": asset_version()}
+            request, "intake_choice.html", {**context, "asset_version": asset_version()}
         )
 
     @app.get("/intake/common", response_class=HTMLResponse)
@@ -1308,10 +1308,10 @@ def create_app() -> FastAPI:
         """Bildschirm 4: was dich an den enttäuschenden Büchern verloren hat."""
         return _choosing(request, 4, fragment=False)
 
-    def _after_choice(request: Request, schritt: int) -> Response:
+    def _after_choice(request: Request, step: int) -> Response:
         if request.headers.get("HX-Request"):
-            return _choosing(request, schritt, fragment=True)
-        return RedirectResponse(_STEPS.get(schritt, "/intake/common"),
+            return _choosing(request, step, fragment=True)
+        return RedirectResponse(_STEPS.get(step, "/intake/common"),
                                 status_code=303)
 
     @app.post("/intake/choice")
@@ -1345,10 +1345,10 @@ def create_app() -> FastAPI:
     @app.get("/intake/profile", response_class=HTMLResponse)
     def intake_profile(request: Request) -> Response:
         """Bildschirm 5: dein Profil — bestätigen oder abwählen."""
-        wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
+        choice = intake.choosing(_store_for(paths.db_path()), load_settings())
         return TEMPLATES.TemplateResponse(
             request, "intake_profile.html",
-            {"wahl": wahl, "schritt": 5, "asset_version": asset_version()},
+            {"wahl": choice, "schritt": 5, "asset_version": asset_version()},
         )
 
     @app.post("/intake/profile")

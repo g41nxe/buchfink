@@ -87,78 +87,80 @@ def carried_by(families: Collection[str], books: Collection[ShelfBook]) -> tuple
 
 def liked_shelf(store: Store, settings: Settings, vocabulary) -> list[ShelfBook]:
     """Alle gemochten Bücher mit Steckbrief — nicht nur die der Erstaufnahme."""
-    buecher = (
+    books = (
         shelf_book(store, vocabulary, row.book_id)
         for row in store.relations(settings.slug, kind=LIKED)
     )
-    return [b for b in buecher if b is not None]
+    return [b for b in books if b is not None]
 
 
 def _kind(store: Store, settings: Settings, book_id: int) -> str | None:
-    aktiv = {r.kind for r in store.relations_of(settings.slug, book_id) if r.active}
-    return LIKED if LIKED in aktiv else DISLIKED if DISLIKED in aktiv else None
+    active = {r.kind for r in store.relations_of(settings.slug, book_id) if r.active}
+    return LIKED if LIKED in active else DISLIKED if DISLIKED in active else None
 
 
 def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
     """Was dieses Buch am Profil ändern könnte — oder nichts, wenn es nichts
     zu schärfen gibt: kein Profil, oder weder *Mag ich* noch *Doof*."""
-    profil = store.reading_profile(settings.slug)
+    profile = store.reading_profile(settings.slug)
     kind = _kind(store, settings, book_id)
-    buch = store.book(book_id)
-    if profil is None or kind is None or buch is None:
+    book = store.book(book_id)
+    if profile is None or kind is None or book is None:
         return None
     try:
         vocabulary = load_vocabulary()
     except VocabularyError:
         return None
-    ich = shelf_book(store, vocabulary, book_id)
-    if ich is None:
+    shelf = shelf_book(store, vocabulary, book_id)
+    if shelf is None:
         # Kein Steckbrief heißt warten; ein Steckbrief "unbekannt" heißt, dass
         # es hier nichts zu schärfen gibt — beides zu vermengen hieß, auf etwas
         # zu vertrösten, das nie kommt.
-        bild = stored_portrait(store, buch, fingerprint(vocabulary))
-        if bild is not None and not bild.known:
-            return Sharpening(kind, buch.title, unknown=True)
-        return Sharpening(kind, buch.title, waiting=True)
+        portrait = stored_portrait(store, book, fingerprint(vocabulary))
+        if portrait is not None and not portrait.known:
+            return Sharpening(kind, book.title, unknown=True)
+        return Sharpening(kind, book.title, waiting=True)
 
     if kind == DISLIKED:
-        gemocht = liked_shelf(store, settings, vocabulary)
-        ganz = [f for f in profil.facets if set(f.families) <= set(ich.families)]
-        schon = {(c.families, c.genre) for c in profil.counterweights}
+        liked_books = liked_shelf(store, settings, vocabulary)
+        full_matches = [f for f in profile.facets if set(f.families) <= set(shelf.families)]
+        existing_weights = {(c.families, c.genre) for c in profile.counterweights}
 
-        def familie(f: str) -> Family:
+        def family_entry(f: str) -> Family:
             return Family(
                 f, family_name(f, vocabulary), vocabulary.is_pattern(f),
-                tuple(b.title for b in carried_by((f,), gemocht)),
+                tuple(b.title for b in carried_by((f,), liked_books)),
             )
 
         return Sharpening(
-            kind, buch.title,
-            kept=tuple(family_names(f.families, vocabulary) for f in ganz),
-            lost=tuple(familie(f) for f in ich.families if ((f,), None) not in schon),
-            genre=ich.genre,
+            kind, book.title,
+            kept=tuple(family_names(f.families, vocabulary) for f in full_matches),
+            lost=tuple(
+                family_entry(f) for f in shelf.families if ((f,), None) not in existing_weights
+            ),
+            genre=shelf.genre,
         )
 
-    gemocht = liked_shelf(store, settings, vocabulary)
-    an = {g.family for g in profil.liked}
-    verstaerkt = {g.family for g in profil.liked if g.boosted}
-    rang = sorted(ich.families, key=lambda f: (-len(carried_by((f,), gemocht)),
-                                                family_name(f, vocabulary).casefold()))
+    liked_books = liked_shelf(store, settings, vocabulary)
+    liked_ids = {g.family for g in profile.liked}
+    boosted_ids = {g.family for g in profile.liked if g.boosted}
+    rank = sorted(shelf.families, key=lambda f: (-len(carried_by((f,), liked_books)),
+                                                  family_name(f, vocabulary).casefold()))
 
-    def karte(f: str) -> Card:
-        traeger = carried_by((f,), gemocht)
+    def card(f: str) -> Card:
+        carriers = carried_by((f,), liked_books)
         return Card(
-            Pill(f, family_name(f, vocabulary), vocabulary.is_pattern(f), False, f in an,
-                 boosted=f in verstaerkt),
+            Pill(f, family_name(f, vocabulary), vocabulary.is_pattern(f), False, f in liked_ids,
+                 boosted=f in boosted_ids),
             family_description(f, vocabulary),
-            strength(len(traeger)),
-            tuple((b.title, b.families[f]) for b in traeger),
+            strength(len(carriers)),
+            tuple((b.title, b.families[f]) for b in carriers),
         )
 
     return Sharpening(
-        kind, buch.title,
-        cards=tuple(karte(f) for f in rang),
-        can_boost=len(verstaerkt) < MOST_BOOSTED,
+        kind, book.title,
+        cards=tuple(card(f) for f in rank),
+        can_boost=len(boosted_ids) < MOST_BOOSTED,
     )
 
 
@@ -169,10 +171,10 @@ def _book(store: Store, settings: Settings, book_id: int, kind: str):
     if _kind(store, settings, book_id) != kind:
         raise IntakeError("Dieses Buch ist nicht so markiert.")
     vocabulary = load_vocabulary()
-    ich = shelf_book(store, vocabulary, book_id)
-    if ich is None:
+    shelf = shelf_book(store, vocabulary, book_id)
+    if shelf is None:
         raise IntakeError("Zu diesem Buch gibt es noch keinen Steckbrief.")
-    return ich, vocabulary
+    return shelf, vocabulary
 
 
 def _facets_from(
@@ -180,17 +182,17 @@ def _facets_from(
 ) -> tuple[Facet, ...]:
     """Die Facetten aus allen gemochten Merkmalen neu gebildet — nie aus
     Erzählmustern (#63). Das Werkzeug bildet sie selbst; bestätigt wird nichts."""
-    gemocht = liked_shelf(store, settings, vocabulary)
-    merkmale = [g.family for g in liked if not is_pattern(g.family, vocabulary)]
-    traeger: dict[str, list[str]] = {}
-    titel: dict[str, str] = {}
-    for b in gemocht:
-        titel[b.key] = b.title
+    liked_books = liked_shelf(store, settings, vocabulary)
+    liked_terms = [g.family for g in liked if not is_pattern(g.family, vocabulary)]
+    carriers: dict[str, list[str]] = {}
+    titles: dict[str, str] = {}
+    for b in liked_books:
+        titles[b.key] = b.title
         for f in b.families:
-            traeger.setdefault(f, []).append(b.key)
+            carriers.setdefault(f, []).append(b.key)
     return tuple(
-        Facet(f.families, tuple(titel[k] for k in f.books))
-        for f in derive_facets(merkmale, traeger)
+        Facet(f.families, tuple(titles[k] for k in f.books))
+        for f in derive_facets(liked_terms, carriers)
     )
 
 
@@ -200,11 +202,11 @@ def set_liked(
     """Antippen: die Familie zählt jetzt zu den gemochten Merkmalen oder
     Erzählmustern — oder nicht mehr. Wer eine Familie wieder löst, löst auch
     ihre Verstärkung. Die Facetten werden aus allem Gemochten neu gebildet."""
-    ich, vocabulary = _book(store, settings, book_id, LIKED)
-    if family_id not in ich.families:
+    shelf, vocabulary = _book(store, settings, book_id, LIKED)
+    if family_id not in shelf.families:
         raise IntakeError(f"{family_id} trägt dieses Buch nicht.")
-    profil = store.reading_profile(settings.slug)
-    boost = {g.family: g.boosted for g in profil.liked}
+    profile = store.reading_profile(settings.slug)
+    boost = {g.family: g.boosted for g in profile.liked}
     if on:
         if family_id in boost:
             return None
@@ -213,11 +215,11 @@ def set_liked(
         if family_id not in boost:
             return None
         del boost[family_id]
-    neu = tuple(Liked(f, b) for f, b in boost.items())
-    facetten = _facets_from(store, settings, vocabulary, neu)
+    updated_liked = tuple(Liked(f, b) for f, b in boost.items())
+    facets = _facets_from(store, settings, vocabulary, updated_liked)
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(facetten, profil.counterweights, neu),
-        cause=f"Nachschärfen: {ich.title}", now=now,
+        settings.slug, ReadingProfile(facets, profile.counterweights, updated_liked),
+        cause=f"Nachschärfen: {shelf.title}", now=now,
     )
 
 
@@ -226,9 +228,9 @@ def set_boosted(
 ) -> int | None:
     """Verstärken: höchstens ``MOST_BOOSTED``, und nur, was schon gemocht ist.
     Ändert nie die Facetten — nur, wie stark ein Merkmal für sich zählt."""
-    ich, _ = _book(store, settings, book_id, LIKED)
-    profil = store.reading_profile(settings.slug)
-    boost = {g.family: g.boosted for g in profil.liked}
+    shelf, _ = _book(store, settings, book_id, LIKED)
+    profile = store.reading_profile(settings.slug)
+    boost = {g.family: g.boosted for g in profile.liked}
     if family_id not in boost:
         raise IntakeError("Verstärken lässt sich nur, was du angetippt hast.")
     if boost[family_id] == on:
@@ -236,10 +238,10 @@ def set_boosted(
     if on and sum(boost.values()) >= MOST_BOOSTED:
         raise IntakeError(f"Höchstens {MOST_BOOSTED} lassen sich verstärken.")
     boost[family_id] = on
-    neu = tuple(Liked(f, b) for f, b in boost.items())
+    updated_liked = tuple(Liked(f, b) for f, b in boost.items())
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profil.facets, profil.counterweights, neu),
-        cause=f"Nachschärfen: {ich.title}", now=now,
+        settings.slug, ReadingProfile(profile.facets, profile.counterweights, updated_liked),
+        cause=f"Nachschärfen: {shelf.title}", now=now,
     )
 
 
@@ -248,22 +250,22 @@ def add_counterweights(
 ) -> int | None:
     """Gegengewichte aus einem *Doof*-Buch. ``scopes`` nennt je angetippter
     Familie ihren Umfang; *nur bei diesem Buch* zählt gegen nichts."""
-    ich, _ = _book(store, settings, book_id, DISLIKED)
-    profil = store.reading_profile(settings.slug)
-    neu = []
-    for f, umfang in scopes.items():
-        if f not in ich.families:
+    shelf, _ = _book(store, settings, book_id, DISLIKED)
+    profile = store.reading_profile(settings.slug)
+    new_weights = []
+    for f, scope in scopes.items():
+        if f not in shelf.families:
             raise IntakeError(f"{f} trägt dieses Buch nicht.")
         try:
-            gewicht = scoped_counterweight(f, umfang, ich.genre, ich.title)
+            weight = scoped_counterweight(f, scope, shelf.genre, shelf.title)
         except ScopeError as exc:
             raise IntakeError(str(exc)) from None
-        if gewicht is not None:
-            neu.append(gewicht)
-    gegen, geaendert = merge_counterweights(profil.counterweights, neu)
-    if not geaendert:
+        if weight is not None:
+            new_weights.append(weight)
+    counterweights, changed = merge_counterweights(profile.counterweights, new_weights)
+    if not changed:
         return None
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profil.facets, gegen, profil.liked),
-        cause=f"Nachschärfen: {ich.title}", now=now,
+        settings.slug, ReadingProfile(profile.facets, counterweights, profile.liked),
+        cause=f"Nachschärfen: {shelf.title}", now=now,
     )

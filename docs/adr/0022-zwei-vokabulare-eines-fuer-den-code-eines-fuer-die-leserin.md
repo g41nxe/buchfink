@@ -69,3 +69,27 @@ benennen, wie sie sind.
   angehängt) — für null Gewinn bei der Leserin.
 - Wer ein neues Wort einführt, trägt es ins Glossar, oder es gibt zwei.
 - Die Tabelle oben ist die Prüfliste für jede neue Seite und jeden neuen Text.
+
+> **Nachtrag vom 24.09.2026: „Der Code bleibt englisch" gilt auch innerhalb
+> einer Funktion.** `facets.py`, `intake.py` und `sharpening.py` hatten sich
+> lokale Helferfunktionen (`karte`, `pille`, `familien`, `belege`, `pruefen`)
+> und lokale Variablen (`traeger`, `gemocht`, `weg`, `wahl`, `bild`, `buch`, …)
+> auf Deutsch angewöhnt — nirgends festgelegt, nur eingerissen, solange
+> niemand hinschaute. Klassennamen, Tabellen, Routen und Dateinamen blieben
+> dabei englisch; nur was innerhalb einer Funktion lebt, war unausgesprochen
+> ausgenommen.
+>
+> Diese Ausnahme gibt es nicht mehr. Englisch gilt für **jeden** Bezeichner im
+> Code — auch für eine verschachtelte Funktion, die nur zwei Zeilen weiter
+> unten gebraucht wird, und für die Variable, die ihr Ergebnis aufnimmt.
+> Deutsch bleibt, wo es ohnehin hingehört: in Docstrings, Kommentaren und
+> Fehlermeldungen, die die Leserin oder die Log-Ausgabe zu lesen bekommt — und
+> in den Schlüsseln von Config- und Profildateien (`docs/bewertungsschema.yaml`,
+> `docs/leseprofil.yaml`), die ein eigenes, unverändertes Datenformat sind und
+> keine Codebezeichner.
+>
+> Jinja-Templates sind davon vorerst unberührt: die Vorlagen unter
+> `src/ebook_watchlist/web/templates/` reichen den Kontext-Schlüssel `wahl`
+> weiter (aus `app.py`s `_choosing`), und ihn samt allen `wahl.*`-Zugriffen zu
+> übersetzen ist eine eigene, größere Änderung über mehrere Dateien hinweg —
+> noch offen.

@@ -171,16 +171,16 @@ class Fit:
 
 def load_weights(path: Path | None = None) -> Weights:
     """Die Gewichte aus dem Bewertungsschema."""
-    daten = yaml.safe_load((path or SCHEME_PATH).read_text(encoding="utf-8"))
-    teil = daten["urteil_aus_merkmalen"]
-    stufen = sorted(((int(s), float(ab)) for s, ab in teil["sterne_ab"].items()), reverse=True)
+    data = yaml.safe_load((path or SCHEME_PATH).read_text(encoding="utf-8"))
+    section = data["urteil_aus_merkmalen"]
+    tiers = sorted(((int(s), float(ab)) for s, ab in section["sterne_ab"].items()), reverse=True)
     return Weights(
-        full=float(teil["facette_ganz"]),
-        single=float(teil["merkmal_einzeln"]),
-        boost=float(teil["verstaerkt_aufschlag"]),
-        pattern=float(teil["erzaehlmuster"]),
-        counterweight=float(teil["gegengewicht"]),
-        stars_from=tuple(stufen),
+        full=float(section["facette_ganz"]),
+        single=float(section["merkmal_einzeln"]),
+        boost=float(section["verstaerkt_aufschlag"]),
+        pattern=float(section["erzaehlmuster"]),
+        counterweight=float(section["gegengewicht"]),
+        stars_from=tuple(tiers),
     )
 
 
@@ -202,9 +202,9 @@ def _genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
     """
     if counterweight.genre is None:
         return True
-    gesucht = re.compile(rf"(?<!\w){re.escape(counterweight.genre.casefold())}(?!\w)")
-    teile = (portrait.genre, portrait.subgenre)
-    return any(gesucht.search((teil or "").casefold()) for teil in teile)
+    pattern = re.compile(rf"(?<!\w){re.escape(counterweight.genre.casefold())}(?!\w)")
+    parts = (portrait.genre, portrait.subgenre)
+    return any(pattern.search((part or "").casefold()) for part in parts)
 
 
 #: Der Umfang eines Gegengewichts: überall, nur bei diesem einen Buch (zählt
@@ -241,20 +241,21 @@ def merge_counterweights(
 ) -> tuple[tuple[Counterweight, ...], bool]:
     """Neue Gegengewichte dazu; ein gleiches (Familien und Genre) nimmt nur
     das Buch auf. Zurück kommt, ob sich etwas geändert hat."""
-    alle = list(old)
-    geaendert = False
+    merged = list(old)
+    changed = False
     for c in new:
-        for i, da in enumerate(alle):
-            if (da.families, da.genre) == (c.families, c.genre):
-                fehlend = tuple(b for b in c.books if b not in da.books)
-                if fehlend:
-                    alle[i] = Counterweight(da.families, da.genre, (*da.books, *fehlend))
-                    geaendert = True
+        for i, existing in enumerate(merged):
+            if (existing.families, existing.genre) == (c.families, c.genre):
+                missing = tuple(b for b in c.books if b not in existing.books)
+                if missing:
+                    merged[i] = Counterweight(existing.families, existing.genre,
+                                               (*existing.books, *missing))
+                    changed = True
                 break
         else:
-            alle.append(c)
-            geaendert = True
-    return tuple(alle), geaendert
+            merged.append(c)
+            changed = True
+    return tuple(merged), changed
 
 
 def family_name(family_id: str, vocabulary: Vocabulary) -> str:
@@ -304,49 +305,49 @@ def fit(
     """
     if not (profile.facets or profile.liked) or not portrait.known:
         return None
-    familien = families_of(portrait, vocabulary)
+    book_families = families_of(portrait, vocabulary)
 
-    treffer = [
-        FacetHit(facet) for facet in profile.facets if set(facet.families) <= familien
+    hits = [
+        FacetHit(facet) for facet in profile.facets if set(facet.families) <= book_families
     ]
-    gemocht = tuple(g for g in profile.liked if g.family in familien)
+    liked = tuple(g for g in profile.liked if g.family in book_families)
 
-    gruende = [weights.full] * len(treffer)
-    gruende += [weights.liked(g, is_pattern(g.family, vocabulary)) for g in gemocht]
-    anteil = 1 - math.prod(1 - g for g in gruende)
-    dagegen = next(
+    factors = [weights.full] * len(hits)
+    factors += [weights.liked(g, is_pattern(g.family, vocabulary)) for g in liked]
+    share = 1 - math.prod(1 - f for f in factors)
+    against = next(
         (
             c
             for c in profile.counterweights
-            if all(f in familien for f in c.families) and _genre_matches(c, portrait)
+            if all(f in book_families for f in c.families) and _genre_matches(c, portrait)
         ),
         None,
     )
-    if dagegen is not None:
-        anteil *= 1 - weights.counterweight
+    if against is not None:
+        share *= 1 - weights.counterweight
 
-    if anteil == 0:
-        sterne = 0 if dagegen is not None else 1
+    if share == 0:
+        stars = 0 if against is not None else 1
     else:
-        sterne = next((s for s, ab in weights.stars_from if anteil >= ab), 1)
+        stars = next((s for s, ab in weights.stars_from if share >= ab), 1)
 
     return Fit(
-        share=anteil,
-        stars=sterne,
-        hits=tuple(treffer),
-        liked=gemocht,
-        against=dagegen,
+        share=share,
+        stars=stars,
+        hits=tuple(hits),
+        liked=liked,
+        against=against,
         reasons=_reasons(
-            treffer, gemocht, lambda f: is_pattern(f, vocabulary), dagegen, portrait, vocabulary
+            hits, liked, lambda f: is_pattern(f, vocabulary), against, portrait, vocabulary
         ),
     )
 
 
 def _reasons(
-    treffer: list[FacetHit],
-    gemocht: Sequence[Liked],
-    muster: Callable[[str], bool],
-    dagegen: Counterweight | None,
+    hits: list[FacetHit],
+    liked: Sequence[Liked],
+    is_story_pattern: Callable[[str], bool],
+    against: Counterweight | None,
     portrait: Portrait,
     vocabulary: Vocabulary,
 ) -> tuple[Reason, ...]:
@@ -358,10 +359,10 @@ def _reasons(
     getroffenen Facette steht, bekommt keine eigene Marke.
     """
 
-    def belege(family_ids: Sequence[str]) -> list[Reason]:
-        saetze = []
+    def evidence_for(family_ids: Sequence[str]) -> list[Reason]:
+        sentences = []
         for family_id in family_ids:
-            satz = next(
+            sentence = next(
                 (
                     trait.sentence
                     for trait in portrait.traits
@@ -370,29 +371,29 @@ def _reasons(
                 ),
                 "",
             )
-            if satz:
-                saetze.append(Reason("beleg", satz))
-        return saetze
+            if sentence:
+                sentences.append(Reason("beleg", sentence))
+        return sentences
 
-    zeilen: list[Reason] = []
-    for t in treffer:
-        zeilen.append(Reason("ganz", family_names(t.facet.families, vocabulary)))
-        zeilen.extend(belege(t.facet.families))
-    in_facetten = {f for t in treffer for f in t.facet.families}
+    lines: list[Reason] = []
+    for hit in hits:
+        lines.append(Reason("ganz", family_names(hit.facet.families, vocabulary)))
+        lines.extend(evidence_for(hit.facet.families))
+    families_in_hits = {f for hit in hits for f in hit.facet.families}
     # Verstärktes zuerst, dann Merkmale vor Erzählmustern.
-    for liked in sorted(gemocht, key=lambda g: (not g.boosted, muster(g.family))):
-        if liked.family in in_facetten:
+    for entry in sorted(liked, key=lambda g: (not g.boosted, is_story_pattern(g.family))):
+        if entry.family in families_in_hits:
             continue
-        art = "muster" if muster(liked.family) else "merkmal"
-        zeilen.append(Reason(art, family_name(liked.family, vocabulary), liked.boosted))
-        zeilen.extend(belege((liked.family,)))
-    if not treffer and not gemocht:
-        zeilen.append(Reason("keine", "nichts Gemochtes getroffen"))
-    if dagegen is not None:
-        im_genre = f" (bei {dagegen.genre})" if dagegen.genre else ""
-        zeilen.append(Reason("dagegen", family_names(dagegen.families, vocabulary) + im_genre))
-        zeilen.extend(belege(dagegen.families))
-    return tuple(zeilen)
+        kind = "muster" if is_story_pattern(entry.family) else "merkmal"
+        lines.append(Reason(kind, family_name(entry.family, vocabulary), entry.boosted))
+        lines.extend(evidence_for((entry.family,)))
+    if not hits and not liked:
+        lines.append(Reason("keine", "nichts Gemochtes getroffen"))
+    if against is not None:
+        genre_note = f" (bei {against.genre})" if against.genre else ""
+        lines.append(Reason("dagegen", family_names(against.families, vocabulary) + genre_note))
+        lines.extend(evidence_for(against.families))
+    return tuple(lines)
 
 
 #: Wie stark etwas belegt ist, als Skala statt als Zahl (#44): ein Buch ist
@@ -426,87 +427,87 @@ def derive_facets(
 
     ``carriers`` nennt je Familie die geliebten Bücher, die sie tragen.
     """
-    familien = [f for f in dict.fromkeys(chosen) if carriers.get(f)]
-    traeger = {f: frozenset(carriers[f]) for f in familien}
+    families = [f for f in dict.fromkeys(chosen) if carriers.get(f)]
+    carrier_sets = {f: frozenset(carriers[f]) for f in families}
 
-    kandidaten = {traeger[f] for f in familien if len(traeger[f]) >= 2}
-    kandidaten |= {
-        traeger[a] & traeger[b]
-        for i, a in enumerate(familien)
-        for b in familien[i + 1:]
-        if len(traeger[a] & traeger[b]) >= 2
+    candidates = {carrier_sets[f] for f in families if len(carrier_sets[f]) >= 2}
+    candidates |= {
+        carrier_sets[a] & carrier_sets[b]
+        for i, a in enumerate(families)
+        for b in families[i + 1:]
+        if len(carrier_sets[a] & carrier_sets[b]) >= 2
     }
-    mit = {b: tuple(f for f in familien if b <= traeger[f]) for b in kandidaten}
-    echte = [(b, f) for b, f in mit.items() if len(f) >= MIN_FAMILIES]
-    echte = [
+    shared_families = {b: tuple(f for f in families if b <= carrier_sets[f]) for b in candidates}
+    valid = [(b, f) for b, f in shared_families.items() if len(f) >= MIN_FAMILIES]
+    valid = [
         (b, f)
-        for b, f in echte
-        if not any((b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in echte)
+        for b, f in valid
+        if not any((b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in valid)
     ]
     # Fest geordnet: die breitesten zuerst, dann in der Reihenfolge, in der
     # ihre Familien angetippt wurden — Mengen haben keine Reihenfolge.
-    stelle = {f: i for i, f in enumerate(familien)}
-    echte.sort(key=lambda bf: (-len(bf[0]), min(stelle[f] for f in bf[1])))
-    return [Facet(fs, tuple(sorted(b))) for b, fs in echte]
+    order = {f: i for i, f in enumerate(families)}
+    valid.sort(key=lambda bf: (-len(bf[0]), min(order[f] for f in bf[1])))
+    return [Facet(fs, tuple(sorted(b))) for b, fs in valid]
 
 
 def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:
     """Ein Profil aus einer Datei, gegen das Vokabular geprüft."""
     try:
-        daten = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except (OSError, yaml.YAMLError) as exc:
         raise ProfileError(f"{path.name} ist nicht lesbar: {exc}") from exc
 
-    if not isinstance(daten, dict):
+    if not isinstance(data, dict):
         raise ProfileError(f"{path.name} enthält keine Facetten und Gegengewichte")
 
-    def pruefen(ids: Sequence[str]) -> None:
+    def check_known(ids: Sequence[str]) -> None:
         for family_id in ids:
             try:
                 vocabulary.family(family_id)
             except KeyError:
                 raise ProfileError(f"keine solche Merkmalsfamilie: {family_id}") from None
 
-    def familien(eintrag: object) -> tuple[str, ...]:
-        if not isinstance(eintrag, dict):
-            raise ProfileError(f"kein Eintrag mit familien: {eintrag!r}")
+    def read_family_ids(entry: object) -> tuple[str, ...]:
+        if not isinstance(entry, dict):
+            raise ProfileError(f"kein Eintrag mit familien: {entry!r}")
         # Doppelt Genanntes zählt einmal: "hart, hart" ist keine zweite Familie.
-        ids = tuple(dict.fromkeys(str(f) for f in eintrag.get("familien") or []))
-        pruefen(ids)
+        ids = tuple(dict.fromkeys(str(f) for f in entry.get("familien") or []))
+        check_known(ids)
         return ids
 
-    facetten = []
-    for eintrag in daten.get("facetten") or []:
-        ids = familien(eintrag)
+    facets = []
+    for entry in data.get("facetten") or []:
+        ids = read_family_ids(entry)
         if len(ids) < MIN_FAMILIES:
             raise ProfileError(
                 f"eine Facette braucht mindestens zwei Familien: {', '.join(ids) or '(leer)'}"
             )
-        facetten.append(Facet(ids, tuple(str(b) for b in eintrag.get("buecher") or [])))
+        facets.append(Facet(ids, tuple(str(b) for b in entry.get("buecher") or [])))
 
-    gemocht = list(dict.fromkeys(str(f) for f in daten.get("gemocht") or []))
-    verstaerkt = list(dict.fromkeys(str(f) for f in daten.get("verstaerkt") or []))
-    pruefen(gemocht)
-    if len(verstaerkt) > MOST_BOOSTED:
-        raise ProfileError(f"höchstens {MOST_BOOSTED} verstärkt, nicht {len(verstaerkt)}")
-    if fremd := [f for f in verstaerkt if f not in gemocht]:
-        raise ProfileError(f"verstärkt, aber nicht gemocht: {', '.join(fremd)}")
+    liked_ids = list(dict.fromkeys(str(f) for f in data.get("gemocht") or []))
+    boosted_ids = list(dict.fromkeys(str(f) for f in data.get("verstaerkt") or []))
+    check_known(liked_ids)
+    if len(boosted_ids) > MOST_BOOSTED:
+        raise ProfileError(f"höchstens {MOST_BOOSTED} verstärkt, nicht {len(boosted_ids)}")
+    if unknown := [f for f in boosted_ids if f not in liked_ids]:
+        raise ProfileError(f"verstärkt, aber nicht gemocht: {', '.join(unknown)}")
 
-    gegen = []
-    for eintrag in daten.get("gegengewichte") or []:
-        ids = familien(eintrag)
+    counterweights = []
+    for entry in data.get("gegengewichte") or []:
+        ids = read_family_ids(entry)
         # Ein leeres Gegengewicht träfe jedes Buch.
         if not ids:
             raise ProfileError("ein Gegengewicht braucht mindestens eine Familie")
-        gegen.append(Counterweight(
+        counterweights.append(Counterweight(
             ids,
-            genre=str(eintrag["genre"]) if eintrag.get("genre") else None,
-            books=tuple(str(b) for b in eintrag.get("buecher") or []),
+            genre=str(entry["genre"]) if entry.get("genre") else None,
+            books=tuple(str(b) for b in entry.get("buecher") or []),
         ))
     return ReadingProfile(
-        facets=tuple(facetten),
-        counterweights=tuple(gegen),
-        liked=tuple(Liked(f, f in verstaerkt) for f in gemocht),
+        facets=tuple(facets),
+        counterweights=tuple(counterweights),
+        liked=tuple(Liked(f, f in boosted_ids) for f in liked_ids),
     )
 
 
@@ -516,22 +517,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     from .config import load_settings
     from .store import Store
 
-    args = list(sys.argv[1:] if argv is None else argv)
-    if len(args) != 1:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if len(arguments) != 1:
         print("Aufruf: python -m ebook_watchlist.facets <profil.yaml>", file=sys.stderr)
         return 2
-    datei = Path(args[0])
+    file_path = Path(arguments[0])
     try:
-        profil = load_profile_file(datei, load_vocabulary())
+        profile = load_profile_file(file_path, load_vocabulary())
     except ProfileError as exc:
         print(f"Profil nicht übernommen: {exc}", file=sys.stderr)
         return 1
     settings = load_settings()
-    fassung = Store(paths.db_path()).put_reading_profile(
-        settings.slug, profil, cause=f"aus der Datei {datei.name}", now=datetime.now()
+    version = Store(paths.db_path()).put_reading_profile(
+        settings.slug, profile, cause=f"aus der Datei {file_path.name}", now=datetime.now()
     )
-    print(f"Profil gespeichert als Fassung {fassung}: {len(profil.liked)} gemocht, "
-          f"{len(profil.facets)} Facetten, {len(profil.counterweights)} Gegengewichte.")
+    print(f"Profil gespeichert als Fassung {version}: {len(profile.liked)} gemocht, "
+          f"{len(profile.facets)} Facetten, {len(profile.counterweights)} Gegengewichte.")
     return 0
 
 
