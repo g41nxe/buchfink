@@ -271,6 +271,16 @@ def family_names(families: Sequence[str], vocabulary: Vocabulary) -> str:
     return " · ".join(family_name(f, vocabulary) for f in families)
 
 
+def family_description(family_id: str, vocabulary: Vocabulary) -> str:
+    """Was die Familie als Ganzes heißt — nicht die Beschreibung eines
+    einzelnen Merkmals, das zufällig zu ihr gehört. Leer, wenn das Vokabular
+    die Familie nicht mehr kennt."""
+    try:
+        return vocabulary.family(family_id).description
+    except KeyError:
+        return ""
+
+
 def is_pattern(family_id: str, vocabulary: Vocabulary) -> bool:
     """Ob eine Familie ein Erzählmuster ist — und nein, wenn es sie nicht mehr gibt."""
     try:

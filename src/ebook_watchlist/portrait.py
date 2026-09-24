@@ -83,6 +83,8 @@ class Family:
     id: str
     name: str
     members: tuple[str, ...]
+    #: Was die Familie als Ganzes heißt — nicht nur eines ihrer Merkmale.
+    description: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +100,7 @@ class Vocabulary:
             if term_id in family.members:
                 return family
         term = self.terms[term_id]
-        return Family(term.id, term.name, (term.id,))
+        return Family(term.id, term.name, (term.id,), term.description)
 
     def family(self, family_id: str) -> Family:
         """Eine Familie nach ihrer id; ein Merkmal ohne Familie ist seine eigene.
@@ -235,7 +237,8 @@ def _parse_vocabulary(
                     f"{term_id} steht in zwei Familien: {vergeben[term_id]} und {name}"
                 )
             vergeben[term_id] = name
-        families.append(Family(str(eintrag["id"]), name, members))
+        beschreibung = str(eintrag.get("beschreibung", "")).strip()
+        families.append(Family(str(eintrag["id"]), name, members, beschreibung))
 
     if muster_text is not None:
         _load_patterns(muster_text, muster_name, terms, families, dimensions)
@@ -279,7 +282,7 @@ def _load_patterns(
     if grund:
         dimensions.append((PATTERN_DIMENSION, "was für eine Geschichte es erzählt"))
         families.extend(
-            Family(family_id, namen[family_id], tuple(members))
+            Family(family_id, namen[family_id], tuple(members), terms[family_id].description)
             for family_id, members in grund.items()
         )
 

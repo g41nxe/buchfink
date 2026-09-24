@@ -34,6 +34,7 @@ from ..facets import (
     ReadingProfile,
     ScopeError,
     derive_facets,
+    family_description,
     family_name,
     family_names,
     is_pattern,
@@ -145,12 +146,11 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
                                                 family_name(f, vocabulary).casefold()))
 
     def karte(f: str) -> Card:
-        begriff = ich.terms.get(f)
         traeger = carried_by((f,), gemocht)
         return Card(
             Pill(f, family_name(f, vocabulary), vocabulary.is_pattern(f), False, f in an,
                  boosted=f in verstaerkt),
-            vocabulary.terms[begriff].description if begriff else "",
+            family_description(f, vocabulary),
             strength(len(traeger)),
             tuple((b.title, b.families[f]) for b in traeger),
         )

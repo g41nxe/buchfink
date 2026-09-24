@@ -37,6 +37,7 @@ from ..facets import (
     ScopeError,
     derive_facets,
     families_of,
+    family_description,
     family_name,
     family_names,
     merge_counterweights,
@@ -519,10 +520,9 @@ def choosing(store: Store, settings: Settings) -> Choosing:
     )
 
     def karte(f: str) -> Card:
-        begriff = next(b.terms[f] for b in traeger[f] if f in b.terms)
         return Card(
             pille(f, f in an),
-            vocabulary.terms[begriff].description,
+            family_description(f, vocabulary),
             strength(len(traeger[f])),
             tuple((b.title, b.families[f]) for b in traeger[f]),
         )
@@ -546,10 +546,9 @@ def choosing(store: Store, settings: Settings) -> Choosing:
 
     def karte_verloren(f: str) -> LostCard:
         traeger_f = traeger_verloren[f]
-        begriff = next((b.terms[f] for b in traeger_f if f in b.terms), None)
         return LostCard(
             pille(f, f in weg),
-            vocabulary.terms[begriff].description if begriff else "",
+            family_description(f, vocabulary),
             tuple((b.title, b.families[f]) for b in traeger_f),
             also_in=tuple(b.title for b in traeger.get(f, ())),
             scope=weg.get(f) or HERE,
@@ -583,9 +582,7 @@ def _draft(vocabulary, gemocht, traeger, traeger_verloren, weg) -> Draft:
         FacetCard(
             f.families,
             tuple(
-                (family_name(x, vocabulary), vocabulary.terms[
-                    next(b.terms[x] for b in traeger[x] if x in b.terms)
-                ].description)
+                (family_name(x, vocabulary), family_description(x, vocabulary))
                 for x in f.families
             ),
             strength(len(f.books)),
