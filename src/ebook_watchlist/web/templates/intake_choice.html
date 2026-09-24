@@ -9,16 +9,16 @@
 {% if schritt == 3 %}
 {% with frage="Was hält dich an diesen Büchern?",
         hilfe="Tipp an, was dich trägt. Was du nicht antippst, ist dir egal." %}
-{% include "_erstaufnahme_schritt.html" %}
+{% include "_intake_step.html" %}
 {% endwith %}
 {% else %}
 {% with frage="Was dich verloren hat",
         hilfe="Tipp an, was dich verloren hat. Es zählt dann gegen andere Bücher, schließt aber keines aus." %}
-{% include "_erstaufnahme_schritt.html" %}
+{% include "_intake_step.html" %}
 {% endwith %}
 {% endif %}
 
-{% include "_erstaufnahme_wahl.html" %}
+{% include "_intake_choices.html" %}
 
 {% set weiter = "/intake/profile" if schritt == 4 or not wahl.lost else "/intake/lost" %}
 <nav class="mt-8 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">

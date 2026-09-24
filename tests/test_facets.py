@@ -415,3 +415,51 @@ def test_the_strength_is_a_scale() -> None:
     assert [strength(n) for n in (1, 2, 3, 4, 7)] == [
         "schwach", "mittel", "stark", "sehr stark", "sehr stark"
     ]
+
+
+# --- Review: Genre als ganzes Wort, Fassungsnummern ohne Wettlauf -----------------
+
+
+@pytest.mark.parametrize(
+    ("genre", "untergenre", "trifft"),
+    [("Kriminalroman", None, False), ("Liebesroman", None, False), ("Roman", None, True),
+     ("Gegenwartsroman", "Roman über Familie", True)],
+)
+def test_a_genre_counterweight_matches_whole_words_only(wort, gewichte, genre, untergenre,
+                                                         trifft) -> None:
+    """„nur bei Roman" darf nicht jeden Kriminalroman treffen."""
+    profil = ReadingProfile(facets=PROFIL.facets,
+                            counterweights=(Counterweight(("harsh",), genre="Roman"),))
+    buch = steckbrief("violent", "brooding", genre=genre, subgenre=untergenre)
+
+    assert (fit(buch, profil, wort, gewichte).against is not None) is trifft
+
+
+def test_high_fantasy_still_matches_its_long_subgenre(wort, gewichte) -> None:
+    profil = ReadingProfile(facets=PROFIL.facets,
+                            counterweights=(Counterweight(("big_world",), genre="High Fantasy"),))
+
+    assert fit(HERR_DER_RINGE, profil, wort, gewichte).against is not None
+
+
+def test_concurrent_saves_get_distinct_versions(store: Store) -> None:
+    """Ein Doppelklick auf „Übernehmen" darf nicht an der Fassungsnummer scheitern."""
+    import threading
+
+    fehler: list[BaseException] = []
+
+    def speichern() -> None:
+        try:
+            for _ in range(5):
+                store.put_reading_profile("test", PROFIL, cause="parallel", now=NOW)
+        except BaseException as exc:  # noqa: BLE001
+            fehler.append(exc)
+
+    faeden = [threading.Thread(target=speichern) for _ in range(4)]
+    for f in faeden:
+        f.start()
+    for f in faeden:
+        f.join()
+
+    assert fehler == []
+    assert store.reading_profile("test").version == 20

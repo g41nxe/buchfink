@@ -26,15 +26,20 @@ from datetime import datetime
 
 from ..config import Settings
 from ..facets import (
+    GENERAL,
+    HERE,
     MIN_FAMILIES,
     STRENGTHS,
     Counterweight,
     Facet,
     ReadingProfile,
+    ScopeError,
     derive_facets,
     families_of,
     family_name,
     family_names,
+    merge_counterweights,
+    scoped_counterweight,
     strength,
     uncovered,
 )
@@ -250,10 +255,6 @@ def confirm(store: Store, settings: Settings, entry_id: int, *, now: datetime) -
 # --- Bildschirme 3 bis 5: das Gemeinsame, das Verlorene, dein Profil (#50) ------
 
 LOVED, LOST = "loved", "lost"
-#: Der Umfang eines Gegengewichts: überall, nur bei diesem Buch, oder nur
-#: zusammen mit seinem Genre (Nachtrag zu ADR 33).
-GENERAL, HERE, WITH_GENRE = "general", "here", "genre"
-SCOPES = (GENERAL, HERE, WITH_GENRE)
 
 #: Ab wie vielen Büchern der neutrale Bestand etwas über Häufigkeit sagt, und
 #: ab welchem Anteil eine Familie als häufig gilt. Vorläufig; darunter wird
@@ -338,6 +339,11 @@ class FacetCard:
     def too_broad(self) -> bool:
         return len(self.families) < MIN_FAMILIES
 
+    @property
+    def key(self) -> str:
+        """Woran das Formular sie wiedererkennt — nicht an ihrer Stelle."""
+        return ",".join(self.families)
+
 
 @dataclass(frozen=True, slots=True)
 class WeightCard:
@@ -345,6 +351,10 @@ class WeightCard:
     name: str
     genre: str | None
     books: tuple[str, ...]
+
+    @property
+    def key(self) -> str:
+        return ",".join(self.families) + "|" + (self.genre or "")
 
 
 @dataclass(frozen=True, slots=True)
@@ -415,11 +425,15 @@ def frequent_families(store: Store, settings: Settings, vocabulary) -> set[str]:
     hieße, ihren Geschmack zu bestrafen (#44). Ohne genug neutralen Bestand
     wird nicht sortiert.
     """
-    eigene = set()
-    for row in store.relations(settings.slug, active_only=False):
-        buch = store.book(row.book_id)
-        if buch is not None:
-            eigene.update({portrait_subject(buch), f"book:{buch.id}"})
+    # Ein Abruf für alle Bücher statt einer Abfrage je Beziehung: das läuft
+    # bei jedem Tipp auf Bildschirm 3 und 4.
+    mit_beziehung = {row.book_id for row in store.relations(settings.slug, active_only=False)}
+    eigene = {
+        subject
+        for buch in store.books()
+        if buch.id in mit_beziehung
+        for subject in (portrait_subject(buch), f"book:{buch.id}")
+    }
     bestand = [
         bild
         for subject, bild in store.latest_portraits(fingerprint(vocabulary)).items()
@@ -517,8 +531,7 @@ def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille) -> Draft:
     )
 
     buecher_von = {d.book_id: d for d in enttaeuscht}
-    gewichte: dict[tuple[str, str | None], list[str]] = {}
-    nur_hier = []
+    neu, nur_hier = [], []
     for (f, book_id), scope in weg.items():
         d = buecher_von.get(book_id)
         if d is None:
@@ -526,14 +539,18 @@ def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille) -> Draft:
         # Voreingestellt: steckt es auch in einem geliebten Buch, zählt es nur
         # hier, bis die Leserin es anders sagt — sonst überall.
         umfang = scope or (HERE if traeger.get(f) else GENERAL)
-        if umfang == HERE:
+        try:
+            gewicht = scoped_counterweight(f, umfang, d.genre, d.title)
+        except ScopeError:
+            gewicht = None
+        if gewicht is None:
             nur_hier.append(family_name(f, vocabulary))
-            continue
-        genre = d.genre if umfang == WITH_GENRE else None
-        gewichte.setdefault((f, genre), []).append(d.title)
+        else:
+            neu.append(gewicht)
+    gegen, _ = merge_counterweights((), neu)
     karten_gegen = tuple(
-        WeightCard((f,), family_name(f, vocabulary), genre, tuple(buecher))
-        for (f, genre), buecher in gewichte.items()
+        WeightCard(c.families, family_names(c.families, vocabulary), c.genre, c.books)
+        for c in gegen
     )
     return Draft(karten, karten_gegen, tuple(nur_hier), fragen)
 
@@ -556,27 +573,31 @@ def choose(
 
 def set_scope(store: Store, settings: Settings, family_id: str, book_id: int, scope: str) -> None:
     """Die Nachfrage beantworten: nur hier, überall, oder nur mit dem Genre."""
-    if scope not in SCOPES:
-        raise IntakeError(f"unbekannter Umfang {scope!r}")
+    buch = shelf_book(store, load_vocabulary(), book_id)
+    try:
+        scoped_counterweight(family_id, scope, buch.genre if buch else None, "")
+    except ScopeError as exc:
+        raise IntakeError(str(exc)) from None
     store.set_intake_choice(settings.slug, LOST, family_id, book_id=book_id, active=True,
                             scope=scope)
 
 
 def adopt(
-    store: Store, settings: Settings, facets: Collection[int], weights: Collection[int],
+    store: Store, settings: Settings, facets: Collection[str], weights: Collection[str],
     *, now: datetime,
 ) -> int | None:
     """Bestätigen: die gewählten Facetten und Gegengewichte werden die erste
     Fassung des Leseprofils. Nichts gewählt heißt neu anfangen (#44) — dann
-    kommt nichts zurück."""
+    kommt nichts zurück.
+
+    Gewählt wird über den Schlüssel, nicht die Stelle: hat sich der Entwurf
+    seit dem Laden geändert, etwa in einem zweiten Tab, zählt, was die Leserin
+    gesehen hat, und was es nicht mehr gibt, fällt weg.
+    """
     entwurf = choosing(store, settings).draft
-    facetten = tuple(
-        Facet(f.families, f.books) for i, f in enumerate(entwurf.counted) if i in facets
-    )
+    facetten = tuple(Facet(f.families, f.books) for f in entwurf.counted if f.key in facets)
     gegen = tuple(
-        Counterweight(w.families, w.genre, w.books)
-        for i, w in enumerate(entwurf.weights)
-        if i in weights
+        Counterweight(w.families, w.genre, w.books) for w in entwurf.weights if w.key in weights
     )
     if not facetten and not gegen:
         store.reset_intake(settings.slug)

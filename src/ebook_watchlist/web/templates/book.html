@@ -206,9 +206,9 @@
    einem Merkmal ist das, was es an diesem Buch nachprüfbar macht; worauf er
    beruht, steht im Titel, nicht im Bild. #}
 {% call abschnitt("Steckbrief", "ic-search") %}
-  {% with url="/book/" ~ page.book_id ~ "/portrait", job=steckbrief_job,
+  {% with url="/book/" ~ page.book_id ~ "/portrait", job=portrait_job,
           vorhanden=page.portrait is not none %}
-  {% include "_steckbrief_stand.html" %}
+  {% include "_portrait_status.html" %}
   {% endwith %}
 {% endcall %}
 {% if page.portrait is none %}
@@ -372,10 +372,10 @@
 
 {# Nachschärfen (#51): was dieses Buch an deinem Leseprofil ändert — nur bei
    *Mag ich* oder *Doof*, und nur, wenn es ein Profil gibt. #}
-{% if nachschaerfen %}
+{% if sharpening %}
 {{ abschnitt("Nachschärfen", "ic-heart") }}
-{% with n=nachschaerfen, book_id=page.book_id %}
-{% include "_nachschaerfen.html" %}
+{% with n=sharpening, book_id=page.book_id %}
+{% include "_sharpening.html" %}
 {% endwith %}
 {% endif %}
 

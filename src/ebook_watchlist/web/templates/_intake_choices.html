@@ -13,7 +13,7 @@
    Heldenreise statt eines Gegengewichts gegen jede Heldenreise.
 
    Erwartet: `wahl`, `schritt`. #}
-{% from "_familienpille.html" import familienpille, titelreihe %}
+{% from "_family_pill.html" import familienpille, titelreihe %}
 <div id="wahl" class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
   <div>
     {% if schritt == 3 %}
@@ -87,5 +87,5 @@
     {% endif %}
   </div>
 
-  {% include "_erstaufnahme_entwurf.html" %}
+  {% include "_intake_draft.html" %}
 </div>

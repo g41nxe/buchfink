@@ -24,6 +24,7 @@ ab, und ``uncovered`` nennt die geliebten Bücher, die in keiner stecken.
 from __future__ import annotations
 
 import math
+import re
 import sys
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
@@ -160,10 +161,67 @@ def families_of(portrait: Portrait, vocabulary: Vocabulary) -> set[str]:
 
 
 def _genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
+    """Ob das Buch zum Genre des Gegengewichts gehört — als ganzes Wort.
+
+    "High Fantasy" steckt in "High Fantasy / Heroische Fantasy"; "Roman"
+    steckt nicht in "Kriminalroman", sonst träfe ein Gegengewicht "nur bei
+    Roman" jeden Krimi.
+    """
     if counterweight.genre is None:
         return True
-    gesucht = counterweight.genre.casefold()
-    return any(gesucht in (teil or "").casefold() for teil in (portrait.genre, portrait.subgenre))
+    gesucht = re.compile(rf"(?<!\w){re.escape(counterweight.genre.casefold())}(?!\w)")
+    teile = (portrait.genre, portrait.subgenre)
+    return any(gesucht.search((teil or "").casefold()) for teil in teile)
+
+
+#: Der Umfang eines Gegengewichts: überall, nur bei diesem einen Buch (zählt
+#: gegen nichts), oder nur zusammen mit seinem Genre (Nachtrag zu ADR 33).
+GENERAL, HERE, WITH_GENRE = "general", "here", "genre"
+SCOPES = (GENERAL, HERE, WITH_GENRE)
+
+
+class ScopeError(ValueError):
+    """Ein Umfang, der sich für dieses Buch nicht einlösen lässt."""
+
+
+def scoped_counterweight(
+    family: str, scope: str, genre: str | None, book: str
+) -> Counterweight | None:
+    """Das Gegengewicht, das eine Antwort meint — oder keines bei *nur hier*.
+
+    Eine Stelle für Erstaufnahme und Nachschärfen. „Nur bei diesem Genre"
+    ohne Genre ist ein Fehler und wird kein Gegengewicht, das überall gilt.
+    """
+    if scope not in SCOPES:
+        raise ScopeError(f"unbekannter Umfang {scope!r}")
+    if scope == HERE:
+        return None
+    if scope == WITH_GENRE:
+        if not genre:
+            raise ScopeError("Dieses Buch hat kein Genre, auf das sich das beschränken ließe.")
+        return Counterweight((family,), genre, (book,))
+    return Counterweight((family,), None, (book,))
+
+
+def merge_counterweights(
+    old: Sequence[Counterweight], new: Sequence[Counterweight]
+) -> tuple[tuple[Counterweight, ...], bool]:
+    """Neue Gegengewichte dazu; ein gleiches (Familien und Genre) nimmt nur
+    das Buch auf. Zurück kommt, ob sich etwas geändert hat."""
+    alle = list(old)
+    geaendert = False
+    for c in new:
+        for i, da in enumerate(alle):
+            if (da.families, da.genre) == (c.families, c.genre):
+                fehlend = tuple(b for b in c.books if b not in da.books)
+                if fehlend:
+                    alle[i] = Counterweight(da.families, da.genre, (*da.books, *fehlend))
+                    geaendert = True
+                break
+        else:
+            alle.append(c)
+            geaendert = True
+    return tuple(alle), geaendert
 
 
 def family_name(family_id: str, vocabulary: Vocabulary) -> str:

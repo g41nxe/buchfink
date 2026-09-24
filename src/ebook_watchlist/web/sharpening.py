@@ -30,18 +30,21 @@ from datetime import datetime
 from ..config import Settings
 from ..facets import (
     MIN_FAMILIES,
-    Counterweight,
     Facet,
     ReadingProfile,
+    ScopeError,
     derive_facets,
     family_name,
     family_names,
+    merge_counterweights,
+    scoped_counterweight,
     strength,
 )
-from ..portrait import VocabularyError, load_vocabulary
+from ..portrait import VocabularyError, fingerprint, load_vocabulary
 from ..relations import RelationKind
 from ..store import Store
-from .intake import HERE, SCOPES, WITH_GENRE, IntakeError, ShelfBook, shelf_book
+from .book import _stored_portrait as stored_portrait
+from .intake import IntakeError, ShelfBook, shelf_book
 
 LIKED, DISLIKED = str(RelationKind.LIKED), str(RelationKind.DISLIKED)
 
@@ -79,6 +82,8 @@ class Sharpening:
     title: str
     #: Noch kein Steckbrief: gefragt werden kann erst, wenn er da ist.
     waiting: bool = False
+    #: Das Modell kennt das Buch nicht; es trägt nichts bei.
+    unknown: bool = False
     strengthened: tuple[Strengthened, ...] = ()
     #: Gemocht, aber in keiner Facette: alles, was es trägt.
     uncovered: tuple[Family, ...] = ()
@@ -122,6 +127,12 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
         return None
     ich = shelf_book(store, vocabulary, book_id)
     if ich is None:
+        # Kein Steckbrief heißt warten; ein Steckbrief "unbekannt" heißt, dass
+        # es hier nichts zu schärfen gibt — beides zu vermengen hieß, auf etwas
+        # zu vertrösten, das nie kommt.
+        bild = stored_portrait(store, buch, fingerprint(vocabulary))
+        if bild is not None and not bild.known:
+            return Sharpening(kind, buch.title, unknown=True)
         return Sharpening(kind, buch.title, waiting=True)
 
     gemocht = liked_shelf(store, settings, vocabulary)
@@ -231,29 +242,21 @@ def add_counterweights(
     Familie ihren Umfang; *nur bei diesem Buch* zählt gegen nichts."""
     ich, _ = _book(store, settings, book_id, DISLIKED)
     profil = store.reading_profile(settings.slug)
-    gegen = list(profil.counterweights)
-    geaendert = False
+    neu = []
     for f, umfang in scopes.items():
         if f not in ich.families:
             raise IntakeError(f"{f} trägt dieses Buch nicht.")
-        if umfang not in SCOPES:
-            raise IntakeError(f"unbekannter Umfang {umfang!r}")
-        if umfang == HERE:
-            continue
-        genre = ich.genre if umfang == WITH_GENRE else None
-        for i, c in enumerate(gegen):
-            if c.families == (f,) and c.genre == genre:
-                if ich.title not in c.books:
-                    gegen[i] = Counterweight(c.families, c.genre, (*c.books, ich.title))
-                    geaendert = True
-                break
-        else:
-            gegen.append(Counterweight((f,), genre, (ich.title,)))
-            geaendert = True
+        try:
+            gewicht = scoped_counterweight(f, umfang, ich.genre, ich.title)
+        except ScopeError as exc:
+            raise IntakeError(str(exc)) from None
+        if gewicht is not None:
+            neu.append(gewicht)
+    gegen, geaendert = merge_counterweights(profil.counterweights, neu)
     if not geaendert:
         return None
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profil.facets, tuple(gegen)),
+        settings.slug, ReadingProfile(profil.facets, gegen),
         cause=f"Nachschärfen: {ich.title}", now=now,
     )
 

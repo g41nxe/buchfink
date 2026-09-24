@@ -24,9 +24,11 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from .. import paths
 from ..config import ConfigError, load_settings
+from ..facets import GENERAL
 from ..models import LinkOutcome
 from ..relations import RelationKind
 from ..single import Report
@@ -279,7 +281,7 @@ def create_app() -> FastAPI:
 
     urteiler = Rechecker(work=_urteilen)
 
-    def _steckbrief_anlegen(key) -> Report:
+    def _portray_work(key) -> Report:
         """Die Arbeit des dritten Verwalters: einen Steckbrief anlegen (#45).
 
         Ein eigener Verwalter und nicht der des Urteils: beide koennen
@@ -289,16 +291,16 @@ def create_app() -> FastAPI:
         store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
         return Report(trouble=book.portray(store, settings, key[1], now=now))
 
-    zeichner = Rechecker(work=_steckbrief_anlegen)
+    portrayer = Rechecker(work=_portray_work)
 
-    def _steckbrief_stand(request: Request, book_id: int) -> Response:
+    def _portrait_status(request: Request, book_id: int) -> Response:
         """Das Fragment neben *Steckbrief*, solange einer entsteht — wie beim Urteil."""
-        job = zeichner.state(("book", book_id))
+        job = portrayer.state(("book", book_id))
         if job is None or not job.busy:
             return Response(status_code=204, headers={"HX-Refresh": "true"})
         return TEMPLATES.TemplateResponse(
             request,
-            "_steckbrief_stand.html",
+            "_portrait_status.html",
             {"url": f"/book/{book_id}/portrait", "job": job, "vorhanden": False},
         )
 
@@ -772,9 +774,9 @@ def create_app() -> FastAPI:
                 "restrictions": watchlist.RESTRICTIONS,
                 "price_points": book.price_points(page.history),
                 "urteil_job": urteiler.state(("book", book_id)),
-                "steckbrief_job": zeichner.state(("book", book_id)),
+                "portrait_job": portrayer.state(("book", book_id)),
                 "lauf_unterwegs": _lauf_unterwegs(store, settings),
-                "nachschaerfen": sharpening.build(store, settings, book_id),
+                "sharpening": sharpening.build(store, settings, book_id),
             },
         )
 
@@ -801,13 +803,13 @@ def create_app() -> FastAPI:
         Im Hintergrund wie das Urteil. Gibt es schon einen, kostet der Klick
         keinen Aufruf: dasselbe Buch trägt immer denselben Steckbrief.
         """
-        zeichner.start(("book", book_id))
-        return _steckbrief_stand(request, book_id)
+        portrayer.start(("book", book_id))
+        return _portrait_status(request, book_id)
 
     @app.get("/book/{book_id}/portrait")
     def book_portray_status(request: Request, book_id: int) -> Response:
         """Hier fragt die Seite nach, solange der Steckbrief entsteht."""
-        return _steckbrief_stand(request, book_id)
+        return _portrait_status(request, book_id)
 
     @app.post("/book/{book_id}/edit")
     def book_edit(
@@ -882,40 +884,46 @@ def create_app() -> FastAPI:
             and kind in (str(RelationKind.LIKED), str(RelationKind.DISLIKED))
             and store.reading_profile(settings.slug) is not None
         ):
-            zeichner.start(("book", book_id))
+            portrayer.start(("book", book_id))
         return RedirectResponse(f"/book/{book_id}", status_code=303)
 
     # --- Nachschärfen (#51) --------------------------------------------------
 
-    def _nachschaerfen(book_id: int, tun) -> RedirectResponse:
+    def _sharpen(book_id: int, tun) -> RedirectResponse:
         try:
             tun(_store_for(paths.db_path()), load_settings())
         except intake.IntakeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return RedirectResponse(f"/book/{book_id}#nachschaerfen", status_code=303)
+        return RedirectResponse(f"/book/{book_id}#sharpening", status_code=303)
 
     @app.post("/book/{book_id}/sharpen/facet")
     def sharpen_facet(book_id: int, family: list[str] = _FAMILIES) -> RedirectResponse:
         """Eine neue Facette aus Familien dieses Buchs."""
-        return _nachschaerfen(book_id, lambda store, settings: sharpening.add_facet(
+        return _sharpen(book_id, lambda store, settings: sharpening.add_facet(
             store, settings, book_id, family, now=datetime.now()))
 
     @app.post("/book/{book_id}/sharpen/decline")
     def sharpen_decline(book_id: int, family: list[str] = _FAMILIES) -> RedirectResponse:
         """Ein Vorschlag passt nicht und kommt nicht wieder."""
-        return _nachschaerfen(book_id, lambda store, settings: sharpening.decline(
+        return _sharpen(book_id, lambda store, settings: sharpening.decline(
             store, settings, family, now=datetime.now()))
 
     @app.post("/book/{book_id}/sharpen/counterweight")
     async def sharpen_counterweight(request: Request, book_id: int) -> RedirectResponse:
-        """Gegengewichte aus einem *Doof*-Buch; je Familie ihr Umfang."""
+        """Gegengewichte aus einem *Doof*-Buch; je Familie ihr Umfang.
+
+        Asynchron nur, um die Felder `scope-<familie>` zu lesen, deren Namen
+        vorher niemand kennt. Die Arbeit selbst läuft im Threadpool wie in jeder
+        anderen Route — sonst hielte der Zugriff auf SQLite alle Anfragen an.
+        """
         formular = await request.form()
         umfaenge = {
-            str(f): str(formular.get(f"scope-{f}") or intake.GENERAL)
+            str(f): str(formular.get(f"scope-{f}") or GENERAL)
             for f in formular.getlist("family")
         }
-        return _nachschaerfen(book_id, lambda store, settings: sharpening.add_counterweights(
-            store, settings, book_id, umfaenge, now=datetime.now()))
+        return await run_in_threadpool(
+            _sharpen, book_id, lambda store, settings: sharpening.add_counterweights(
+                store, settings, book_id, umfaenge, now=datetime.now()))
 
     @app.post("/book/{book_id}/stars")
     def book_stars(book_id: int, stars: str = Form("")) -> RedirectResponse:
@@ -1153,7 +1161,7 @@ def create_app() -> FastAPI:
 
     # --- Erstaufnahme (#47) --------------------------------------------------
 
-    def _erkennen(key) -> Report:
+    def _identify_work(key) -> Report:
         """Die Arbeit des vierten Verwalters: erkennen, welches Buch gemeint ist.
 
         Ein eigener Verwalter: während die Leserin das dritte Buch tippt,
@@ -1162,7 +1170,7 @@ def create_app() -> FastAPI:
         store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
         return Report(trouble=intake.identify(store, settings, key[1], now=now))
 
-    erkenner = Rechecker(work=_erkennen)
+    identifier = Rechecker(work=_identify_work)
 
     def _intake_jobs(eintraege) -> dict:
         """Der Stand je Eintrag — und wer noch keinen Steckbrief hat und nicht
@@ -1173,8 +1181,8 @@ def create_app() -> FastAPI:
         for e in eintraege:
             if e.state != "asking":
                 continue
-            job = erkenner.state(("intake", e.id))
-            jobs[e.id] = job if job is not None else erkenner.start(("intake", e.id))
+            job = identifier.state(("intake", e.id))
+            jobs[e.id] = job if job is not None else identifier.start(("intake", e.id))
         return jobs
 
     def _intake_side(request: Request, kind: str, fehler: str | None = None) -> Response:
@@ -1183,7 +1191,7 @@ def create_app() -> FastAPI:
         side = seite.liked if kind == str(RelationKind.LIKED) else seite.disliked
         return TEMPLATES.TemplateResponse(
             request,
-            "_erstaufnahme_seite.html",
+            "_intake_side.html",
             {"side": side, "seite": seite, "jobs": _intake_jobs(side.entries),
              "fehler": fehler, "oob": True},
         )
@@ -1200,7 +1208,7 @@ def create_app() -> FastAPI:
         seite = intake.build(_store_for(paths.db_path()), load_settings())
         return TEMPLATES.TemplateResponse(
             request,
-            "erstaufnahme.html",
+            "intake.html",
             {
                 "seite": seite,
                 "jobs": _intake_jobs((*seite.liked.entries, *seite.disliked.entries)),
@@ -1221,7 +1229,7 @@ def create_app() -> FastAPI:
             if side not in intake.SIDES:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             return _intake_answer(request, side, str(exc))
-        erkenner.start(("intake", eintrag))
+        identifier.start(("intake", eintrag))
         return _intake_answer(request, side)
 
     def _intake_row(entry_id: int):
@@ -1235,7 +1243,7 @@ def create_app() -> FastAPI:
         """Hier fragt ein Eintrag nach, solange das Modell arbeitet (ADR 3)."""
         e = intake.entry(_store_for(paths.db_path()), _intake_row(entry_id))
         return TEMPLATES.TemplateResponse(
-            request, "_erstaufnahme_eintrag.html", {"e": e, "jobs": _intake_jobs((e,))}
+            request, "_intake_entry.html", {"e": e, "jobs": _intake_jobs((e,))}
         )
 
     @app.post("/intake/entry/{entry_id}/confirm")
@@ -1257,13 +1265,13 @@ def create_app() -> FastAPI:
             intake.retype(_store_for(paths.db_path()), entry_id, title, author)
         except intake.IntakeError as exc:
             return _intake_answer(request, row.side, str(exc))
-        erkenner.start(("intake", entry_id))
+        identifier.start(("intake", entry_id))
         return _intake_answer(request, row.side)
 
     @app.post("/intake/entry/{entry_id}/retry")
     def intake_retry(request: Request, entry_id: int) -> Response:
         row = _intake_row(entry_id)
-        erkenner.start(("intake", entry_id))
+        identifier.start(("intake", entry_id))
         return _intake_answer(request, row.side)
 
     @app.post("/intake/entry/{entry_id}/remove")
@@ -1275,7 +1283,7 @@ def create_app() -> FastAPI:
     # --- Erstaufnahme, Bildschirme 3 bis 5 (#50) ------------------------------
 
     #: Die Schritte nach dem Nennen, mit ihrer Adresse.
-    _SCHRITTE = {3: "/intake/common", 4: "/intake/lost",
+    _STEPS = {3: "/intake/common", 4: "/intake/lost",
                  5: "/intake/profile"}
 
     def _choosing(request: Request, schritt: int, *, fragment: bool) -> Response:
@@ -1283,9 +1291,9 @@ def create_app() -> FastAPI:
         wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
         kontext = {"wahl": wahl, "schritt": schritt}
         if fragment:
-            return TEMPLATES.TemplateResponse(request, "_erstaufnahme_wahl.html", kontext)
+            return TEMPLATES.TemplateResponse(request, "_intake_choices.html", kontext)
         return TEMPLATES.TemplateResponse(
-            request, "erstaufnahme_wahl.html", {**kontext, "asset_version": asset_version()}
+            request, "intake_choice.html", {**kontext, "asset_version": asset_version()}
         )
 
     @app.get("/intake/common", response_class=HTMLResponse)
@@ -1301,7 +1309,7 @@ def create_app() -> FastAPI:
     def _after_choice(request: Request, schritt: int) -> Response:
         if request.headers.get("HX-Request"):
             return _choosing(request, schritt, fragment=True)
-        return RedirectResponse(_SCHRITTE.get(schritt, "/intake/common"),
+        return RedirectResponse(_STEPS.get(schritt, "/intake/common"),
                                 status_code=303)
 
     @app.post("/intake/choice")
@@ -1340,7 +1348,7 @@ def create_app() -> FastAPI:
         """Bildschirm 5: dein Profil — bestätigen oder abwählen."""
         wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
         return TEMPLATES.TemplateResponse(
-            request, "erstaufnahme_profil.html",
+            request, "intake_profile.html",
             {"wahl": wahl, "schritt": 5, "asset_version": asset_version()},
         )
 
@@ -1351,8 +1359,8 @@ def create_app() -> FastAPI:
         """Bestätigt wird die erste Fassung; alles abgewählt heißt neu anfangen."""
         fassung = intake.adopt(
             _store_for(paths.db_path()), load_settings(),
-            {int(i) for i in facet if i.isdigit()},
-            {int(i) for i in counterweight if i.isdigit()},
+            set(facet),
+            set(counterweight),
             now=datetime.now(),
         )
         return RedirectResponse("/profile" if fassung else "/intake", status_code=303)
@@ -1414,7 +1422,7 @@ def create_app() -> FastAPI:
     # Bezeichner (ADR 22). Die drei Seiten, die jemand als Lesezeichen haben
     # kann, leiten dauerhaft weiter — mit ihrer Abfrage, damit Filter und
     # Sortierung mitkommen.
-    def _umleiten(neu: str):
+    def _redirect_to(neu: str):
         def umleitung(request: Request) -> RedirectResponse:
             abfrage = request.url.query
             return RedirectResponse(neu + (f"?{abfrage}" if abfrage else ""), status_code=301)
@@ -1422,7 +1430,7 @@ def create_app() -> FastAPI:
         return umleitung
 
     for alt, neu in OLD_ADDRESSES.items():
-        app.add_api_route(alt, _umleiten(neu), methods=["GET"], include_in_schema=False)
+        app.add_api_route(alt, _redirect_to(neu), methods=["GET"], include_in_schema=False)
 
     return app
 

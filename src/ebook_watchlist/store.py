@@ -28,6 +28,7 @@ from sqlalchemy import (
     or_,
     select,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from .books import BookLike
@@ -40,6 +41,9 @@ from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
 from .ratings import PROFILE_BOUND, RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
+
+#: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
+_VERSION_ATTEMPTS = 20
 
 
 class Base(DeclarativeBase):
@@ -1729,24 +1733,34 @@ class Store:
                 for c in profile.counterweights
             ],
         }
-        with self.session() as session:
-            letzte = session.scalar(
-                select(func.max(ReadingProfileRow.version)).where(
-                    ReadingProfileRow.profile_slug == profile_slug
+        # Lesen und Schreiben sind zwei Schritte; zwei gleichzeitige Anfragen
+        # (ein Doppelklick auf "Übernehmen") greifen nach derselben Nummer. Die
+        # Eindeutigkeit steht in der Tabelle, also wird bei einer Kollision mit
+        # der nächsten Nummer noch einmal versucht.
+        for _ in range(_VERSION_ATTEMPTS):
+            with self.session() as session:
+                letzte = session.scalar(
+                    select(func.max(ReadingProfileRow.version)).where(
+                        ReadingProfileRow.profile_slug == profile_slug
+                    )
                 )
-            )
-            version = (letzte or 0) + 1
-            session.add(
-                ReadingProfileRow(
-                    profile_slug=profile_slug,
-                    version=version,
-                    created_at=now,
-                    cause=cause,
-                    body=json.dumps(body, ensure_ascii=False),
+                version = (letzte or 0) + 1
+                session.add(
+                    ReadingProfileRow(
+                        profile_slug=profile_slug,
+                        version=version,
+                        created_at=now,
+                        cause=cause,
+                        body=json.dumps(body, ensure_ascii=False),
+                    )
                 )
-            )
-            session.commit()
-        return version
+                try:
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
+                    continue
+            return version
+        raise RuntimeError("keine freie Fassungsnummer für das Leseprofil")
 
     def reading_profile(self, profile_slug: str) -> ReadingProfile | None:
         """Die jüngste Fassung des Leseprofils, oder keine."""

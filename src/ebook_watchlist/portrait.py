@@ -28,6 +28,7 @@ import hashlib
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -176,10 +177,30 @@ def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> V
     es eben keine.
     """
     datei = path or VOCABULARY_PATH
+    muster = patterns or PATTERNS_PATH
     try:
-        daten = yaml.safe_load(datei.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError) as exc:
-        raise VocabularyError(f"{datei.name} ist nicht lesbar: {exc}") from exc
+        text = datei.read_text(encoding="utf-8")
+        muster_text = muster.read_text(encoding="utf-8") if muster.exists() else None
+    except OSError as exc:
+        raise VocabularyError(f"{exc.filename} ist nicht lesbar: {exc}") from exc
+    return _parse_vocabulary(text, datei.name, muster_text, muster.name)
+
+
+@lru_cache(maxsize=8)
+def _parse_vocabulary(
+    text: str, name: str, muster_text: str | None, muster_name: str
+) -> Vocabulary:
+    """Geparst wird nur, wenn sich der Inhalt ändert.
+
+    Lesen ist billig, das YAML zweier Dateien mit über tausend Zeilen nicht —
+    und gebraucht wird das Vokabular bei jedem Eintrag, jeder Abfrage und
+    jedem Buch im Regal. Der Schlüssel ist der Inhalt, nicht die Dateizeit:
+    zwei schnelle Änderungen können dieselbe Zeit tragen.
+    """
+    try:
+        daten = yaml.safe_load(text) or {}
+    except yaml.YAMLError as exc:
+        raise VocabularyError(f"{name} ist nicht lesbar: {exc}") from exc
 
     terms: dict[str, Term] = {}
     dimensions: list[tuple[str, str]] = []
@@ -209,23 +230,23 @@ def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> V
             vergeben[term_id] = name
         families.append(Family(str(eintrag["id"]), name, members))
 
-    _load_patterns(patterns or PATTERNS_PATH, terms, families, dimensions)
+    if muster_text is not None:
+        _load_patterns(muster_text, muster_name, terms, families, dimensions)
     return Vocabulary(terms, tuple(families), tuple(dimensions))
 
 
 def _load_patterns(
-    datei: Path,
+    text: str,
+    name: str,
     terms: dict[str, Term],
     families: list[Family],
     dimensions: list[tuple[str, str]],
 ) -> None:
     """Die Erzählmuster dazuladen: jede Grundhandlung ist Familie und Wort zugleich."""
-    if not datei.exists():
-        return
     try:
-        daten = yaml.safe_load(datei.read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError) as exc:
-        raise VocabularyError(f"{datei.name} ist nicht lesbar: {exc}") from exc
+        daten = yaml.safe_load(text) or {}
+    except yaml.YAMLError as exc:
+        raise VocabularyError(f"{name} ist nicht lesbar: {exc}") from exc
 
     familien_ids = {family.id for family in families}
 
@@ -329,9 +350,26 @@ Antworte ausschließlich mit JSON in genau dieser Form:
 
 
 def fingerprint(vocabulary: Vocabulary) -> str:
-    """Woran man sieht, ob ein gespeicherter Steckbrief noch gilt."""
+    """Woran man sieht, ob ein gespeicherter Steckbrief noch gilt.
+
+    Je Vokabular einmal gerechnet: dasselbe Vokabular kommt aus dem Zwischen-
+    speicher von ``load_vocabulary`` immer als dasselbe Objekt, und der Abdruck
+    wird für jedes Buch im Regal gebraucht.
+    """
+    bekannt = _FINGERPRINTS.get(id(vocabulary))
+    if bekannt is not None and bekannt[0] is vocabulary:
+        return bekannt[1]
     stoff = TEMPLATE + vocabulary.prompt_text()
-    return hashlib.sha256(stoff.encode("utf-8")).hexdigest()[:16]
+    abdruck = hashlib.sha256(stoff.encode("utf-8")).hexdigest()[:16]
+    if len(_FINGERPRINTS) >= 16:
+        _FINGERPRINTS.clear()
+    # Das Vokabular selbst mit ablegen: so kann seine id nicht an ein anderes
+    # Objekt weitergegeben werden, solange der Eintrag lebt.
+    _FINGERPRINTS[id(vocabulary)] = (vocabulary, abdruck)
+    return abdruck
+
+
+_FINGERPRINTS: dict[int, tuple[Vocabulary, str]] = {}
 
 
 def prompt(title: str, author: str | None, blurb: str | None, vocabulary: Vocabulary) -> str:

@@ -375,7 +375,7 @@ def test_adopting_saves_the_first_version_and_the_code_judges(client, db, bueche
     tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
 
     antwort = client.post("/intake/profile",
-                          data={"facet": ["0"], "counterweight": ["0"]})
+                          data={"facet": ["harsh,brooding"], "counterweight": ["leisurely|"]})
 
     profil = db.reading_profile(load_settings().slug)
     assert profil.version == 1
@@ -420,7 +420,7 @@ def test_frequent_families_go_last_only_with_a_neutral_stock(db, buecher) -> Non
 def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
-    client.post("/intake/profile", data={"facet": ["0"]})
+    client.post("/intake/profile", data={"facet": ["harsh,brooding"]})
 
     body = client.get("/profile").text
 
@@ -436,3 +436,43 @@ def test_only_a_book_that_shares_nothing_is_there_for_other_reasons(client, db, 
 
     assert "Rosie-Projekt</span>, aus ganz anderen Gründen" in body
     assert "Kruzifix Killer</span>, aus ganz anderen Gründen" not in body
+
+
+# --- Review ---------------------------------------------------------------------
+
+
+def test_genre_scope_needs_a_genre(client, db, buecher) -> None:
+    """Ohne Genre wird aus „nur bei …" kein Gegengewicht, das überall gilt."""
+    ohne = bestaetigt(db, "disliked", "Ohne Genre", _bild(
+        None, None, ["world_building", "leisurely", "bittersweet", "descriptive"]))
+    tippen(client, "big_world", seite="lost", buch=ohne, schritt=4)
+
+    antwort = client.post("/intake/scope",
+                          data={"family": "big_world", "book": ohne, "scope": "genre"},
+                          headers=HX)
+
+    assert antwort.status_code == 400
+    entwurf = client.get("/intake/lost").text.split("data-entwurf", 1)[1]
+    assert "große Welt" not in entwurf.split("Zählt gegen ein Buch")[-1].split("Nur an")[0]
+
+
+def test_adopting_goes_by_the_facet_not_its_position(client, db, buecher) -> None:
+    """Ändert sich der Entwurf zwischen Laden und Übernehmen, zählt, was die
+    Leserin gesehen hat — nicht die Stelle, an der es damals stand."""
+    tippen(client, "harsh")
+    tippen(client, "brooding")
+    tippen(client, "menacing")
+
+    client.post("/intake/profile", data={"facet": ["harsh,brooding,menacing"]})
+
+    profil = db.reading_profile(load_settings().slug)
+    assert [f.families for f in profil.facets] == [("harsh", "brooding", "menacing")]
+
+
+def test_an_unknown_facet_key_is_ignored(client, db, buecher) -> None:
+    tippen(client, "harsh")
+    tippen(client, "brooding")
+
+    client.post("/intake/profile", data={"facet": ["gibt,es,nicht"]})
+
+    assert db.reading_profile(load_settings().slug) is None

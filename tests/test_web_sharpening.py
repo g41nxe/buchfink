@@ -262,3 +262,37 @@ def test_a_suggestion_never_just_widens_an_existing_facet(client, db, profil) ->
 
     assert 'data-vorschlag="atmospheric,menacing,quest"' in body
     assert "harsh" not in body.split("data-vorschlag", 1)[1].split('"', 2)[1]
+
+
+# --- Review: keine leere Vertröstung ---------------------------------------------
+
+
+def test_a_book_the_model_does_not_know_says_so_instead_of_waiting(client, db, profil) -> None:
+    b = db.find_or_create_book(isbn=None, title="Unbekannt", author="A", now=NOW).id
+    db.put_portrait(f"book:{b}", parse_answer('{"bekannt": false}', load_vocabulary()), now=NOW)
+    db.put_relation(slug(), b, "liked", active=True, now=NOW)
+
+    body = seite(client, b).split("data-nachschaerfen", 1)[1]
+
+    assert "kennt dieses Buch nicht" in body and "Sobald der Steckbrief" not in body
+
+
+def test_a_failed_portrait_says_why_sharpening_waits(client, db, profil) -> None:
+    """Ohne Bewerter scheitert der Steckbrief; das Nachschärfen sagt das."""
+    b = db.find_or_create_book(isbn=None, title="Ohne Modell", author="A", now=NOW).id
+
+    client.post(f"/book/{b}/relation", data={"kind": "liked", "active": "1"})
+    from test_web_book import steckbrief_abwarten
+    body = steckbrief_abwarten(client, f"/book/{b}").split("data-nachschaerfen", 1)[1]
+
+    assert "Kein Bewerter" in body and "Sobald der Steckbrief" not in body
+
+
+def test_after_a_change_the_page_jumps_back_to_the_section(client, db, profil) -> None:
+    b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
+
+    antwort = TestClient(create_app(), follow_redirects=False).post(
+        f"/book/{b}/sharpen/facet", data={"family": ["funny", "likeable"]})
+
+    anker = antwort.headers["location"].split("#", 1)[1]
+    assert f'id="{anker}"' in seite(client, b)

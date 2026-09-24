@@ -11,7 +11,7 @@
   {% if side.entries %}
   <ul class="space-y-2">
     {% for e in side.entries %}
-    {% include "_erstaufnahme_eintrag.html" %}
+    {% include "_intake_entry.html" %}
     {% endfor %}
   </ul>
   {% endif %}
@@ -45,5 +45,5 @@
   {% endif %}
 </div>
 {% if oob %}
-{% include "_erstaufnahme_weiter.html" %}
+{% include "_intake_next.html" %}
 {% endif %}

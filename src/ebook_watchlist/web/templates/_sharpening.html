@@ -7,8 +7,9 @@
    mit einem Knopf übernommen: es ist eine Änderung am fertigen Profil, und
    jede Änderung wird eine neue Fassung.
 
-   Erwartet: `n` (das Nachschärfen), `book_id`. #}
-{% from "_familienpille.html" import titelreihe %}
+   Erwartet: `n` (das Nachschärfen), `book_id`, `portrait_job` (der Stand
+   des Steckbriefs, oder nichts). #}
+{% from "_family_pill.html" import titelreihe %}
 {% set basis = "/book/" ~ book_id ~ "/sharpen" %}
 {% macro wahlpille(f, name, weg=false, an=false) %}
 <label class="pille tun inline-flex h-7 cursor-pointer items-center gap-1 rounded border
@@ -22,10 +23,24 @@
 </label>
 {% endmacro %}
 
-<div id="nachschaerfen" class="space-y-4 text-sm" data-nachschaerfen>
-  {% if n.waiting %}
-  <p class="text-soft">Sobald der Steckbrief da ist, zeigt sich hier, was dieses Buch an
-    deinem Leseprofil ändert.</p>
+<div id="sharpening" class="space-y-4 text-sm" data-nachschaerfen>
+  {% if n.unknown %}
+  <p class="text-soft">Das Modell kennt dieses Buch nicht — es trägt nichts zu deinem
+    Leseprofil bei.</p>
+
+  {% elif n.waiting %}
+  {# Worauf gewartet wird, sagt der Stand des Steckbriefs: er entsteht, er ist
+     gescheitert, oder er wurde nie angestoßen. #}
+  {% if portrait_job and portrait_job.busy %}
+  <p class="text-soft">Der Steckbrief entsteht gerade; danach zeigt sich hier, was dieses
+    Buch an deinem Leseprofil ändert.</p>
+  {% elif portrait_job and portrait_job.trouble %}
+  <p class="text-soft">Ohne Steckbrief lässt sich nichts nachschärfen:
+    <span class="text-danger">{{ portrait_job.trouble }}</span></p>
+  {% else %}
+  <p class="text-soft">Noch kein Steckbrief — oben unter „Steckbrief“ anlegen, dann zeigt
+    sich hier, was dieses Buch an deinem Leseprofil ändert.</p>
+  {% endif %}
 
   {% elif n.kind == "liked" %}
   {% for s in n.strengthened %}
