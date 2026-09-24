@@ -265,13 +265,13 @@ def test_a_find_can_be_described_from_its_page(
     Buchseite — nichts davon nachgebaut."""
     import threading
 
-    from ebook_watchlist.web import book as buchseite
+    from ebook_watchlist.web import book as book_page
     from test_web_book import StubAsker, _leopard
 
-    beobachtung = fund(db, item_id="7")
+    observation = fund(db, item_id="7")
     give_profile(db)
-    fragen = StubAsker(_leopard())
-    monkeypatch.setattr(buchseite, "build_rater", lambda model: fragen)
+    asker = StubAsker(_leopard())
+    monkeypatch.setattr(book_page, "build_rater", lambda model: asker)
 
     assert "Noch kein Steckbrief." in client.get("/discovery/beam/7").text
 
@@ -281,10 +281,10 @@ def test_a_find_can_be_described_from_its_page(
             break
         threading.Event().wait(0.02)
 
-    assert len(fragen.asked) == 1
-    assert db.portrait(subject_of(beobachtung), _stamp()) is not None
-    seite = client.get("/discovery/beam/7").text
-    assert "Noch kein Steckbrief." not in seite
+    assert len(asker.asked) == 1
+    assert db.portrait(subject_of(observation), _stamp()) is not None
+    body = client.get("/discovery/beam/7").text
+    assert "Noch kein Steckbrief." not in body
 
 
 @needs_vocabulary
@@ -292,19 +292,19 @@ def test_a_second_click_costs_no_second_call(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Dasselbe Buch trägt immer denselben Steckbrief (ADR 33)."""
-    from ebook_watchlist.web import book as buchseite
+    from ebook_watchlist.web import book as book_page
     from ebook_watchlist.web import discovery
     from test_web_book import StubAsker, _leopard
 
     fund(db, item_id="7")
-    fragen = StubAsker(_leopard())
-    monkeypatch.setattr(buchseite, "build_rater", lambda model: fragen)
+    asker = StubAsker(_leopard())
+    monkeypatch.setattr(book_page, "build_rater", lambda model: asker)
     from ebook_watchlist.config import load_settings
 
     for _ in range(2):
         assert discovery.portray(db, load_settings(), "beam", "7", now=NOW) == ""
 
-    assert len(fragen.asked) == 1
+    assert len(asker.asked) == 1
 
 
 def test_a_find_nobody_saw_cannot_be_described(db: Store) -> None:

@@ -466,7 +466,9 @@ Steckbrief, the reader's Facets, Liked Terms and Counterweights (ADR 33): every
 Facet hit in full weighs 0.8; every Liked Term the book carries weighs on its
 own, a Story Pattern more than an Appeal Term, boosted more still; there are no
 partial Facet hits any more (24.09.2026). All of that is combined as a
-noisy-OR, and the strongest Counterweight takes a fifth off. The percentage
+noisy-OR, and the strongest Counterweight takes about a third off (0.35, raised
+from a fifth on 24.09.2026 because a disliked book still passed the Rating
+Gate). The percentage
 orders; stars summarise it. No model is asked, so a new profile version
 recomputes every Fit at once.
 
@@ -474,6 +476,18 @@ Not a **Profile Match** (*Profiltreffer*): that is the older, author-based way a
 Discovery came in.
 
 **Reader-facing name: *Übereinstimmung*.**
+
+### Verdict
+*deutsch: Urteil (des Tors)*
+
+What the Rating Gate, the pile, the Watchlist and the Digest know about a find:
+the Fit (stars, percentage, reasons) computed from its Portrait and the reader's
+Reading Profile, together with the Portrait's pitch — or, where she has rated the
+book herself, her own stars. Computed on demand and never stored, so a new
+Reading Profile version applies to everything at once without asking a model
+(ADR 33, #48). A find without a Verdict — no Reading Profile, no Portrait yet, a
+book the model does not know — is shown and never held back. Not a Rating: a
+Rating is what a person or a reader-average says and is stored (ADR 17).
 
 ### Portrait
 *deutsch: Steckbrief*

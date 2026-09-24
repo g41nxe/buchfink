@@ -450,3 +450,38 @@ def test_a_watchlist_price_drop_is_never_measured_against_a_verdict(
     kept, _ = run(store, vocabulary, weights, [drop], portrayer)
 
     assert kept == [drop]
+
+
+# --- was der Review gefunden hat (#48) ---------------------------------------------
+
+
+def test_the_same_book_at_two_shops_costs_one_call_within_a_run(
+    store, vocabulary, weights
+) -> None:
+    """Dasselbe Buch bei zwei Shops steht unter derselben ISBN — auch innerhalb
+    eines Laufs kostet es nur einen Steckbrief und einen Platz im Budget."""
+    portrayer = Portrayer(vocabulary)
+    at_beam = first_seen(discovery(source="beam", source_item_id="1", isbn="9783104911854"))
+    at_onleihe = first_seen(
+        discovery(source="onleihe", source_item_id="9", isbn="9783104911854",
+                  match_reason=MatchReason.PROFILE_AUTHOR)
+    )
+
+    kept, report = run(store, vocabulary, weights, [at_beam, at_onleihe], portrayer, budget=1)
+
+    assert len(portrayer.calls) == 1 and report.rated == 1
+    assert kept == [at_beam, at_onleihe]
+    assert report.over_budget == 0
+
+
+def test_an_unreadable_vocabulary_is_counted_as_unrated_not_swallowed() -> None:
+    """Ein Lauf, der gar nicht urteilen konnte, darf nicht wie ein ruhiger Tag
+    aussehen (ADR 7): die Funde bleiben, und der Bericht zählt sie."""
+    deltas = [
+        first_seen(discovery(source_item_id="1")),
+        first_seen(discovery(source_item_id="2", match_reason=MatchReason.WATCHLIST)),
+    ]
+
+    report = gate.unrated_report(deltas)
+
+    assert report.unrated == 1

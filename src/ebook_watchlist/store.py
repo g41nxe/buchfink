@@ -1926,19 +1926,7 @@ class Store:
                 .where(PortraitRow.fingerprint == fingerprint)
                 .order_by(PortraitRow.created_at, PortraitRow.id)
             )
-            return {
-                row.subject: Portrait(
-                    known=row.known,
-                    fingerprint=row.fingerprint,
-                    genre=row.genre,
-                    subgenre=row.subgenre,
-                    traits=tuple(
-                        Trait(t["term"], t["sentence"], t["evidence"])
-                        for t in json.loads(row.traits)
-                    ),
-                )
-                for row in rows
-            }
+            return {row.subject: _portrait_of(row) for row in rows}
 
     # --- Beziehungen und Interessen (Ticket 05) ----------------------------
 

@@ -303,7 +303,7 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         weights = load_weights()
     except (VocabularyError, OSError, KeyError, ValueError, yaml.YAMLError) as exc:
         print(f"Bewertung übersprungen: {exc}", file=sys.stderr)
-        return deltas, gate.GateReport()
+        return deltas, gate.unrated_report(deltas)
 
     profile = store.reading_profile(settings.slug)
     rater = build_rater(settings.rating_model) if profile is not None else None
@@ -592,7 +592,7 @@ def _fetch_suggestion_covers(
     print(f"  {geholt} geholt")
 
 
-def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int:
+def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int:
     """Den Rückstand beschreiben, für den Stapel (Ticket 19, #48).
 
     Das Tor im Lauf sieht nur **Erstsichtungen**. Was einmal im Snapshot steht,
@@ -638,12 +638,12 @@ def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int
         return EXIT_CONFIG_ERROR
 
     # Der ganze Stapel, nicht die erste Seite: er ist bestbewertet-zuerst
-    # sortiert, Unbeschriebenes steht hinten. Auf ``wieviele`` gekürzt wird
+    # sortiert, Unbeschriebenes steht hinten. Auf ``how_many`` gekürzt wird
     # deshalb erst **nach** dem Aussortieren — sonst bekäme dieser Weg genau
     # die Bücher, die schon einen Steckbrief haben, und nie die offenen.
-    stapel = triage.pending(store, settings, limit=10_000).items
-    keys = {item.key for item in stapel}
-    beobachtungen = [
+    pile = triage.pending(store, settings, limit=10_000).items
+    keys = {item.key for item in pile}
+    finds = [
         observation
         for observation in store.latest_discoveries(settings.slug)
         if f"{observation.source}:{observation.source_item_id}" in keys
@@ -653,20 +653,20 @@ def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int
     # kostet eine Detailseite und einen Modellaufruf für dieselbe Antwort. Ein
     # Steckbrief zu einem *älteren* Vokabular gilt nicht mehr und wird neu
     # angelegt (ADR 33).
-    vorhanden = judge.portraits(store, [subject_of(o) for o in beobachtungen])
-    beobachtungen = [o for o in beobachtungen if subject_of(o) not in vorhanden]
-    if not beobachtungen:
+    portraits = judge.portraits(store, [subject_of(o) for o in finds])
+    finds = [o for o in finds if subject_of(o) not in portraits]
+    if not finds:
         print("Nichts offen — jeder Vorschlag im Stapel hat einen Steckbrief.")
         _fetch_suggestion_covers(store, settings, client)
         return EXIT_OK
-    beobachtungen = beobachtungen[:wieviele]
+    finds = finds[:how_many]
 
-    beobachtungen = gather_evidence(store, settings, beobachtungen, sources)
-    print(f"{len(beobachtungen)} Vorschläge …")
+    finds = gather_evidence(store, settings, finds, sources)
+    print(f"{len(finds)} Vorschläge …")
 
     now = datetime.now()
-    verteilung: dict[int, int] = {}
-    for observation in beobachtungen:
+    distribution: dict[int, int] = {}
+    for observation in finds:
         try:
             portrait = portray_find(observation, rater.ask, judge.vocabulary)
         except RatingUnavailable as exc:
@@ -677,7 +677,7 @@ def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int
         if verdict is None:
             print(f"  unbekannt  {observation.title[:52]}")
             continue
-        verteilung[verdict.stars] = verteilung.get(verdict.stars, 0) + 1
+        distribution[verdict.stars] = distribution.get(verdict.stars, 0) + 1
         print(
             f"  {'★' * verdict.stars}{'☆' * (5 - verdict.stars)} {verdict.percent:>3} %"
             f" {observation.title[:52]}"
@@ -688,10 +688,10 @@ def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int
 
     # Eine Bewertung, die nicht unterscheidet, ist wertlos — deshalb steht die
     # Verteilung da und nicht nur die Zahl der Steckbriefe.
-    gezaehlt = ", ".join(
-        f"{sterne}★ ×{anzahl}" for sterne, anzahl in sorted(verteilung.items(), reverse=True)
+    summary = ", ".join(
+        f"{stars}★ ×{count}" for stars, count in sorted(distribution.items(), reverse=True)
     )
-    print(f"\n  Verteilung: {gezaehlt or 'keine'}")
+    print(f"\n  Verteilung: {summary or 'keine'}")
 
     _fetch_suggestion_covers(store, settings, client)
     return EXIT_OK

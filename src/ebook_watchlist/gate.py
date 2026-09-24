@@ -56,9 +56,16 @@ class GateReport:
     #: mitbringt (ADR 19, Ticket 14).
     judgements: dict[tuple[str, str], Verdict] = field(default_factory=dict)
 
-    @property
-    def calls(self) -> int:
-        return self.rated
+
+def unrated_report(deltas: list[Delta]) -> GateReport:
+    """Der Bericht für einen Lauf, der gar nicht urteilen konnte.
+
+    Etwa weil das Vokabular oder das Schema nicht lesbar ist: alle Funde
+    bleiben und werden gezeigt, und der Tagesbericht sagt, dass sie
+    unbeurteilt sind. Ein Watchlist-Titel wird nie beurteilt und zählt nicht
+    mit (Ticket 20).
+    """
+    return GateReport(unrated=sum(1 for delta in deltas if _is_discovery(delta)))
 
 
 def _readers_verdict(store: Store, observation: Observation, version: int) -> Verdict | None:
@@ -126,23 +133,30 @@ def apply(
     created: set[tuple[str, str]] = set()
     attempted: set[tuple[str, str]] = set()
 
-    # Erst sammeln, wer einen Steckbrief braucht, dann fragen — je Buch einmal.
+    # Erst sammeln, wer einen Steckbrief braucht, dann fragen — je Buch einmal:
+    # dasselbe Buch bei zwei Shops steht unter demselben Schlüssel (der ISBN)
+    # und kostet auch innerhalb eines Laufs nur einen Aufruf.
     wanted: list[Observation] = []
+    waiting: dict[str, list[Observation]] = {}
     for delta in deltas:
         if not _is_discovery(delta):
             continue
         observation = delta.current
         if _readers_verdict(store, observation, profile.version) is not None:
             continue
-        existing = store.portrait(subject_of(observation), stamp)
+        subject = subject_of(observation)
+        existing = store.portrait(subject, stamp)
         if existing is not None:
             portraits[observation.key] = existing
-        elif observation.key not in {o.key for o in wanted}:
+        elif subject in waiting:
+            waiting[subject].append(observation)
+        else:
+            waiting[subject] = [observation]
             wanted.append(observation)
 
     if portrayer is not None:
         wanted = wanted[:budget]
-        attempted = {observation.key for observation in wanted}
+        attempted = {o.key for first in wanted for o in waiting[subject_of(first)]}
         described = wanted
         if wanted and evidence is not None:
             # Der Schlüssel bleibt der der Sichtung: nachgeladen wird der Text,
@@ -156,9 +170,11 @@ def apply(
                 portrait = portrayer(full)
             except RatingUnavailable:
                 continue
-            store.put_portrait(subject_of(observation), portrait, now=now)
-            portraits[observation.key] = portrait
-            created.add(observation.key)
+            subject = subject_of(observation)
+            store.put_portrait(subject, portrait, now=now)
+            for sibling in waiting[subject]:
+                portraits[sibling.key] = portrait
+                created.add(sibling.key)
             report.rated += 1
 
     kept: list[Delta] = []

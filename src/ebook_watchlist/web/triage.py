@@ -118,7 +118,7 @@ class Suggestion:
         return f"{self.price_cents / 100:.2f} €".replace(".", ",")
 
 
-_NUMBER_WORDS = {1: "einem", 2: "zwei", 3: "drei", 4: "vier", 5: "fünf"}
+_NUMBER_WORDS = {2: "zwei", 3: "drei", 4: "vier", 5: "fünf"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,8 +151,10 @@ class Pile:
         return not self.items
 
     @property
-    def _threshold_word(self) -> str:
-        return _NUMBER_WORDS.get(self.threshold, str(self.threshold))
+    def _below_threshold(self) -> str:
+        if self.threshold == 1:
+            return "unter einem Stern"
+        return f"unter {_NUMBER_WORDS.get(self.threshold, str(self.threshold))} Sternen"
 
     @property
     def hidden(self) -> tuple[tuple[int, str], ...]:
@@ -167,7 +169,7 @@ class Pile:
         paare = (
             (self.hidden_junk, "Sammelbände und Gratistitel"),
             (self.hidden_priced, "weder Schnäppchen noch ausleihbar"),
-            (self.hidden_weak, f"unter {self._threshold_word} Sternen"),
+            (self.hidden_weak, self._below_threshold),
             (self.hidden_language, "in anderen Sprachen"),
             (self.hidden_ai, "KI-erzeugt"),
         )
@@ -320,7 +322,9 @@ def pending(
         hidden_language=hidden_language,
         hidden_ai=hidden_ai,
         threshold=judge.threshold if judge else 3,
-        no_profile=judge is None,
+        # Nur, wenn es wirklich kein Profil gibt: ein unlesbares Vokabular ist
+        # etwas anderes, und "erst die Erstaufnahme machen" wäre dann falsch.
+        no_profile=judge is None and store.reading_profile(settings.slug) is None,
     )
 
 

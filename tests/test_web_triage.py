@@ -814,10 +814,10 @@ def test_the_whole_work_goes_not_just_the_declaring_title(
 @needs_vocabulary
 def test_the_stack_orders_by_percent_not_by_stars(client: TestClient, db: Store) -> None:
     """Zwei Funde mit denselben Sternen stehen nach ihrer Prozentzahl."""
-    mittel = found(db, item_id="a", title="Der mittlere Fund")
-    stark = found(db, item_id="b", title="Der starke Fund")
-    urteil(db, mittel, stars=4, pitch="Trägt drei Muster.")
-    urteil(db, stark, stars=5, pitch="Trägt die Facette.")
+    middling = found(db, item_id="a", title="Der mittlere Fund")
+    strong = found(db, item_id="b", title="Der starke Fund")
+    urteil(db, middling, stars=4, pitch="Trägt drei Muster.")
+    urteil(db, strong, stars=5, pitch="Trägt die Facette.")
 
     items = view.pending(db, load_settings()).items
 
@@ -884,3 +884,24 @@ def test_with_a_profile_the_page_does_not_send_her_back_to_the_intake(
 
 def test_the_hidden_count_names_the_threshold_of_the_scheme() -> None:
     assert view.Pile((), 0, 0, hidden_weak=2, threshold=4).hidden == ((2, "unter vier Sternen"),)
+
+
+def test_a_pile_with_an_unreadable_vocabulary_does_not_blame_the_missing_profile(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Es gibt ein Profil, nur das Vokabular fehlt: "erst die Erstaufnahme
+    machen" wäre dann falsch."""
+    from ebook_watchlist import judging
+    from ebook_watchlist.facets import Liked, ReadingProfile
+
+    db.put_reading_profile(
+        load_settings().slug, ReadingProfile((), (), (Liked("quest"),)), cause="Test", now=NOW
+    )
+    monkeypatch.setattr(judging, "load_vocabulary", lambda: (_ for _ in ()).throw(
+        judging.VocabularyError("fehlt")))
+    found(db, title="Ein Fund")
+
+    pile = view.pending(db, load_settings())
+
+    assert not pile.no_profile
+    assert "data-ohne-profil" not in client.get("/suggestions").text
