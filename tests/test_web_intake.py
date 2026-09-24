@@ -434,9 +434,10 @@ def test_adopting_saves_the_first_version_and_the_code_judges(client, db, bueche
     tippen(client, "harsh", seite="boost")
     tippen(client, "leisurely", seite="lost", schritt=4)
 
-    # Facetten wählt niemand aus — sie sind schon da, das Werkzeug hat sie
-    # aus dem Angetippten gebildet. Übernommen wird nur das Gegengewicht.
-    antwort = client.post("/intake/profile", data={"counterweight": ["leisurely|"]})
+    # Facetten wählt niemand aus — das Werkzeug hat sie aus dem Angetippten
+    # gebildet. Auch die Gegengewichte werden nicht mehr ausgewählt: was auf
+    # Schritt 4 angetippt ist, wird übernommen.
+    antwort = client.post("/intake/profile", data={})
 
     profil = db.reading_profile(load_settings().slug)
     assert profil.version == 1
@@ -450,8 +451,8 @@ def test_adopting_saves_the_first_version_and_the_code_judges(client, db, bueche
 
 def test_deselecting_everything_starts_over(client, db, buecher) -> None:
     """Nichts angetippt und kein Gegengewicht gewählt: das gibt es nur, bevor
-    Bildschirm 3 überhaupt etwas angetippt wurde — danach lässt sich nur noch
-    das Gegengewicht abwählen, das Gemochte ändert sich auf Schritt 3."""
+    Bildschirm 3 überhaupt etwas angetippt wurde — geändert wird auf Schritt 3
+    und 4, nie auf Schritt 5."""
     antwort = client.post("/intake/profile", data={})
 
     assert db.reading_profile(load_settings().slug) is None
@@ -524,23 +525,22 @@ def test_genre_scope_needs_a_genre(client, db, buecher) -> None:
     assert "verschachtelt" not in entwurf.split("Zählt gegen ein Buch")[-1].split("Nur an")[0]
 
 
-def test_adopting_goes_by_the_counterweight_key_not_its_position(client, db, buecher) -> None:
-    """Ändert sich der Entwurf zwischen Laden und Übernehmen, zählt, was die
-    Leserin gesehen hat — nicht die Stelle, an der es damals stand."""
+def test_adopting_takes_every_counterweight_of_the_draft(client, db, buecher) -> None:
     tippen(client, "leisurely", seite="lost", schritt=4)
 
-    client.post("/intake/profile", data={"counterweight": ["leisurely|"]})
+    client.post("/intake/profile", data={})
 
     profil = db.reading_profile(load_settings().slug)
     assert [c.families for c in profil.counterweights] == [("leisurely",)]
 
 
-def test_an_unknown_counterweight_key_is_ignored(client, db, buecher) -> None:
+def test_the_profile_screen_confirms_and_summarises_without_choices(client, buecher) -> None:
     tippen(client, "harsh")
-    tippen(client, "brooding")
+    tippen(client, "leisurely", seite="lost", schritt=4)
 
-    client.post("/intake/profile", data={"counterweight": ["gibt,es,nicht|"]})
+    body = client.get("/intake/profile").text
 
-    profil = db.reading_profile(load_settings().slug)
-    assert profil.counterweights == ()
-    assert profil.facets[0].families == ("brooding", "harsh")
+    assert 'type="checkbox"' not in body
+    assert "Zählt gegen ein Buch" in body and "gemächlich" in body
+    assert "hart" in body
+    assert "Übernehmen" in body

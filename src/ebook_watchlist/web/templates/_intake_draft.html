@@ -6,11 +6,14 @@
    was es heißt — zwei Kurzwörter mit einem Punkt dazwischen verstand
    niemand. Bestätigt wird hier nichts; das Werkzeug bildet sie selbst.
 
-   Erwartet: `wahl`. #}
+   Erwartet: `wahl`; `bestaetigung` (Schritt 5) macht daraus die volle Übersicht ohne
+   Mitlaufen. #}
 {% set d = wahl.draft %}
-<aside class="mt-8 rounded-lg border border-rule bg-card px-4 py-4 lg:sticky lg:top-20 lg:mt-0"
+<aside class="rounded-lg border border-rule bg-card px-4 py-4
+              {{ '' if bestaetigung else 'mt-8 lg:sticky lg:top-20 lg:mt-0' }}"
        data-entwurf>
-  <p class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">Dein Profil entsteht</p>
+  <p class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">
+    {{ 'Dein Profil' if bestaetigung else 'Dein Profil entsteht' }}</p>
   {% if d.empty %}
   <p class="text-sm text-soft italic">Noch nichts angetippt.</p>
   {% endif %}

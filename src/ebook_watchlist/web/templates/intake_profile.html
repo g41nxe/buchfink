@@ -1,73 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Dein Profil — Buchfink{% endblock %}
 
-{# Bildschirm 5 der Erstaufnahme: dein Profil (#50, umgebaut am 24.09.2026).
+{# Bildschirm 5 der Erstaufnahme: bestätigen und zusammenfassen (#50, umgebaut
+   am 24.09.2026).
 
-   Was angetippt und verstärkt ist, steht hier noch einmal; geändert wird es
-   auf Schritt 3. Die erkannten Kombinationen sind Auskunft, keine Wahl — das
-   Werkzeug bildet sie selbst. Abwählen lassen sich nur die Gegengewichte.
-   Bestätigt wird daraus die erste Fassung des Leseprofils; ab dann urteilt
-   der Code (#46). Nichts gemocht und kein Gegengewicht heißt neu anfangen:
-   mit denselben Büchern und denselben Antworten käme dasselbe heraus, also
-   beginnt es bei den Büchern (#44). Der Knopf sagt, was er tun wird. #}
+   Eine Übersicht, keine Frage: was angetippt und verstärkt ist, die erkannten
+   Kombinationen und die Gegengewichte — dieselbe Zusammenfassung, die auf
+   Schritt 3 und 4 mitläuft, hier in voller Breite. Ausgewählt wird nichts;
+   geändert wird auf Schritt 3 und 4. Übernehmen macht daraus die erste
+   Fassung des Leseprofils; ab dann urteilt der Code (#46). Nichts gemocht und
+   kein Gegengewicht heißt neu anfangen: mit denselben Büchern und denselben
+   Antworten käme dasselbe heraus, also beginnt es bei den Büchern (#44). Der
+   Knopf sagt, was er tun wird. #}
 
 {% block content %}
 {% with schritt=5, frage="Dein Profil",
-        hilfe="Das hat die Erstaufnahme aus deinen Büchern gemacht. Was du magst, änderst du auf Schritt 3; Gegengewichte kannst du hier abwählen." %}
+        hilfe="Das hat die Erstaufnahme aus deinen Büchern gemacht. Ändern kannst du es auf Schritt 3 und 4; hier bestätigst du." %}
 {% include "_intake_step.html" %}
 {% endwith %}
 
 {% set gemocht = wahl.liked | length %}
-{% set gegen = wahl.draft.weights %}
-<form method="post" action="/intake/profile"
-      x-data="{ gegen: {{ gegen | length }}, gemocht: {{ gemocht }} }"
-      @change="gegen = $el.querySelectorAll('input[name=counterweight]:checked').length">
+{% set gegen = wahl.draft.weights | length %}
+<form method="post" action="/intake/profile">
+  {% if not gemocht %}
+  <p class="mb-4 text-sm text-soft italic">Noch nichts angetippt — tipp auf
+    <a href="/intake/common" class="text-accent underline underline-offset-2">Schritt 3</a>
+    an, was dich an deinen Büchern hält.</p>
+  {% endif %}
 
-  <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
-    <div>
-      {% if not gemocht %}
-      <p class="text-sm text-soft italic">Noch nichts angetippt — tipp auf
-        <a href="/intake/common" class="text-accent underline underline-offset-2">Schritt 3</a>
-        an, was dich an deinen Büchern hält.</p>
-      {% endif %}
-
-      <h2 class="mt-8 mb-3 flex items-center gap-2 border-b border-rule pb-2 text-sm font-semibold
-                 text-accent"><svg class="i"><use href="#ic-ban"/></svg>Gegengewichte</h2>
-      {% if not gegen %}
-      <p class="text-sm text-soft italic">Keins — nichts zählt gegen ein Buch.</p>
-      {% endif %}
-      <ul class="flex flex-wrap gap-2">
-        {% for w in gegen %}
-        <li>
-          <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border
-                        border-rule px-3 py-1 text-sm has-[:checked]:border-danger/60
-                        has-[:checked]:text-danger">
-            <input type="checkbox" name="counterweight" value="{{ w.key }}" checked
-                   class="accent-[var(--color-danger)]">
-            {{ w.name }}{% if w.genre %}<span class="text-xs opacity-70">· nur bei {{ w.genre }}</span>{% endif %}
-          </label>
-        </li>
-        {% endfor %}
-      </ul>
-
-      <p class="mt-8 max-w-xl text-sm text-soft">
-        Autor:innen und Genres deiner Bücher kommen später dazu.
-      </p>
-    </div>
-
-    {% include "_intake_draft.html" %}
+  <div class="max-w-2xl">
+    {% with bestaetigung=true %}{% include "_intake_draft.html" %}{% endwith %}
   </div>
+
+  <p class="mt-6 max-w-xl text-sm text-soft">
+    Autor:innen und Genres deiner Bücher kommen später dazu.
+  </p>
 
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
     <a href="{{ '/intake/lost' if wahl.lost else '/intake/common' }}"
        class="text-soft hover:text-ink">← Zurück</a>
+    {% if gemocht or gegen %}
     <button type="submit"
-            class="tun inline-flex h-9 items-center rounded border px-4 font-medium"
-            :class="gemocht || gegen ? 'border-accent bg-accent/10 text-accent hover:bg-accent/25'
-                                     : 'border-danger bg-danger/10 text-danger hover:bg-danger/20'">
-      <span x-show="gemocht || gegen">Übernehmen</span>
-      <span x-show="!gemocht && !gegen" x-cloak>Nichts gewählt — neu anfangen</span>
-    </button>
+            class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
+                   font-medium text-accent hover:bg-accent/25">Übernehmen</button>
+    {% else %}
+    <button type="submit"
+            class="tun inline-flex h-9 items-center rounded border border-danger bg-danger/10 px-4
+                   font-medium text-danger hover:bg-danger/20">Nichts gewählt — neu anfangen</button>
+    {% endif %}
   </nav>
 </form>
 {% endblock %}

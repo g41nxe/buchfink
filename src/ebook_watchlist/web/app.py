@@ -129,9 +129,6 @@ OLD_ADDRESSES: dict[str, str] = {
 #: FastAPI liest Formularfelder ueber diese Marker. Als Modulkonstante,
 #: damit im Funktionskopf kein Aufruf steht (ruff B008).
 _SELECTED = Form(default=[])
-#: Je Liste ein eigener Marker: zwei Parameter mit demselben teilen sich
-#: sonst den Namen, und nur einer kommt an (#50).
-_WEIGHTS = Form(default=[])
 
 
 @dataclass(frozen=True, slots=True)
@@ -1344,7 +1341,7 @@ def create_app() -> FastAPI:
 
     @app.get("/intake/profile", response_class=HTMLResponse)
     def intake_profile(request: Request) -> Response:
-        """Bildschirm 5: dein Profil — bestätigen oder abwählen."""
+        """Bildschirm 5: dein Profil — bestätigen."""
         choice = intake.choosing(_store_for(paths.db_path()), load_settings())
         return TEMPLATES.TemplateResponse(
             request, "intake_profile.html",
@@ -1352,15 +1349,15 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/intake/profile")
-    def intake_adopt(counterweight: list[str] = _WEIGHTS) -> RedirectResponse:
+    def intake_adopt() -> RedirectResponse:
         """Bestätigt wird die erste Fassung; nichts gemocht heißt neu anfangen.
 
         Facetten wählt niemand aus: das Werkzeug bildet sie aus dem, was
-        angetippt ist (24.09.2026). Abwählen lassen sich die Gegengewichte.
+        angetippt ist (24.09.2026). Auch Gegengewichte werden hier nicht mehr
+        gewählt — was auf Schritt 4 angetippt ist, wird übernommen.
         """
         fassung = intake.adopt(
-            _store_for(paths.db_path()), load_settings(), set(counterweight),
-            now=datetime.now(),
+            _store_for(paths.db_path()), load_settings(), now=datetime.now(),
         )
         return RedirectResponse("/profile" if fassung else "/intake", status_code=303)
 

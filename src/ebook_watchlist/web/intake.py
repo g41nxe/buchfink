@@ -672,23 +672,18 @@ def set_scope(store: Store, settings: Settings, family_id: str, scope: str) -> N
     store.set_intake_choice(settings.slug, LOST, family_id, active=True, scope=scope)
 
 
-def adopt(
-    store: Store, settings: Settings, weights: Collection[str], *, now: datetime
-) -> int | None:
+def adopt(store: Store, settings: Settings, *, now: datetime) -> int | None:
     """Bestätigen: was angetippt und verstärkt ist, die erkannten Facetten und
-    die gewählten Gegengewichte werden die erste Fassung des Leseprofils.
+    die Gegengewichte von Schritt 4 werden die erste Fassung des Leseprofils.
 
     Nichts gemocht und kein Gegengewicht heißt neu anfangen (#44) — dann kommt
-    nichts zurück. Gegengewichte werden über ihren Schlüssel gewählt, nicht
-    ihre Stelle: hat sich der Entwurf seit dem Laden geändert, zählt, was die
-    Leserin gesehen hat.
+    nichts zurück. Ausgewählt wird hier nichts mehr: geändert wird auf Schritt
+    3 und 4, Schritt 5 bestätigt nur.
     """
     state = choosing(store, settings)
     facets = tuple(Facet(f.families, f.books) for f in state.draft.facets)
     counterweights = tuple(
-        Counterweight(w.families, w.genre, w.books)
-        for w in state.draft.weights
-        if w.key in weights
+        Counterweight(w.families, w.genre, w.books) for w in state.draft.weights
     )
     if not state.liked and not counterweights:
         store.reset_intake(settings.slug)
