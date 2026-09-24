@@ -35,7 +35,7 @@
     <section class="mb-8" data-abschnitt="{{ titel }}">
       <h2 class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
       <p class="mb-3 text-sm text-soft">{{ hilfe }}</p>
-      <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul class="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {% for k in karten %}{{ familienkarte(k, schritt, wahl.can_boost) }}{% endfor %}
       </ul>
     </section>

@@ -44,7 +44,7 @@
 
   {% elif n.kind == "liked" %}
   <p class="mb-2 text-ink">Was hält dich an diesem Buch? Tipp an, was für dich zählt.</p>
-  <ul class="grid gap-3 sm:grid-cols-2">
+  <ul class="grid items-start gap-3 sm:grid-cols-2">
     {% for k in n.cards %}{{ nachschaerfenkarte(k, book_id, n.can_boost) }}{% endfor %}
   </ul>
 
