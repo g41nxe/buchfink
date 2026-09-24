@@ -240,27 +240,18 @@ class BookSourceRow(Base):
 
 
 class RatingRow(Base):
-    """Was das Werkzeug von einem Buch hält (ADR 19).
+    """Was ein Mensch von einem Buch hält: die Sterne der Leserin und der
+    Durchschnitt fremder Leser:innen (ADR 17, ADR 33).
 
-    Bewusst **nicht** an der ``book``-Zeile. ADR 18 hält fest, dass ein Buch nur
-    entsteht, wo die Leserin eine Beziehung hat — 243 Funde kamen im ersten
-    echten Lauf herein, und eine Tabelle namens ``book``, die mehrheitlich aus
-    ungeprüften Dubletten besteht, verdient den Namen nicht. Ratings an die
-    Buch-Zeile zu hängen hätte genau das erzwungen: dreihundert Buch-Zeilen pro
-    Lauf, damit das Tor irgendwo hinschreiben kann.
+    Das Urteil der Anwendung selbst steht hier nicht: es wird aus Steckbrief und
+    Profil gerechnet und nie gespeichert (#52).
 
-    Der Schlüssel ist deshalb der Fund selbst: die ISBN, wo es eine gibt,
-    sonst ``(Quelle, Item-Id)``. Ein Buch, das später eine Beziehung bekommt,
-    findet sein Urteil über die ISBN wieder.
-
-    Was ein Mensch sagt, hängt dagegen am Buch — ``book:<id>``. Er vergibt seine
-    Sterne auf der Buchseite, und sie sollen gelten, egal über welche Quelle das
-    Buch das nächste Mal hereinkommt (Ticket 21).
-
-    Maschinensterne und die der Leserin bleiben getrennt — und zwar dadurch,
-    dass ``origin`` dabeisteht und Teil des Schlüssels ist: eine 4 von ihr ist
-    eine Tatsache, eine 4 vom Modell ein Vorschlag. Beide dürfen nebeneinander
-    stehen, und keines überschreibt das andere (ADR 17, ADR 19, Ticket 21).
+    Was jemand sagt, hängt am Buch — ``book:<id>``, oder bei fremden Stimmen an
+    der ISBN. Die Leserin vergibt ihre Sterne auf der Buchseite, und sie sollen
+    gelten, egal über welche Quelle das Buch das nächste Mal hereinkommt
+    (Ticket 21). ``origin`` ist Teil des Schlüssels: eine 4 von ihr ist eine
+    Tatsache, ein fremder Durchschnitt sagt etwas über das Buch. Beide dürfen
+    nebeneinander stehen, und keines überschreibt das andere (Ticket 54).
     """
 
     __tablename__ = "rating"
@@ -271,7 +262,7 @@ class RatingRow(Base):
     subject: Mapped[str] = mapped_column(String)
     #: Wer geurteilt hat. Solange es nur eine Herkunft gab, war das entbehrlich;
     #: mit den Urteilen aus dem Gespräch und denen der Leserin sind es drei.
-    origin: Mapped[str] = mapped_column(String, default="model")
+    origin: Mapped[str] = mapped_column(String, default="reader")
     #: Nachkommastellen sind erlaubt, weil fremde Stimmen sie mitbringen: die
     #: Onleihe nennt auf ihrer Trefferkarte 2.8, und zwischen 2 und 3 liegt bei
     #: einer Regel mit dem Angelpunkt "3 ist Durchschnitt" die Entscheidung.
@@ -288,9 +279,9 @@ class RatingRow(Base):
     #: 5,0 aus einer Stimme ist keine Auskunft, 2,8 aus 1641 schon
     #: (Ticket 54).
     votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    #: Auf welchem Weg ein Modellurteil entstand: ``run``, ``backlog`` oder
-    #: ``book_page`` (#10). Leer bei allem, was kein Modell geurteilt hat, und
-    #: bei Urteilen von vorher.
+    #: Seit #52 ungenutzt: die Urteile des alten Sterne-Modells gibt es nicht
+    #: mehr (ADR 33). Die Spalten ``via``, ``axes``, ``deducted``, ``model_stars``
+    #: und ``pitch`` bleiben, weil die Datei sie schon trägt (ADR 16).
     via: Mapped[str | None] = mapped_column(String, nullable=True)
     #: Welche Achsen das Urteil trifft und verfehlt, als JSON
     #: ``{"trifft": [...], "fehlt": [...]}`` (#12). JSON wie
@@ -302,21 +293,8 @@ class RatingRow(Base):
     deducted: Mapped[str | None] = mapped_column(String, nullable=True)
     model_stars: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    @property
-    def deductions(self) -> tuple[str, ...]:
-        return tuple(json.loads(self.deducted)) if self.deducted else ()
-
-    @property
-    def hits(self) -> tuple[str, ...]:
-        return tuple(json.loads(self.axes).get("trifft", ())) if self.axes else ()
-
-    @property
-    def misses(self) -> tuple[str, ...]:
-        return tuple(json.loads(self.axes).get("fehlt", ())) if self.axes else ()
-    #: Die Fassung des Leseprofils, gegen die geurteilt wurde. Eine neue
-    #: Fassung macht ein Maschinenurteil ungültig — das ist die eine Änderung,
-    #: bei der ein erneuter Aufruf richtig ist. Eine Änderung am
-    #: Bewertungsschema tut das ausdrücklich nicht (ADR 21).
+    #: Die Fassung des Leseprofils, als die Leserin ihre Sterne gab (0: keine
+    #: bekannt, und bei fremden Stimmen). Verfallen tut das Urteil damit nicht.
     profile_version: Mapped[int] = mapped_column(Integer)
     rated_at: Mapped[datetime] = mapped_column(DateTime)
 
