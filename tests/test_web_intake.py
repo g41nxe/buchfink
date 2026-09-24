@@ -305,10 +305,8 @@ def buecher(db: Store) -> dict[str, int]:
 HX = {"HX-Request": "true"}
 
 
-def tippen(client, familie, seite="loved", buch=None, an=True, schritt=3) -> str:
+def tippen(client, familie, seite="loved", an=True, schritt=3) -> str:
     daten = {"side": seite, "family": familie, "on": "1" if an else "", "step": schritt}
-    if buch is not None:
-        daten["book"] = buch
     return client.post("/intake/choice", data=daten, headers=HX).text
 
 
@@ -404,19 +402,19 @@ def test_patterns_are_tappable_and_boostable_like_traits(client, buecher) -> Non
 
 
 def test_a_lost_family_a_loved_book_also_carries_asks_how_far(client, buecher) -> None:
-    body = tippen(client, "big_world", seite="lost", buch=buecher["H"], schritt=4)
+    body = tippen(client, "big_world", seite="lost", schritt=4)
 
     assert 'data-nachfrage="big_world"' in body
     assert "nur bei High Fantasy" in body
-    # Voreingestellt nur bei diesem Buch: es zählt noch gegen nichts.
-    assert "Nur an diesem einen Buch gestört" in body
+    # Voreingestellt nur bei diesen Büchern: es zählt noch gegen nichts.
+    assert "Nur an den Büchern selbst gestört" in body
 
 
 def test_with_the_genre_it_becomes_a_bundle(client, buecher) -> None:
-    tippen(client, "big_world", seite="lost", buch=buecher["H"], schritt=4)
+    tippen(client, "big_world", seite="lost", schritt=4)
 
     body = client.post("/intake/scope",
-                       data={"family": "big_world", "book": buecher["H"], "scope": "genre"},
+                       data={"family": "big_world", "scope": "genre"},
                        headers=HX).text
 
     entwurf = body.split("data-entwurf", 1)[1]
@@ -424,7 +422,7 @@ def test_with_the_genre_it_becomes_a_bundle(client, buecher) -> None:
 
 
 def test_a_lost_family_no_loved_book_carries_counts_everywhere(client, buecher) -> None:
-    body = tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
+    body = tippen(client, "leisurely", seite="lost", schritt=4)
 
     assert "data-nachfrage" not in body
     assert "gemächlich" in body.split("Zählt gegen ein Buch", 1)[1]
@@ -434,7 +432,7 @@ def test_adopting_saves_the_first_version_and_the_code_judges(client, db, bueche
     tippen(client, "harsh")
     tippen(client, "brooding")
     tippen(client, "harsh", seite="boost")
-    tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
+    tippen(client, "leisurely", seite="lost", schritt=4)
 
     # Facetten wählt niemand aus — sie sind schon da, das Werkzeug hat sie
     # aus dem Angetippten gebildet. Übernommen wird nur das Gegengewicht.
@@ -510,24 +508,26 @@ def test_a_confirmed_book_can_be_removed_again(client, db, buecher) -> None:
 
 
 def test_genre_scope_needs_a_genre(client, db, buecher) -> None:
-    """Ohne Genre wird aus „nur bei …" kein Gegengewicht, das überall gilt."""
-    ohne = bestaetigt(db, "disliked", "Ohne Genre", _bild(
-        None, None, ["world_building", "leisurely", "bittersweet", "descriptive"]))
-    tippen(client, "big_world", seite="lost", buch=ohne, schritt=4)
+    """Ohne Genre wird aus „nur bei …" kein Gegengewicht, das überall gilt.
+
+    "intricate" trägt nur Otherland (geliebt) und dieses genrelose Buch — im
+    Unterschied zu "big_world", das auch "Herr der Ringe" mit Genre trägt."""
+    bestaetigt(db, "disliked", "Ohne Genre", _bild(None, None, ["intricate"]))
+    tippen(client, "intricate", seite="lost", schritt=4)
 
     antwort = client.post("/intake/scope",
-                          data={"family": "big_world", "book": ohne, "scope": "genre"},
+                          data={"family": "intricate", "scope": "genre"},
                           headers=HX)
 
     assert antwort.status_code == 400
     entwurf = client.get("/intake/lost").text.split("data-entwurf", 1)[1]
-    assert "große Welt" not in entwurf.split("Zählt gegen ein Buch")[-1].split("Nur an")[0]
+    assert "verschachtelt" not in entwurf.split("Zählt gegen ein Buch")[-1].split("Nur an")[0]
 
 
 def test_adopting_goes_by_the_counterweight_key_not_its_position(client, db, buecher) -> None:
     """Ändert sich der Entwurf zwischen Laden und Übernehmen, zählt, was die
     Leserin gesehen hat — nicht die Stelle, an der es damals stand."""
-    tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
+    tippen(client, "leisurely", seite="lost", schritt=4)
 
     client.post("/intake/profile", data={"counterweight": ["leisurely|"]})
 

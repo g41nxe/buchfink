@@ -179,3 +179,13 @@ Code.
 > Merkmale und Erzählmuster zum Antippen und Verstärken, keine Vorschläge und
 > kein "passt nicht" mehr — die Facetten rechnet der Code nach jeder Änderung
 > aus allen gemochten Merkmalen neu.
+>
+> Bildschirm 4 ("Was dich verloren hat") verlor aus demselben Grund seine
+> Gruppierung nach enttäuschendem Buch: eine Familie stand einmal je Buch,
+> das sie trug, und das las sich wie ein Buchvergleich. Sie zeigt jetzt,
+> genau wie Bildschirm 3, eine gerankte Liste aller Merkmale und Erzählmuster
+> der enttäuschenden Bücher, mit ⊘ statt ♥. Trägt eine Familie auch ein
+> geliebtes Buch, steht die Nachfrage nach dem Umfang direkt in der Karte,
+> sobald sie angetippt ist — ohne Verstärken, denn ein Gegengewicht hat keine
+> abgestufte Stärke. Ein angetipptes Gegengewicht gilt seither für alle
+> enttäuschenden Bücher, die dieselbe Familie tragen, nicht nur für eines.

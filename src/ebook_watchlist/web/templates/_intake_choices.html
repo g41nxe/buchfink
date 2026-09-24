@@ -6,15 +6,20 @@
    B mochtest" lasen sich wie Buchvergleiche (24.09.2026). Welche Bücher
    dahinterstehen, zeigt nur „warum?", mit dem Satz aus dem Steckbrief.
 
-   Bildschirm 4 fragt je enttäuschendem Buch. Was ein geliebtes Buch auch
-   trägt, steht für sich, und wer es antippt, wird gefragt, wie weit es gilt:
-   nur bei diesem Buch (voreingestellt), überall, oder nur zusammen mit dem
-   Genre — so wird aus „klassisch" ein Bündel aus Genre und Heldenreise statt
-   eines Gegengewichts gegen jede Heldenreise. Nur diese Nachfrage nennt die
-   geliebten Bücher; ohne sie wäre sie nicht zu verstehen.
+   Bildschirm 4 ist genauso eine Liste, in denselben Karten, nur mit ⊘ statt
+   ♥ und ebenso nicht nach Büchern gruppiert (24.09.2026) — das las sich wie
+   ein Buchvergleich, aus demselben Grund wie auf Bildschirm 3. Welche
+   enttäuschenden Bücher dahinterstehen, zeigt nur „Belege". Trägt ein
+   geliebtes Buch dieselbe Familie, steht direkt in der Karte, sobald sie
+   angetippt ist, die Nachfrage, wie weit es gilt: nur bei diesen Büchern
+   (voreingestellt), überall, oder nur zusammen mit dem Genre — so wird aus
+   „klassisch" ein Bündel aus Genre und Heldenreise statt eines
+   Gegengewichts gegen jede Heldenreise. Nur diese Nachfrage nennt die
+   geliebten Bücher; ohne sie wäre sie nicht zu verstehen. Kein Verstärken:
+   ein Gegengewicht hat keine abgestufte Stärke.
 
    Erwartet: `wahl`, `schritt`. #}
-{% from "_family_pill.html" import familienkarte, familienpille, titelreihe %}
+{% from "_family_pill.html" import familienkarte, verlustkarte %}
 <div id="wahl" class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
   <div>
     {% if schritt == 3 %}
@@ -46,44 +51,19 @@
     <p class="text-sm text-soft">Kein enttäuschendes Buch genannt — dann gibt es hier nichts
       zu fragen.</p>
     {% endif %}
-    {% for d in wahl.lost %}
-    <section class="mb-8">
-      <p class="mb-3 flex items-center gap-2 text-sm">
-        <svg class="i text-danger"><use href="#ic-ban"/></svg>
-        <span class="font-serif text-base italic text-ink">{{ d.title }}</span>
-        <span class="text-soft">hat dich enttäuscht</span>
-      </p>
-      {% for g in d.groups %}
-      <div class="mb-4">
-        <p class="mb-2 text-sm {{ 'text-ink' if g.conflict else 'text-soft' }}">
-          {% if g.conflict %}<svg class="i -mt-0.5 inline text-accent"><use href="#ic-heart"/></svg>{% endif %}
-          {{ g.lead }}</p>
-        <div class="flex flex-wrap gap-2">
-          {% for p in g.pills %}{{ familienpille(p, "lost", schritt) }}{% endfor %}
-        </div>
-      </div>
-      {% endfor %}
-      {% for q in d.questions %}
-      <form method="post" action="/intake/scope"
-            hx-post="/intake/scope" hx-target="#wahl" hx-swap="outerHTML"
-            class="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-rule
-                   bg-card px-3 py-2 text-sm" data-nachfrage="{{ q.family_id }}">
-        <input type="hidden" name="family" value="{{ q.family_id }}">
-        <input type="hidden" name="book" value="{{ q.book_id }}">
-        <span><span class="font-medium text-ink">{{ q.name }}</span>
-          <span class="text-soft">hat dich gestört, steckt aber auch in
-            {{ titelreihe(q.also_in) }} —</span></span>
-        {% set wahlen = [("here", "nur bei diesem Buch"), ("general", "auch bei anderen")] %}
-        {% if q.genre %}{% set wahlen = wahlen + [("genre", "nur bei " ~ q.genre)] %}{% endif %}
-        {% for wert, text in wahlen %}
-        <button type="submit" name="scope" value="{{ wert }}"
-                aria-pressed="{{ 'true' if q.scope == wert else 'false' }}"
-                class="tun inline-flex h-7 items-center rounded border px-2.5 text-xs
-                       {{ 'border-ink bg-hair text-ink' if q.scope == wert
-                          else 'border-rule text-soft hover:text-ink' }}">{{ text }}</button>
-        {% endfor %}
-      </form>
-      {% endfor %}
+    {% if wahl.lost %}
+    <p class="mb-6 max-w-prose text-sm text-soft">
+      Tipp an, was dich verloren hat. Es zählt dann gegen andere Bücher, schließt aber
+      keines aus.</p>
+    {% endif %}
+    {% for titel, karten in [
+         ("Merkmale", wahl.lost_terms), ("Erzählmuster", wahl.lost_patterns),
+       ] if karten %}
+    <section class="mb-8" data-abschnitt="{{ titel }}">
+      <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
+      <ul class="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {% for k in karten %}{{ verlustkarte(k) }}{% endfor %}
+      </ul>
     </section>
     {% endfor %}
     {% endif %}

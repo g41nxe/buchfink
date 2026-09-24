@@ -151,27 +151,65 @@
 </li>
 {% endmacro %}
 
-{% macro familienpille(p, seite, schritt) %}
-{% set weg = seite == "lost" %}
-<form method="post" action="/intake/choice" class="inline-flex"
-      hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
-  <input type="hidden" name="side" value="{{ seite }}">
-  <input type="hidden" name="family" value="{{ p.family_id }}">
-  <input type="hidden" name="step" value="{{ schritt }}">
-  {% if p.book_id %}<input type="hidden" name="book" value="{{ p.book_id }}">{% endif %}
-  <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
-  <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
-          data-familie="{{ p.family_id }}"
-          class="pille tun inline-flex h-7 items-center gap-1 rounded border px-3 text-xs
-                 transition sm:rounded-full
-                 {% if p.on and weg %}border-danger bg-danger/10 text-danger
-                 {% elif p.on %}border-accent bg-accent/10 text-accent
-                 {% elif weg %}border-rule text-soft hover:border-danger hover:text-danger
-                 {% else %}border-rule text-soft hover:border-accent hover:text-accent{% endif %}">
-    {% if p.on %}<svg class="i"><use href="#{{ 'ic-ban' if weg else 'ic-heart' }}"/></svg>{% endif %}
-    {{ p.name }}
-    {% if p.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}
-    {% if p.frequent %}<span class="opacity-70">· bei vielen Büchern</span>{% endif %}
-  </button>
-</form>
+{# Ein Merkmal oder Erzählmuster, das enttäuschende Bücher tragen, als Karte
+   (Bildschirm 4, 24.09.2026) — wie eine Karte auf Bildschirm 3, nur ⊘ statt
+   ♥, und ebenso nicht nach Büchern gruppiert. Trägt es auch ein geliebtes
+   Buch, steht die Nachfrage nach dem Umfang direkt in der Karte, sobald sie
+   angetippt ist — wie das Verstärken bei einer gemochten Karte, nur ohne
+   Verstärken: ein Gegengewicht hat keine abgestufte Stärke.
+
+   Erwartet: `k` (die Karte). #}
+{% macro verlustkarte(k) %}
+{% set p = k.pill %}
+<li class="flex flex-col rounded-lg border transition
+           {{ 'border-danger bg-danger/10' if p.on else 'border-rule bg-card hover:border-danger/60' }}"
+    x-data="{ belege: false }" data-karte="{{ p.family_id }}">
+  <form method="post" action="/intake/choice" class="flex-1"
+        hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
+    <input type="hidden" name="side" value="lost">
+    <input type="hidden" name="family" value="{{ p.family_id }}">
+    <input type="hidden" name="step" value="4">
+    <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
+    <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
+            data-familie="{{ p.family_id }}"
+            class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
+      <span class="flex items-center gap-1.5 text-sm font-semibold
+                   {{ 'text-danger' if p.on else 'text-ink' }}">
+        <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-ban"/></svg>
+        {{ p.name }}{% if p.pattern %}<span class="opacity-70 text-xs">· Erzählmuster</span>{% endif %}
+      </span>
+      {% if k.description %}
+      <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
+      {% endif %}
+    </button>
+  </form>
+  <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
+    <button type="button" @click="belege = !belege"
+            class="text-xs text-soft underline decoration-rule underline-offset-2
+                   hover:text-ink">Belege</button>
+  </div>
+  <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+    {% for titel, satz in k.evidence %}
+    <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>
+    {% endfor %}
+  </ul>
+  {% if p.on and k.also_in %}
+  <form method="post" action="/intake/scope"
+        hx-post="/intake/scope" hx-target="#wahl" hx-swap="outerHTML"
+        class="mx-4 mb-3 flex flex-wrap items-center gap-2 rounded border border-rule
+               bg-paper px-3 py-2 text-xs" data-nachfrage="{{ p.family_id }}">
+    <input type="hidden" name="family" value="{{ p.family_id }}">
+    <span class="text-soft">steckt auch in {{ titelreihe(k.also_in) }} —</span>
+    {% set wahlen = [("here", "nur bei diesen Büchern"), ("general", "auch bei anderen")] %}
+    {% if k.genre %}{% set wahlen = wahlen + [("genre", "nur bei " ~ k.genre)] %}{% endif %}
+    {% for wert, text in wahlen %}
+    <button type="submit" name="scope" value="{{ wert }}"
+            aria-pressed="{{ 'true' if k.scope == wert else 'false' }}"
+            class="tun inline-flex h-7 items-center rounded border px-2.5
+                   {{ 'border-ink bg-hair text-ink' if k.scope == wert
+                      else 'border-rule text-soft hover:text-ink' }}">{{ text }}</button>
+    {% endfor %}
+  </form>
+  {% endif %}
+</li>
 {% endmacro %}

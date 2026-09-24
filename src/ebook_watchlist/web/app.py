@@ -1319,15 +1319,13 @@ def create_app() -> FastAPI:
         request: Request,
         side: str = Form(...),
         family: str = Form(...),
-        book: str = Form(""),
         on: str = Form(""),
         step: int = Form(3),
     ) -> Response:
         """Eine Familie antippen oder wieder lösen — sofort gespeichert."""
         try:
             intake.choose(
-                _store_for(paths.db_path()), load_settings(), side, family,
-                book_id=int(book) if book else None, on=bool(on),
+                _store_for(paths.db_path()), load_settings(), side, family, on=bool(on),
             )
         except (intake.IntakeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -1335,12 +1333,11 @@ def create_app() -> FastAPI:
 
     @app.post("/intake/scope")
     def intake_scope(
-        request: Request, family: str = Form(...), book: int = Form(...),
-        scope: str = Form(...),
+        request: Request, family: str = Form(...), scope: str = Form(...),
     ) -> Response:
         """Die Nachfrage beim Gegengewicht: nur hier, überall, oder mit dem Genre."""
         try:
-            intake.set_scope(_store_for(paths.db_path()), load_settings(), family, book, scope)
+            intake.set_scope(_store_for(paths.db_path()), load_settings(), family, scope)
         except intake.IntakeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _after_choice(request, 4)

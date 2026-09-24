@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Collection
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from ..config import Settings
@@ -298,37 +298,37 @@ class Pill:
     pattern: bool
     frequent: bool
     on: bool
-    #: Nur auf Bildschirm 4: an welchem Buch.
-    book_id: int | None = None
     #: Von der Leserin verstärkt.
     boosted: bool = False
 
 
 @dataclass(frozen=True, slots=True)
-class Group:
-    """Familien eines enttäuschenden Buchs unter einer Überschrift (Bildschirm 4)."""
+class LostCard:
+    """Ein Merkmal oder Erzählmuster, das enttäuschende Bücher tragen, als
+    Karte (24.09.2026) — wie eine Karte auf Bildschirm 3, nur mit ⊘ statt ♥,
+    und ebenso nicht nach Büchern gruppiert: das las sich wie ein
+    Buchvergleich, genau wie „Weil du A und B mochtest" auf Bildschirm 3
+    vorher (#44). Welche enttäuschenden Bücher dahinterstehen, steht nur in
+    den Belegen.
 
-    lead: str
-    titles: tuple[str, ...]
-    tail: str
-    pills: tuple[Pill, ...]
-    why: tuple[tuple[str, tuple[str, ...]], ...] = ()
-    #: Ob ein geliebtes Buch sie auch trägt.
-    conflict: bool = False
+    Trägt es auch ein geliebtes Buch, steht direkt in der Karte die Nachfrage,
+    wie weit es gilt: nur bei diesen Büchern (voreingestellt), überall, oder
+    nur zusammen mit dem Genre — so wird aus „klassisch" ein Bündel aus Genre
+    und Heldenreise statt eines Gegengewichts gegen jede Heldenreise. Nur hier
+    werden geliebte Bücher genannt; ohne sie wäre die Nachfrage nicht zu
+    verstehen.
+    """
 
-
-@dataclass(frozen=True, slots=True)
-class ScopeQuestion:
-    """Die Nachfrage bei einem Gegengewicht, das ein geliebtes Buch auch trägt."""
-
-    family_id: str
-    name: str
-    book_id: int
-    scope: str
-    genre: str | None
-    #: Welche geliebten Bücher dasselbe tragen — der Grund für die Nachfrage,
-    #: und die eine Stelle auf Bildschirm 4, an der ein Buch genannt wird.
+    pill: Pill
+    description: str
+    #: Je enttäuschendem Buch, das es trägt, der Satz aus seinem Steckbrief.
+    evidence: tuple[tuple[str, str], ...]
+    #: Welche geliebten Bücher dieselbe Familie tragen — der Grund für die
+    #: Nachfrage.
     also_in: tuple[str, ...] = ()
+    scope: str = HERE
+    #: Nur, wenn alle tragenden enttäuschenden Bücher dasselbe Genre haben.
+    genre: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -348,14 +348,6 @@ class Card:
     @property
     def level(self) -> int:
         return STRENGTHS.index(self.strength) + 1
-
-
-@dataclass(frozen=True, slots=True)
-class LostBook:
-    title: str
-    book_id: int
-    groups: tuple[Group, ...]
-    questions: tuple[ScopeQuestion, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -417,10 +409,16 @@ class Choosing:
     terms: tuple[Card, ...]
     #: Bildschirm 3, für sich: alle Erzählmuster der geliebten Bücher.
     patterns: tuple[Card, ...]
-    lost: tuple[LostBook, ...]
+    #: Bildschirm 4: alle Merkmale der enttäuschenden Bücher, gerankt.
+    lost_terms: tuple[LostCard, ...]
+    lost_patterns: tuple[LostCard, ...]
     draft: Draft
     #: Was gemocht ist, in der Reihenfolge des Rangs — daraus wird das Profil.
     liked: tuple[Liked, ...]
+
+    @property
+    def lost(self) -> bool:
+        return bool(self.lost_terms or self.lost_patterns)
 
     @property
     def boosted_count(self) -> int:
@@ -498,17 +496,13 @@ def choosing(store: Store, settings: Settings) -> Choosing:
     wahl = store.intake_choices(settings.slug)
     an = {c.family_id for c in wahl if c.side == LOVED}
     verstaerkt = {c.family_id for c in wahl if c.side == BOOST} & an
-    weg = {(c.family_id, c.book_id): c.scope for c in wahl if c.side == LOST}
+    weg = {c.family_id: c.scope for c in wahl if c.side == LOST}
 
-    def pille(f: str, on: bool, book_id: int | None = None) -> Pill:
+    def pille(f: str, on: bool) -> Pill:
         return Pill(
-            f, family_name(f, vocabulary), vocabulary.is_pattern(f), f in haeufig, on, book_id,
+            f, family_name(f, vocabulary), vocabulary.is_pattern(f), f in haeufig, on,
             boosted=f in verstaerkt,
         )
-
-    def ordnung(fs):
-        # Häufiges ans Ende, ausgeblendet wird nichts (#44).
-        return sorted(fs, key=lambda f: (f in haeufig, family_name(f, vocabulary).casefold()))
 
     traeger: dict[str, list[ShelfBook]] = {}
     for b in geliebt:
@@ -536,34 +530,51 @@ def choosing(store: Store, settings: Settings) -> Choosing:
     merkmale = tuple(karte(f) for f in rang if not vocabulary.is_pattern(f))
     muster = tuple(karte(f) for f in rang if vocabulary.is_pattern(f))
 
-    verloren = []
-    for d in enttaeuscht:
-        auch = [f for f in d.families if traeger.get(f)]
-        nur_hier = [f for f in d.families if not traeger.get(f)]
-        dgruppen = []
-        if auch:
-            dgruppen.append(Group("Steckt auch in Büchern, die du liebst", (), "",
-                                  tuple(pille(f, (f, d.book_id) in weg, d.book_id)
-                                        for f in ordnung(auch)),
-                                  conflict=True))
-        if nur_hier:
-            dgruppen.append(Group("Nur in diesem Buch", (), "",
-                                  tuple(pille(f, (f, d.book_id) in weg, d.book_id)
-                                        for f in ordnung(nur_hier))))
-        fragen = tuple(
-            ScopeQuestion(f, family_name(f, vocabulary), d.book_id, weg[(f, d.book_id)] or HERE,
-                          d.genre, tuple(b.title for b in traeger[f]))
-            for f in ordnung(auch)
-            if (f, d.book_id) in weg
+    traeger_verloren: dict[str, list[ShelfBook]] = {}
+    for b in enttaeuscht:
+        for f in b.families:
+            traeger_verloren.setdefault(f, []).append(b)
+
+    # Bildschirm 4: alles, was die enttäuschenden Bücher tragen, ebenso
+    # gerankt und nicht nach Büchern gruppiert (24.09.2026) — das las sich
+    # wie ein Buchvergleich, genau wie auf Bildschirm 3 vorher (#44).
+    rang_verloren = sorted(
+        traeger_verloren,
+        key=lambda f: (-len(traeger_verloren[f]), f in haeufig,
+                       family_name(f, vocabulary).casefold()),
+    )
+
+    def karte_verloren(f: str) -> LostCard:
+        traeger_f = traeger_verloren[f]
+        begriff = next((b.terms[f] for b in traeger_f if f in b.terms), None)
+        return LostCard(
+            pille(f, f in weg),
+            vocabulary.terms[begriff].description if begriff else "",
+            tuple((b.title, b.families[f]) for b in traeger_f),
+            also_in=tuple(b.title for b in traeger.get(f, ())),
+            scope=weg.get(f) or HERE,
+            genre=_unique_genre(traeger_f),
         )
-        verloren.append(LostBook(d.title, d.book_id, tuple(dgruppen), fragen))
+
+    verloren_merkmale = tuple(
+        karte_verloren(f) for f in rang_verloren if not vocabulary.is_pattern(f)
+    )
+    verloren_muster = tuple(karte_verloren(f) for f in rang_verloren if vocabulary.is_pattern(f))
 
     gemocht = tuple(Liked(f, f in verstaerkt) for f in rang if f in an)
-    entwurf = _draft(vocabulary, gemocht, enttaeuscht, traeger, weg)
-    return Choosing(tuple(geliebt), merkmale, muster, tuple(verloren), entwurf, gemocht)
+    entwurf = _draft(vocabulary, gemocht, traeger, traeger_verloren, weg)
+    return Choosing(
+        tuple(geliebt), merkmale, muster, verloren_merkmale, verloren_muster, entwurf, gemocht
+    )
 
 
-def _draft(vocabulary, gemocht, enttaeuscht, traeger, weg) -> Draft:
+def _unique_genre(carriers: Collection[ShelfBook]) -> str | None:
+    """Das Genre, wenn alle diese Bücher dasselbe tragen — sonst keins."""
+    genres = {b.genre for b in carriers if b.genre}
+    return next(iter(genres)) if len(genres) == 1 else None
+
+
+def _draft(vocabulary, gemocht, traeger, traeger_verloren, weg) -> Draft:
     # Die Facetten bildet das Werkzeug selbst, nur aus Merkmalen (#63).
     merkmale = [g.family for g in gemocht if not vocabulary.is_pattern(g.family)]
     facetten = derive_facets(merkmale, {f: [b.key for b in bs] for f, bs in traeger.items()})
@@ -583,23 +594,22 @@ def _draft(vocabulary, gemocht, enttaeuscht, traeger, weg) -> Draft:
         for f in facetten
     )
 
-    buecher_von = {d.book_id: d for d in enttaeuscht}
     neu, nur_hier = [], []
-    for (f, book_id), scope in weg.items():
-        d = buecher_von.get(book_id)
-        if d is None:
+    for f, scope in weg.items():
+        traeger_f = traeger_verloren.get(f)
+        if not traeger_f:
             continue
         # Voreingestellt: steckt es auch in einem geliebten Buch, zählt es nur
         # hier, bis die Leserin es anders sagt — sonst überall.
         umfang = scope or (HERE if traeger.get(f) else GENERAL)
         try:
-            gewicht = scoped_counterweight(f, umfang, d.genre, d.title)
+            gewicht = scoped_counterweight(f, umfang, _unique_genre(traeger_f), traeger_f[0].title)
         except ScopeError:
             gewicht = None
         if gewicht is None:
             nur_hier.append(family_name(f, vocabulary))
         else:
-            neu.append(gewicht)
+            neu.append(replace(gewicht, books=tuple(b.title for b in traeger_f)))
     gegen, _ = merge_counterweights((), neu)
     karten_gegen = tuple(
         WeightCard(c.families, family_names(c.families, vocabulary), c.genre, c.books)
@@ -619,10 +629,7 @@ def _draft(vocabulary, gemocht, enttaeuscht, traeger, weg) -> Draft:
     )
 
 
-def choose(
-    store: Store, settings: Settings, side: str, family_id: str, *,
-    book_id: int | None = None, on: bool,
-) -> None:
+def choose(store: Store, settings: Settings, side: str, family_id: str, *, on: bool) -> None:
     """Antippen: ♥ auf Bildschirm 3, ⊘ auf Bildschirm 4 — oder verstärken.
 
     Verstärken geht nur, was gemocht ist, und höchstens ``MOST_BOOSTED``.
@@ -634,8 +641,6 @@ def choose(
         load_vocabulary().family(family_id)
     except KeyError:
         raise IntakeError(f"keine solche Familie: {family_id}") from None
-    if side == LOST and book_id is None:
-        raise IntakeError("Ein Gegengewicht gehört zu einem Buch.")
     if side == BOOST and on:
         wahl = store.intake_choices(settings.slug)
         gemocht = {c.family_id for c in wahl if c.side == LOVED}
@@ -644,20 +649,25 @@ def choose(
             raise IntakeError("Verstärken lässt sich nur, was du angetippt hast.")
         if family_id not in verstaerkt and len(verstaerkt) >= MOST_BOOSTED:
             raise IntakeError(f"Höchstens {MOST_BOOSTED} lassen sich verstärken.")
-    store.set_intake_choice(settings.slug, side, family_id, book_id=book_id, active=on)
+    store.set_intake_choice(settings.slug, side, family_id, active=on)
     if side == LOVED and not on:
         store.set_intake_choice(settings.slug, BOOST, family_id, active=False)
 
 
-def set_scope(store: Store, settings: Settings, family_id: str, book_id: int, scope: str) -> None:
+def set_scope(store: Store, settings: Settings, family_id: str, scope: str) -> None:
     """Die Nachfrage beantworten: nur hier, überall, oder nur mit dem Genre."""
-    buch = shelf_book(store, load_vocabulary(), book_id)
+    vocabulary = load_vocabulary()
     try:
-        scoped_counterweight(family_id, scope, buch.genre if buch else None, "")
+        vocabulary.family(family_id)
+    except KeyError:
+        raise IntakeError(f"keine solche Familie: {family_id}") from None
+    enttaeuscht = _shelf_books(store, settings, vocabulary, str(RelationKind.DISLIKED))
+    traeger = [b for b in enttaeuscht if family_id in b.families]
+    try:
+        scoped_counterweight(family_id, scope, _unique_genre(traeger), "")
     except ScopeError as exc:
         raise IntakeError(str(exc)) from None
-    store.set_intake_choice(settings.slug, LOST, family_id, book_id=book_id, active=True,
-                            scope=scope)
+    store.set_intake_choice(settings.slug, LOST, family_id, active=True, scope=scope)
 
 
 def adopt(
