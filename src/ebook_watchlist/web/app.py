@@ -1245,7 +1245,7 @@ def create_app() -> FastAPI:
     def _choosing(request: Request, step: int, *, fragment: bool) -> Response:
         """Bildschirm 3 oder 4 — ganz, oder als Bruchstück nach einem Tipp."""
         choice = intake.choosing(_store_for(paths.db_path()), load_settings())
-        context = {"wahl": choice, "schritt": step}
+        context = {"choice": choice, "step": step}
         if fragment:
             return TEMPLATES.TemplateResponse(request, "_intake_choices.html", context)
         return TEMPLATES.TemplateResponse(
@@ -1302,7 +1302,7 @@ def create_app() -> FastAPI:
         choice = intake.choosing(_store_for(paths.db_path()), load_settings())
         return TEMPLATES.TemplateResponse(
             request, "intake_profile.html",
-            {"wahl": choice, "schritt": 5, "asset_version": asset_version()},
+            {"choice": choice, "step": 5, "asset_version": asset_version()},
         )
 
     @app.post("/intake/profile")

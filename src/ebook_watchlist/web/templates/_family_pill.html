@@ -8,7 +8,7 @@
    Häufiges trägt den Zusatz „bei vielen Büchern" und steht am Ende; ein
    Erzählmuster sagt, dass es eins ist. Ausgeblendet wird nichts (#44).
 
-   Erwartet: `p` (die Pille), `seite` (loved oder lost), `schritt`. #}
+   Erwartet: `p` (die Pille), `seite` (loved oder lost), `step`. #}
 {% macro titelreihe(titel) -%}
 {% for t in titel %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
 {%- endmacro %}
@@ -24,17 +24,17 @@
    drei (24.09.2026). Der Knopf steht nur an Angetipptem und ist aus, wenn
    schon drei verstärkt sind.
 
-   Erwartet: `k` (die Karte), `schritt`, `kann_verstaerken`. #}
-{% macro familienkarte(k, schritt, kann_verstaerken) %}
+   Erwartet: `k` (die Karte), `step`, `kann_verstaerken`. #}
+{% macro familienkarte(k, step, kann_verstaerken) %}
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
     x-data="{ belege: false }" data-karte="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
-        hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
+        hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
     <input type="hidden" name="side" value="loved">
     <input type="hidden" name="family" value="{{ p.family_id }}">
-    <input type="hidden" name="step" value="{{ schritt }}">
+    <input type="hidden" name="step" value="{{ step }}">
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-familie="{{ p.family_id }}"
@@ -61,10 +61,10 @@
                    hover:text-ink">Belege</button>
     {% if p.on %}
     <form method="post" action="/intake/choice" class="ml-auto"
-          hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
+          hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
       <input type="hidden" name="side" value="boost">
       <input type="hidden" name="family" value="{{ p.family_id }}">
-      <input type="hidden" name="step" value="{{ schritt }}">
+      <input type="hidden" name="step" value="{{ step }}">
       <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
       <button type="submit" data-verstaerken="{{ p.family_id }}"
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
@@ -165,7 +165,7 @@
            {{ 'border-danger bg-danger/10' if p.on else 'border-rule bg-card hover:border-danger/60' }}"
     x-data="{ belege: false }" data-karte="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
-        hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
+        hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
     <input type="hidden" name="side" value="lost">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <input type="hidden" name="step" value="4">
@@ -195,14 +195,14 @@
   </ul>
   {% if p.on and k.also_in %}
   <form method="post" action="/intake/scope"
-        hx-post="/intake/scope" hx-target="#wahl" hx-swap="outerHTML"
+        hx-post="/intake/scope" hx-target="#choice" hx-swap="outerHTML"
         class="mx-4 mb-3 flex flex-col gap-2 rounded border border-rule
                bg-paper px-3 py-2 text-xs" data-nachfrage="{{ p.family_id }}">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <span class="text-soft">steckt auch in {{ titelreihe(k.also_in) }} —</span>
-    {% set wahlen = [("here", "nur bei diesen Büchern"), ("general", "auch bei anderen")] %}
-    {% if k.genre %}{% set wahlen = wahlen + [("genre", "nur bei " ~ k.genre)] %}{% endif %}
-    {% for wert, text in wahlen %}
+    {% set options = [("here", "nur bei diesen Büchern"), ("general", "auch bei anderen")] %}
+    {% if k.genre %}{% set options = options + [("genre", "nur bei " ~ k.genre)] %}{% endif %}
+    {% for wert, text in options %}
     <button type="submit" name="scope" value="{{ wert }}"
             aria-pressed="{{ 'true' if k.scope == wert else 'false' }}"
             class="tun flex w-full items-center justify-center rounded border px-2.5 py-1.5 text-center

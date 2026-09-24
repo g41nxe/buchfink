@@ -18,44 +18,44 @@
    geliebten Bücher; ohne sie wäre sie nicht zu verstehen. Kein Verstärken:
    ein Gegengewicht hat keine abgestufte Stärke.
 
-   Erwartet: `wahl`, `schritt`. #}
+   Erwartet: `choice`, `step`. #}
 {% from "_family_pill.html" import familienkarte, verlustkarte %}
-<div id="wahl" class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
+<div id="choice" class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
   <div>
-    {% if schritt == 3 %}
-    {% if not wahl.loved %}
+    {% if step == 3 %}
+    {% if not choice.loved %}
     <p class="text-sm text-soft">Noch kein geliebtes Buch mit Steckbrief bestätigt.
       <a href="/intake" class="text-accent underline underline-offset-2">Bücher nennen</a></p>
     {% endif %}
-    {% if wahl.loved %}
+    {% if choice.loved %}
     <p class="mb-6 max-w-prose text-sm text-soft">
       Tipp an, was für dich zählt — und verstärk bis zu drei, die dir am wichtigsten
-      sind. <span class="text-ink">{{ wahl.boosted_count }} von 3 verstärkt.</span>
+      sind. <span class="text-ink">{{ choice.boosted_count }} von 3 verstärkt.</span>
     </p>
     {% endif %}
     {% for titel, karten in [
-         ("Merkmale", wahl.terms), ("Erzählmuster", wahl.patterns),
+         ("Merkmale", choice.terms), ("Erzählmuster", choice.patterns),
        ] if karten %}
     <section class="mb-8" data-abschnitt="{{ titel }}">
       <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
       <ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
-        {% for k in karten %}{{ familienkarte(k, schritt, wahl.can_boost) }}{% endfor %}
+        {% for k in karten %}{{ familienkarte(k, step, choice.can_boost) }}{% endfor %}
       </ul>
     </section>
     {% endfor %}
 
     {% else %}
-    {% if not wahl.lost %}
+    {% if not choice.lost %}
     <p class="text-sm text-soft">Kein enttäuschendes Buch genannt — dann gibt es hier nichts
       zu fragen.</p>
     {% endif %}
-    {% if wahl.lost %}
+    {% if choice.lost %}
     <p class="mb-6 max-w-prose text-sm text-soft">
       Tipp an, was dich verloren hat. Es zählt dann gegen andere Bücher, schließt aber
       keines aus.</p>
     {% endif %}
     {% for titel, karten in [
-         ("Merkmale", wahl.lost_terms), ("Erzählmuster", wahl.lost_patterns),
+         ("Merkmale", choice.lost_terms), ("Erzählmuster", choice.lost_patterns),
        ] if karten %}
     <section class="mb-8" data-abschnitt="{{ titel }}">
       <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>

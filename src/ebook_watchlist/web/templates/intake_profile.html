@@ -14,13 +14,13 @@
    Knopf sagt, was er tun wird. #}
 
 {% block content %}
-{% with schritt=5, frage="Dein Profil",
+{% with step=5, frage="Dein Profil",
         hilfe="Das hat die Erstaufnahme aus deinen Büchern gemacht. Ändern kannst du es auf Schritt 3 und 4; hier bestätigst du." %}
 {% include "_intake_step.html" %}
 {% endwith %}
 
-{% set gemocht = wahl.liked | length %}
-{% set gegen = wahl.draft.weights | length %}
+{% set gemocht = choice.liked | length %}
+{% set gegen = choice.draft.weights | length %}
 <form method="post" action="/intake/profile">
   {% if not gemocht %}
   <p class="mb-4 text-sm text-soft italic">Noch nichts angetippt — tipp auf
@@ -37,7 +37,7 @@
   </p>
 
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
-    <a href="{{ '/intake/lost' if wahl.lost else '/intake/common' }}"
+    <a href="{{ '/intake/lost' if choice.lost else '/intake/common' }}"
        class="text-soft hover:text-ink">← Zurück</a>
     {% if gemocht or gegen %}
     <button type="submit"

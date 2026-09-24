@@ -6,7 +6,7 @@
    Tipp kommt es neu, ohne dass die Seite neu lädt. #}
 
 {% block content %}
-{% if schritt == 3 %}
+{% if step == 3 %}
 {% with frage="Was hält dich an diesen Büchern?",
         hilfe="Merkmale und Erzählmuster deiner geliebten Bücher, einzeln." %}
 {% include "_intake_step.html" %}
@@ -20,9 +20,9 @@
 
 {% include "_intake_choices.html" %}
 
-{% set weiter = "/intake/profile" if schritt == 4 or not wahl.lost else "/intake/lost" %}
+{% set weiter = "/intake/profile" if step == 4 or not choice.lost else "/intake/lost" %}
 <nav class="mt-8 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
-  <a href="{{ '/intake' if schritt == 3 else '/intake/common' }}"
+  <a href="{{ '/intake' if step == 3 else '/intake/common' }}"
      class="text-soft hover:text-ink">← Zurück</a>
   <a href="{{ weiter }}"
      class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
