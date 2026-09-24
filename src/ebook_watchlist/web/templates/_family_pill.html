@@ -196,7 +196,7 @@
   {% if p.on and k.also_in %}
   <form method="post" action="/intake/scope"
         hx-post="/intake/scope" hx-target="#wahl" hx-swap="outerHTML"
-        class="mx-4 mb-3 flex flex-wrap items-center gap-2 rounded border border-rule
+        class="mx-4 mb-3 flex flex-col gap-2 rounded border border-rule
                bg-paper px-3 py-2 text-xs" data-nachfrage="{{ p.family_id }}">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <span class="text-soft">steckt auch in {{ titelreihe(k.also_in) }} —</span>
@@ -205,7 +205,7 @@
     {% for wert, text in wahlen %}
     <button type="submit" name="scope" value="{{ wert }}"
             aria-pressed="{{ 'true' if k.scope == wert else 'false' }}"
-            class="tun inline-flex h-7 items-center rounded border px-2.5
+            class="tun flex w-full items-center justify-center rounded border px-2.5 py-1.5 text-center
                    {{ 'border-ink bg-hair text-ink' if k.scope == wert
                       else 'border-rule text-soft hover:text-ink' }}">{{ text }}</button>
     {% endfor %}

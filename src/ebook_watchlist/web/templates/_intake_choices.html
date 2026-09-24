@@ -38,7 +38,7 @@
        ] if karten %}
     <section class="mb-8" data-abschnitt="{{ titel }}">
       <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
-      <ul class="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
         {% for k in karten %}{{ familienkarte(k, schritt, wahl.can_boost) }}{% endfor %}
       </ul>
     </section>
@@ -59,7 +59,7 @@
        ] if karten %}
     <section class="mb-8" data-abschnitt="{{ titel }}">
       <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
-      <ul class="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
         {% for k in karten %}{{ verlustkarte(k) }}{% endfor %}
       </ul>
     </section>
