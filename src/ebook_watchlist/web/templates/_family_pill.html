@@ -176,7 +176,7 @@
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-danger' if p.on else 'text-ink' }}">
         <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-ban"/></svg>
-        {{ p.name }}{% if p.pattern %}<span class="opacity-70 text-xs">· Erzählmuster</span>{% endif %}
+        {{ p.name }}
       </span>
       {% if k.description %}
       <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
