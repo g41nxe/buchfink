@@ -310,16 +310,19 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     vocabulary = load_vocabulary()
     asked: list[Observation] = []
 
-    def portray_find(observation):
-        asked.append(observation)
+    def portray_finds(observations):
+        asked.extend(observations)
         traits = tuple(Trait(t, f"Satz zu {t}", "wissen") for t in ("quest", "adventure"))
-        return Portrait(known=True, fingerprint=fingerprint(vocabulary), pitch="Neu.",
-                        traits=traits)
+        return {
+            o.key: Portrait(known=True, fingerprint=fingerprint(vocabulary), pitch="Neu.",
+                            traits=traits)
+            for o in observations
+        }
 
     monkeypatch.setattr(
         run_module, "build_portrayer",
         lambda model=None, vocabulary=None: SimpleNamespace(
-            vocabulary=vocabulary, portray_find=portray_find
+            vocabulary=vocabulary, portray_finds=portray_finds
         ),
     )
 
@@ -591,7 +594,9 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
     )
     monkeypatch.setattr(
         run_modul, "build_portrayer",
-        lambda model=None, vocabulary=None: SimpleNamespace(portray_find=portrayer),
+        lambda model=None, vocabulary=None: SimpleNamespace(
+            portray_finds=lambda observations: {o.key: portrayer(o) for o in observations}
+        ),
     )
 
     kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())

@@ -499,3 +499,54 @@ def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
         traits=tuple(traits),
         violations=tuple(verstoesse),
     )
+
+
+def prompt_many(books, vocabulary: Vocabulary) -> str:
+    """Eine Anweisung für mehrere Bücher auf einmal (#66).
+
+    Dieselbe Anweisung und dasselbe Vokabular wie bei einem Buch — der
+    Fingerabdruck bleibt also derselbe, und ein im Bündel angelegter Steckbrief
+    gilt genauso wie ein einzeln angelegter. Vokabular und Regeln gehen einmal
+    raus statt je Buch; das sind rund 5500 der rund 6500 Tokens eines Prompts.
+    ``books`` sind ``(Titel, Autor:in, Klappentext)``.
+    """
+    head, rest = TEMPLATE.split("--- BUCH ---", 1)
+    shape = rest.split("--- ENDE BUCH ---", 1)[1].format().split("in genau dieser Form:", 1)[1]
+    blocks = []
+    for number, (title, author, blurb) in enumerate(books, start=1):
+        lines = [f"Titel: {title}", f"Autor: {author or '(nicht angegeben)'}"]
+        if blurb:
+            lines.append(f"Klappentext: {blurb}")
+        body = "\n".join(lines)
+        blocks.append(f"--- BUCH {number} ---\n{body}\n--- ENDE BUCH {number} ---")
+    return (
+        head.format(vokabular=vocabulary.prompt_text())
+        + f"Es sind {len(blocks)} Bücher. Beschreibe jedes für sich, unabhängig von den anderen; "
+        "was du zu einem sagst, darf nichts mit einem anderen zu tun haben.\n\n"
+        + "\n\n".join(blocks)
+        + "\n\nAntworte ausschließlich mit einem JSON-Objekt, dessen Schlüssel die Nummern der "
+        'Bücher sind ("1", "2", …); jeder Wert hat genau diese Form:'
+        + shape
+    )
+
+
+def parse_many(text: str, vocabulary: Vocabulary, count: int) -> dict[int, Portrait]:
+    """Die Steckbriefe aus einer gebündelten Antwort, nach Nummer.
+
+    Ein Buch, das die Antwort auslässt oder dessen Eintrag krumm ist, fehlt
+    einfach: es kostet nur sich selbst, nicht das Bündel. Ganz ohne lesbares
+    JSON scheitert das Bündel, aber sauber (``PortrayalUnavailable``).
+    """
+    data = _json_object(text)
+    if not isinstance(data, dict):
+        raise PortrayalUnavailable("Antwort ist kein JSON-Objekt")
+    portraits: dict[int, Portrait] = {}
+    for number in range(1, count + 1):
+        entry = data.get(str(number))
+        if not isinstance(entry, dict):
+            continue
+        try:
+            portraits[number] = parse_answer(json.dumps(entry, ensure_ascii=False), vocabulary)
+        except PortrayalUnavailable:
+            continue
+    return portraits

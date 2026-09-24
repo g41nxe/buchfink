@@ -41,7 +41,7 @@ from .evidence import gather as gather_evidence
 from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
-from .portrait import PortrayalUnavailable, VocabularyError, load_vocabulary
+from .portrait import VocabularyError, load_vocabulary
 from .portrayer import build_portrayer
 from .render import render_html, render_text
 from .seed import sow
@@ -314,7 +314,7 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         profile=profile,
         vocabulary=vocabulary,
         weights=weights,
-        portrayer=portrayer.portray_find if portrayer is not None else None,
+        portrayer=portrayer.portray_finds if portrayer is not None else None,
         threshold=weights.gate_stars,
         budget=settings.rating_budget,
         now=now,
@@ -661,13 +661,15 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
 
     now = datetime.now()
     distribution: dict[int, int] = {}
+    violations = 0
+    described = portrayer.portray_finds(finds)
     for observation in finds:
-        try:
-            portrait = portrayer.portray_find(observation)
-        except PortrayalUnavailable as exc:
-            print(f"  ohne Steckbrief  {observation.title[:52]} ({exc})")
+        portrait = described.get(observation.key)
+        if portrait is None:
+            print(f"  ohne Steckbrief  {observation.title[:52]}")
             continue
         store.put_portrait(subject_of(observation), portrait, now=now)
+        violations += len(portrait.violations)
         verdict = judge.verdict(portrait)
         if verdict is None:
             print(f"  unbekannt  {observation.title[:52]}")

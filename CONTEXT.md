@@ -473,7 +473,9 @@ The one place that asks a language model (*deutsch: das Modell*): a book goes in
 comes out. It holds the vocabulary, the instruction and the reading of the
 answer; how the text reaches the model — through the API with a key from the
 environment, or through the locally signed-in Claude Code installation — is its
-own business (#52). Without either it does not exist, and everything stays
+own business (#52). It describes several finds per call (up to eight, #66): the
+vocabulary and the rules go out once instead of once per book, and a book the
+answer skips or writes crookedly costs only itself. Without either it does not exist, and everything stays
 undescribed and is shown (ADR 7).
 
 ### Verdict

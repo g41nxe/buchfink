@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -32,7 +33,9 @@ from .portrait import (
     PortrayalUnavailable,
     Vocabulary,
     parse_answer,
+    parse_many,
     prompt,
+    prompt_many,
 )
 
 #: Voreinstellung: eine beschränkte Aufgabe gegen ein mitgeliefertes Vokabular,
@@ -61,6 +64,10 @@ CLI_DEFAULT_MODEL = "haiku"
 #: bis zu 2048 Tokens 24 s und ein bis zwei, mit unbegrenztem Denken 2 Minuten,
 #: 12 000 Ausgabe-Tokens und kaum besser.
 CLI_THINKING_TOKENS = 2048
+#: Wie viele Bücher in einen Aufruf gehen (#66). Ein Bündel legt Vokabular und
+#: Regeln (rund 5500 Tokens) einmal statt je Buch aufs Papier und spart den
+#: Prozessstart; dafür wächst die Antwort mit jedem Buch.
+BATCH_SIZE = 8
 #: Die eigene, kurze Anweisung ersetzt die von Claude Code selbst.
 CLI_SYSTEM_PROMPT = "Du antwortest ausschließlich mit dem verlangten JSON."
 
@@ -127,8 +134,10 @@ class CliChannel:
     thinking_tokens: int = CLI_THINKING_TOKENS
 
     def ask(self, text: str, max_tokens: int = MAX_TOKENS) -> str:
-        """``max_tokens`` steht nur der Form halber da: die CLI kennt keine
-        solche Grenze."""
+        """``max_tokens`` begrenzt die Antwort nicht (die CLI kennt keine solche
+        Grenze), bestimmt aber das Denkbudget: es gilt je Buch, also wächst es mit
+        der erwarteten Antwort — ein Bündel von acht braucht nicht dasselbe Budget
+        wie ein einzelnes Buch."""
         # Der Text geht über stdin, nicht als Argument: Windows begrenzt eine
         # Kommandozeile auf 32767 Zeichen. Python meldete das als
         # FileNotFoundError, woraus "claude nicht gefunden" wurde, und zwölf
@@ -147,7 +156,11 @@ class CliChannel:
             "--disable-slash-commands",
             "--no-session-persistence",
         ]
-        environment = {**os.environ, "MAX_THINKING_TOKENS": str(self.thinking_tokens)}
+        books = max(1, round(max_tokens / MAX_TOKENS))
+        environment = {
+            **os.environ,
+            "MAX_THINKING_TOKENS": str(self.thinking_tokens * books),
+        }
         # Kein Fenster: die Oberfläche holt einen Steckbrief im Hintergrund, und
         # unter Windows blitzte dabei jedes Mal eine Konsole auf.
         no_window = (
@@ -222,14 +235,16 @@ class Portrayer:
 
     channel: Channel
     vocabulary: Vocabulary
+    batch_size: int = BATCH_SIZE
 
     def portray(self, title: str, author: str | None, blurb: str | None) -> Portrait:
         """Einmal fragen, die Antwort lesen."""
         answer = self.channel.ask(prompt(title, author, blurb, self.vocabulary), MAX_TOKENS)
         return parse_answer(answer, self.vocabulary)
 
-    def portray_find(self, observation: Observation) -> Portrait:
-        """Einen Fund beschreiben (#48).
+    @staticmethod
+    def _book(observation: Observation) -> tuple[str, str | None, str | None]:
+        """Was das Modell von einem Fund zu sehen bekommt.
 
         Titel und Klappentext gehen mit; wo es sie gibt, auch der Originaltitel
         und die Schlagwörter (#17) — ein Buch, das das Modell nur unter dem
@@ -242,7 +257,39 @@ class Portrayer:
         if observation.keywords:
             keywords = f"Schlagwörter: {', '.join(observation.keywords)}"
             blurb = f"{blurb}\n{keywords}" if blurb else keywords
-        return self.portray(title, observation.author, blurb)
+        return title, observation.author, blurb
+
+    def portray_find(self, observation: Observation) -> Portrait:
+        """Einen Fund beschreiben (#48)."""
+        return self.portray(*self._book(observation))
+
+    def portray_finds(
+        self, observations: Sequence[Observation]
+    ) -> dict[tuple[str, str], Portrait]:
+        """Mehrere Funde beschreiben, bis zu ``batch_size`` je Aufruf (#66).
+
+        Zurück kommt der Steckbrief je Beobachtungs-Schlüssel. Was fehlt, ist
+        unbeschrieben geblieben: ein Bündel, das scheitert, kostet nur seine
+        Bücher, und ein Buch, das die Antwort auslässt oder krumm beschreibt,
+        nur sich selbst — nie mehr (ADR 7).
+        """
+        results: dict[tuple[str, str], Portrait] = {}
+        size = max(1, self.batch_size)
+        for start in range(0, len(observations), size):
+            chunk = list(observations[start : start + size])
+            try:
+                if len(chunk) == 1:
+                    results[chunk[0].key] = self.portray_find(chunk[0])
+                    continue
+                answer = self.channel.ask(
+                    prompt_many([self._book(o) for o in chunk], self.vocabulary),
+                    MAX_TOKENS * len(chunk),
+                )
+                for number, portrait in parse_many(answer, self.vocabulary, len(chunk)).items():
+                    results[chunk[number - 1].key] = portrait
+            except PortrayalUnavailable:
+                continue
+        return results
 
 
 def build_portrayer(model: str | None, vocabulary: Vocabulary) -> Portrayer | None:

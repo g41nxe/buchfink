@@ -22,7 +22,9 @@ from ebook_watchlist.portrait import (
     fingerprint,
     load_vocabulary,
     parse_answer,
+    parse_many,
     prompt,
+    prompt_many,
 )
 from ebook_watchlist.portrayer import Portrayer
 from ebook_watchlist.store import Store
@@ -431,3 +433,68 @@ def test_the_fingerprint_is_computed_once_per_vocabulary(monkeypatch) -> None:
     monkeypatch.setattr(type(wort), "prompt_text", lambda self: pytest.fail("neu gerechnet"))
 
     assert fingerprint(wort) == fingerprint(load_vocabulary())
+
+
+# --- mehrere Bücher in einem Aufruf (#66) --------------------------------------
+
+
+def test_a_batch_prompt_carries_the_vocabulary_once_and_every_book_numbered() -> None:
+    wort = load_vocabulary()
+
+    text = prompt_many([("Leopard", "Jo Nesbø", "Harry Hole."), ("Ein Titel", None, None)], wort)
+
+    assert text.count("--- VOKABULAR ---") == 1 and text.count(wort.prompt_text()) == 1
+    assert "--- BUCH 1 ---" in text and "--- BUCH 2 ---" in text
+    assert "Klappentext: Harry Hole." in text and "(nicht angegeben)" in text
+    assert "Es sind 2 Bücher" in text and '"bekannt": true' in text
+
+
+def test_a_batch_costs_far_less_than_the_same_books_one_by_one() -> None:
+    """Vokabular und Regeln gehen einmal raus statt je Buch (gemessen: rund 5500
+    der rund 6500 Tokens eines Prompts)."""
+    wort = load_vocabulary()
+    books = [(f"Titel {i}", "Wer", "Ein Klappentext.") for i in range(8)]
+
+    batched = len(prompt_many(books, wort))
+    single = sum(len(prompt(t, a, b, wort)) for t, a, b in books)
+
+    assert batched < single / 5
+
+
+def test_a_batch_prompt_does_not_change_the_fingerprint() -> None:
+    """Ein im Bündel angelegter Steckbrief gilt wie ein einzeln angelegter."""
+    wort = load_vocabulary()
+
+    prompt_many([("A", None, None)], wort)
+
+    assert fingerprint(wort) == fingerprint(load_vocabulary())
+
+
+def test_a_batch_answer_becomes_one_portrait_per_number() -> None:
+    wort = load_vocabulary()
+    answer = json.dumps({"1": LEOPARD, "2": {"bekannt": False}})
+
+    portraits = parse_many(answer, wort, 2)
+
+    assert portraits[1].known and portraits[1].original_title == "Panserhjerte"
+    assert not portraits[2].known
+
+
+def test_one_crooked_entry_costs_one_book_not_the_batch() -> None:
+    wort = load_vocabulary()
+    answer = json.dumps({"1": LEOPARD, "2": "kaputt", "3": {"bekannt": False}})
+
+    portraits = parse_many(answer, wort, 3)
+
+    assert sorted(portraits) == [1, 3]
+
+
+def test_a_book_the_answer_skips_is_simply_missing() -> None:
+    portraits = parse_many(json.dumps({"1": LEOPARD}), load_vocabulary(), 3)
+
+    assert sorted(portraits) == [1]
+
+
+def test_an_answer_without_json_fails_the_batch_but_raises_cleanly() -> None:
+    with pytest.raises(PortrayalUnavailable):
+        parse_many("Dazu kann ich nichts sagen.", load_vocabulary(), 2)

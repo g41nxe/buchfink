@@ -65,21 +65,27 @@ def first_seen(observation: Observation) -> Delta:
 class Portrayer:
     """Legt zu jedem Fund einen Steckbrief an — und merkt sich, wen er fragte."""
 
-    def __init__(self, vocabulary, terms=GOOD, *, error: Exception | None = None, known=True):
+    def __init__(self, vocabulary, terms=GOOD, *, error: Exception | None = None, known=True,
+                 skip=()):
         self.vocabulary, self.terms, self.error, self.known = vocabulary, terms, error, known
+        self.skip = set(skip)
         self.calls: list[Observation] = []
 
-    def __call__(self, observation: Observation) -> Portrait:
-        self.calls.append(observation)
+    def __call__(self, observations) -> dict[tuple[str, str], Portrait]:
+        self.calls.extend(observations)
         if self.error is not None:
             raise self.error
         traits = tuple(Trait(t, f"Satz zu {t}", "wissen") for t in self.terms)
-        return Portrait(
-            known=self.known,
-            fingerprint=fingerprint(self.vocabulary),
-            pitch="Ein Buch.",
-            traits=traits if self.known else (),
-        )
+        return {
+            o.key: Portrait(
+                known=self.known,
+                fingerprint=fingerprint(self.vocabulary),
+                pitch="Ein Buch.",
+                traits=traits if self.known else (),
+            )
+            for o in observations
+            if o.key not in self.skip
+        }
 
 
 def run(store, vocabulary, weights, deltas, portrayer, *, profile=PROFILE, budget=10, **kw):
@@ -474,3 +480,18 @@ def test_an_unreadable_vocabulary_is_counted_as_unrated_not_swallowed() -> None:
     report = gate.unrated_report(deltas)
 
     assert report.unrated == 1
+
+
+def test_a_book_the_answer_leaves_out_is_shown_and_counted(store, vocabulary, weights) -> None:
+    """Ein Bündel kostet nie mehr als seine ausgelassenen Bücher (#66): das eine
+    bleibt unbeschrieben und wird gezeigt, die übrigen sind beurteilt."""
+    left_out = first_seen(discovery(source_item_id="2"))
+    deltas = [first_seen(discovery(source_item_id="1")), left_out,
+              first_seen(discovery(source_item_id="3"))]
+    portrayer = Portrayer(vocabulary, POOR, skip=[left_out.current.key])
+
+    kept, report = run(store, vocabulary, weights, deltas, portrayer)
+
+    assert kept == [left_out]
+    assert (report.held_back, report.unrated, report.rated) == (2, 1, 2)
+    assert len(portrayer.calls) == 3  # ein Bündel, alle drei gefragt

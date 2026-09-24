@@ -235,3 +235,20 @@ Code.
 > Unbewertetes am Ende, und zeigt beides (Prozent und Sterne), bis #54 die
 > Anzeige entscheidet. `ebw rate` legt künftig die fehlenden Steckbriefe für
 > den Stapel an, statt Sterne zu vergeben.
+
+> **Nachtrag vom 25.09.2026: Steckbriefe werden gebündelt angefragt (#66), und
+> der Weg über `claude -p` läuft schlank (#52).** Gemessen an acht echten Funden
+> aus dem Stapel (Haiku): ein Steckbrief-Prompt hat rund 6500 Tokens, davon 5500
+> das feste Vokabular. Über die angemeldete Installation kostete der bloße
+> Aufruf zunächst 61 000 Eingabe-Tokens und 0,33 $ (Claude Codes eigene
+> Anweisung, Werkzeuge, MCP-Server), 34 Sekunden und ignorierte das
+> konfigurierte Modell. Mit eigener kurzer Anweisung, ohne Werkzeuge,
+> Einstellungen und MCP, mit dem konfigurierten Modell (voreingestellt Haiku) und
+> einem Denkbudget von 2048 Tokens sind es 10 800 Tokens, rund 22 Sekunden und
+> 0,03 $ je Buch. Bis zu **acht Bücher in einem Aufruf** kosten 79 Sekunden und
+> 0,08 $ statt rund 176 Sekunden und 0,24 $ einzeln; ein Buch, das die Antwort
+> auslässt oder krumm beschreibt, fehlt und bleibt unbeschrieben (ADR 7). Die
+> Regelverstöße im Steckbrief sind mit beiden Wegen ähnlich hoch (etwa jeder
+> zweite Steckbrief hat einen); sie stehen daneben und verwerfen nichts, und ihr
+> Senken ist ein eigenes Ticket (#69). Die Leseprobe wird nicht mehr geholt
+> (#68): der Steckbrief liest sie nicht, und die Funde im Stapel tragen keine.

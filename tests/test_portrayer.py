@@ -351,3 +351,100 @@ def test_a_find_is_described_with_its_original_title_and_keywords() -> None:
 def test_an_unreadable_answer_is_unavailable_not_guessed() -> None:
     with pytest.raises(PortrayalUnavailable):
         Portrayer(Recorder("gar kein JSON"), load_vocabulary()).portray("Titel", None, None)
+
+
+# --- mehrere Funde in einem Aufruf (#66) -----------------------------------------------
+
+
+def _find(number: int) -> Observation:
+    return Observation(
+        source="beam", source_item_id=str(number), title=f"Fund {number}", author="Wer",
+        match_reason=MatchReason.GENRE_CATEGORY, blurb="Ein Klappentext.",
+    )
+
+
+class BatchChannel:
+    """Antwortet auf ein Bündel mit ``{"bekannt": false}`` je Buch — außer dort, wo
+    die Antwort etwas anderes vorsieht."""
+
+    def __init__(self, fail_on=(), skip=()) -> None:
+        self.calls: list[tuple[str, int]] = []
+        self.fail_on, self.skip = set(fail_on), set(skip)
+
+    def ask(self, text: str, max_tokens: int = 2000) -> str:
+        self.calls.append((text, max_tokens))
+        if len(self.calls) in self.fail_on:
+            raise PortrayalUnavailable("kein Netz")
+        if "--- BUCH 1 ---" not in text:  # ein einzelnes Buch
+            return '{"bekannt": false}'
+        count = text.count("--- ENDE BUCH ")
+        return json.dumps({str(i): {"bekannt": False} for i in range(1, count + 1)
+                           if i not in self.skip})
+
+
+@needs_vocabulary
+def test_ten_finds_cost_three_calls_at_a_batch_size_of_four() -> None:
+    channel = BatchChannel()
+    portrayer = Portrayer(channel, load_vocabulary(), batch_size=4)
+    finds = [_find(n) for n in range(10)]
+
+    results = portrayer.portray_finds(finds)
+
+    assert len(channel.calls) == 3 and len(results) == 10
+    assert [max_tokens for _, max_tokens in channel.calls] == [8000, 8000, 4000]
+
+
+@needs_vocabulary
+def test_a_single_book_at_the_end_is_asked_the_ordinary_way() -> None:
+    channel = BatchChannel()
+
+    Portrayer(channel, load_vocabulary(), batch_size=4).portray_finds(
+        [_find(n) for n in range(5)]
+    )
+
+    text, max_tokens = channel.calls[-1]
+    assert "--- BUCH 1 ---" not in text and max_tokens == 2000
+
+
+@needs_vocabulary
+def test_a_failed_batch_costs_that_batch_and_no_more() -> None:
+    channel = BatchChannel(fail_on={2})
+    portrayer = Portrayer(channel, load_vocabulary(), batch_size=2)
+    finds = [_find(n) for n in range(6)]
+
+    results = portrayer.portray_finds(finds)
+
+    assert len(channel.calls) == 3
+    assert sorted(o.key[1] for o in finds if o.key in results) == ["0", "1", "4", "5"]
+
+
+@needs_vocabulary
+def test_a_book_the_batch_answer_skips_is_missing_from_the_result() -> None:
+    portrayer = Portrayer(BatchChannel(skip={2}), load_vocabulary(), batch_size=8)
+    finds = [_find(n) for n in range(3)]
+
+    results = portrayer.portray_finds(finds)
+
+    assert finds[1].key not in results and finds[0].key in results and finds[2].key in results
+
+
+@needs_vocabulary
+def test_an_empty_list_asks_nobody() -> None:
+    channel = BatchChannel()
+
+    assert Portrayer(channel, load_vocabulary()).portray_finds([]) == {}
+    assert channel.calls == []
+
+
+def test_the_thinking_budget_grows_with_the_batch(monkeypatch) -> None:
+    """Es gilt je Buch: acht Bücher mit dem Budget für eines würden flüchtig."""
+    seen: list[dict] = []
+    monkeypatch.setattr(
+        "ebook_watchlist.portrayer.subprocess.run",
+        lambda command, **kwargs: seen.append(kwargs["env"]) or _completed(stdout=ANSWER),
+    )
+
+    CliChannel().ask("Ein Buch", 2000)
+    CliChannel().ask("Acht Bücher", 16000)
+
+    assert [e["MAX_THINKING_TOKENS"] for e in seen] == ["2048", "16384"]

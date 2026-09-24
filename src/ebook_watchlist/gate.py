@@ -13,7 +13,7 @@ das Modell nicht kennt — wird gezeigt und nie zurückgehalten (ADR 7).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -98,7 +98,7 @@ def apply(
     profile: ReadingProfile | None,
     vocabulary: Vocabulary,
     weights: Weights,
-    portrayer: Callable[[Observation], Portrait] | None,
+    portrayer: Callable[[Sequence[Observation]], Mapping[tuple[str, str], Portrait]] | None,
     threshold: int,
     budget: int,
     now: datetime,
@@ -164,10 +164,16 @@ def apply(
             # verschöbe sonst die Antworten gegen die Bücher.
             fuller = {o.key: o for o in evidence(wanted)}
             described = [fuller.get(o.key, o) for o in wanted]
-        for observation, full in zip(wanted, described, strict=True):
-            try:
-                portrait = portrayer(full)
-            except PortrayalUnavailable:
+        # Alle auf einmal: der Steckbrief-Ersteller bündelt selbst (#66). Was er
+        # nicht liefert — ein gescheitertes Bündel, ein ausgelassenes Buch —,
+        # bleibt unbeschrieben und wird gezeigt.
+        try:
+            described_portraits = portrayer(described)
+        except PortrayalUnavailable:
+            described_portraits = {}
+        for observation in wanted:
+            portrait = described_portraits.get(observation.key)
+            if portrait is None:
                 continue
             subject = subject_of(observation)
             store.put_portrait(subject, portrait, now=now)
