@@ -32,7 +32,7 @@ from .config import (
 )
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
-from .covers import CoverStore, fetch_for_books, fetch_for_candidates
+from .covers import CoverStore, fetch_for_books, fetch_for_candidates, file_name
 from .diff import compute_deltas, keys_of, suppress_unseeded_interests
 from .digest import GateNote, build_digest
 from .dismissals import dismissed_books
@@ -573,9 +573,11 @@ def _fetch_suggestion_covers(
     if not offen:
         return
 
-    print(f"{len(offen)} Titelbilder …")
+    # Nur, was noch nicht daliegt, kostet eine Anfrage — und nur das heißt "geholt".
+    fehlend = [url for url in dict.fromkeys(offen) if not covers.has(file_name(url))]
+    print(f"{len(fehlend)} von {len(set(offen))} Titelbildern fehlen …")
     geholt = 0
-    for url in dict.fromkeys(offen):
+    for url in fehlend:
         try:
             if covers.fetch(client, url):
                 geholt += 1
