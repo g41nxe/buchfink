@@ -54,6 +54,15 @@ KEY_ENV = "ANTHROPIC_API_KEY"
 #: Werkzeug auf dem eigenen Rechner der naheliegende Weg.
 CLI_NAME = "claude"
 CLI_TIMEOUT = 300.0
+#: Der Alias, den die CLI auflöst: dasselbe kleine Modell wie auf dem API-Weg.
+CLI_DEFAULT_MODEL = "haiku"
+#: Wie viel das Modell vor der Antwort nachdenken darf. Gemessen an einem echten
+#: Fund (Haiku): ohne Denken 12 s und fünf Regelverstöße im Steckbrief, mit
+#: bis zu 2048 Tokens 24 s und ein bis zwei, mit unbegrenztem Denken 2 Minuten,
+#: 12 000 Ausgabe-Tokens und kaum besser.
+CLI_THINKING_TOKENS = 2048
+#: Die eigene, kurze Anweisung ersetzt die von Claude Code selbst.
+CLI_SYSTEM_PROMPT = "Du antwortest ausschließlich mit dem verlangten JSON."
 
 
 class Channel(Protocol):
@@ -114,6 +123,8 @@ class CliChannel:
 
     executable: str = CLI_NAME
     timeout: float = CLI_TIMEOUT
+    model: str = CLI_DEFAULT_MODEL
+    thinking_tokens: int = CLI_THINKING_TOKENS
 
     def ask(self, text: str, max_tokens: int = MAX_TOKENS) -> str:
         """``max_tokens`` steht nur der Form halber da: die CLI kennt keine
@@ -122,7 +133,21 @@ class CliChannel:
         # Kommandozeile auf 32767 Zeichen. Python meldete das als
         # FileNotFoundError, woraus "claude nicht gefunden" wurde, und zwölf
         # Bücher fielen mit dieser falschen Begründung aus dem Lauf.
-        command = [self.executable, "-p", "--output-format", "json"]
+        # Schlank: ohne die Anweisung, die Werkzeuge, die Einstellungen und die
+        # MCP-Server der angemeldeten Installation, und mit dem konfigurierten
+        # kleinen Modell. Der bloße Aufruf kostete gemessen rund 61 000
+        # Eingabe-Tokens und 0,33 $ je Buch, so 10 800 Tokens und 0,03 $.
+        command = [
+            self.executable, "-p", "--output-format", "json",
+            "--model", self.model,
+            "--tools", "",
+            "--system-prompt", CLI_SYSTEM_PROMPT,
+            "--strict-mcp-config",
+            "--setting-sources", "",
+            "--disable-slash-commands",
+            "--no-session-persistence",
+        ]
+        environment = {**os.environ, "MAX_THINKING_TOKENS": str(self.thinking_tokens)}
         # Kein Fenster: die Oberfläche holt einen Steckbrief im Hintergrund, und
         # unter Windows blitzte dabei jedes Mal eine Konsole auf.
         no_window = (
@@ -137,6 +162,7 @@ class CliChannel:
                 encoding="utf-8",
                 errors="replace",
                 timeout=self.timeout,
+                env=environment,
                 **no_window,
             )
         except FileNotFoundError as exc:
@@ -239,5 +265,7 @@ def build_portrayer(model: str | None, vocabulary: Vocabulary) -> Portrayer | No
         return Portrayer(ApiChannel(api_key=key, model=model or DEFAULT_MODEL), vocabulary)
     executable = shutil.which(CLI_NAME)
     if executable:
-        return Portrayer(CliChannel(executable=executable), vocabulary)
+        return Portrayer(
+            CliChannel(executable=executable, model=model or CLI_DEFAULT_MODEL), vocabulary
+        )
     return None

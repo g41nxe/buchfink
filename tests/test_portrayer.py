@@ -100,9 +100,47 @@ def test_the_prompt_reaches_the_cli_over_stdin(monkeypatch) -> None:
     CliChannel(executable="claude").ask("Blindflug von Peter Watts")
 
     command, text = seen[0]
-    assert command == ["claude", "-p", "--output-format", "json"]
+    assert command[:4] == ["claude", "-p", "--output-format", "json"]
     assert text == "Blindflug von Peter Watts"
     assert not any("Blindflug" in part for part in command)
+
+
+def test_the_cli_runs_lean_with_the_configured_model(monkeypatch) -> None:
+    """Gemessen am 24.09.2026 an einem echten Fund: der bloße Aufruf kostete
+    rund 61 000 Eingabe-Tokens (Claude Codes eigene Anweisung, Werkzeuge und die
+    MCP-Server der Leserin) und 0,33 $; mit eigener kurzer Anweisung, ohne
+    Werkzeuge, Einstellungen und MCP und mit Haiku waren es 10 800 Tokens und
+    0,03 $ — bei gleich guten Steckbriefen."""
+    seen: list[tuple[list[str], dict]] = []
+
+    def capture(command, **kwargs):
+        seen.append((command, kwargs))
+        return _completed(stdout=ANSWER)
+
+    monkeypatch.setattr("ebook_watchlist.portrayer.subprocess.run", capture)
+
+    CliChannel(executable="claude", model="haiku").ask("Frage")
+
+    command, kwargs = seen[0]
+    assert command[command.index("--model") + 1] == "haiku"
+    assert command[command.index("--tools") + 1] == ""
+    assert "--strict-mcp-config" in command and "--disable-slash-commands" in command
+    assert "--no-session-persistence" in command
+    assert command[command.index("--setting-sources") + 1] == ""
+    assert "--system-prompt" in command
+    assert kwargs["env"]["MAX_THINKING_TOKENS"] == "2048"
+
+
+def test_the_thinking_budget_can_be_turned_off(monkeypatch) -> None:
+    seen: list[dict] = []
+    monkeypatch.setattr(
+        "ebook_watchlist.portrayer.subprocess.run",
+        lambda command, **kwargs: seen.append(kwargs) or _completed(stdout=ANSWER),
+    )
+
+    CliChannel(thinking_tokens=0).ask("Frage")
+
+    assert seen[0]["env"]["MAX_THINKING_TOKENS"] == "0"
 
 
 def test_an_error_envelope_is_not_mistaken_for_an_answer() -> None:
@@ -235,6 +273,17 @@ def test_without_a_key_the_local_installation_is_used(monkeypatch) -> None:
 
     assert isinstance(portrayer.channel, CliChannel)
     assert portrayer.channel.executable == "/usr/bin/claude"
+    assert portrayer.channel.model == "haiku"
+
+
+@needs_vocabulary
+def test_the_configured_model_reaches_the_cli_too(monkeypatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr("ebook_watchlist.portrayer.shutil.which", lambda name: "/usr/bin/claude")
+
+    portrayer = build_portrayer("sonnet", load_vocabulary())
+
+    assert portrayer.channel.model == "sonnet"
 
 
 @needs_vocabulary
