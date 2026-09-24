@@ -302,16 +302,29 @@ nichts_erfinden: |
 # Die Werte sind Startwerte (Grill vom 23.09.2026, #44); sobald genug eigene
 # Urteile vorliegen, werden sie gelernt statt gesetzt.
 urteil_aus_merkmalen:
-  # Jede Facette ist ein eigener Grund, das Buch zu mögen; die Gründe werden
-  # als Noisy-OR verbunden und verstärken sich, ohne je 100 % zu erreichen.
+  # Jeder Grund, das Buch zu mögen, zählt für sich; die Gründe werden als
+  # Noisy-OR verbunden und verstärken sich, ohne je 100 % zu erreichen.
+  #
+  # Eine Facette — eine Kombination gemochter Merkmale, die mehrere geliebte
+  # Bücher gemeinsam tragen — zählt, wenn das Buch sie ganz trägt.
   facette_ganz: 0.8
-  facette_teilweise: 0.1
+  # Jedes gemochte Merkmal, das das Buch trägt, zählt schwach für sich
+  # (#64). 0,1 lässt jedes Urteil aus dem Versuch, wie es war; 0,15 hob
+  # "von allem ein bisschen" auf 3 Sterne.
+  merkmal_einzeln: 0.1
+  # Was die Leserin verstärkt hat (höchstens drei), bekommt diesen Aufschlag
+  # (24.09.2026): ein Merkmal 0,1 → 0,2, ein Erzählmuster 0,3 → 0,4. Ab 0,2
+  # Aufschlag käme "brutal, aber flache Figur" durchs Tor.
+  verstaerkt_aufschlag: 0.1
+  # Ein gemochtes Erzählmuster ist ein eigener Grund, nie Teil einer
+  # Facette (#63).
+  erzaehlmuster: 0.3
   # Nur das stärkste Gegengewicht zählt, und es zieht diesen Anteil ab.
   # Ablehnung wiegt beim Standardverfahren Rocchio etwa ein Fünftel der
   # Zustimmung.
   gegengewicht: 0.2
   # Ab welcher Übereinstimmung wie viele Sterne; darunter einer. Null Sterne
-  # gibt es nur, wenn keine Facette berührt ist und ein Gegengewicht trifft.
+  # gibt es nur, wenn nichts Gemochtes getroffen ist und ein Gegengewicht trifft.
   sterne_ab:
     5: 0.8
     4: 0.6

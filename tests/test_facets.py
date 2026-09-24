@@ -17,6 +17,7 @@ from conftest import needs_vocabulary
 from ebook_watchlist.facets import (
     Counterweight,
     Facet,
+    Liked,
     ProfileError,
     ReadingProfile,
     fit,
@@ -69,6 +70,12 @@ PROFIL = ReadingProfile(
         Counterweight(("leisurely",), books=("Herr der Ringe",)),
         Counterweight(("sad",), books=("Herr der Ringe",)),
     ),
+    # Gemocht ist, was die Leserin im Versuch angetippt hat: die Merkmale
+    # der Facetten. Jedes zählt auch für sich (#64).
+    liked=tuple(
+        Liked(f) for f in ("harsh", "brooding", "nerve_racking", "menacing", "funny",
+                           "likeable", "big_world", "intricate")
+    ),
 )
 
 
@@ -88,10 +95,12 @@ def gewichte():
 @pytest.mark.parametrize(
     ("buch", "prozent", "sterne"),
     [
-        (LEICHENBLAESSE, 96, 5),
-        (LEOPARD, 84, 5),
-        (CUPIDO, 82, 5),
-        (OTHERLAND, 64, 4),
+        # Seit #64 zählen gemochte Merkmale einzeln (0,1) statt als Teiltreffer
+        # einer Facette; jedes Urteil bleibt bei seinen Sternen.
+        (LEICHENBLAESSE, 97, 5),
+        (LEOPARD, 87, 5),
+        (CUPIDO, 85, 5),
+        (OTHERLAND, 67, 4),
         (DER_SCHWARM, 19, 1),
         (VON_ALLEM_EIN_BISSCHEN, 34, 2),
         (HERR_DER_RINGE, 8, 1),
@@ -139,9 +148,53 @@ def test_a_book_the_model_does_not_know_gets_no_judgement(wort, gewichte) -> Non
     assert fit(Portrait(known=False, fingerprint="x"), PROFIL, wort, gewichte) is None
 
 
-def test_without_facets_there_is_no_judgement(wort, gewichte) -> None:
+def test_without_a_profile_there_is_no_judgement(wort, gewichte) -> None:
     """Ohne Profil wird nicht geurteilt (ADR 33, Punkt 8)."""
     assert fit(LEOPARD, ReadingProfile(facets=(), counterweights=()), wort, gewichte) is None
+
+
+# --- gemochte Merkmale, verstärkt, und Erzählmuster (#63, #64) ---------------------
+
+
+def test_a_liked_term_counts_on_its_own(wort, gewichte) -> None:
+    """Ohne jede Facette: ein gemochtes Merkmal ist ein schwacher eigener Grund."""
+    profil = ReadingProfile(facets=(), counterweights=(), liked=(Liked("harsh"),))
+
+    assert round(fit(LEOPARD, profil, wort, gewichte).share, 2) == 0.1
+
+
+def test_a_boosted_term_counts_more(wort, gewichte) -> None:
+    profil = ReadingProfile(facets=(), counterweights=(), liked=(Liked("harsh", True),))
+
+    assert round(fit(LEOPARD, profil, wort, gewichte).share, 2) == 0.2
+
+
+def test_a_liked_story_pattern_is_a_reason_of_its_own(wort, gewichte) -> None:
+    """0,3, verstärkt 0,4 — und nie Teil einer Facette (#63)."""
+    buch = steckbrief("violent", "brooding", "pursuit")
+    gemocht = ReadingProfile(facets=(), counterweights=(), liked=(Liked("pursuit"),))
+    verstaerkt = ReadingProfile(facets=(), counterweights=(), liked=(Liked("pursuit", True),))
+
+    assert round(fit(buch, gemocht, wort, gewichte).share, 2) == 0.3
+    assert round(fit(buch, verstaerkt, wort, gewichte).share, 2) == 0.4
+
+
+def test_the_reason_names_liked_terms_and_patterns_outside_the_facets(wort, gewichte) -> None:
+    buch = steckbrief("violent", "brooding", "intricate", "pursuit")
+    profil = ReadingProfile(
+        facets=(Facet(("harsh", "brooding")),),
+        counterweights=(),
+        liked=(Liked("harsh"), Liked("brooding"), Liked("intricate", True), Liked("pursuit")),
+    )
+
+    marken = [(z.kind, z.text, z.boosted) for z in fit(buch, profil, wort, gewichte).reasons
+              if not z.detail]
+
+    assert marken == [
+        ("ganz", "hart · gezeichnete Figur", False),
+        ("merkmal", "verschachtelt", True),
+        ("muster", "Katz und Maus", False),
+    ]
 
 
 # --- Gegengewichte als Bündel ---------------------------------------------------
@@ -196,7 +249,8 @@ def test_the_reason_names_what_is_against(wort, gewichte) -> None:
 
 
 def test_the_weights_are_read_from_the_rating_scheme(gewichte) -> None:
-    assert (gewichte.full, gewichte.partial, gewichte.counterweight) == (0.8, 0.1, 0.2)
+    assert (gewichte.full, gewichte.single, gewichte.boost, gewichte.pattern,
+            gewichte.counterweight) == (0.8, 0.1, 0.1, 0.3, 0.2)
 
 
 # --- ein Profil aus einer Datei -------------------------------------------------
@@ -315,16 +369,20 @@ def test_a_malformed_entry_is_a_profile_error(tmp_path: Path, wort) -> None:
 
 def test_a_family_the_vocabulary_forgot_does_not_break_the_reason(wort, gewichte) -> None:
     """Die Familien sind ein Arbeitsstand; ein altes Profil bleibt lesbar."""
-    alt = ReadingProfile(facets=(Facet(("harsh", "gibtsnichtmehr")),), counterweights=())
+    alt = ReadingProfile(
+        facets=(Facet(("harsh", "gibtsnichtmehr")),),
+        counterweights=(),
+        liked=(Liked("harsh"), Liked("gibtsnichtmehr")),
+    )
 
     ergebnis = fit(LEOPARD, alt, wort, gewichte)
 
-    assert "zum Teil: hart" in [r.line for r in ergebnis.reasons]
+    assert "hart" in [r.line for r in ergebnis.reasons]
 
 
-def test_a_partial_hit_names_only_what_the_book_carries(wort, gewichte) -> None:
-    """Leopard ist verschachtelt, hat aber keine große Welt — die Zeile darf
-    das nicht behaupten."""
+def test_what_a_facet_only_partly_hits_counts_through_its_terms(wort, gewichte) -> None:
+    """Leopard ist verschachtelt, hat aber keine große Welt: kein Teiltreffer
+    der Facette mehr, sondern das gemochte Merkmal für sich (#64)."""
     texte = [r.text for r in fit(LEOPARD, PROFIL, wort, gewichte).reasons if not r.detail]
 
     assert "verschachtelt" in texte
@@ -362,7 +420,6 @@ TRAEGER = {
     "funny": {"R"},
     "likeable": {"R"},
 }
-GELIEBT = ["L", "O", "C", "K", "R"]
 
 
 def test_facets_come_from_families_the_same_books_carry() -> None:
@@ -372,10 +429,11 @@ def test_facets_come_from_families_the_same_books_carry() -> None:
         ["harsh", "brooding", "nerve_racking", "menacing", "funny", "likeable"], TRAEGER
     )
 
+    # Rosies witzig und nahbar trägt nur ein Buch — keine Facette mehr; sie
+    # zählen für sich (#64).
     assert [(f.families, f.books) for f in facetten] == [
         (("harsh", "brooding"), ("K", "L")),
         (("nerve_racking", "menacing"), ("C", "L")),
-        (("funny", "likeable"), ("R",)),
     ]
 
 
@@ -390,26 +448,21 @@ def test_not_only_identical_book_sets_form_a_facet() -> None:
     ]
 
 
-def test_a_single_family_comes_back_too_broad() -> None:
-    from ebook_watchlist.facets import MIN_FAMILIES, derive_facets
+def test_a_single_family_is_no_facet() -> None:
+    """Zählt für sich (#64), aber bündelt nichts."""
+    from ebook_watchlist.facets import derive_facets
 
     facetten = derive_facets(["harsh", "brooding", "thought_provoking"], TRAEGER)
 
-    einzeln = [f for f in facetten if len(f.families) < MIN_FAMILIES]
-    assert [f.families for f in einzeln] == [("thought_provoking",)]
+    assert [f.families for f in facetten] == [("harsh", "brooding")]
 
 
-def test_otherland_is_asked_with_the_answers_from_the_experiment() -> None:
-    """Die Antworten aus dem Versuch ließen *Otherland* in keiner Facette."""
-    from ebook_watchlist.facets import derive_facets, uncovered
+def test_one_book_alone_makes_no_facet() -> None:
+    """Eine Kombination aus einem Buch sagt mehr über das Buch als über den
+    Geschmack (24.09.2026)."""
+    from ebook_watchlist.facets import derive_facets
 
-    facetten = derive_facets(
-        ["harsh", "brooding", "nerve_racking", "menacing", "thought_provoking", "funny",
-         "likeable"],
-        TRAEGER,
-    )
-
-    assert uncovered(facetten, GELIEBT) == ["O"]
+    assert derive_facets(["quirky", "funny", "likeable"], TRAEGER) == []
 
 
 def test_the_strength_is_a_scale() -> None:
@@ -483,5 +536,39 @@ def test_a_family_of_one_book_does_not_grow_a_facet_of_that_book() -> None:
     assert [(f.families, f.books) for f in facetten] == [
         (("harsh", "brooding"), ("K", "L")),
         (("nerve_racking", "menacing"), ("C", "L")),
-        (("discovery",), ("L",)),
     ]
+
+
+
+# --- gemocht und verstärkt aus einer Datei und im Speicher ---------------------------
+
+
+def test_liked_and_boosted_can_be_read_from_a_file(tmp_path: Path, wort) -> None:
+    datei = _datei(tmp_path, "gemocht: [harsh, brooding, pursuit]\nverstaerkt: [harsh]\n")
+
+    profil = load_profile_file(datei, wort)
+
+    assert profil.liked == (Liked("harsh", True), Liked("brooding"), Liked("pursuit"))
+
+
+def test_no_more_than_three_are_boosted(tmp_path: Path, wort) -> None:
+    datei = _datei(tmp_path, (
+        "gemocht: [harsh, brooding, funny, likeable]\n"
+        "verstaerkt: [harsh, brooding, funny, likeable]\n"
+    ))
+
+    with pytest.raises(ProfileError, match="höchstens 3"):
+        load_profile_file(datei, wort)
+
+
+def test_only_what_is_liked_can_be_boosted(tmp_path: Path, wort) -> None:
+    datei = _datei(tmp_path, "gemocht: [harsh]\nverstaerkt: [funny]\n")
+
+    with pytest.raises(ProfileError, match="nicht gemocht"):
+        load_profile_file(datei, wort)
+
+
+def test_the_store_keeps_what_is_liked(store: Store) -> None:
+    store.put_reading_profile("test", PROFIL, cause="Test", now=NOW)
+
+    assert store.reading_profile("test").liked == PROFIL.liked

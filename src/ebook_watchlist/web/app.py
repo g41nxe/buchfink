@@ -131,9 +131,7 @@ OLD_ADDRESSES: dict[str, str] = {
 _SELECTED = Form(default=[])
 #: Je Liste ein eigener Marker: zwei Parameter mit demselben teilen sich
 #: sonst den Namen, und nur einer kommt an (#50).
-_FACETS = Form(default=[])
 _WEIGHTS = Form(default=[])
-_FAMILIES = Form(default=[])
 
 
 @dataclass(frozen=True, slots=True)
@@ -896,17 +894,21 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return RedirectResponse(f"/book/{book_id}#sharpening", status_code=303)
 
-    @app.post("/book/{book_id}/sharpen/facet")
-    def sharpen_facet(book_id: int, family: list[str] = _FAMILIES) -> RedirectResponse:
-        """Eine neue Facette aus Familien dieses Buchs."""
-        return _sharpen(book_id, lambda store, settings: sharpening.add_facet(
-            store, settings, book_id, family, now=datetime.now()))
+    @app.post("/book/{book_id}/sharpen/liked")
+    def sharpen_liked(
+        book_id: int, family: str = Form(...), on: str = Form("")
+    ) -> RedirectResponse:
+        """Ein Merkmal oder Erzählmuster dieses Buchs antippen — oder lösen."""
+        return _sharpen(book_id, lambda store, settings: sharpening.set_liked(
+            store, settings, book_id, family, on=on == "1", now=datetime.now()))
 
-    @app.post("/book/{book_id}/sharpen/decline")
-    def sharpen_decline(book_id: int, family: list[str] = _FAMILIES) -> RedirectResponse:
-        """Ein Vorschlag passt nicht und kommt nicht wieder."""
-        return _sharpen(book_id, lambda store, settings: sharpening.decline(
-            store, settings, family, now=datetime.now()))
+    @app.post("/book/{book_id}/sharpen/boost")
+    def sharpen_boost(
+        book_id: int, family: str = Form(...), on: str = Form("")
+    ) -> RedirectResponse:
+        """Ein gemochtes Merkmal verstärken — oder die Verstärkung zurücknehmen."""
+        return _sharpen(book_id, lambda store, settings: sharpening.set_boosted(
+            store, settings, book_id, family, on=on == "1", now=datetime.now()))
 
     @app.post("/book/{book_id}/sharpen/counterweight")
     async def sharpen_counterweight(request: Request, book_id: int) -> RedirectResponse:
@@ -1353,14 +1355,14 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/intake/profile")
-    def intake_adopt(
-        facet: list[str] = _FACETS, counterweight: list[str] = _WEIGHTS
-    ) -> RedirectResponse:
-        """Bestätigt wird die erste Fassung; alles abgewählt heißt neu anfangen."""
+    def intake_adopt(counterweight: list[str] = _WEIGHTS) -> RedirectResponse:
+        """Bestätigt wird die erste Fassung; nichts gemocht heißt neu anfangen.
+
+        Facetten wählt niemand aus: das Werkzeug bildet sie aus dem, was
+        angetippt ist (24.09.2026). Abwählen lassen sich die Gegengewichte.
+        """
         fassung = intake.adopt(
-            _store_for(paths.db_path()), load_settings(),
-            set(facet),
-            set(counterweight),
+            _store_for(paths.db_path()), load_settings(), set(counterweight),
             now=datetime.now(),
         )
         return RedirectResponse("/profile" if fassung else "/intake", status_code=303)

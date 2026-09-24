@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from conftest import needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
+from ebook_watchlist.facets import Liked
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import intake
@@ -336,35 +337,70 @@ def test_what_more_books_carry_ranks_higher(client, buecher) -> None:
     assert fragen.index('data-familie="harsh"') < fragen.index('data-familie="intricate"')
 
 
-def test_before_any_tap_no_book_is_asked_for_on_its_own(client, buecher) -> None:
-    """Ohne Antwort steckt jedes Buch in keiner Facette; die Abdeckung fragt
-    erst, wenn angetippt wurde — sonst stünde rechts wieder jedes Buch für sich."""
-    assert "data-abdeckung" not in client.get("/intake/common").text
-
-
 def test_a_tap_is_saved_and_the_profile_grows_below(client, db, buecher) -> None:
     tippen(client, "harsh")
     body = tippen(client, "brooding")
 
-    assert 'data-facette="harsh,brooding"' in body
+    assert 'data-facette="brooding,harsh"' in body
     assert {c.family_id for c in db.intake_choices(load_settings().slug)} == {"harsh", "brooding"}
 
 
-def test_a_single_family_shows_as_too_broad(client, buecher) -> None:
+def test_a_single_family_never_becomes_a_facet_on_its_own(client, buecher) -> None:
+    """Erst ein zweites geliebtes Buch macht aus einem Merkmal eine Facette
+    (#64) — allein zählt es nur als gemochtes Merkmal, nicht als Kombination."""
     body = tippen(client, "atmospheric")
 
-    assert "zu breit" in body
+    entwurf = body.split("data-entwurf", 1)[1]
+    assert "data-facette" not in entwurf
 
 
-def test_a_loved_book_in_no_facet_is_asked_for(client, buecher) -> None:
-    """Die Abdeckungsregel: Otherland steckt nach hart und gezeichneter Figur in
-    keiner Facette und wird mit allem gefragt, was es trägt."""
+def test_boosting_needs_a_tap_first(client, buecher) -> None:
+    antwort = client.post(
+        "/intake/choice", data={"side": "boost", "family": "harsh", "on": "1", "step": 3})
+
+    assert antwort.status_code == 400
+
+
+def test_at_most_three_are_boosted(client, buecher) -> None:
+    for familie in ("harsh", "brooding", "menacing", "atmospheric"):
+        tippen(client, familie)
+    for familie in ("harsh", "brooding", "menacing"):
+        tippen(client, familie, seite="boost")
+
+    vierte = client.post(
+        "/intake/choice", data={"side": "boost", "family": "atmospheric", "on": "1", "step": 3})
+
+    assert vierte.status_code == 400
+
+
+def test_unloving_a_family_also_unboosts(client, db, buecher) -> None:
     tippen(client, "harsh")
-    body = tippen(client, "brooding")
+    tippen(client, "harsh", seite="boost")
 
-    assert "data-abdeckung" in body
-    abdeckung = body.split("data-abdeckung", 1)[1].split("</aside>")[0]
-    assert "Otherland" in abdeckung and 'data-familie="intricate"' in abdeckung
+    tippen(client, "harsh", an=False)
+
+    wahl = db.intake_choices(load_settings().slug)
+    assert not any(c.side == "boost" and c.active for c in wahl)
+
+
+def test_a_boosted_family_shows_as_verstaerkt(client, buecher) -> None:
+    tippen(client, "harsh")
+    body = tippen(client, "harsh", seite="boost")
+
+    karte = body.split('data-karte="harsh"', 1)[1].split("</li>", 1)[0]
+    assert 'data-verstaerken="harsh"' in karte and "verstärkt" in karte
+
+
+def test_patterns_are_tappable_and_boostable_like_traits(client, buecher) -> None:
+    """„Und vergiss die Erzählmuster nicht": ein Erzählmuster zählt genauso als
+    eigener Grund und lässt sich genauso verstärken (24.09.2026)."""
+    tippen(client, "pursuit")
+    body = tippen(client, "pursuit", seite="boost")
+
+    karte = body.split('data-karte="pursuit"', 1)[1].split("</li>", 1)[0]
+    assert 'data-verstaerken="pursuit"' in karte and "verstärkt" in karte
+    # Erzählmuster bilden nie eine Facette (#63).
+    assert "data-facette" not in body.split("data-entwurf", 1)[1]
 
 
 def test_a_lost_family_a_loved_book_also_carries_asks_how_far(client, buecher) -> None:
@@ -397,24 +433,27 @@ def test_a_lost_family_no_loved_book_carries_counts_everywhere(client, buecher) 
 def test_adopting_saves_the_first_version_and_the_code_judges(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
+    tippen(client, "harsh", seite="boost")
     tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
 
-    antwort = client.post("/intake/profile",
-                          data={"facet": ["harsh,brooding"], "counterweight": ["leisurely|"]})
+    # Facetten wählt niemand aus — sie sind schon da, das Werkzeug hat sie
+    # aus dem Angetippten gebildet. Übernommen wird nur das Gegengewicht.
+    antwort = client.post("/intake/profile", data={"counterweight": ["leisurely|"]})
 
     profil = db.reading_profile(load_settings().slug)
     assert profil.version == 1
-    assert profil.facets[0].families == ("harsh", "brooding")
+    assert profil.facets[0].families == ("brooding", "harsh")
     assert profil.counterweights[0].families == ("leisurely",)
+    assert Liked("harsh", True) in profil.liked and Liked("brooding", False) in profil.liked
     assert "Dein Leseprofil" in antwort.text
     # Sofort geurteilt: Kruzifix Killer trifft die Facette ganz.
-    assert "Übereinstimmung mit deinen Facetten" in client.get(f"/book/{buecher['K']}").text
+    assert "Übereinstimmung mit deinem Leseprofil" in client.get(f"/book/{buecher['K']}").text
 
 
 def test_deselecting_everything_starts_over(client, db, buecher) -> None:
-    tippen(client, "harsh")
-    tippen(client, "brooding")
-
+    """Nichts angetippt und kein Gegengewicht gewählt: das gibt es nur, bevor
+    Bildschirm 3 überhaupt etwas angetippt wurde — danach lässt sich nur noch
+    das Gegengewicht abwählen, das Gemochte ändert sich auf Schritt 3."""
     antwort = client.post("/intake/profile", data={})
 
     assert db.reading_profile(load_settings().slug) is None
@@ -445,19 +484,12 @@ def test_frequent_families_go_last_only_with_a_neutral_stock(db, buecher) -> Non
 def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
-    client.post("/intake/profile", data={"facet": ["harsh,brooding"]})
+    client.post("/intake/profile", data={})
 
     body = client.get("/profile").text
 
     assert "Erstaufnahme beginnen" not in body and "data-leseprofil" in body
-    assert "hart · gezeichnete Figur" in body
-
-
-def test_the_coverage_asks_once_something_is_tapped(client, buecher) -> None:
-    tippen(client, "harsh")
-    body = tippen(client, "brooding")
-
-    assert "data-abdeckung" in body
+    assert "gezeichnete Figur · hart" in body
 
 
 def test_a_confirmed_book_can_be_removed_again(client, db, buecher) -> None:
@@ -492,23 +524,23 @@ def test_genre_scope_needs_a_genre(client, db, buecher) -> None:
     assert "große Welt" not in entwurf.split("Zählt gegen ein Buch")[-1].split("Nur an")[0]
 
 
-def test_adopting_goes_by_the_facet_not_its_position(client, db, buecher) -> None:
+def test_adopting_goes_by_the_counterweight_key_not_its_position(client, db, buecher) -> None:
     """Ändert sich der Entwurf zwischen Laden und Übernehmen, zählt, was die
     Leserin gesehen hat — nicht die Stelle, an der es damals stand."""
-    tippen(client, "harsh")
-    tippen(client, "brooding")
-    tippen(client, "menacing")
+    tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
 
-    client.post("/intake/profile", data={"facet": ["harsh,brooding,menacing"]})
+    client.post("/intake/profile", data={"counterweight": ["leisurely|"]})
 
     profil = db.reading_profile(load_settings().slug)
-    assert [f.families for f in profil.facets] == [("harsh", "brooding", "menacing")]
+    assert [c.families for c in profil.counterweights] == [("leisurely",)]
 
 
-def test_an_unknown_facet_key_is_ignored(client, db, buecher) -> None:
+def test_an_unknown_counterweight_key_is_ignored(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
 
-    client.post("/intake/profile", data={"facet": ["gibt,es,nicht"]})
+    client.post("/intake/profile", data={"counterweight": ["gibt,es,nicht|"]})
 
-    assert db.reading_profile(load_settings().slug) is None
+    profil = db.reading_profile(load_settings().slug)
+    assert profil.counterweights == ()
+    assert profil.facets[0].families == ("brooding", "harsh")

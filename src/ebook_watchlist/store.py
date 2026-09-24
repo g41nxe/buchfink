@@ -35,7 +35,7 @@ from .books import BookLike
 from .books import find as find_book
 from .cleaning import author_key, preferred_spelling
 from .dnb import Record
-from .facets import Counterweight, Facet, ReadingProfile
+from .facets import Counterweight, Facet, Liked, ReadingProfile
 from .migrations import migrate
 from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
@@ -423,23 +423,6 @@ class IntakeChoiceRow(Base):
     #: Nur bei ``lost``: ``general``, ``here`` oder ``genre``.
     scope: Mapped[str | None] = mapped_column(String, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-
-
-class DeclinedFacetRow(Base):
-    """Eine vorgeschlagene Facette, die die Leserin abgelehnt hat (#51).
-
-    Beim Nachschärfen schlägt das Werkzeug Familien vor, die mehrere gemochte
-    Bücher teilen. Wer "passt nicht" sagt, wird nicht bei jedem weiteren Buch
-    wieder gefragt. Kein Teil des Profils: es ändert keine Fassung.
-    """
-
-    __tablename__ = "declined_facet"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    profile_slug: Mapped[str] = mapped_column(String, index=True)
-    #: Die Familien-ids, sortiert und mit Komma verbunden.
-    families: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class BookRelationRow(Base):
@@ -1732,6 +1715,7 @@ class Store:
                 {"families": list(c.families), "genre": c.genre, "books": list(c.books)}
                 for c in profile.counterweights
             ],
+            "liked": [{"family": g.family, "boosted": g.boosted} for g in profile.liked],
         }
         # Lesen und Schreiben sind zwei Schritte; zwei gleichzeitige Anfragen
         # (ein Doppelklick auf "Übernehmen") greifen nach derselben Nummer. Die
@@ -1783,6 +1767,9 @@ class Store:
                         tuple(c["families"]), c.get("genre"), tuple(c.get("books") or ())
                     )
                     for c in body.get("counterweights") or ()
+                ),
+                liked=tuple(
+                    Liked(g["family"], bool(g.get("boosted"))) for g in body.get("liked") or ()
                 ),
                 version=row.version,
             )
@@ -1908,22 +1895,6 @@ class Store:
             ):
                 row.active = False
             session.commit()
-
-    def decline_facet(self, profile_slug: str, families: Iterable[str], *, now: datetime) -> None:
-        with self.session() as session:
-            session.add(DeclinedFacetRow(
-                profile_slug=profile_slug, families=",".join(sorted(families)), created_at=now
-            ))
-            session.commit()
-
-    def declined_facets(self, profile_slug: str) -> set[frozenset[str]]:
-        with self.session() as session:
-            return {
-                frozenset(row.families.split(","))
-                for row in session.scalars(
-                    select(DeclinedFacetRow).where(DeclinedFacetRow.profile_slug == profile_slug)
-                )
-            }
 
     def latest_portraits(self, fingerprint: str) -> dict[str, Portrait]:
         """Der jüngste Steckbrief je Gegenstand mit diesem Fingerabdruck.

@@ -1,14 +1,23 @@
 """Das Urteil kommt aus dem Code (#46, ADR 33).
 
-Ein Leseprofil besteht aus **Facetten** und **Gegengewichten**, beide Bündel aus
-Merkmalsfamilien. Wie gut ein Buch dazu passt, rechnet dieser Code aus dem
-Steckbrief des Buchs; kein Modell wird gefragt.
+Ein Leseprofil besteht aus **gemochten Merkmalen** (bis zu drei davon
+verstärkt), **gemochten Erzählmustern**, **Facetten** und **Gegengewichten**.
+Wie gut ein Buch dazu passt, rechnet dieser Code aus dem Steckbrief des Buchs;
+kein Modell wird gefragt.
 
-Jede Facette ist ein eigener Grund, das Buch zu mögen: ganz getroffen wiegt sie
-0,8, teilweise 0,1, und die Gründe werden als Noisy-OR verbunden — mehrere
-verstärken sich, ohne je Gewissheit zu erreichen, und halbe Gründe sammeln sich
-nicht zu einem ganzen. Das stärkste Gegengewicht zieht ein Fünftel ab. Die
-Werte stehen im Bewertungsschema (``urteil_aus_merkmalen``).
+Jeder Grund, das Buch zu mögen, zählt für sich, und die Gründe werden als
+Noisy-OR verbunden — mehrere verstärken sich, ohne je Gewissheit zu erreichen:
+
+- eine Facette, die das Buch ganz trägt: 0,8. Eine Facette ist eine
+  Kombination gemochter Merkmale, die mehrere geliebte Bücher gemeinsam tragen;
+  das Werkzeug bildet sie selbst (``derive_facets``), die Leserin bestätigt sie
+  nicht (24.09.2026).
+- jedes gemochte Merkmal, das das Buch trägt: 0,1 (#64); verstärkt 0,2.
+- jedes gemochte Erzählmuster: 0,3; verstärkt 0,4 (#63). Erzählmuster stecken
+  nie in einer Facette.
+
+Das stärkste Gegengewicht zieht ein Fünftel ab. Die Werte stehen im
+Bewertungsschema (``urteil_aus_merkmalen``).
 
 Ein Gegengewicht darf ein Genre enthalten, eine Facette nicht: im Gegengewicht
 grenzt es nur ein, was bestraft wird, in einer Facette grenzte es ein, was
@@ -17,8 +26,7 @@ gefunden wird (Nachtrag zu ADR 33).
     uv run python -m ebook_watchlist.facets profil.yaml
 
 liest ein Profil aus einer Datei ein. Der gewöhnliche Weg ist die
-Erstaufnahme (#50); aus deren Antworten leitet ``derive_facets`` die Facetten
-ab, und ``uncovered`` nennt die geliebten Bücher, die in keiner stecken.
+Erstaufnahme (#50).
 """
 
 from __future__ import annotations
@@ -26,7 +34,7 @@ from __future__ import annotations
 import math
 import re
 import sys
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -38,8 +46,11 @@ from .rating import SCHEME_PATH
 
 #: Wie viele Familien eine Facette mindestens braucht. Eine einzelne ist zu
 #: breit: im Versuch ließ "große Ideen" allein einen enttäuschenden
-#: Wissenschaftsthriller herein (#44).
+#: Wissenschaftsthriller herein (#44). Einzelne Merkmale zählen stattdessen
+#: schwach für sich (#64).
 MIN_FAMILIES = 2
+#: Wie viele Merkmale und Erzählmuster die Leserin höchstens verstärkt.
+MOST_BOOSTED = 3
 
 
 class ProfileError(Exception):
@@ -48,11 +59,11 @@ class ProfileError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class Facet:
-    """Eine benannte Art, wie ein Buch zur Leserin passt."""
+    """Eine Kombination gemochter Merkmale, die mehrere geliebte Bücher tragen."""
 
     #: Die ids der Merkmalsfamilien.
     families: tuple[str, ...]
-    #: Aus welchen geliebten Büchern sie stammt — für die Stärke und die Profilseite.
+    #: Aus welchen geliebten Büchern sie stammt — für die Stärke.
     books: tuple[str, ...] = ()
 
 
@@ -67,9 +78,20 @@ class Counterweight:
 
 
 @dataclass(frozen=True, slots=True)
+class Liked:
+    """Ein gemochtes Merkmal oder Erzählmuster — eine Familie, angetippt."""
+
+    family: str
+    #: Von der Leserin verstärkt (höchstens ``MOST_BOOSTED``).
+    boosted: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class ReadingProfile:
     facets: tuple[Facet, ...]
     counterweights: tuple[Counterweight, ...]
+    #: Die gemochten Merkmale und Erzählmuster, jedes für sich.
+    liked: tuple[Liked, ...] = ()
     #: Die Fassung, wie sie der Speicher vergeben hat; 0 für eines, das nicht
     #: aus dem Speicher kommt.
     version: int = 0
@@ -78,37 +100,44 @@ class ReadingProfile:
 @dataclass(frozen=True, slots=True)
 class Weights:
     full: float
-    partial: float
+    #: Ein gemochtes Merkmal, das das Buch trägt.
+    single: float
+    #: Was ein verstärktes Merkmal oder Erzählmuster dazubekommt.
+    boost: float
+    #: Ein gemochtes Erzählmuster.
+    pattern: float
     counterweight: float
     #: (Sterne, ab welcher Übereinstimmung), absteigend.
     stars_from: tuple[tuple[int, float], ...]
 
+    def liked(self, liked: Liked, pattern: bool) -> float:
+        return (self.pattern if pattern else self.single) + (self.boost if liked.boosted else 0)
+
 
 @dataclass(frozen=True, slots=True)
 class FacetHit:
-    facet: Facet
-    #: Welche ihrer Familien das Buch trägt.
-    hit: tuple[str, ...]
+    """Eine Facette, die das Buch ganz trägt."""
 
-    @property
-    def full(self) -> bool:
-        return len(self.hit) == len(self.facet.families)
+    facet: Facet
 
 
 @dataclass(frozen=True, slots=True)
 class Reason:
     """Eine Zeile der Begründung.
 
-    Knapp wie eine Marke, kein Satz: die Facette steht mit ihrem Namen da,
-    und ob sie ganz oder zum Teil trifft, sagt die Art der Zeile — das Bild
-    macht daraus ein Zeichen. Woher eine Facette stammt, steht nicht hier:
-    "wie Leichenblässe" unter einem Buch von Nesbø las sich wie ein Vergleich
-    der beiden Bücher, und den zieht niemand.
+    Knapp wie eine Marke, kein Satz: die Facette oder das Merkmal steht mit
+    seinem Namen da, und was es ist, sagt die Art der Zeile — das Bild macht
+    daraus ein Zeichen. Woher etwas stammt, steht nicht hier: "wie
+    Leichenblässe" unter einem Buch von Nesbø las sich wie ein Vergleich der
+    beiden Bücher, und den zieht niemand.
     """
 
-    #: ``ganz``, ``teils``, ``dagegen``, ``keine`` oder ``beleg``.
+    #: ``ganz`` (eine Facette), ``merkmal``, ``muster`` (ein Erzählmuster),
+    #: ``dagegen``, ``keine`` oder ``beleg``.
     kind: str
     text: str
+    #: Bei ``merkmal`` und ``muster``: von der Leserin verstärkt.
+    boosted: bool = False
 
     @property
     def detail(self) -> bool:
@@ -118,8 +147,8 @@ class Reason:
     @property
     def line(self) -> str:
         """Die Zeile als Text, ohne Bild."""
-        vorn = {"teils": "zum Teil: ", "dagegen": "dagegen: "}.get(self.kind, "")
-        return vorn + self.text
+        vorn = {"muster": "Erzählmuster: ", "dagegen": "dagegen: "}.get(self.kind, "")
+        return vorn + self.text + (" (verstärkt)" if self.boosted else "")
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,8 +159,10 @@ class Fit:
     share: float
     #: 0 bis 5; fasst zusammen.
     stars: int
-    #: Die berührten Facetten, die ganzen zuerst.
+    #: Die Facetten, die das Buch ganz trägt.
     hits: tuple[FacetHit, ...]
+    #: Die gemochten Merkmale und Erzählmuster, die es trägt.
+    liked: tuple[Liked, ...]
     #: Das Gegengewicht, das abgezogen wurde, oder keines.
     against: Counterweight | None
     #: Die Begründung, Zeile für Zeile.
@@ -145,7 +176,9 @@ def load_weights(path: Path | None = None) -> Weights:
     stufen = sorted(((int(s), float(ab)) for s, ab in teil["sterne_ab"].items()), reverse=True)
     return Weights(
         full=float(teil["facette_ganz"]),
-        partial=float(teil["facette_teilweise"]),
+        single=float(teil["merkmal_einzeln"]),
+        boost=float(teil["verstaerkt_aufschlag"]),
+        pattern=float(teil["erzaehlmuster"]),
         counterweight=float(teil["gegengewicht"]),
         stars_from=tuple(stufen),
     )
@@ -238,29 +271,39 @@ def family_names(families: Sequence[str], vocabulary: Vocabulary) -> str:
     return " · ".join(family_name(f, vocabulary) for f in families)
 
 
+def is_pattern(family_id: str, vocabulary: Vocabulary) -> bool:
+    """Ob eine Familie ein Erzählmuster ist — und nein, wenn es sie nicht mehr gibt."""
+    try:
+        return vocabulary.is_pattern(family_id)
+    except KeyError:
+        return False
+
+
 def fit(
     portrait: Portrait, profile: ReadingProfile, vocabulary: Vocabulary, weights: Weights
 ) -> Fit | None:
     """Wie gut das Buch passt — oder ``None``, wenn nicht geurteilt wird.
 
-    Nicht geurteilt wird ohne Facetten (ADR 33, Punkt 8) und über ein Buch, das
-    das Modell nicht kennt: ohne Merkmale hieße jedes Urteil "passt nicht", und
-    das wäre eine Behauptung, keine Auskunft.
+    Nicht geurteilt wird ohne Profil — weder Facetten noch Gemochtes (ADR 33,
+    Punkt 8) — und über ein Buch, das das Modell nicht kennt: ohne Merkmale
+    hieße jedes Urteil "passt nicht", und das wäre eine Behauptung, keine
+    Auskunft.
+
+    Teiltreffer einer Facette gibt es nicht mehr: was eine Facette zum Teil
+    trifft, zählt über ihre Merkmale einzeln (#64).
     """
-    if not profile.facets or not portrait.known:
+    if not (profile.facets or profile.liked) or not portrait.known:
         return None
     familien = families_of(portrait, vocabulary)
 
-    treffer = []
-    for facet in profile.facets:
-        getroffen = tuple(f for f in facet.families if f in familien)
-        if getroffen:
-            treffer.append(FacetHit(facet, getroffen))
-    treffer.sort(key=lambda t: (not t.full, -len(t.hit)))
+    treffer = [
+        FacetHit(facet) for facet in profile.facets if set(facet.families) <= familien
+    ]
+    gemocht = tuple(g for g in profile.liked if g.family in familien)
 
-    anteil = 1 - math.prod(
-        1 - (weights.full if t.full else weights.partial) for t in treffer
-    )
+    gruende = [weights.full] * len(treffer)
+    gruende += [weights.liked(g, is_pattern(g.family, vocabulary)) for g in gemocht]
+    anteil = 1 - math.prod(1 - g for g in gruende)
     dagegen = next(
         (
             c
@@ -281,22 +324,28 @@ def fit(
         share=anteil,
         stars=sterne,
         hits=tuple(treffer),
+        liked=gemocht,
         against=dagegen,
-        reasons=_reasons(treffer, dagegen, portrait, vocabulary),
+        reasons=_reasons(
+            treffer, gemocht, lambda f: is_pattern(f, vocabulary), dagegen, portrait, vocabulary
+        ),
     )
 
 
 def _reasons(
     treffer: list[FacetHit],
+    gemocht: Sequence[Liked],
+    muster: Callable[[str], bool],
     dagegen: Counterweight | None,
     portrait: Portrait,
     vocabulary: Vocabulary,
 ) -> tuple[Reason, ...]:
-    """Die Begründung aus Daten: welche Facette, und der Satz dazu.
+    """Die Begründung aus Daten: welche Facette, welches Merkmal, und der Satz dazu.
 
-    Facette und Gegengewicht sind gleich gebaut — eine Marke, darunter die
-    Sätze aus dem Steckbrief. Nur der Satz: die Familie steht schon in der
-    Marke, und zweimal derselbe Name ist keine zweite Auskunft.
+    Alles ist gleich gebaut — eine Marke, darunter die Sätze aus dem
+    Steckbrief. Nur der Satz: die Familie steht schon in der Marke, und zweimal
+    derselbe Name ist keine zweite Auskunft. Ein Merkmal, das schon in einer
+    getroffenen Facette steht, bekommt keine eigene Marke.
     """
 
     def belege(family_ids: Sequence[str]) -> list[Reason]:
@@ -317,15 +366,18 @@ def _reasons(
 
     zeilen: list[Reason] = []
     for t in treffer:
-        # Beim Teiltreffer nur, was das Buch trägt: "große Welt · verschachtelt"
-        # las sich bei Leopard, als hätte Harry Hole eine große Welt.
-        if t.full:
-            zeilen.append(Reason("ganz", family_names(t.facet.families, vocabulary)))
-        else:
-            zeilen.append(Reason("teils", family_names(t.hit, vocabulary)))
-        zeilen.extend(belege(t.hit))
-    if not treffer:
-        zeilen.append(Reason("keine", "keine Facette getroffen"))
+        zeilen.append(Reason("ganz", family_names(t.facet.families, vocabulary)))
+        zeilen.extend(belege(t.facet.families))
+    in_facetten = {f for t in treffer for f in t.facet.families}
+    # Verstärktes zuerst, dann Merkmale vor Erzählmustern.
+    for liked in sorted(gemocht, key=lambda g: (not g.boosted, muster(g.family))):
+        if liked.family in in_facetten:
+            continue
+        art = "muster" if muster(liked.family) else "merkmal"
+        zeilen.append(Reason(art, family_name(liked.family, vocabulary), liked.boosted))
+        zeilen.extend(belege((liked.family,)))
+    if not treffer and not gemocht:
+        zeilen.append(Reason("keine", "nichts Gemochtes getroffen"))
     if dagegen is not None:
         im_genre = f" (bei {dagegen.genre})" if dagegen.genre else ""
         zeilen.append(Reason("dagegen", family_names(dagegen.families, vocabulary) + im_genre))
@@ -333,9 +385,9 @@ def _reasons(
     return tuple(zeilen)
 
 
-#: Wie stark eine Facette belegt ist, als Skala statt als Zahl (#44): ein Buch
-#: ist schwach, ab vier sehr stark. Die Anzahl wird gemerkt, gezeigt wird das
-#: Wort. Die Zuordnung ist vorläufig.
+#: Wie stark etwas belegt ist, als Skala statt als Zahl (#44): ein Buch ist
+#: schwach, ab vier sehr stark. Die Anzahl wird gemerkt, gezeigt wird das
+#: Wort. Die Zuordnung ist vorläufig; #62 bringt die Ausprägung im Buch dazu.
 STRENGTHS = ("schwach", "mittel", "stark", "sehr stark")
 
 
@@ -346,74 +398,46 @@ def strength(books: int) -> str:
 def derive_facets(
     chosen: Sequence[str], carriers: Mapping[str, Collection[str]]
 ) -> list[Facet]:
-    """Facetten aus den Familien, die die Leserin bestätigt hat (#50).
+    """Facetten aus den gemochten Merkmalen — das Werkzeug bildet sie selbst.
 
-    Eine Facette sind Familien, die **dieselben Bücher gemeinsam tragen** —
-    nicht nur genau gleiche Buchmengen: "lebendiger Schauplatz" (drei Bücher)
-    und "große Ideen" (zwei davon) gehören zusammen, weil die zwei beide
-    tragen. Kandidaten sind die Buchmenge jeder Familie und jede Schnittmenge
-    zweier, die mindestens zwei Bücher hat; ein Kandidat, der in einem anderen
-    ganz aufgeht, fällt weg. Bücher werden nie paarweise verglichen, und es
-    gibt keine Schwelle für "ähnlich" (#44).
+    Eine Facette sind Merkmale, die **mehrere geliebte Bücher gemeinsam
+    tragen** — nicht nur genau gleiche Buchmengen: "lebendiger Schauplatz"
+    (drei Bücher) und "große Ideen" (zwei davon) gehören zusammen, weil die
+    zwei beide tragen. Kandidaten sind die Buchmenge jeder Familie und jede
+    Schnittmenge zweier, solange es mindestens zwei Bücher sind; ein Kandidat,
+    der in einem anderen ganz aufgeht, fällt weg. Bücher werden nie paarweise
+    verglichen, und es gibt keine Schwelle für "ähnlich" (#44).
 
-    Eine Facette aus einem einzigen Buch entsteht nur für ein Buch, das sonst
-    in keiner steckt — die Abdeckungsregel. Sonst machte jede Familie, die nur
-    ein Buch trägt, dieses Buch zur Kandidatenmenge, und alles Angetippte, was
-    es trägt, wüchse zu einer Facette zusammen (Erstaufnahme vom 24.09.2026).
-
-    Was in keiner Facette steckt, kommt als Facette aus einer einzigen Familie
-    zurück: zu breit, um zu zählen, aber sichtbar (``MIN_FAMILIES``).
+    Facetten aus einem einzigen Buch gibt es nicht: einzelne Merkmale zählen
+    für sich (#64), also braucht kein Buch eine eigene Facette, und eine
+    Kombination aus einem Buch sagte mehr über dieses Buch als über einen
+    Geschmack (24.09.2026). Erzählmuster gehören nie hinein (#63) — der
+    Aufrufer reicht nur Merkmale.
 
     ``carriers`` nennt je Familie die geliebten Bücher, die sie tragen.
     """
     familien = [f for f in dict.fromkeys(chosen) if carriers.get(f)]
     traeger = {f: frozenset(carriers[f]) for f in familien}
 
-    def buendel(kandidaten: set[frozenset]) -> list[tuple[frozenset, tuple[str, ...]]]:
-        mit = {
-            b: tuple(f for f in familien if b <= traeger[f]) for b in kandidaten if b
-        }
-        echte = [(b, f) for b, f in mit.items() if len(f) >= MIN_FAMILIES]
-        return [
-            (b, f)
-            for b, f in echte
-            if not any(
-                (b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in echte
-            )
-        ]
-
-    # Erst über mehrere Bücher: die Buchmenge jeder Familie und jede
-    # Schnittmenge zweier, solange es mindestens zwei Bücher sind.
-    mehrere = {traeger[f] for f in familien if len(traeger[f]) >= 2}
-    mehrere |= {
+    kandidaten = {traeger[f] for f in familien if len(traeger[f]) >= 2}
+    kandidaten |= {
         traeger[a] & traeger[b]
         for i, a in enumerate(familien)
         for b in familien[i + 1:]
         if len(traeger[a] & traeger[b]) >= 2
     }
-    echte = buendel(mehrere)
-    # Dann je Buch, das in keiner steckt, eine Facette aus ihm allein.
-    gedeckt = {buch for b, _ in echte for buch in b}
-    alle = {buch for f in familien for buch in traeger[f]}
-    echte += buendel({frozenset({buch}) for buch in sorted(alle - gedeckt)})
+    mit = {b: tuple(f for f in familien if b <= traeger[f]) for b in kandidaten}
+    echte = [(b, f) for b, f in mit.items() if len(f) >= MIN_FAMILIES]
+    echte = [
+        (b, f)
+        for b, f in echte
+        if not any((b2, f2) != (b, f) and set(f) <= set(f2) and b <= b2 for b2, f2 in echte)
+    ]
     # Fest geordnet: die breitesten zuerst, dann in der Reihenfolge, in der
     # ihre Familien angetippt wurden — Mengen haben keine Reihenfolge.
     stelle = {f: i for i, f in enumerate(familien)}
     echte.sort(key=lambda bf: (-len(bf[0]), min(stelle[f] for f in bf[1])))
-    drin = {f for _, fs in echte for f in fs}
-    einzeln = [(traeger[f], (f,)) for f in familien if f not in drin]
-    return [Facet(fs, tuple(sorted(b))) for b, fs in (*echte, *einzeln)]
-
-
-def uncovered(facets: Sequence[Facet], loved: Collection[str]) -> list[str]:
-    """Die geliebten Bücher, die in keiner Facette stecken, die zählt.
-
-    Die Abdeckungsregel (ADR 33, Punkt 6): jedes geliebte Buch muss am Ende in
-    einer Facette stecken. Im Versuch landete *Otherland* in keiner, und was
-    es eigentlich trägt, wurde nie gefragt (#44).
-    """
-    gedeckt = {b for f in facets if len(f.families) >= MIN_FAMILIES for b in f.books}
-    return [b for b in loved if b not in gedeckt]
+    return [Facet(fs, tuple(sorted(b))) for b, fs in echte]
 
 
 def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:
@@ -426,16 +450,19 @@ def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:
     if not isinstance(daten, dict):
         raise ProfileError(f"{path.name} enthält keine Facetten und Gegengewichte")
 
-    def familien(eintrag: object) -> tuple[str, ...]:
-        if not isinstance(eintrag, dict):
-            raise ProfileError(f"kein Eintrag mit familien: {eintrag!r}")
-        # Doppelt Genanntes zählt einmal: "hart, hart" ist keine zweite Familie.
-        ids = tuple(dict.fromkeys(str(f) for f in eintrag.get("familien") or []))
+    def pruefen(ids: Sequence[str]) -> None:
         for family_id in ids:
             try:
                 vocabulary.family(family_id)
             except KeyError:
                 raise ProfileError(f"keine solche Merkmalsfamilie: {family_id}") from None
+
+    def familien(eintrag: object) -> tuple[str, ...]:
+        if not isinstance(eintrag, dict):
+            raise ProfileError(f"kein Eintrag mit familien: {eintrag!r}")
+        # Doppelt Genanntes zählt einmal: "hart, hart" ist keine zweite Familie.
+        ids = tuple(dict.fromkeys(str(f) for f in eintrag.get("familien") or []))
+        pruefen(ids)
         return ids
 
     facetten = []
@@ -446,6 +473,14 @@ def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:
                 f"eine Facette braucht mindestens zwei Familien: {', '.join(ids) or '(leer)'}"
             )
         facetten.append(Facet(ids, tuple(str(b) for b in eintrag.get("buecher") or [])))
+
+    gemocht = list(dict.fromkeys(str(f) for f in daten.get("gemocht") or []))
+    verstaerkt = list(dict.fromkeys(str(f) for f in daten.get("verstaerkt") or []))
+    pruefen(gemocht)
+    if len(verstaerkt) > MOST_BOOSTED:
+        raise ProfileError(f"höchstens {MOST_BOOSTED} verstärkt, nicht {len(verstaerkt)}")
+    if fremd := [f for f in verstaerkt if f not in gemocht]:
+        raise ProfileError(f"verstärkt, aber nicht gemocht: {', '.join(fremd)}")
 
     gegen = []
     for eintrag in daten.get("gegengewichte") or []:
@@ -458,7 +493,11 @@ def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:
             genre=str(eintrag["genre"]) if eintrag.get("genre") else None,
             books=tuple(str(b) for b in eintrag.get("buecher") or []),
         ))
-    return ReadingProfile(facets=tuple(facetten), counterweights=tuple(gegen))
+    return ReadingProfile(
+        facets=tuple(facetten),
+        counterweights=tuple(gegen),
+        liked=tuple(Liked(f, f in verstaerkt) for f in gemocht),
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -481,8 +520,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     fassung = Store(paths.db_path()).put_reading_profile(
         settings.slug, profil, cause=f"aus der Datei {datei.name}", now=datetime.now()
     )
-    print(f"Profil gespeichert als Fassung {fassung}: {len(profil.facets)} Facetten, "
-          f"{len(profil.counterweights)} Gegengewichte.")
+    print(f"Profil gespeichert als Fassung {fassung}: {len(profil.liked)} gemocht, "
+          f"{len(profil.facets)} Facetten, {len(profil.counterweights)} Gegengewichte.")
     return 0
 
 

@@ -322,7 +322,7 @@
 <div class="mt-4" data-passung>
   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
     <span class="flex items-center gap-0.5 text-gold"
-          title="{{ page.fit.stars }} von 5 — aus deinen Facetten gerechnet">
+          title="{{ page.fit.stars }} von 5 — aus deinem Leseprofil gerechnet">
       {% for value in range(1, 6) %}
       <svg class="i" {% if value <= page.fit.stars %}style="fill:currentColor"{% endif %}>
         <use href="#ic-star"/></svg>
@@ -330,7 +330,7 @@
     </span>
     <span class="text-sm tabular-nums text-soft">
       <span class="font-semibold text-ink">{{ page.fit.stars }}</span>&nbsp;/&nbsp;5</span>
-    <span class="text-sm text-soft">Übereinstimmung mit deinen Facetten</span>
+    <span class="text-sm text-soft">Übereinstimmung mit deinem Leseprofil</span>
     <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft"
           title="gegen Fassung {{ page.fit.version }} deines Leseprofils"
           >{{ page.fit.percent }}&nbsp;%</span>
@@ -350,11 +350,17 @@
         data-facette="{{ zeile.kind }}">
       {# Eine Form für alle drei: Marke mit Zeichen und Name, dahinter ein
          leises Wort. Was sie unterscheidet, sagen Farbe, Zeichen und Wort. #}
+      {# Kombination, gemochtes Merkmal, Erzählmuster, Gegengewicht — eine
+         Form, Farbe und Wort sagen, was es ist. Verstärktes trägt den Stern. #}
       {% set art = {
-           "ganz": ("bg-accent/15 text-accent", "ic-check", "trifft"),
-           "teils": ("bg-hair text-ink", "ic-check", "zum Teil"),
+           "ganz": ("bg-accent/15 text-accent", "ic-check", "Kombination"),
+           "merkmal": ("bg-hair text-ink", "ic-heart", "gemocht"),
+           "muster": ("bg-hair text-ink", "ic-heart", "Erzählmuster"),
            "dagegen": ("bg-danger/10 text-danger", "ic-x", "spricht dagegen"),
          }.get(zeile.kind) %}
+      {% if art and zeile.boosted %}
+      {% set art = ("bg-amber/10 text-amber", "ic-star", art[2] ~ ", verstärkt") %}
+      {% endif %}
       {% if art %}
       <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold
                    {{ art[0] }}">

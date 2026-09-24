@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ..config import Settings
-from ..facets import STRENGTHS, family_names, strength
+from ..facets import STRENGTHS, family_name, family_names, is_pattern, strength
 from ..portrait import VocabularyError, load_vocabulary
 from ..rating import (
     LESEPROFIL_PATH,
@@ -102,6 +102,15 @@ class FacetLine:
 
 
 @dataclass(frozen=True, slots=True)
+class LikedLine:
+    """Ein gemochtes Merkmal oder Erzählmuster, wie die Profilseite es zeigt."""
+
+    name: str
+    pattern: bool
+    boosted: bool
+
+
+@dataclass(frozen=True, slots=True)
 class Overview:
     authors: tuple[Interest, ...]
     themen: tuple[Interest, ...]
@@ -122,6 +131,8 @@ class Overview:
     intake_named: int = 0
     facets: tuple[FacetLine, ...] = ()
     counterweights: tuple[FacetLine, ...] = ()
+    #: Die gemochten Merkmale und Erzählmuster, jedes für sich — verstärkt zuerst.
+    liked: tuple[LikedLine, ...] = ()
 
     @property
     def next_sweep(self) -> str:
@@ -195,7 +206,7 @@ def build(store: Store, settings: Settings) -> Overview:
     except RatingUnavailable:
         scheme = None
 
-    facetten, gegen = _facet_profile(store, settings)
+    facetten, gegen, liked = _facet_profile(store, settings)
 
     return Overview(
         authors=collect(InterestKey.AUTHOR),
@@ -214,6 +225,7 @@ def build(store: Store, settings: Settings) -> Overview:
         intake_named=len(store.intake_entries(settings.slug)),
         facets=facetten,
         counterweights=gegen,
+        liked=liked,
     )
 
 
@@ -221,11 +233,11 @@ def _facet_profile(store: Store, settings: Settings):
     """Das Leseprofil aus Facetten, lesbar gemacht — oder nichts."""
     profil = store.reading_profile(settings.slug)
     if profil is None:
-        return (), ()
+        return (), (), ()
     try:
         vocabulary = load_vocabulary()
     except VocabularyError:
-        return (), ()
+        return (), (), ()
     # Die Stärke ist abgeleitet, nicht gespeichert (#51, ADR 16): gezählt
     # werden die gemochten Bücher, die die Facette heute tragen. Gespeichert
     # sind nur die Bücher, aus denen sie entstand — sie zählen, solange ihr
@@ -246,4 +258,8 @@ def _facet_profile(store: Store, settings: Settings):
         FacetLine(family_names(c.families, vocabulary), c.books, genre=c.genre)
         for c in profil.counterweights
     )
-    return facetten, gegen
+    liked = tuple(
+        LikedLine(family_name(g.family, vocabulary), is_pattern(g.family, vocabulary), g.boosted)
+        for g in sorted(profil.liked, key=lambda g: not g.boosted)
+    )
+    return facetten, gegen, liked

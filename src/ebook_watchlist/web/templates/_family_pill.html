@@ -20,12 +20,16 @@
    Die Belege — je Buch der Satz aus dem Steckbrief — klappen darunter auf;
    nur dort stehen Bücher.
 
-   Erwartet: `k` (die Karte), `schritt`. #}
-{% macro familienkarte(k, schritt) %}
+   Wer ein Merkmal angetippt hat, kann es darunter verstärken — höchstens
+   drei (24.09.2026). Der Knopf steht nur an Angetipptem und ist aus, wenn
+   schon drei verstärkt sind.
+
+   Erwartet: `k` (die Karte), `schritt`, `kann_verstaerken`. #}
+{% macro familienkarte(k, schritt, kann_verstaerken) %}
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
-    x-data="{ belege: false }">
+    x-data="{ belege: false }" data-karte="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
         hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
     <input type="hidden" name="side" value="loved">
@@ -51,9 +55,94 @@
       </span>
     </button>
   </form>
-  <button type="button" @click="belege = !belege"
-          class="mx-4 mb-2 self-start text-xs text-soft underline decoration-rule
-                 underline-offset-2 hover:text-ink">Belege</button>
+  <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
+    <button type="button" @click="belege = !belege"
+            class="text-xs text-soft underline decoration-rule underline-offset-2
+                   hover:text-ink">Belege</button>
+    {% if p.on %}
+    <form method="post" action="/intake/choice" class="ml-auto"
+          hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
+      <input type="hidden" name="side" value="boost">
+      <input type="hidden" name="family" value="{{ p.family_id }}">
+      <input type="hidden" name="step" value="{{ schritt }}">
+      <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
+      <button type="submit" data-verstaerken="{{ p.family_id }}"
+              aria-pressed="{{ 'true' if p.boosted else 'false' }}"
+              {% if not p.boosted and not kann_verstaerken %}disabled
+              title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
+              class="tun inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
+                     disabled:cursor-not-allowed disabled:opacity-40
+                     {{ 'border-amber bg-amber/10 text-amber' if p.boosted
+                        else 'border-rule text-soft hover:border-amber hover:text-amber' }}">
+        <svg class="i" {% if p.boosted %}style="fill:currentColor"{% endif %}>
+          <use href="#ic-star"/></svg>{{ "verstärkt" if p.boosted else "verstärken" }}</button>
+    </form>
+    {% endif %}
+  </div>
+  <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+    {% for titel, satz in k.evidence %}
+    <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>
+    {% endfor %}
+  </ul>
+</li>
+{% endmacro %}
+
+{# Ein Merkmal oder Erzählmuster beim Nachschärfen (#51, 24.09.2026).
+
+   Dieselbe Karte wie bei der Erstaufnahme, nur dass ein Tipp sofort zählt —
+   es ändert ein fertiges Profil, keinen Entwurf — und Formular und Ziel auf
+   dieses eine Buch zeigen.
+
+   Erwartet: `k` (die Karte), `book_id`, `kann_verstaerken`. #}
+{% macro nachschaerfenkarte(k, book_id, kann_verstaerken) %}
+{% set p = k.pill %}
+{% set basis = "/book/" ~ book_id ~ "/sharpen" %}
+<li class="flex flex-col rounded-lg border transition
+           {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
+    x-data="{ belege: false }" data-karte="{{ p.family_id }}">
+  <form method="post" action="{{ basis }}/liked" class="flex-1">
+    <input type="hidden" name="family" value="{{ p.family_id }}">
+    <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
+    <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
+            data-familie="{{ p.family_id }}"
+            class="tun block h-full w-full px-4 pt-3 pb-2 text-left">
+      <span class="flex items-center gap-1.5 text-sm font-semibold
+                   {{ 'text-accent' if p.on else 'text-ink' }}">
+        <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-heart"/></svg>
+        {{ p.name }}
+      </span>
+      <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
+      <span class="mt-2 flex items-center gap-2 text-xs text-soft"
+            aria-label="Stärke: {{ k.strength }}">
+        <span class="inline-flex gap-0.5">
+          {% for i in range(1, 5) %}
+          <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= k.level else 'bg-hair' }}"></i>
+          {% endfor %}
+        </span>{{ k.strength }}
+      </span>
+    </button>
+  </form>
+  <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
+    <button type="button" @click="belege = !belege"
+            class="text-xs text-soft underline decoration-rule underline-offset-2
+                   hover:text-ink">Belege</button>
+    {% if p.on %}
+    <form method="post" action="{{ basis }}/boost" class="ml-auto">
+      <input type="hidden" name="family" value="{{ p.family_id }}">
+      <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
+      <button type="submit" data-verstaerken="{{ p.family_id }}"
+              aria-pressed="{{ 'true' if p.boosted else 'false' }}"
+              {% if not p.boosted and not kann_verstaerken %}disabled
+              title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
+              class="tun inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
+                     disabled:cursor-not-allowed disabled:opacity-40
+                     {{ 'border-amber bg-amber/10 text-amber' if p.boosted
+                        else 'border-rule text-soft hover:border-amber hover:text-amber' }}">
+        <svg class="i" {% if p.boosted %}style="fill:currentColor"{% endif %}>
+          <use href="#ic-star"/></svg>{{ "verstärkt" if p.boosted else "verstärken" }}</button>
+    </form>
+    {% endif %}
+  </div>
   <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
     {% for titel, satz in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>

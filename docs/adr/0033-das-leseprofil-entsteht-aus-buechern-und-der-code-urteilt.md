@@ -150,3 +150,32 @@ Code.
 > Meiden-Probe: Gibt es Leser:innen, die genau dieses Muster meiden? Die
 > Abwägung der Quellen steht in `vocabulary/story-pattern-vocabularies.md` (nicht in Git, #59);
 > ungeklärt ist die Lizenz der NoveList-Bezeichnungen.
+
+> **Nachtrag vom 24.09.2026: Facetten bildet das Werkzeug selbst, gefragt wird
+> nur nach einzelnen Merkmalen.** Punkt 6 ließ die Leserin Facetten bestätigen;
+> im Test verstand niemand, was "gezeichnete Figur · Rätsel" heißt, ohne die
+> Merkmale einzeln zu kennen, und die Gruppierung nach Buch ("Weil du A und B
+> mochtest") las sich wie ein Vergleich der Bücher, nicht wie eine Auskunft
+> über Geschmack. Die Erstaufnahme zeigt jetzt **alle** Merkmale und
+> Erzählmuster der geliebten Bücher als eine gerankte Liste, ohne Gruppierung.
+> Die Leserin tippt an, was für sie zählt, und verstärkt davon bis zu
+> `MOST_BOOSTED` (drei). Facetten — mindestens zwei angetippte Merkmale, die
+> mehrere geliebte Bücher gemeinsam tragen — bildet der Code aus den
+> angetippten Merkmalen **automatisch und unsichtbar**; die Leserin bestätigt
+> keine Facette und wird auch nicht danach gefragt. Erzählmuster stecken nie
+> in einer Facette (#63) — sie zählen immer für sich.
+>
+> **Ein einzelnes angetipptes Merkmal zählt schwach für sich** (#64), auch
+> ohne dass es mit einem anderen geliebten Buch eine Facette bildet: 0,1,
+> verstärkt 0,2. Ein Erzählmuster zählt stärker — 0,3, verstärkt 0,4 — weil der
+> Versuch zeigte, dass ein gemeinsames Erzählmuster mehr über den Geschmack
+> sagt als ein einzelnes Merkmal (#44). Teiltreffer einer Facette gibt es
+> dafür nicht mehr: was eine Facette nur zum Teil trifft, zählt über seine
+> einzelnen Merkmale, nicht über die Facette. `docs/bewertungsschema.yaml`
+> trägt diese Werte jetzt als `merkmal_einzeln`, `verstaerkt_aufschlag` und
+> `erzaehlmuster`; `facette_teilweise` entfällt.
+>
+> Nachschärfen läuft seither gleich: ein *Mag ich*-Buch zeigt seine eigenen
+> Merkmale und Erzählmuster zum Antippen und Verstärken, keine Vorschläge und
+> kein "passt nicht" mehr — die Facetten rechnet der Code nach jeder Änderung
+> aus allen gemochten Merkmalen neu.

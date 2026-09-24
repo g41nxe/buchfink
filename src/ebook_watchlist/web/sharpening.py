@@ -5,16 +5,15 @@ Profil gehalten — im Moment, in dem sie das Buch vor Augen hat. Nie
 *Ausschließen*, nie die eigenen Sterne: das eine ist eine Anweisung an den
 Stapel, das andere eine Anzeige.
 
-Still geht nur das Bestärken: trägt ein gemochtes Buch eine Facette ganz, wird
-sie stärker, und die Stärke ist abgeleitet, nicht gespeichert (ADR 16). Alles
-Neue wird gefragt, im Muster der Erstaufnahme:
+Ein gemochtes Buch zeigt seine eigenen Merkmale und Erzählmuster als Karten,
+im selben Bild wie Bildschirm 3 der Erstaufnahme: antippen zählt das Merkmal
+zu den gemochten, bis zu drei lassen sich verstärken. Die Facetten bildet das
+Werkzeug aus allen gemochten Merkmalen neu — nie aus Erzählmustern (#63) — und
+bestätigt sie nicht eigens (24.09.2026).
 
-- ein gemochtes Buch, das keine Facette ganz trifft — was hält dich daran?
-- Familien, die es mit anderen gemochten Büchern teilt und die noch keine
-  Facette sind — eine neue Facette?
-- bei einem *Doof*-Buch: was dich verloren hat, als Gegengewicht, mit der
-  Nachfrage, wenn ein gemochtes Buch dasselbe trägt. Trifft es eine Facette
-  ganz, bleibt die Facette, wie sie ist.
+Bei einem *Doof*-Buch bleibt es wie zuvor: was es verloren hat, wird als
+Gegengewicht angeboten, mit der Nachfrage, wenn ein gemochtes Buch dasselbe
+trägt. Trifft es eine Facette ganz, bleibt die Facette, wie sie ist.
 
 Hinzugefügt wird nur über Bücher, nie über freie Eingabe. Jede Änderung ist
 eine neue Fassung mit dem Buch als Anlass; danach urteilt der Code neu, ohne
@@ -29,13 +28,15 @@ from datetime import datetime
 
 from ..config import Settings
 from ..facets import (
-    MIN_FAMILIES,
+    MOST_BOOSTED,
     Facet,
+    Liked,
     ReadingProfile,
     ScopeError,
     derive_facets,
     family_name,
     family_names,
+    is_pattern,
     merge_counterweights,
     scoped_counterweight,
     strength,
@@ -44,36 +45,21 @@ from ..portrait import VocabularyError, fingerprint, load_vocabulary
 from ..relations import RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait
-from .intake import IntakeError, ShelfBook, shelf_book
+from .intake import Card, IntakeError, Pill, ShelfBook, shelf_book
 
 LIKED, DISLIKED = str(RelationKind.LIKED), str(RelationKind.DISLIKED)
 
 
 @dataclass(frozen=True, slots=True)
-class Strengthened:
-    """Eine Facette, die dieses Buch still bestärkt."""
-
-    name: str
-    strength: str
-
-
-@dataclass(frozen=True, slots=True)
 class Family:
+    """Ein Merkmal oder Erzählmuster eines *Doof*-Buchs (Nachfrage nach dem
+    Gegengewicht)."""
+
     family_id: str
     name: str
     pattern: bool
-    #: Welche gemochten Bücher sie auch tragen — bei einem Doof-Buch der Anlass
-    #: für die Nachfrage.
+    #: Welche gemochten Bücher es auch tragen — der Anlass für die Nachfrage.
     also_in: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class Suggestion:
-    """Eine neue Facette aus Familien, die mehrere gemochte Bücher teilen."""
-
-    families: tuple[str, ...]
-    name: str
-    books: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,10 +70,9 @@ class Sharpening:
     waiting: bool = False
     #: Das Modell kennt das Buch nicht; es trägt nichts bei.
     unknown: bool = False
-    strengthened: tuple[Strengthened, ...] = ()
-    #: Gemocht, aber in keiner Facette: alles, was es trägt.
-    uncovered: tuple[Family, ...] = ()
-    suggestions: tuple[Suggestion, ...] = ()
+    #: Bei *Mag ich*: die Merkmale und Erzählmuster dieses Buchs, gerankt.
+    cards: tuple[Card, ...] = ()
+    can_boost: bool = True
     #: Doof, trifft aber eine Facette ganz: die bleibt.
     kept: tuple[str, ...] = ()
     lost: tuple[Family, ...] = ()
@@ -135,18 +120,17 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
             return Sharpening(kind, buch.title, unknown=True)
         return Sharpening(kind, buch.title, waiting=True)
 
-    gemocht = liked_shelf(store, settings, vocabulary)
-    andere = [b for b in gemocht if b.book_id != book_id]
-    ganz = [f for f in profil.facets if set(f.families) <= set(ich.families)]
-
-    def familie(f: str) -> Family:
-        return Family(
-            f, family_name(f, vocabulary), vocabulary.is_pattern(f),
-            tuple(b.title for b in carried_by((f,), andere)),
-        )
-
     if kind == DISLIKED:
+        gemocht = liked_shelf(store, settings, vocabulary)
+        ganz = [f for f in profil.facets if set(f.families) <= set(ich.families)]
         schon = {(c.families, c.genre) for c in profil.counterweights}
+
+        def familie(f: str) -> Family:
+            return Family(
+                f, family_name(f, vocabulary), vocabulary.is_pattern(f),
+                tuple(b.title for b in carried_by((f,), gemocht)),
+            )
+
         return Sharpening(
             kind, buch.title,
             kept=tuple(family_names(f.families, vocabulary) for f in ganz),
@@ -154,47 +138,28 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
             genre=ich.genre,
         )
 
+    gemocht = liked_shelf(store, settings, vocabulary)
+    an = {g.family for g in profil.liked}
+    verstaerkt = {g.family for g in profil.liked if g.boosted}
+    rang = sorted(ich.families, key=lambda f: (-len(carried_by((f,), gemocht)),
+                                                family_name(f, vocabulary).casefold()))
+
+    def karte(f: str) -> Card:
+        begriff = ich.terms.get(f)
+        traeger = carried_by((f,), gemocht)
+        return Card(
+            Pill(f, family_name(f, vocabulary), vocabulary.is_pattern(f), False, f in an,
+                 boosted=f in verstaerkt),
+            vocabulary.terms[begriff].description if begriff else "",
+            strength(len(traeger)),
+            tuple((b.title, b.families[f]) for b in traeger),
+        )
+
     return Sharpening(
         kind, buch.title,
-        strengthened=tuple(
-            Strengthened(family_names(f.families, vocabulary),
-                         strength(len(carried_by(f.families, gemocht))))
-            for f in ganz
-        ),
-        uncovered=() if ganz else tuple(familie(f) for f in ich.families),
-        suggestions=_suggestions(store, settings, profil, ich, andere, vocabulary),
+        cards=tuple(karte(f) for f in rang),
+        can_boost=len(verstaerkt) < MOST_BOOSTED,
     )
-
-
-def _suggestions(store, settings, profil, ich, andere, vocabulary) -> tuple[Suggestion, ...]:
-    """Familien, die dieses Buch mit anderen gemochten Büchern teilt und die
-    zusammen noch keine Facette sind — abgeleitet wie in der Erstaufnahme.
-
-    Nur aus Familien, die noch in keiner Facette stecken: "hart · gezeichnete
-    Figur" und zwei Familien obendrauf wäre dieselbe Facette, nur enger, und
-    keine neue Auskunft über den Geschmack.
-    """
-    belegt = {f for facet in profil.facets for f in facet.families}
-    geteilt = [f for f in ich.families if f not in belegt and carried_by((f,), andere)]
-    traeger = {f: [b.key for b in carried_by((f,), [ich, *andere])] for f in geteilt}
-    titel = {b.key: b.title for b in [ich, *andere]}
-    vorhanden = [set(f.families) for f in profil.facets]
-    abgelehnt = store.declined_facets(settings.slug)
-    vorschlaege = []
-    for f in derive_facets(geteilt, traeger):
-        familien = set(f.families)
-        if (
-            len(familien) < MIN_FAMILIES
-            or ich.key not in f.books
-            or any(familien <= v for v in vorhanden)
-            or frozenset(familien) in abgelehnt
-        ):
-            continue
-        vorschlaege.append(Suggestion(
-            f.families, family_names(f.families, vocabulary),
-            tuple(titel[k] for k in f.books),
-        ))
-    return tuple(vorschlaege)
 
 
 def _book(store: Store, settings: Settings, book_id: int, kind: str):
@@ -210,29 +175,72 @@ def _book(store: Store, settings: Settings, book_id: int, kind: str):
     return ich, vocabulary
 
 
-def add_facet(
-    store: Store, settings: Settings, book_id: int, families: Collection[str], *, now: datetime
-) -> int | None:
-    """Eine neue Facette aus Familien dieses Buchs — nie aus freier Eingabe."""
-    ich, vocabulary = _book(store, settings, book_id, LIKED)
-    gewaehlt = tuple(f for f in ich.families if f in set(families))
-    if len(gewaehlt) < MIN_FAMILIES:
-        raise IntakeError("Eine Facette braucht mindestens zwei Familien.")
-    profil = store.reading_profile(settings.slug)
-    if any(set(gewaehlt) == set(f.families) for f in profil.facets):
-        return None
+def _facets_from(
+    store: Store, settings: Settings, vocabulary, liked: tuple[Liked, ...]
+) -> tuple[Facet, ...]:
+    """Die Facetten aus allen gemochten Merkmalen neu gebildet — nie aus
+    Erzählmustern (#63). Das Werkzeug bildet sie selbst; bestätigt wird nichts."""
     gemocht = liked_shelf(store, settings, vocabulary)
-    neu = Facet(gewaehlt, tuple(b.title for b in carried_by(gewaehlt, gemocht)))
+    merkmale = [g.family for g in liked if not is_pattern(g.family, vocabulary)]
+    traeger: dict[str, list[str]] = {}
+    titel: dict[str, str] = {}
+    for b in gemocht:
+        titel[b.key] = b.title
+        for f in b.families:
+            traeger.setdefault(f, []).append(b.key)
+    return tuple(
+        Facet(f.families, tuple(titel[k] for k in f.books))
+        for f in derive_facets(merkmale, traeger)
+    )
+
+
+def set_liked(
+    store: Store, settings: Settings, book_id: int, family_id: str, *, on: bool, now: datetime
+) -> int | None:
+    """Antippen: die Familie zählt jetzt zu den gemochten Merkmalen oder
+    Erzählmustern — oder nicht mehr. Wer eine Familie wieder löst, löst auch
+    ihre Verstärkung. Die Facetten werden aus allem Gemochten neu gebildet."""
+    ich, vocabulary = _book(store, settings, book_id, LIKED)
+    if family_id not in ich.families:
+        raise IntakeError(f"{family_id} trägt dieses Buch nicht.")
+    profil = store.reading_profile(settings.slug)
+    boost = {g.family: g.boosted for g in profil.liked}
+    if on:
+        if family_id in boost:
+            return None
+        boost[family_id] = False
+    else:
+        if family_id not in boost:
+            return None
+        del boost[family_id]
+    neu = tuple(Liked(f, b) for f, b in boost.items())
+    facetten = _facets_from(store, settings, vocabulary, neu)
     return store.put_reading_profile(
-        settings.slug, ReadingProfile((*profil.facets, neu), profil.counterweights),
+        settings.slug, ReadingProfile(facetten, profil.counterweights, neu),
         cause=f"Nachschärfen: {ich.title}", now=now,
     )
 
 
-def decline(store: Store, settings: Settings, families: Collection[str], *, now: datetime) -> None:
-    """„Passt nicht": dieser Vorschlag kommt nicht wieder. Keine neue Fassung."""
-    if len(set(families)) >= MIN_FAMILIES:
-        store.decline_facet(settings.slug, set(families), now=now)
+def set_boosted(
+    store: Store, settings: Settings, book_id: int, family_id: str, *, on: bool, now: datetime
+) -> int | None:
+    """Verstärken: höchstens ``MOST_BOOSTED``, und nur, was schon gemocht ist.
+    Ändert nie die Facetten — nur, wie stark ein Merkmal für sich zählt."""
+    ich, _ = _book(store, settings, book_id, LIKED)
+    profil = store.reading_profile(settings.slug)
+    boost = {g.family: g.boosted for g in profil.liked}
+    if family_id not in boost:
+        raise IntakeError("Verstärken lässt sich nur, was du angetippt hast.")
+    if boost[family_id] == on:
+        return None
+    if on and sum(boost.values()) >= MOST_BOOSTED:
+        raise IntakeError(f"Höchstens {MOST_BOOSTED} lassen sich verstärken.")
+    boost[family_id] = on
+    neu = tuple(Liked(f, b) for f, b in boost.items())
+    return store.put_reading_profile(
+        settings.slug, ReadingProfile(profil.facets, profil.counterweights, neu),
+        cause=f"Nachschärfen: {ich.title}", now=now,
+    )
 
 
 def add_counterweights(
@@ -256,7 +264,6 @@ def add_counterweights(
     if not geaendert:
         return None
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profil.facets, gegen),
+        settings.slug, ReadingProfile(profil.facets, gegen, profil.liked),
         cause=f"Nachschärfen: {ich.title}", now=now,
     )
-

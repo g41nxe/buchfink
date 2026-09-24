@@ -36,7 +36,23 @@
     <span class="font-semibold text-accent">Dein Leseprofil</span>
     <span class="text-xs text-soft">Fassung {{ view.facet_profile }}</span>
   </p>
-  <ul class="grid gap-3 sm:grid-cols-2">
+
+  {% if view.liked %}
+  <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Gemocht</p>
+  <ul class="mb-4 flex flex-wrap gap-1.5">
+    {% for g in view.liked %}
+    <li class="inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs
+               {{ 'border-amber/60 text-amber' if g.boosted else 'border-accent/40 text-accent' }}">
+      {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>
+      {% else %}<svg class="i"><use href="#ic-heart"/></svg>{% endif %}
+      {{ g.name }}{% if g.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if view.facets %}
+  <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Erkannte Kombinationen</p>
+  <ul class="mb-4 grid gap-3 sm:grid-cols-2">
     {% for f in view.facets %}
     <li class="rounded border border-accent/40 px-3 py-2">
       <p class="text-sm font-semibold text-accent">{{ f.name }}</p>
@@ -49,6 +65,7 @@
     </li>
     {% endfor %}
   </ul>
+  {% endif %}
   {% if view.counterweights %}
   <p class="mt-4 mb-2 text-xs font-medium uppercase tracking-wide text-soft">Zählt gegen ein Buch</p>
   <ul class="flex flex-wrap gap-2">

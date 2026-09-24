@@ -1399,7 +1399,7 @@ def test_the_fit_stands_under_the_judgement(
 
     body = client.get(f"/book/{buch.id}").text
 
-    assert "Übereinstimmung mit deinen Facetten" in body
+    assert "Übereinstimmung mit deinem Leseprofil" in body
     assert "hart · gezeichnete Figur" in body
     assert "Harry Hole wird zurückgeholt." in body
 

@@ -22,15 +22,21 @@
     <p class="text-sm text-soft">Noch kein geliebtes Buch mit Steckbrief bestätigt.
       <a href="/intake" class="text-accent underline underline-offset-2">Bücher nennen</a></p>
     {% endif %}
+    {% if wahl.loved %}
+    <p class="mb-6 max-w-prose text-sm text-soft">
+      Tipp an, was für dich zählt — und verstärk bis zu drei, die dir am wichtigsten
+      sind. <span class="text-ink">{{ wahl.boosted_count }} von 3 verstärkt.</span>
+    </p>
+    {% endif %}
     {% for titel, karten, hilfe in [
-         ("Merkmale", wahl.terms, "Wie sich deine Bücher lesen. Daraus entstehen deine Facetten."),
+         ("Merkmale", wahl.terms, "Wie sich deine Bücher lesen."),
          ("Erzählmuster", wahl.patterns, "Was für Geschichten sie erzählen."),
        ] if karten %}
     <section class="mb-8" data-abschnitt="{{ titel }}">
       <h2 class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
       <p class="mb-3 text-sm text-soft">{{ hilfe }}</p>
       <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {% for k in karten %}{{ familienkarte(k, schritt) }}{% endfor %}
+        {% for k in karten %}{{ familienkarte(k, schritt, wahl.can_boost) }}{% endfor %}
       </ul>
     </section>
     {% endfor %}

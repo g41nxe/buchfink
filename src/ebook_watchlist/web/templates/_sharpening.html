@@ -1,15 +1,15 @@
-{# Nachschärfen auf der Buchseite (#51, ADR 33 Punkt 7).
+{# Nachschärfen auf der Buchseite (#51, ADR 33 Punkt 7, umgebaut am 24.09.2026).
 
    Steht nur da, wenn es ein Leseprofil gibt und das Buch *Mag ich* oder
-   *Doof* heißt. Still geht nur das Bestärken; alles Neue ist eine Frage im
-   Muster der Erstaufnahme — dieselben Pillen, ♥ für gemocht, ⊘ für verloren.
-   Anders als dort wird hier nicht jeder Tipp gespeichert, sondern die Wahl
-   mit einem Knopf übernommen: es ist eine Änderung am fertigen Profil, und
-   jede Änderung wird eine neue Fassung.
+   *Doof* heißt. Ein gemochtes Buch zeigt seine Merkmale und Erzählmuster als
+   Karten, wie Bildschirm 3 der Erstaufnahme: antippen zählt sofort, kein
+   Knopf übernimmt eine Wahl. Jeder Tipp ist eine neue Fassung, mit diesem
+   Buch als Anlass. Bei einem *Doof*-Buch bleibt die Nachfrage nach dem
+   Gegengewicht — dieselben Pillen wie dort, ⊘ für verloren.
 
    Erwartet: `n` (das Nachschärfen), `book_id`, `portrait_job` (der Stand
    des Steckbriefs, oder nichts). #}
-{% from "_family_pill.html" import titelreihe %}
+{% from "_family_pill.html" import titelreihe, nachschaerfenkarte %}
 {% set basis = "/book/" ~ book_id ~ "/sharpen" %}
 {% macro wahlpille(f, name, weg=false, an=false) %}
 <label class="pille tun inline-flex h-7 cursor-pointer items-center gap-1 rounded border
@@ -43,50 +43,10 @@
   {% endif %}
 
   {% elif n.kind == "liked" %}
-  {% for s in n.strengthened %}
-  <p class="flex flex-wrap items-center gap-2">
-    <svg class="i text-accent"><use href="#ic-check"/></svg>
-    <span>Bestärkt <span class="font-semibold text-accent">{{ s.name }}</span></span>
-    <span class="text-xs text-soft">— jetzt {{ s.strength }}</span>
-  </p>
-  {% endfor %}
-
-  {% if n.uncovered %}
-  <form method="post" action="{{ basis }}/facet" class="space-y-2">
-    <p class="text-ink">Dieses Buch steckt in keiner deiner Facetten. Was hält dich daran?</p>
-    <div class="flex flex-wrap gap-2">
-      {% for f in n.uncovered %}{{ wahlpille(f, "family") }}{% endfor %}
-    </div>
-    <button type="submit"
-            class="tun inline-flex h-8 items-center rounded border border-accent bg-accent/10
-                   px-3 font-medium text-accent hover:bg-accent/25">Als Facette übernehmen</button>
-    <span class="ml-2 text-xs text-soft">mindestens zwei</span>
-  </form>
-  {% endif %}
-
-  {% for v in n.suggestions %}
-  <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-rule bg-card
-              px-4 py-3" data-vorschlag="{{ v.families | join(',') }}">
-    <p class="min-w-0 flex-1">Neue Facette?
-      <span class="font-semibold text-accent">{{ v.name }}</span></p>
-    <form method="post" action="{{ basis }}/facet">
-      {% for f in v.families %}<input type="hidden" name="family" value="{{ f }}">{% endfor %}
-      <button type="submit"
-              class="tun inline-flex h-8 items-center gap-1 rounded border border-accent
-                     bg-accent/10 px-3 font-medium text-accent hover:bg-accent/25">
-        <svg class="i"><use href="#ic-heart"/></svg>Übernehmen</button>
-    </form>
-    <form method="post" action="{{ basis }}/decline">
-      {% for f in v.families %}<input type="hidden" name="family" value="{{ f }}">{% endfor %}
-      <button type="submit" class="text-xs text-soft underline underline-offset-2
-                                   hover:text-ink">passt nicht</button>
-    </form>
-  </div>
-  {% endfor %}
-
-  {% if not n.strengthened and not n.uncovered and not n.suggestions %}
-  <p class="text-soft">Nichts Neues — dein Leseprofil bleibt, wie es ist.</p>
-  {% endif %}
+  <p class="mb-2 text-ink">Was hält dich an diesem Buch? Tipp an, was für dich zählt.</p>
+  <ul class="grid gap-3 sm:grid-cols-2">
+    {% for k in n.cards %}{{ nachschaerfenkarte(k, book_id, n.can_boost) }}{% endfor %}
+  </ul>
 
   {% else %}
   {% for name in n.kept %}

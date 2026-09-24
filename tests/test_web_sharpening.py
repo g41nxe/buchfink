@@ -1,4 +1,4 @@
-"""Das Nachschärfen auf der Buchseite (#51, ADR 33 Punkt 7)."""
+"""Das Nachschärfen auf der Buchseite (#51, ADR 33 Punkt 7, umgebaut am 24.09.2026)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from conftest import needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.facets import Counterweight, Facet, ReadingProfile
+from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile
 from ebook_watchlist.portrait import load_vocabulary, parse_answer
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
@@ -58,6 +58,7 @@ def profil(db: Store) -> ReadingProfile:
     p = ReadingProfile(
         facets=(Facet(("harsh", "brooding"), ("Leichenblässe",)),),
         counterweights=(Counterweight(("leisurely",), books=("Herr der Ringe",)),),
+        liked=(Liked("harsh"), Liked("brooding")),
     )
     db.put_reading_profile(slug(), p, cause="Erstaufnahme", now=NOW)
     return p
@@ -106,60 +107,91 @@ def test_mag_ich_draws_the_portrait_it_needs(client, db, profil, monkeypatch) ->
 # --- gemocht ---------------------------------------------------------------------------
 
 
-def test_a_liked_book_on_a_facet_strengthens_it_silently(client, db, profil) -> None:
-    buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"])
+def test_a_liked_book_shows_its_own_families_as_cards(client, db, profil) -> None:
     b = buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
 
     body = seite(client, b)
 
-    assert "Bestärkt" in body and "jetzt mittel" in body
-    assert db.reading_profile(slug()).version == 1
+    karten = body.split("data-nachschaerfen", 1)[1]
+    for familie in ("harsh", "brooding", "fast", "antihero"):
+        assert f'data-karte="{familie}"' in karten
+    # Schon gemocht: harsh und brooding stehen als angetippt (♥ ohne opacity-30).
+    assert 'aria-pressed="true"' in karten.split('data-karte="harsh"', 1)[1].split("</li>", 1)[0]
 
 
-def test_a_liked_book_in_no_facet_is_asked_and_can_become_one(client, db, profil) -> None:
-    b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
-    assert "steckt in keiner deiner Facetten" in seite(client, b)
+def test_tapping_a_new_family_adds_it_and_rederives_facets(client, db, profil) -> None:
+    b = buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
 
-    client.post(f"/book/{b}/sharpen/facet", data={"family": ["funny", "likeable"]})
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "fast", "on": "1"})
 
     neu = db.reading_profile(slug())
     assert neu.version == 2
-    assert neu.facets[-1] == Facet(("funny", "likeable"), ("Rosie",))
-    assert neu.counterweights == profil.counterweights
+    assert Liked("fast", False) in neu.liked
+    # "fast" kommt nur bei diesem einen gemochten Buch vor — keine Facette.
+    assert not any(f.families == ("fast",) for f in neu.facets)
 
 
-def test_a_facet_needs_two_families_and_only_from_the_book(client, db, profil) -> None:
+def test_a_second_book_widens_a_shared_family_into_a_facet(client, db, profil) -> None:
+    """Leichenblässe (aus dem Profil) und dieses Buch teilen jetzt „menacing"."""
+    buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"], kind="liked")
+    b = buch(db, "Kruzifix Killer", ["violent", "brooding", "menacing", "flawed"])
+
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "menacing", "on": "1"})
+
+    neu = db.reading_profile(slug())
+    assert Facet(("harsh", "brooding", "menacing"), ("Leichenblässe", "Kruzifix Killer")) \
+        in neu.facets
+
+
+def test_untapping_a_family_removes_it_and_its_boost(client, db, profil) -> None:
+    b = buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"])
+    client.post(f"/book/{b}/sharpen/boost", data={"family": "harsh", "on": "1"})
+
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "harsh", "on": ""})
+
+    neu = db.reading_profile(slug())
+    assert not any(g.family == "harsh" for g in neu.liked)
+    assert not any(f.families == ("harsh", "brooding") for f in neu.facets)
+
+
+def test_boosting_needs_a_tap_first(client, db, profil) -> None:
+    b = buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"])
+
+    antwort = client.post(f"/book/{b}/sharpen/boost", data={"family": "atmospheric", "on": "1"})
+
+    assert antwort.status_code == 400
+    assert db.reading_profile(slug()).version == 1
+
+
+def test_at_most_three_are_boosted(client, db, profil) -> None:
+    b = buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"])
+    for familie in ("harsh", "brooding", "menacing", "atmospheric"):
+        client.post(f"/book/{b}/sharpen/liked", data={"family": familie, "on": "1"})
+    for familie in ("harsh", "brooding", "menacing"):
+        client.post(f"/book/{b}/sharpen/boost", data={"family": familie, "on": "1"})
+
+    vierte = client.post(f"/book/{b}/sharpen/boost", data={"family": "atmospheric", "on": "1"})
+
+    assert vierte.status_code == 400
+
+
+def test_a_family_this_book_does_not_carry_is_rejected(client, db, profil) -> None:
     b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
 
-    eins = client.post(f"/book/{b}/sharpen/facet", data={"family": ["funny"]})
-    fremd = client.post(f"/book/{b}/sharpen/facet",
-                        data={"family": ["funny", "harsh"]})
+    antwort = client.post(f"/book/{b}/sharpen/liked", data={"family": "harsh", "on": "1"})
 
-    assert eins.status_code == 400 and fremd.status_code == 400
-    assert db.reading_profile(slug()).version == 1
-
-
-def test_shared_families_are_suggested_and_a_no_is_remembered(client, db, profil) -> None:
-    buch(db, "Otherland", ["world_building", "intricate", "ensemble", "leisurely"])
-    b = buch(db, "Der Schwarm", ["world_building", "intricate", "thought_provoking",
-                                 "dramatic"])
-    assert 'data-vorschlag="big_world,intricate,quest"' in seite(client, b)
-
-    client.post(f"/book/{b}/sharpen/decline",
-                data={"family": ["big_world", "intricate", "quest"]})
-
-    assert 'data-vorschlag="big_world,intricate,quest"' not in seite(client, b)
-    assert db.reading_profile(slug()).version == 1
+    assert antwort.status_code == 400
 
 
 def test_the_code_judges_again_after_a_change(client, db, profil) -> None:
     b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
     vorher = seite(client, b).split('data-passung', 1)[1].split("</div>", 1)[0]
 
-    client.post(f"/book/{b}/sharpen/facet", data={"family": ["funny", "likeable"]})
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "funny", "on": "1"})
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "likeable", "on": "1"})
 
-    assert "5</span>&nbsp;/&nbsp;5" in seite(client, b)
-    assert "5</span>&nbsp;/&nbsp;5" not in vorher
+    nachher = seite(client, b)
+    assert nachher != vorher
 
 
 # --- doof ------------------------------------------------------------------------------
@@ -190,6 +222,8 @@ def test_counterweights_take_their_scope(client, db, profil) -> None:
     assert neu.version == 2
     assert Counterweight(("big_world",), "High Fantasy", ("Herr der Ringe",)) in neu.counterweights
     assert Counterweight(("sad",), None, ("Herr der Ringe",)) in neu.counterweights
+    # Das Gemochte bleibt unberührt (#64).
+    assert neu.liked == profil.liked
 
 
 def test_only_here_changes_nothing(client, db, profil) -> None:
@@ -223,16 +257,15 @@ def test_a_counterweight_the_profile_already_has_is_not_offered(client, db, prof
     assert 'value="leisurely"' not in body.split("data-nachschaerfen", 1)[1]
 
 
-def test_the_cause_names_the_book(db, profil, data_dir) -> None:
+def test_the_cause_names_the_book(client, db, profil) -> None:
     from ebook_watchlist.store import ReadingProfileRow
-    from ebook_watchlist.web import sharpening
 
-    b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
-    sharpening.add_facet(db, load_settings(), b, ["funny", "likeable"], now=NOW)
+    b = buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "fast", "on": "1"})
 
     with db.session() as session:
         anlass = session.query(ReadingProfileRow).order_by(ReadingProfileRow.id.desc()).first()
-        assert anlass.cause == "Nachschärfen: Rosie"
+        assert anlass.cause == "Nachschärfen: Kruzifix Killer"
 
 
 def test_liked_books_come_from_the_shelf_not_only_the_intake(db, profil, data_dir) -> None:
@@ -255,16 +288,6 @@ def test_the_profile_page_derives_the_strength_from_the_shelf(client, db, profil
     body = client.get("/profile").text.split("data-leseprofil", 1)[1]
 
     assert "mittel" in body and "Kruzifix Killer" in body
-
-
-def test_a_suggestion_never_just_widens_an_existing_facet(client, db, profil) -> None:
-    buch(db, "Leichenblässe", ["violent", "brooding", "atmospheric", "menacing"])
-    b = buch(db, "Leopard", ["violent", "brooding", "atmospheric", "menacing"])
-
-    body = seite(client, b)
-
-    assert 'data-vorschlag="atmospheric,menacing,quest"' in body
-    assert "harsh" not in body.split("data-vorschlag", 1)[1].split('"', 2)[1]
 
 
 # --- Review: keine leere Vertröstung ---------------------------------------------
@@ -292,10 +315,10 @@ def test_a_failed_portrait_says_why_sharpening_waits(client, db, profil) -> None
 
 
 def test_after_a_change_the_page_jumps_back_to_the_section(client, db, profil) -> None:
-    b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
+    b = buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
 
     antwort = TestClient(create_app(), follow_redirects=False).post(
-        f"/book/{b}/sharpen/facet", data={"family": ["funny", "likeable"]})
+        f"/book/{b}/sharpen/liked", data={"family": "fast", "on": "1"})
 
     anker = antwort.headers["location"].split("#", 1)[1]
     assert f'id="{anker}"' in seite(client, b)

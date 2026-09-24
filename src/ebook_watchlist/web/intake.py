@@ -28,10 +28,11 @@ from ..config import Settings
 from ..facets import (
     GENERAL,
     HERE,
-    MIN_FAMILIES,
+    MOST_BOOSTED,
     STRENGTHS,
     Counterweight,
     Facet,
+    Liked,
     ReadingProfile,
     ScopeError,
     derive_facets,
@@ -41,7 +42,6 @@ from ..facets import (
     merge_counterweights,
     scoped_counterweight,
     strength,
-    uncovered,
 )
 from ..portrait import (
     Portrait,
@@ -260,9 +260,15 @@ def confirm(store: Store, settings: Settings, entry_id: int, *, now: datetime) -
     return buch.id
 
 
-# --- Bildschirme 3 bis 5: das Gemeinsame, das Verlorene, dein Profil (#50) ------
+# --- Bildschirme 3 bis 5: was dich hält, was dich verloren hat, dein Profil ------
+#
+# Seit dem 24.09.2026: Bildschirm 3 zeigt alle Merkmale und Erzählmuster der
+# geliebten Bücher, gerankt. Die Leserin tippt an, was für sie zählt, und
+# verstärkt davon bis zu drei. Die Facetten — Kombinationen, die mehrere
+# geliebte Bücher gemeinsam tragen — bildet das Werkzeug daraus selbst; sie
+# werden nicht bestätigt. Erzählmuster stecken nie in einer Facette (#63).
 
-LOVED, LOST = "loved", "lost"
+LOVED, LOST, BOOST = "loved", "lost", "boost"
 
 #: Ab wie vielen Büchern der neutrale Bestand etwas über Häufigkeit sagt, und
 #: ab welchem Anteil eine Familie als häufig gilt. Vorläufig; darunter wird
@@ -294,23 +300,20 @@ class Pill:
     on: bool
     #: Nur auf Bildschirm 4: an welchem Buch.
     book_id: int | None = None
+    #: Von der Leserin verstärkt.
+    boosted: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class Group:
-    """Familien, die dieselben Bücher tragen, unter einer Überschrift.
-
-    Die Überschrift in drei Teilen, damit die Titel in Serifen stehen können:
-    „Weil du" · *Leichenblässe* und *Kruzifix Killer* · „mochtest".
-    """
+    """Familien eines enttäuschenden Buchs unter einer Überschrift (Bildschirm 4)."""
 
     lead: str
     titles: tuple[str, ...]
     tail: str
     pills: tuple[Pill, ...]
-    #: Je Familie die Sätze aus den Steckbriefen — für „warum?".
     why: tuple[tuple[str, tuple[str, ...]], ...] = ()
-    #: Nur auf Bildschirm 4: ob ein geliebtes Buch sie auch trägt.
+    #: Ob ein geliebtes Buch sie auch trägt.
     conflict: bool = False
 
 
@@ -357,24 +360,19 @@ class LostBook:
 
 @dataclass(frozen=True, slots=True)
 class FacetCard:
+    """Eine erkannte Kombination — Auskunft, keine Frage."""
+
     families: tuple[str, ...]
-    name: str
+    #: Je Merkmal sein Name und der Satz, was es heißt: so versteht man die
+    #: Kombination, ohne zwei Kurzwörter mit einem Punkt dazwischen zu deuten.
+    parts: tuple[tuple[str, str], ...]
     strength: str
+    #: Aus welchen geliebten Büchern — gespeichert, nicht gezeigt.
     books: tuple[str, ...]
 
     @property
     def level(self) -> int:
-        """Die Stärke als Stufe von 1 bis 4, für die Skala."""
         return STRENGTHS.index(self.strength) + 1
-
-    @property
-    def too_broad(self) -> bool:
-        return len(self.families) < MIN_FAMILIES
-
-    @property
-    def key(self) -> str:
-        """Woran das Formular sie wiedererkennt — nicht an ihrer Stelle."""
-        return ",".join(self.families)
 
 
 @dataclass(frozen=True, slots=True)
@@ -386,44 +384,51 @@ class WeightCard:
 
     @property
     def key(self) -> str:
+        """Woran das Formular es wiedererkennt — nicht an seiner Stelle."""
         return ",".join(self.families) + "|" + (self.genre or "")
 
 
 @dataclass(frozen=True, slots=True)
-class Uncovered:
-    """Ein geliebtes Buch, das in keiner Facette steckt — gezielt gefragt."""
-
-    title: str
-    pills: tuple[Pill, ...]
-
-
-@dataclass(frozen=True, slots=True)
 class Draft:
-    """Das Profil, wie es aus den Antworten gerade entsteht."""
+    """Das Profil, wie es aus den Antworten gerade entsteht — als Übersicht."""
 
+    #: Was verstärkt ist, als Namen.
+    boosted: tuple[str, ...]
+    #: Die übrigen gemochten Merkmale und Erzählmuster, als Namen.
+    terms: tuple[str, ...]
+    patterns: tuple[str, ...]
+    #: Die Kombinationen, die das Werkzeug daraus erkannt hat.
     facets: tuple[FacetCard, ...]
     weights: tuple[WeightCard, ...]
-    #: Nur bei diesem Buch gestört — zählt nicht, steht aber da.
+    #: Nur bei einem enttäuschenden Buch gestört — zählt nicht, steht aber da.
     only_here: tuple[str, ...]
-    uncovered: tuple[Uncovered, ...]
 
     @property
-    def counted(self) -> tuple[FacetCard, ...]:
-        return tuple(f for f in self.facets if not f.too_broad)
+    def empty(self) -> bool:
+        return not (self.boosted or self.terms or self.patterns or self.weights)
 
 
 @dataclass(frozen=True, slots=True)
 class Choosing:
-    """Was Bildschirm 3 und 4 zeigen, und das Profil darunter."""
+    """Was Bildschirm 3 und 4 zeigen, und das Profil daneben."""
 
     loved: tuple[ShelfBook, ...]
-    #: Bildschirm 3: alle Merkmale der geliebten Bücher, gerankt — nicht nach
-    #: Büchern gruppiert. Daraus bündelt das Werkzeug die Facetten.
+    #: Bildschirm 3: alle Merkmale der geliebten Bücher, gerankt.
     terms: tuple[Card, ...]
     #: Bildschirm 3, für sich: alle Erzählmuster der geliebten Bücher.
     patterns: tuple[Card, ...]
     lost: tuple[LostBook, ...]
     draft: Draft
+    #: Was gemocht ist, in der Reihenfolge des Rangs — daraus wird das Profil.
+    liked: tuple[Liked, ...]
+
+    @property
+    def boosted_count(self) -> int:
+        return sum(g.boosted for g in self.liked)
+
+    @property
+    def can_boost(self) -> bool:
+        return self.boosted_count < MOST_BOOSTED
 
 
 def shelf_book(store: Store, vocabulary, book_id: int) -> ShelfBook | None:
@@ -492,11 +497,13 @@ def choosing(store: Store, settings: Settings) -> Choosing:
     haeufig = frequent_families(store, settings, vocabulary)
     wahl = store.intake_choices(settings.slug)
     an = {c.family_id for c in wahl if c.side == LOVED}
+    verstaerkt = {c.family_id for c in wahl if c.side == BOOST} & an
     weg = {(c.family_id, c.book_id): c.scope for c in wahl if c.side == LOST}
 
     def pille(f: str, on: bool, book_id: int | None = None) -> Pill:
         return Pill(
-            f, family_name(f, vocabulary), vocabulary.is_pattern(f), f in haeufig, on, book_id
+            f, family_name(f, vocabulary), vocabulary.is_pattern(f), f in haeufig, on, book_id,
+            boosted=f in verstaerkt,
         )
 
     def ordnung(fs):
@@ -509,10 +516,9 @@ def choosing(store: Store, settings: Settings) -> Choosing:
             traeger.setdefault(f, []).append(b)
 
     # Bildschirm 3: alles, was die geliebten Bücher tragen, gerankt — nicht
-    # nach Büchern gruppiert. Die Gruppen „Weil du A und B mochtest" lasen
-    # sich wie Vergleiche von Buch zu Buch (24.09.2026). Gerankt wird vorerst
-    # nach der Zahl der Bücher; mit #62 kommt die Ausprägung im Buch dazu.
-    # Häufiges im neutralen Bestand steht hinten.
+    # nach Büchern gruppiert. Gerankt wird vorerst nach der Zahl der Bücher;
+    # mit #62 kommt die Ausprägung im Buch dazu. Häufiges im neutralen
+    # Bestand steht hinten.
     rang = sorted(
         traeger,
         key=lambda f: (-len(traeger[f]), f in haeufig, family_name(f, vocabulary).casefold()),
@@ -552,28 +558,29 @@ def choosing(store: Store, settings: Settings) -> Choosing:
         )
         verloren.append(LostBook(d.title, d.book_id, tuple(dgruppen), fragen))
 
-    entwurf = _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille,
-                     fragen_jetzt=bool(an))
-    return Choosing(tuple(geliebt), merkmale, muster, tuple(verloren), entwurf)
+    gemocht = tuple(Liked(f, f in verstaerkt) for f in rang if f in an)
+    entwurf = _draft(vocabulary, gemocht, enttaeuscht, traeger, weg)
+    return Choosing(tuple(geliebt), merkmale, muster, tuple(verloren), entwurf, gemocht)
 
 
-def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille, *,
-           fragen_jetzt: bool) -> Draft:
-    gewaehlt = [f for f in traeger if f in an]
-    facetten = derive_facets(gewaehlt, {f: [b.key for b in bs] for f, bs in traeger.items()})
-    titel = {b.key: b.title for b in geliebt}
+def _draft(vocabulary, gemocht, enttaeuscht, traeger, weg) -> Draft:
+    # Die Facetten bildet das Werkzeug selbst, nur aus Merkmalen (#63).
+    merkmale = [g.family for g in gemocht if not vocabulary.is_pattern(g.family)]
+    facetten = derive_facets(merkmale, {f: [b.key for b in bs] for f, bs in traeger.items()})
+    titel = {b.key: b.title for bs in traeger.values() for b in bs}
     karten = tuple(
-        FacetCard(f.families, family_names(f.families, vocabulary), strength(len(f.books)),
-                  tuple(titel[k] for k in f.books))
+        FacetCard(
+            f.families,
+            tuple(
+                (family_name(x, vocabulary), vocabulary.terms[
+                    next(b.terms[x] for b in traeger[x] if x in b.terms)
+                ].description)
+                for x in f.families
+            ),
+            strength(len(f.books)),
+            tuple(titel[k] for k in f.books),
+        )
         for f in facetten
-    )
-    # Die Abdeckung fragt erst, wenn angetippt wurde: vorher steckt jedes Buch
-    # in keiner Facette, und rechts stünde jedes für sich.
-    offen = uncovered(facetten, [b.key for b in geliebt]) if fragen_jetzt else []
-    fragen = tuple(
-        Uncovered(b.title, tuple(pille(f, f in an) for f in b.families))
-        for b in geliebt
-        if b.key in offen
     )
 
     buecher_von = {d.book_id: d for d in enttaeuscht}
@@ -598,15 +605,30 @@ def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille, *,
         WeightCard(c.families, family_names(c.families, vocabulary), c.genre, c.books)
         for c in gegen
     )
-    return Draft(karten, karten_gegen, tuple(nur_hier), fragen)
+
+    def namen(auswahl):
+        return tuple(family_name(g.family, vocabulary) for g in auswahl)
+
+    return Draft(
+        boosted=namen(g for g in gemocht if g.boosted),
+        terms=namen(g for g in gemocht if not g.boosted and not vocabulary.is_pattern(g.family)),
+        patterns=namen(g for g in gemocht if not g.boosted and vocabulary.is_pattern(g.family)),
+        facets=karten,
+        weights=karten_gegen,
+        only_here=tuple(nur_hier),
+    )
 
 
 def choose(
     store: Store, settings: Settings, side: str, family_id: str, *,
     book_id: int | None = None, on: bool,
 ) -> None:
-    """Eine Familie antippen: ♥ auf Bildschirm 3, ⊘ auf Bildschirm 4."""
-    if side not in (LOVED, LOST):
+    """Antippen: ♥ auf Bildschirm 3, ⊘ auf Bildschirm 4 — oder verstärken.
+
+    Verstärken geht nur, was gemocht ist, und höchstens ``MOST_BOOSTED``.
+    Wer ein Merkmal wieder löst, löst auch seine Verstärkung.
+    """
+    if side not in (LOVED, LOST, BOOST):
         raise IntakeError(f"unbekannte Seite {side!r}")
     try:
         load_vocabulary().family(family_id)
@@ -614,7 +636,17 @@ def choose(
         raise IntakeError(f"keine solche Familie: {family_id}") from None
     if side == LOST and book_id is None:
         raise IntakeError("Ein Gegengewicht gehört zu einem Buch.")
+    if side == BOOST and on:
+        wahl = store.intake_choices(settings.slug)
+        gemocht = {c.family_id for c in wahl if c.side == LOVED}
+        verstaerkt = {c.family_id for c in wahl if c.side == BOOST} & gemocht
+        if family_id not in gemocht:
+            raise IntakeError("Verstärken lässt sich nur, was du angetippt hast.")
+        if family_id not in verstaerkt and len(verstaerkt) >= MOST_BOOSTED:
+            raise IntakeError(f"Höchstens {MOST_BOOSTED} lassen sich verstärken.")
     store.set_intake_choice(settings.slug, side, family_id, book_id=book_id, active=on)
+    if side == LOVED and not on:
+        store.set_intake_choice(settings.slug, BOOST, family_id, active=False)
 
 
 def set_scope(store: Store, settings: Settings, family_id: str, book_id: int, scope: str) -> None:
@@ -629,25 +661,26 @@ def set_scope(store: Store, settings: Settings, family_id: str, book_id: int, sc
 
 
 def adopt(
-    store: Store, settings: Settings, facets: Collection[str], weights: Collection[str],
-    *, now: datetime,
+    store: Store, settings: Settings, weights: Collection[str], *, now: datetime
 ) -> int | None:
-    """Bestätigen: die gewählten Facetten und Gegengewichte werden die erste
-    Fassung des Leseprofils. Nichts gewählt heißt neu anfangen (#44) — dann
-    kommt nichts zurück.
+    """Bestätigen: was angetippt und verstärkt ist, die erkannten Facetten und
+    die gewählten Gegengewichte werden die erste Fassung des Leseprofils.
 
-    Gewählt wird über den Schlüssel, nicht die Stelle: hat sich der Entwurf
-    seit dem Laden geändert, etwa in einem zweiten Tab, zählt, was die Leserin
-    gesehen hat, und was es nicht mehr gibt, fällt weg.
+    Nichts gemocht und kein Gegengewicht heißt neu anfangen (#44) — dann kommt
+    nichts zurück. Gegengewichte werden über ihren Schlüssel gewählt, nicht
+    ihre Stelle: hat sich der Entwurf seit dem Laden geändert, zählt, was die
+    Leserin gesehen hat.
     """
-    entwurf = choosing(store, settings).draft
-    facetten = tuple(Facet(f.families, f.books) for f in entwurf.counted if f.key in facets)
+    wahl = choosing(store, settings)
+    facetten = tuple(Facet(f.families, f.books) for f in wahl.draft.facets)
     gegen = tuple(
-        Counterweight(w.families, w.genre, w.books) for w in entwurf.weights if w.key in weights
+        Counterweight(w.families, w.genre, w.books)
+        for w in wahl.draft.weights
+        if w.key in weights
     )
-    if not facetten and not gegen:
+    if not wahl.liked and not gegen:
         store.reset_intake(settings.slug)
         return None
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(facetten, gegen), cause="Erstaufnahme", now=now
+        settings.slug, ReadingProfile(facetten, gegen, wahl.liked), cause="Erstaufnahme", now=now
     )

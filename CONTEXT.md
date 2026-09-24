@@ -275,11 +275,12 @@ Until ADR 33 is built, the code still reads the old prose profile from
 
 One named way a book can suit this reader. A Reading Profile holds several, and
 each is an **independent reason** to like a book: a Facet hit in full counts
-strongly, one hit in part counts little, and several reasons strengthen each
-other without ever passing certainty (a noisy-OR, ADR 33). A book that hits two
-Facets in full outranks one that hits a single Facet. What must never happen is
-what the weighted axes it replaces did: partial hits collected until a book
-looked right while suiting nobody.
+strongly, and several reasons strengthen each other without ever passing
+certainty (a noisy-OR, ADR 33). A book that hits two Facets in full outranks
+one that hits a single Facet. A book that carries only part of a Facet earns
+no credit for the Facet — its single Liked Terms count on their own instead
+(24.09.2026); what must never happen is what the weighted axes it replaces
+did: partial hits collected until a book looked right while suiting nobody.
 
 It is the counterpart to a Genre Category: a Thema says where a shop shelves a
 book, a Facet says what the book carries. Confusing the two is what put "Katz
@@ -287,21 +288,27 @@ und Maus" — a convention of the crime genre — into the profile as though it 
 a matter of taste.
 
 A Facet consists of **at least two Appeal Families** that the reader's loved
-books carry together. The tool looks across all the books at once for families
-several of them share and asks which of those are really the reader's; confirmed
-families that the same books carry together form one Facet. A single family is too
-wide to be a Facet: in the Intake experiment (#44) "große Ideen" alone let in a
-disliked science thriller. A loved book that shares nothing with the others is
-asked about on its own and can still form a Facet by itself.
+books carry together — never Story Patterns (those count on their own, never
+inside a Facet). The tool derives Facets **automatically and invisibly** from
+which Appeal Families the reader tapped as Liked: it looks across the loved
+books at once for families several of them carry together, and every such
+combination becomes a Facet. The reader never confirms a Facet and is never
+asked about one directly — only about single Appeal Families and Story
+Patterns (24.09.2026); a Facet is simply what several Liked Terms turn out to
+share. A single family is too wide to be a Facet on its own: in the Intake
+experiment (#44) "große Ideen" alone let in a disliked science thriller. A
+Liked Term that no other loved book shares forms no Facet — it stays a Liked
+Term.
 
 A Facet keeps **how many loved books it rests on**. The reader does not see the
 number but a scale (schwach, mittel, stark, sehr stark): a Facet from a single
 book is a weak one, and it grows as sharpening adds books.
 
 Facets are **derived from the books the reader already loved**, not invented for
-them. The tool asks **no open questions**: it proposes, derived from the books,
-and the reader chooses. A Facet is named by its Appeal Families — "gezeichnete
-Figur · hart" — so choosing the Facet chooses its name.
+them, and they are **re-derived whenever the Liked Terms change** — tapping a new
+Appeal Family, or removing one, can create, widen or dissolve a Facet without the
+reader ever being asked about the Facet itself. A Facet is named by its Appeal
+Families — "gezeichnete Figur · hart" — so its families choose its name.
 
 What a disappointing book yields is its mirror image, a **Counterweight**: it
 weighs against a book and never excludes it.
@@ -315,6 +322,26 @@ Resemblance to a particular loved book is **evidence inside a justification**
 worth a star: resemblance narrows, a Facet generalises.
 
 **Reader-facing name: *Facette*.**
+
+### Liked Term
+*deutsch: gemochtes Merkmal / gemochtes Erzählmuster*
+
+An Appeal Family or Story Pattern the reader tapped as counting for them,
+directly — not part of a Facet. Every loved book shows all of its own families
+and patterns, ranked, and the reader taps what holds for them (24.09.2026);
+what several loved books carry together is additionally bundled into a Facet
+by the tool, but the tap itself is never undone by that — a Liked Term keeps
+counting on its own even while it also sits inside a Facet.
+
+A Liked Term counts as an **independent, weak reason** in the Fit's noisy-OR: an
+Appeal Term alone is worth little, a Story Pattern more, because a shared story
+pattern showed in the Intake experiment (#44) to say more about taste than a
+single Appeal Term does. Up to three Liked Terms can be **boosted**
+(*verstärkt*): the reader marks the ones that matter most, and a boosted term
+counts for more. Untapping a Liked Term also removes its boost.
+
+**Reader-facing name: none as a category** — the reader sees the Appeal Family
+or Story Pattern by its own name, tapped or not.
 
 ### Counterweight
 *deutsch: Gegengewicht*
@@ -431,8 +458,10 @@ the book page it simply heads its patterns.
 *deutsch: Übereinstimmung*
 
 How well a book suits a Reading Profile, computed by the code from the book's
-Steckbrief and the reader's Facets and Counterweights (ADR 33): every Facet is
-an independent reason — hit in full it weighs 0.8, in part 0.1 — combined as a
+Steckbrief, the reader's Facets, Liked Terms and Counterweights (ADR 33): every
+Facet hit in full weighs 0.8; every Liked Term the book carries weighs on its
+own, a Story Pattern more than an Appeal Term, boosted more still; there are no
+partial Facet hits any more (24.09.2026). All of that is combined as a
 noisy-OR, and the strongest Counterweight takes a fifth off. The percentage
 orders; stars summarise it. No model is asked, so a new profile version
 recomputes every Fit at once.
@@ -473,18 +502,18 @@ Each named title is an **`IntakeEntry`** (*Eintrag*), saved the moment it is
 typed; only when the reader confirms it does it become a book on the shelf,
 marked *Mag ich* or *Doof*.
 
-The tool looks across all loved books at once for the Appeal Families that
-more than one of them carries and asks which of those carry the reader. It never
-compares books pairwise and has no threshold for "similar". Families that are
-common across books in general come last, marked as such, but are never hidden;
-how common a family is is measured on the books the tool sees anyway, never on
-the reader's own, which would punish exactly their taste. Afterwards **every
-loved book must sit in a Facet**; one that does not is asked about on its own.
-The disappointing books yield counterweights, and one that a loved book also
-carries is not taken over silently: the reader is asked. The
-result — Facets, Reference Authors, genres and counterweights — is presented as
-a list to confirm or deselect. Deselecting everything starts over, with other
-books or other answers.
+The reader is shown **every** Appeal Family and Story Pattern the loved books
+carry, ranked by how many of them carry it, and taps what counts for them —
+up to three of those taps can be boosted. Families that are common across
+books in general come last, marked as such, but are never hidden; how common a
+family is is measured on the books the tool sees anyway, never on the reader's
+own, which would punish exactly their taste. The tool derives Facets from the
+tapped Appeal Families by itself, invisibly (see Facet); the reader never
+confirms one. The disappointing books yield counterweights, and one that a
+loved book also carries is not taken over silently: the reader is asked. The
+result — Liked Terms, Facets and Counterweights — is presented as an overview
+next to the questions; deselecting everything starts over, with other books
+or other answers.
 
 It carries **no burden of proof**: there is nothing yet to contradict. What
 follows it is Sharpening.
@@ -503,16 +532,14 @@ reader marks *Mag ich* or *Doof* — verdicts after reading — and never by
 which stay a display and the data weights may later be learned from.
 
 What merely confirms a Facet happens silently: another loved book carrying it
-makes it stronger, and that strength is derived, never stored. Everything new is
-asked, in the same pattern as the Intake: a loved book that sits in no Facet,
-families several loved books now share, a new author or genre, a counterweight
-from a *Doof* book. A *Doof* book that fully hits a Facet yields a counterweight
-only; the Facet stays as it is. On the profile page anything can be deselected
-at any time; additions only ever come through books.
-
-A suggested Facet the reader turns down ("passt nicht") is a **declined facet**
-(`DeclinedFacet`, *abgelehnter Vorschlag*): remembered, so it is not asked
-again with the next book, and not part of the profile — it changes no version.
+makes it stronger, and that strength is derived, never stored. Everything new
+is asked, in the same pattern as the Intake: a *Mag ich* book shows its own
+Appeal Families and Story Patterns, ranked, for the reader to tap and
+optionally boost — Facets are re-derived from all Liked Terms afterwards,
+never asked about themselves. A *Doof* book instead offers what it lost the
+reader as a counterweight; one that fully hits a Facet yields a counterweight
+only, and the Facet stays as it is. On the profile page anything can be
+deselected at any time; additions only ever come through books.
 
 The burden of proof of ADR 17 is no longer a gate. Its asymmetry lives on —
 confirming is cheap, changing asks — and how well something is evidenced is
@@ -532,10 +559,11 @@ It names **no** axis of taste — it is the procedure, not the content, and it
 would work unchanged for a different reader. It is therefore **not** versioned
 alongside the profile: a change to the scheme invalidates no Rating (ADR 21).
 
-Since ADR 33 it holds, machine-readable, how the code turns Facets into a
-Rating: what a Facet hit in full or in part weighs, what a counterweight takes
-off, where the star thresholds lie. It also holds the rules for what the model
-writes once per book, the pitch among them.
+Since ADR 33 it holds, machine-readable, how the code turns Facets and Liked
+Terms into a Rating: what a Facet hit in full weighs, what a single Liked
+Appeal Term or Story Pattern weighs (boosted or not), what a counterweight
+takes off, where the star thresholds lie. It also holds the rules for what the
+model writes once per book, the pitch among them.
 
 **Reader-facing name: *Bewertungsschema*.**
 
