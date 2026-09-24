@@ -404,3 +404,26 @@ def test_a_pattern_may_not_reuse_a_term_id(tmp_path) -> None:
 
     with pytest.raises(VocabularyError, match="zweimal"):
         load_vocabulary(patterns=datei)
+
+
+def test_the_vocabulary_is_parsed_once_while_the_files_stay_the_same() -> None:
+    """Gebraucht wird es bei jedem Eintrag und jedem Buch im Regal (Review)."""
+    assert load_vocabulary() is load_vocabulary()
+
+
+def test_a_changed_file_is_parsed_again(tmp_path: Path) -> None:
+    datei = _vokabular(tmp_path, "[{id: fast, name: rasant, beschreibung: a}]")
+    vorher = load_vocabulary(datei)
+    datei.write_text(datei.read_text(encoding="utf-8").replace("rasant", "flott"),
+                     encoding="utf-8")
+
+    assert load_vocabulary(datei).terms["fast"].name == "flott"
+    assert vorher.terms["fast"].name == "rasant"
+
+
+def test_the_fingerprint_is_computed_once_per_vocabulary(monkeypatch) -> None:
+    wort = load_vocabulary()
+    fingerprint(wort)
+    monkeypatch.setattr(type(wort), "prompt_text", lambda self: pytest.fail("neu gerechnet"))
+
+    assert fingerprint(wort) == fingerprint(load_vocabulary())
