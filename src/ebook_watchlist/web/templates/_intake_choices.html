@@ -33,13 +33,11 @@
       sind. <span class="text-ink">{{ wahl.boosted_count }} von 3 verstärkt.</span>
     </p>
     {% endif %}
-    {% for titel, karten, hilfe in [
-         ("Merkmale", wahl.terms, "Wie sich deine Bücher lesen."),
-         ("Erzählmuster", wahl.patterns, "Was für Geschichten sie erzählen."),
+    {% for titel, karten in [
+         ("Merkmale", wahl.terms), ("Erzählmuster", wahl.patterns),
        ] if karten %}
     <section class="mb-8" data-abschnitt="{{ titel }}">
-      <h2 class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
-      <p class="mb-3 text-sm text-soft">{{ hilfe }}</p>
+      <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
       <ul class="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {% for k in karten %}{{ familienkarte(k, schritt, wahl.can_boost) }}{% endfor %}
       </ul>
