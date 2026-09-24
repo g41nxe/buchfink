@@ -9,7 +9,7 @@
 
    Erwartet: `n` (das Nachschärfen), `book_id`. #}
 {% from "_familienpille.html" import titelreihe %}
-{% set basis = "/book/" ~ book_id ~ "/nachschaerfen" %}
+{% set basis = "/book/" ~ book_id ~ "/sharpen" %}
 {% macro wahlpille(f, name, weg=false, an=false) %}
 <label class="pille tun inline-flex h-7 cursor-pointer items-center gap-1 rounded border
               border-rule px-3 text-xs text-soft transition sm:rounded-full
@@ -37,7 +37,7 @@
   {% endfor %}
 
   {% if n.uncovered %}
-  <form method="post" action="{{ basis }}/facette" class="space-y-2">
+  <form method="post" action="{{ basis }}/facet" class="space-y-2">
     <p class="text-ink">Dieses Buch steckt in keiner deiner Facetten. Was hält dich daran?</p>
     <div class="flex flex-wrap gap-2">
       {% for f in n.uncovered %}{{ wahlpille(f, "familie") }}{% endfor %}
@@ -55,14 +55,14 @@
     <p class="min-w-0 flex-1">Neue Facette?
       <span class="font-semibold text-accent">{{ v.name }}</span>
       <span class="text-soft">— tragen {{ titelreihe(v.books) }}</span></p>
-    <form method="post" action="{{ basis }}/facette">
+    <form method="post" action="{{ basis }}/facet">
       {% for f in v.families %}<input type="hidden" name="familie" value="{{ f }}">{% endfor %}
       <button type="submit"
               class="tun inline-flex h-8 items-center gap-1 rounded border border-accent
                      bg-accent/10 px-3 font-medium text-accent hover:bg-accent/25">
         <svg class="i"><use href="#ic-heart"/></svg>Übernehmen</button>
     </form>
-    <form method="post" action="{{ basis }}/ablehnen">
+    <form method="post" action="{{ basis }}/decline">
       {% for f in v.families %}<input type="hidden" name="familie" value="{{ f }}">{% endfor %}
       <button type="submit" class="text-xs text-soft underline underline-offset-2
                                    hover:text-ink">passt nicht</button>
@@ -80,7 +80,7 @@
     ganz — die bleibt, wie sie ist.</p>
   {% endfor %}
   {% if n.lost %}
-  <form method="post" action="{{ basis }}/gegengewicht" class="space-y-2">
+  <form method="post" action="{{ basis }}/counterweight" class="space-y-2">
     <p class="text-ink">Was hat dich an diesem Buch verloren? Es zählt dann gegen andere
       Bücher, schließt aber keines aus.</p>
     <ul class="space-y-2">

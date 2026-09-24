@@ -206,7 +206,7 @@
    einem Merkmal ist das, was es an diesem Buch nachprüfbar macht; worauf er
    beruht, steht im Titel, nicht im Bild. #}
 {% call abschnitt("Steckbrief", "ic-search") %}
-  {% with url="/book/" ~ page.book_id ~ "/steckbrief", job=steckbrief_job,
+  {% with url="/book/" ~ page.book_id ~ "/portrait", job=steckbrief_job,
           vorhanden=page.portrait is not none %}
   {% include "_steckbrief_stand.html" %}
   {% endwith %}

@@ -80,14 +80,14 @@ def modell(monkeypatch: pytest.MonkeyPatch) -> Modell:
 
 
 def nennen(client: TestClient, titel: str, autor: str = "", seite: str = "liked") -> str:
-    client.post("/erstaufnahme/buch", data={"seite": seite, "titel": titel, "autor": autor})
+    client.post("/intake/entry", data={"seite": seite, "titel": titel, "autor": autor})
     return abwarten(client)
 
 
 def abwarten(client: TestClient) -> str:
     """Warten, bis kein Eintrag mehr sucht."""
     for _ in range(250):
-        body = client.get("/erstaufnahme").text
+        body = client.get("/intake").text
         if 'data-zustand="asking"' not in body or "Nochmal" in body:
             return body
         threading.Event().wait(0.02)
@@ -128,7 +128,7 @@ def test_a_book_the_model_does_not_know_says_so_and_offers_no_yes(client, db, mo
 
     assert "kennt das Modell nicht" in body and "trägt nichts" in body
     eintrag = _eintrag(db, "Das Buch, das es nicht gibt")
-    assert f"/erstaufnahme/buch/{eintrag.id}/ja" not in body
+    assert f"/intake/entry/{eintrag.id}/confirm" not in body
 
 
 def test_the_same_title_is_not_asked_twice(client, modell) -> None:
@@ -151,7 +151,7 @@ def test_yes_puts_the_book_on_the_shelf_with_its_portrait(client, db, modell) ->
     nennen(client, "Otherland", "Ted Williams")
     eintrag = _eintrag(db, "Otherland")
 
-    client.post(f"/erstaufnahme/buch/{eintrag.id}/ja")
+    client.post(f"/intake/entry/{eintrag.id}/confirm")
 
     buch_id = db.intake_entry(eintrag.id).book_id
     buch = db.book(buch_id)
@@ -167,7 +167,7 @@ def test_a_disappointing_book_lands_on_the_other_shelf(client, db, modell) -> No
     nennen(client, "Herr der Ringe", seite="disliked")
     eintrag = _eintrag(db, "Herr der Ringe")
 
-    client.post(f"/erstaufnahme/buch/{eintrag.id}/ja")
+    client.post(f"/intake/entry/{eintrag.id}/confirm")
 
     doof = [r.book_id for r in db.relations(load_settings().slug, kind=RelationKind.DISLIKED)]
     assert db.intake_entry(eintrag.id).book_id in doof
@@ -175,7 +175,7 @@ def test_a_disappointing_book_lands_on_the_other_shelf(client, db, modell) -> No
 
 def test_the_books_stand_in_the_shelves_of_the_profile_page(client, db, modell) -> None:
     nennen(client, "Cry Baby")
-    client.post(f"/erstaufnahme/buch/{_eintrag(db, 'Cry Baby').id}/ja")
+    client.post(f"/intake/entry/{_eintrag(db, 'Cry Baby').id}/confirm")
 
     assert "Cry Baby" in client.get("/profil").text
 
@@ -184,7 +184,7 @@ def test_another_book_asks_again_with_what_was_typed(client, db, modell) -> None
     nennen(client, "Das Buch, das es nicht gibt")
     eintrag = _eintrag(db, "Das Buch, das es nicht gibt")
 
-    client.post(f"/erstaufnahme/buch/{eintrag.id}/anders",
+    client.post(f"/intake/entry/{eintrag.id}/retype",
                 data={"titel": "Leopard", "autor": "Jo Nesbø"})
     body = abwarten(client)
 
@@ -196,7 +196,7 @@ def test_removing_an_entry_frees_its_place(client, db, modell) -> None:
     nennen(client, "Otherland")
     eintrag = _eintrag(db, "Otherland")
 
-    body = client.post(f"/erstaufnahme/buch/{eintrag.id}/weg").text
+    body = client.post(f"/intake/entry/{eintrag.id}/remove").text
 
     assert "Otherland" not in body
 
@@ -239,9 +239,9 @@ def test_a_title_is_required(db, data_dir) -> None:
 def test_three_confirmed_loved_books_open_the_way_on(client, db, modell) -> None:
     for titel in ("Otherland", "Cry Baby", "Leichenblässe"):
         nennen(client, titel)
-        client.post(f"/erstaufnahme/buch/{_eintrag(db, titel).id}/ja")
+        client.post(f"/intake/entry/{_eintrag(db, titel).id}/confirm")
 
-    body = client.get("/erstaufnahme").text
+    body = client.get("/intake").text
 
     assert "3 geliebte" in body and "stehen in deinen Regalen" in body
 
@@ -249,7 +249,7 @@ def test_three_confirmed_loved_books_open_the_way_on(client, db, modell) -> None
 def test_the_profile_page_leads_into_the_intake(client) -> None:
     body = client.get("/profil").text
 
-    assert 'href="/erstaufnahme"' in body and "Erstaufnahme beginnen" in body
+    assert 'href="/intake"' in body and "Erstaufnahme beginnen" in body
 
 
 # --- Bildschirme 3 bis 5: das Gemeinsame, das Verlorene, dein Profil (#50) ------
@@ -305,11 +305,11 @@ def tippen(client, familie, seite="loved", buch=None, an=True, schritt=3) -> str
     daten = {"seite": seite, "familie": familie, "an": "1" if an else "", "schritt": schritt}
     if buch is not None:
         daten["buch"] = buch
-    return client.post("/erstaufnahme/wahl", data=daten, headers=HX).text
+    return client.post("/intake/choice", data=daten, headers=HX).text
 
 
 def test_screen_3_groups_the_families_by_the_books_that_carry_them(client, buecher) -> None:
-    body = client.get("/erstaufnahme/gemeinsam").text
+    body = client.get("/intake/common").text
 
     assert "Weil du" in body and "mochtest" in body
     assert "Nur in" in body
@@ -354,7 +354,7 @@ def test_a_lost_family_a_loved_book_also_carries_asks_how_far(client, buecher) -
 def test_with_the_genre_it_becomes_a_bundle(client, buecher) -> None:
     tippen(client, "big_world", seite="lost", buch=buecher["H"], schritt=4)
 
-    body = client.post("/erstaufnahme/umfang",
+    body = client.post("/intake/scope",
                        data={"familie": "big_world", "buch": buecher["H"], "umfang": "genre"},
                        headers=HX).text
 
@@ -374,7 +374,7 @@ def test_adopting_saves_the_first_version_and_the_code_judges(client, db, bueche
     tippen(client, "brooding")
     tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
 
-    antwort = client.post("/erstaufnahme/profil",
+    antwort = client.post("/intake/profile",
                           data={"facette": ["0"], "gegengewicht": ["0"]})
 
     profil = db.reading_profile(load_settings().slug)
@@ -390,7 +390,7 @@ def test_deselecting_everything_starts_over(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
 
-    antwort = client.post("/erstaufnahme/profil", data={})
+    antwort = client.post("/intake/profile", data={})
 
     assert db.reading_profile(load_settings().slug) is None
     assert db.intake_entries(load_settings().slug) == []
@@ -420,7 +420,7 @@ def test_frequent_families_go_last_only_with_a_neutral_stock(db, buecher) -> Non
 def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
-    client.post("/erstaufnahme/profil", data={"facette": ["0"]})
+    client.post("/intake/profile", data={"facette": ["0"]})
 
     body = client.get("/profil").text
 
@@ -432,7 +432,7 @@ def test_only_a_book_that_shares_nothing_is_there_for_other_reasons(client, db, 
     bestaetigt(db, "liked", "Das Rosie-Projekt", _bild(
         "Roman", None, ["quirky", "funny", "likeable", "romantic"], "opposites_attract"))
 
-    body = client.get("/erstaufnahme/gemeinsam").text
+    body = client.get("/intake/common").text
 
     assert "Rosie-Projekt</span>, aus ganz anderen Gründen" in body
     assert "Kruzifix Killer</span>, aus ganz anderen Gründen" not in body

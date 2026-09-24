@@ -1225,9 +1225,9 @@ class StubAsker:
 
 def steckbrief_abwarten(client: TestClient, pfad: str) -> str:
     """Den Knopf druecken und warten, bis der Hintergrundjob fertig ist."""
-    client.post(f"{pfad}/steckbrief")
+    client.post(f"{pfad}/portrait")
     for _ in range(250):
-        stand = client.get(f"{pfad}/steckbrief")
+        stand = client.get(f"{pfad}/portrait")
         if stand.headers.get("HX-Refresh") == "true":
             break
         threading.Event().wait(0.02)

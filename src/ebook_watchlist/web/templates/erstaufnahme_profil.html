@@ -18,7 +18,7 @@
 
 {% set facetten = wahl.draft.counted %}
 {% set gegen = wahl.draft.weights %}
-<form method="post" action="/erstaufnahme/profil"
+<form method="post" action="/intake/profile"
       x-data="{ an: {{ facetten | length + gegen | length }} }"
       @change="an = $el.querySelectorAll('input[type=checkbox]:checked').length">
 
@@ -26,7 +26,7 @@
              text-accent"><svg class="i"><use href="#ic-heart"/></svg>Facetten</h2>
   {% if not facetten %}
   <p class="text-sm text-soft italic">Keine Facette — tipp auf
-    <a href="/erstaufnahme/gemeinsam" class="text-accent underline underline-offset-2">Schritt 3</a>
+    <a href="/intake/common" class="text-accent underline underline-offset-2">Schritt 3</a>
     an, was dich an deinen Büchern hält.</p>
   {% endif %}
   <ul class="grid gap-3 sm:grid-cols-2">
@@ -59,7 +59,7 @@
   {% for u in wahl.draft.uncovered %}
   <p class="mt-3 text-sm text-danger" data-abdeckung>{{ titelreihe([u.title]) }} steckt in
     keiner Facette.
-    <a href="/erstaufnahme/gemeinsam" class="underline underline-offset-2">Zurück und
+    <a href="/intake/common" class="underline underline-offset-2">Zurück und
       antippen, was dich daran hält</a>.</p>
   {% endfor %}
 
@@ -89,7 +89,7 @@
   </p>
 
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
-    <a href="{{ '/erstaufnahme/verloren' if wahl.lost else '/erstaufnahme/gemeinsam' }}"
+    <a href="{{ '/intake/lost' if wahl.lost else '/intake/common' }}"
        class="text-soft hover:text-ink">← Zurück</a>
     <button type="submit"
             class="tun inline-flex h-9 items-center rounded border px-4 font-medium"

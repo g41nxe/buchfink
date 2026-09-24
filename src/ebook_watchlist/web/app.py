@@ -292,7 +292,7 @@ def create_app() -> FastAPI:
         return TEMPLATES.TemplateResponse(
             request,
             "_steckbrief_stand.html",
-            {"url": f"/book/{book_id}/steckbrief", "job": job, "vorhanden": False},
+            {"url": f"/book/{book_id}/portrait", "job": job, "vorhanden": False},
         )
 
     def _lauf_unterwegs(store: Store, settings) -> bool:
@@ -787,7 +787,7 @@ def create_app() -> FastAPI:
         """Hier fragt die Seite nach, solange das Urteil entsteht."""
         return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/bewerten")
 
-    @app.post("/book/{book_id}/steckbrief")
+    @app.post("/book/{book_id}/portrait")
     def book_portray(request: Request, book_id: int) -> Response:
         """Den Steckbrief dieses Buchs anlegen lassen (#45).
 
@@ -797,7 +797,7 @@ def create_app() -> FastAPI:
         zeichner.start(("book", book_id))
         return _steckbrief_stand(request, book_id)
 
-    @app.get("/book/{book_id}/steckbrief")
+    @app.get("/book/{book_id}/portrait")
     def book_portray_status(request: Request, book_id: int) -> Response:
         """Hier fragt die Seite nach, solange der Steckbrief entsteht."""
         return _steckbrief_stand(request, book_id)
@@ -887,19 +887,19 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return RedirectResponse(f"/book/{book_id}#nachschaerfen", status_code=303)
 
-    @app.post("/book/{book_id}/nachschaerfen/facette")
+    @app.post("/book/{book_id}/sharpen/facet")
     def sharpen_facet(book_id: int, familie: list[str] = _FAMILIES) -> RedirectResponse:
         """Eine neue Facette aus Familien dieses Buchs."""
         return _nachschaerfen(book_id, lambda store, settings: sharpening.add_facet(
             store, settings, book_id, familie, now=datetime.now()))
 
-    @app.post("/book/{book_id}/nachschaerfen/ablehnen")
+    @app.post("/book/{book_id}/sharpen/decline")
     def sharpen_decline(book_id: int, familie: list[str] = _FAMILIES) -> RedirectResponse:
         """Ein Vorschlag passt nicht und kommt nicht wieder."""
         return _nachschaerfen(book_id, lambda store, settings: sharpening.decline(
             store, settings, familie, now=datetime.now()))
 
-    @app.post("/book/{book_id}/nachschaerfen/gegengewicht")
+    @app.post("/book/{book_id}/sharpen/counterweight")
     async def sharpen_counterweight(request: Request, book_id: int) -> RedirectResponse:
         """Gegengewichte aus einem *Doof*-Buch; je Familie ihr Umfang."""
         formular = await request.form()
@@ -1185,9 +1185,9 @@ def create_app() -> FastAPI:
         """Mit htmx das Bruchstück, ohne die ganze Seite neu."""
         if request.headers.get("HX-Request"):
             return _intake_side(request, kind, fehler)
-        return RedirectResponse("/erstaufnahme", status_code=303)
+        return RedirectResponse("/intake", status_code=303)
 
-    @app.get("/erstaufnahme", response_class=HTMLResponse)
+    @app.get("/intake", response_class=HTMLResponse)
     def intake_page(request: Request) -> HTMLResponse:
         """Bücher nennen und bestätigen — die ersten Schritte zum Leseprofil."""
         seite = intake.build(_store_for(paths.db_path()), load_settings())
@@ -1201,7 +1201,7 @@ def create_app() -> FastAPI:
             },
         )
 
-    @app.post("/erstaufnahme/buch")
+    @app.post("/intake/entry")
     def intake_add(
         request: Request, seite: str = Form(...), titel: str = Form(""), autor: str = Form("")
     ) -> Response:
@@ -1223,7 +1223,7 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404)
         return row
 
-    @app.get("/erstaufnahme/buch/{entry_id}")
+    @app.get("/intake/entry/{entry_id}")
     def intake_entry_state(request: Request, entry_id: int) -> Response:
         """Hier fragt ein Eintrag nach, solange das Modell arbeitet (ADR 3)."""
         e = intake.entry(_store_for(paths.db_path()), _intake_row(entry_id))
@@ -1231,7 +1231,7 @@ def create_app() -> FastAPI:
             request, "_erstaufnahme_eintrag.html", {"e": e, "jobs": _intake_jobs((e,))}
         )
 
-    @app.post("/erstaufnahme/buch/{entry_id}/ja")
+    @app.post("/intake/entry/{entry_id}/confirm")
     def intake_confirm(request: Request, entry_id: int) -> Response:
         row = _intake_row(entry_id)
         try:
@@ -1241,7 +1241,7 @@ def create_app() -> FastAPI:
             return _intake_answer(request, row.side, str(exc))
         return _intake_answer(request, row.side)
 
-    @app.post("/erstaufnahme/buch/{entry_id}/anders")
+    @app.post("/intake/entry/{entry_id}/retype")
     def intake_retype(
         request: Request, entry_id: int, titel: str = Form(""), autor: str = Form("")
     ) -> Response:
@@ -1253,13 +1253,13 @@ def create_app() -> FastAPI:
         erkenner.start(("intake", entry_id))
         return _intake_answer(request, row.side)
 
-    @app.post("/erstaufnahme/buch/{entry_id}/nochmal")
+    @app.post("/intake/entry/{entry_id}/retry")
     def intake_retry(request: Request, entry_id: int) -> Response:
         row = _intake_row(entry_id)
         erkenner.start(("intake", entry_id))
         return _intake_answer(request, row.side)
 
-    @app.post("/erstaufnahme/buch/{entry_id}/weg")
+    @app.post("/intake/entry/{entry_id}/remove")
     def intake_remove(request: Request, entry_id: int) -> Response:
         row = _intake_row(entry_id)
         intake.remove(_store_for(paths.db_path()), entry_id)
@@ -1268,8 +1268,8 @@ def create_app() -> FastAPI:
     # --- Erstaufnahme, Bildschirme 3 bis 5 (#50) ------------------------------
 
     #: Die Schritte nach dem Nennen, mit ihrer Adresse.
-    _SCHRITTE = {3: "/erstaufnahme/gemeinsam", 4: "/erstaufnahme/verloren",
-                 5: "/erstaufnahme/profil"}
+    _SCHRITTE = {3: "/intake/common", 4: "/intake/lost",
+                 5: "/intake/profile"}
 
     def _choosing(request: Request, schritt: int, *, fragment: bool) -> Response:
         """Bildschirm 3 oder 4 — ganz, oder als Bruchstück nach einem Tipp."""
@@ -1281,12 +1281,12 @@ def create_app() -> FastAPI:
             request, "erstaufnahme_wahl.html", {**kontext, "asset_version": asset_version()}
         )
 
-    @app.get("/erstaufnahme/gemeinsam", response_class=HTMLResponse)
+    @app.get("/intake/common", response_class=HTMLResponse)
     def intake_common(request: Request) -> Response:
         """Bildschirm 3: was deine Bücher gemeinsam haben."""
         return _choosing(request, 3, fragment=False)
 
-    @app.get("/erstaufnahme/verloren", response_class=HTMLResponse)
+    @app.get("/intake/lost", response_class=HTMLResponse)
     def intake_lost(request: Request) -> Response:
         """Bildschirm 4: was dich an den enttäuschenden Büchern verloren hat."""
         return _choosing(request, 4, fragment=False)
@@ -1294,10 +1294,10 @@ def create_app() -> FastAPI:
     def _after_choice(request: Request, schritt: int) -> Response:
         if request.headers.get("HX-Request"):
             return _choosing(request, schritt, fragment=True)
-        return RedirectResponse(_SCHRITTE.get(schritt, "/erstaufnahme/gemeinsam"),
+        return RedirectResponse(_SCHRITTE.get(schritt, "/intake/common"),
                                 status_code=303)
 
-    @app.post("/erstaufnahme/wahl")
+    @app.post("/intake/choice")
     def intake_choose(
         request: Request,
         seite: str = Form(...),
@@ -1316,7 +1316,7 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _after_choice(request, schritt)
 
-    @app.post("/erstaufnahme/umfang")
+    @app.post("/intake/scope")
     def intake_scope(
         request: Request, familie: str = Form(...), buch: int = Form(...),
         umfang: str = Form(...),
@@ -1328,7 +1328,7 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _after_choice(request, 4)
 
-    @app.get("/erstaufnahme/profil", response_class=HTMLResponse)
+    @app.get("/intake/profile", response_class=HTMLResponse)
     def intake_profile(request: Request) -> Response:
         """Bildschirm 5: dein Profil — bestätigen oder abwählen."""
         wahl = intake.choosing(_store_for(paths.db_path()), load_settings())
@@ -1337,7 +1337,7 @@ def create_app() -> FastAPI:
             {"wahl": wahl, "schritt": 5, "asset_version": asset_version()},
         )
 
-    @app.post("/erstaufnahme/profil")
+    @app.post("/intake/profile")
     def intake_adopt(
         facette: list[str] = _FACETS, gegengewicht: list[str] = _WEIGHTS
     ) -> RedirectResponse:
@@ -1348,7 +1348,7 @@ def create_app() -> FastAPI:
             {int(i) for i in gegengewicht if i.isdigit()},
             now=datetime.now(),
         )
-        return RedirectResponse("/profil" if fassung else "/erstaufnahme", status_code=303)
+        return RedirectResponse("/profil" if fassung else "/intake", status_code=303)
 
     # --- Jetzt laufen (Ticket 10) -------------------------------------------
 

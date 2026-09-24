@@ -20,9 +20,9 @@
 
 {% include "_erstaufnahme_wahl.html" %}
 
-{% set weiter = "/erstaufnahme/profil" if schritt == 4 or not wahl.lost else "/erstaufnahme/verloren" %}
+{% set weiter = "/intake/profile" if schritt == 4 or not wahl.lost else "/intake/lost" %}
 <nav class="mt-8 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
-  <a href="{{ '/erstaufnahme' if schritt == 3 else '/erstaufnahme/gemeinsam' }}"
+  <a href="{{ '/intake' if schritt == 3 else '/intake/common' }}"
      class="text-soft hover:text-ink">← Zurück</a>
   <a href="{{ weiter }}"
      class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4

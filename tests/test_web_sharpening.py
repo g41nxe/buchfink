@@ -117,7 +117,7 @@ def test_a_liked_book_in_no_facet_is_asked_and_can_become_one(client, db, profil
     b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
     assert "steckt in keiner deiner Facetten" in seite(client, b)
 
-    client.post(f"/book/{b}/nachschaerfen/facette", data={"familie": ["funny", "likeable"]})
+    client.post(f"/book/{b}/sharpen/facet", data={"familie": ["funny", "likeable"]})
 
     neu = db.reading_profile(slug())
     assert neu.version == 2
@@ -128,8 +128,8 @@ def test_a_liked_book_in_no_facet_is_asked_and_can_become_one(client, db, profil
 def test_a_facet_needs_two_families_and_only_from_the_book(client, db, profil) -> None:
     b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
 
-    eins = client.post(f"/book/{b}/nachschaerfen/facette", data={"familie": ["funny"]})
-    fremd = client.post(f"/book/{b}/nachschaerfen/facette",
+    eins = client.post(f"/book/{b}/sharpen/facet", data={"familie": ["funny"]})
+    fremd = client.post(f"/book/{b}/sharpen/facet",
                         data={"familie": ["funny", "harsh"]})
 
     assert eins.status_code == 400 and fremd.status_code == 400
@@ -142,7 +142,7 @@ def test_shared_families_are_suggested_and_a_no_is_remembered(client, db, profil
                                  "dramatic"])
     assert 'data-vorschlag="big_world,intricate,quest"' in seite(client, b)
 
-    client.post(f"/book/{b}/nachschaerfen/ablehnen",
+    client.post(f"/book/{b}/sharpen/decline",
                 data={"familie": ["big_world", "intricate", "quest"]})
 
     assert 'data-vorschlag="big_world,intricate,quest"' not in seite(client, b)
@@ -153,7 +153,7 @@ def test_the_code_judges_again_after_a_change(client, db, profil) -> None:
     b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
     vorher = seite(client, b).split('data-passung', 1)[1].split("</div>", 1)[0]
 
-    client.post(f"/book/{b}/nachschaerfen/facette", data={"familie": ["funny", "likeable"]})
+    client.post(f"/book/{b}/sharpen/facet", data={"familie": ["funny", "likeable"]})
 
     assert "5</span>&nbsp;/&nbsp;5" in seite(client, b)
     assert "5</span>&nbsp;/&nbsp;5" not in vorher
@@ -180,7 +180,7 @@ def test_counterweights_take_their_scope(client, db, profil) -> None:
     b = buch(db, "Herr der Ringe", ["world_building", "sweeping", "bittersweet", "descriptive"],
              kind="disliked", untergenre="High Fantasy / Heroische Fantasy")
 
-    client.post(f"/book/{b}/nachschaerfen/gegengewicht",
+    client.post(f"/book/{b}/sharpen/counterweight",
                 data={"familie": ["big_world", "sad"], "umfang-big_world": "genre"})
 
     neu = db.reading_profile(slug())
@@ -194,7 +194,7 @@ def test_only_here_changes_nothing(client, db, profil) -> None:
     b = buch(db, "Herr der Ringe", ["world_building", "sweeping", "bittersweet", "descriptive"],
              kind="disliked")
 
-    client.post(f"/book/{b}/nachschaerfen/gegengewicht",
+    client.post(f"/book/{b}/sharpen/counterweight",
                 data={"familie": ["big_world"], "umfang-big_world": "here"})
 
     assert db.reading_profile(slug()).version == 1
@@ -205,7 +205,7 @@ def test_a_disliked_book_on_a_facet_leaves_the_facet(client, db, profil) -> None
     b = buch(db, "Cupido", ["violent", "brooding", "sensuous", "fast_paced"], kind="disliked")
     assert "die bleibt, wie sie ist" in seite(client, b)
 
-    client.post(f"/book/{b}/nachschaerfen/gegengewicht", data={"familie": ["sensuous"]})
+    client.post(f"/book/{b}/sharpen/counterweight", data={"familie": ["sensuous"]})
 
     neu = db.reading_profile(slug())
     assert neu.facets == profil.facets

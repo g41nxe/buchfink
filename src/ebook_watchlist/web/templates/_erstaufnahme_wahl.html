@@ -19,7 +19,7 @@
     {% if schritt == 3 %}
     {% if not wahl.groups %}
     <p class="text-sm text-soft">Noch kein geliebtes Buch mit Steckbrief bestätigt.
-      <a href="/erstaufnahme" class="text-accent underline underline-offset-2">Bücher nennen</a></p>
+      <a href="/intake" class="text-accent underline underline-offset-2">Bücher nennen</a></p>
     {% endif %}
     {% for g in wahl.groups %}
     <section class="mb-6" x-data="{ warum: false }">
@@ -63,8 +63,8 @@
       </div>
       {% endfor %}
       {% for q in d.questions %}
-      <form method="post" action="/erstaufnahme/umfang"
-            hx-post="/erstaufnahme/umfang" hx-target="#wahl" hx-swap="outerHTML"
+      <form method="post" action="/intake/scope"
+            hx-post="/intake/scope" hx-target="#wahl" hx-swap="outerHTML"
             class="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-rule
                    bg-card px-3 py-2 text-sm" data-nachfrage="{{ q.family_id }}">
         <input type="hidden" name="familie" value="{{ q.family_id }}">

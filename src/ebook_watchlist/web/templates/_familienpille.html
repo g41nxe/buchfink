@@ -15,8 +15,8 @@
 
 {% macro familienpille(p, seite, schritt) %}
 {% set weg = seite == "lost" %}
-<form method="post" action="/erstaufnahme/wahl" class="inline-flex"
-      hx-post="/erstaufnahme/wahl" hx-target="#wahl" hx-swap="outerHTML">
+<form method="post" action="/intake/choice" class="inline-flex"
+      hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
   <input type="hidden" name="seite" value="{{ seite }}">
   <input type="hidden" name="familie" value="{{ p.family_id }}">
   <input type="hidden" name="schritt" value="{{ schritt }}">
