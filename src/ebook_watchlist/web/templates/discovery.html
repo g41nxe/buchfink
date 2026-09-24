@@ -18,7 +18,7 @@
    Aufbau wie die Buchseite, Reihenfolge wie in der Zeile: Titel, Autor,
    darunter Quelle und Anlass. #}
 <p class="mb-4 text-sm">
-  <a href="/vorschlaege" class="text-soft hover:text-ink">← Vorschläge</a>
+  <a href="/suggestions" class="text-soft hover:text-ink">← Vorschläge</a>
 </p>
 
 {# Anlass als Pille, an derselben Stelle wie auf der Buchseite. #}
@@ -61,7 +61,7 @@
    ist die Frage eine unter vielen, hier ist sie der Grund, warum die Seite
    ueberhaupt offen ist. #}
 {{ abschnitt("Was du dazu sagst", "ic-tag") }}
-<form method="post" action="/vorschlaege/entscheiden"
+<form method="post" action="/suggestions/decide"
       class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
   <input type="hidden" name="keys" value="{{ page.key }}">
   {# Nach der Entscheidung auf die Buchseite: den Fund gibt es dann nicht mehr,
@@ -87,7 +87,7 @@
 {% set machine = page.judgements | rejectattr("is_human") | rejectattr("is_foreign") | list %}
 {% set fremd = page.judgements | selectattr("is_foreign") | list %}
 {% call abschnitt("Bewertung", "ic-star") %}
-  {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/bewerten", job=urteil_job,
+  {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/rate", job=urteil_job,
           vorhanden=machine | length > 0 %}
   {% include "_urteil_stand.html" %}
   {% endwith %}

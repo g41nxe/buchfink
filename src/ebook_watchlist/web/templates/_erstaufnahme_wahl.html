@@ -67,14 +67,14 @@
             hx-post="/intake/scope" hx-target="#wahl" hx-swap="outerHTML"
             class="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-rule
                    bg-card px-3 py-2 text-sm" data-nachfrage="{{ q.family_id }}">
-        <input type="hidden" name="familie" value="{{ q.family_id }}">
-        <input type="hidden" name="buch" value="{{ q.book_id }}">
+        <input type="hidden" name="family" value="{{ q.family_id }}">
+        <input type="hidden" name="book" value="{{ q.book_id }}">
         <span><span class="font-medium text-ink">{{ q.name }}</span>
           <span class="text-soft">hat dich gestört —</span></span>
         {% set wahlen = [("here", "nur bei diesem Buch"), ("general", "auch bei anderen")] %}
         {% if q.genre %}{% set wahlen = wahlen + [("genre", "nur bei " ~ q.genre)] %}{% endif %}
         {% for wert, text in wahlen %}
-        <button type="submit" name="umfang" value="{{ wert }}"
+        <button type="submit" name="scope" value="{{ wert }}"
                 aria-pressed="{{ 'true' if q.scope == wert else 'false' }}"
                 class="tun inline-flex h-7 items-center rounded border px-2.5 text-xs
                        {{ 'border-ink bg-hair text-ink' if q.scope == wert

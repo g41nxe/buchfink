@@ -74,7 +74,7 @@ def test_confirming_says_a_human_decided(client: TestClient, db: Store) -> None:
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
 
     client.post(
-        f"/watchlist/{buch_id}/zuordnen",
+        f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "url": "https://beam.invalid/1", "was": "bestaetigen"},
     )
 
@@ -90,7 +90,7 @@ def test_none_of_them_rejects_the_whole_group(client: TestClient, db: Store) -> 
     )
 
     client.post(
-        f"/watchlist/{buch_id}/zuordnen",
+        f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "was": "keiner"},
     )
 
@@ -107,7 +107,7 @@ def test_a_rejection_can_be_taken_back(client: TestClient, db: Store) -> None:
     db.reject_candidates(buch_id, "beam", ["https://beam.invalid/1"])
 
     client.post(
-        f"/watchlist/{buch_id}/zuordnen",
+        f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "was": "zurueck"},
     )
 
@@ -196,7 +196,7 @@ def test_confirming_returns_to_the_list_you_came_from(client: TestClient, db: St
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
 
     antwort = client.post(
-        f"/watchlist/{buch_id}/zuordnen",
+        f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "url": "https://beam.invalid/1", "was": "bestaetigen",
               "zurueck": "/watchlist"},
         follow_redirects=False,
@@ -209,7 +209,7 @@ def test_a_smuggled_destination_is_ignored(client: TestClient, db: Store) -> Non
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
 
     antwort = client.post(
-        f"/watchlist/{buch_id}/zuordnen",
+        f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "was": "keiner", "zurueck": "https://woanders.invalid"},
         follow_redirects=False,
     )
@@ -240,7 +240,7 @@ def test_the_book_inherits_the_cover_of_the_chosen_edition(
     )
 
     client.post(
-        f"/watchlist/{buch.id}/zuordnen",
+        f"/watchlist/{buch.id}/assign",
         data={"source": "beam", "url": "https://beam.invalid/1", "was": "bestaetigen"},
     )
 
@@ -255,7 +255,7 @@ def test_the_last_decision_does_not_land_on_an_empty_filter(
     buch_id = unklar(db, ("Red Rising", "https://beam.invalid/1"))
 
     antwort = client.post(
-        f"/watchlist/{buch_id}/zuordnen",
+        f"/watchlist/{buch_id}/assign",
         data={"source": "beam", "was": "keiner", "zurueck": "/watchlist?nur=unklar"},
         follow_redirects=False,
     )
@@ -276,7 +276,7 @@ def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store)
     )
 
     antwort = client.post(
-        f"/watchlist/{erstes}/zuordnen",
+        f"/watchlist/{erstes}/assign",
         data={"source": "beam", "was": "keiner", "zurueck": "/watchlist?nur=unklar"},
         follow_redirects=False,
     )

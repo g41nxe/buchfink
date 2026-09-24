@@ -51,7 +51,7 @@
   {{ pille("Themen", url=links["genre_category"],
            aktiv=anlass == "genre_category", ton="amber") }}
 
-  {{ sortierung(sortierungen, sortiert, "/vorschlaege", sortier_felder) }}
+  {{ sortierung(sortierungen, sortiert, "/suggestions", sortier_felder) }}
 
   <span class="ml-auto text-xs text-soft">
     {{ pile.total }} offen{% if pile.items | length < pile.total %},
@@ -68,7 +68,7 @@
    Arbeitsteilung aus ADR 20, die bislang unbesetzt war. Ohne Alpine bleibt
    alles davon per x-cloak verborgen und die Seite ist ein gewoehnliches
    Formular. #}
-<form method="post" action="/vorschlaege/entscheiden" id="pile"
+<form method="post" action="/suggestions/decide" id="pile"
       x-data="{
         chosen: 0,
         {# Auf dem Telefon keine Mehrfachauswahl (#13): die Zeile ist das

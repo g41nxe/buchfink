@@ -7,7 +7,7 @@
 <span id="buch-stand-{{ page.book_id }}"
       class="flex items-center gap-1.5 text-xs font-normal text-soft"
       {% if check and check.busy %}
-      hx-get="/book/{{ page.book_id }}/nachsehen"
+      hx-get="/book/{{ page.book_id }}/recheck"
       hx-trigger="every 2s"
       hx-target="this"
       hx-swap="outerHTML"

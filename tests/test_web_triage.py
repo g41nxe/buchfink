@@ -68,7 +68,7 @@ def found(
 def test_a_discovery_shows_up_with_what_is_known(client: TestClient, db: Store) -> None:
     found(db, title="Der Kannibalenhügel", author="Viktor Sauer")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Der Kannibalenhügel" in body
     assert "Viktor Sauer" in body
@@ -79,7 +79,7 @@ def test_a_discovery_shows_up_with_what_is_known(client: TestClient, db: Store) 
 def test_the_page_says_why_each_find_is_there(client: TestClient, db: Store) -> None:
     """Dieselben Worte wie im Digest, aus einer Stelle (Ticket 14)."""
     found(db, reason=MatchReason.PROFILE_AUTHOR)
-    assert "Autor:in" in client.get("/vorschlaege").text
+    assert "Autor:in" in client.get("/suggestions").text
 
 
 def test_junk_never_reaches_the_pile(client: TestClient, db: Store) -> None:
@@ -87,7 +87,7 @@ def test_junk_never_reaches_the_pile(client: TestClient, db: Store) -> None:
     found(db, item_id="j1", title="3 Gruselkrimis: A / B / C")
     found(db, item_id="j2", title="Gratis dabei", price=0)
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Ein echter Fund" in body
     assert "3 Gruselkrimis" not in body
@@ -107,7 +107,7 @@ def test_a_find_in_another_language_leaves_the_pile(client: TestClient, db: Stor
     db.save_dnb("9783000000001", Record(title="Ein deutscher Fund", language="ger"), NOW)
     db.save_dnb("9780000000001", Record(title="An English Find", language="eng"), NOW)
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Ein deutscher Fund" in body
     assert "An English Find" not in body
@@ -118,7 +118,7 @@ def test_the_pile_can_be_filtered_by_origin(client: TestClient, db: Store) -> No
     found(db, item_id="a", title="Vom Autor", reason=MatchReason.PROFILE_AUTHOR)
     found(db, item_id="t", title="Vom Thema", reason=MatchReason.GENRE_CATEGORY)
 
-    body = client.get("/vorschlaege?anlass=profile_author").text
+    body = client.get("/suggestions?anlass=profile_author").text
 
     assert "Vom Autor" in body
     assert "Vom Thema" not in body
@@ -126,7 +126,7 @@ def test_the_pile_can_be_filtered_by_origin(client: TestClient, db: Store) -> No
 
 def test_a_watchlist_title_is_not_a_suggestion(client: TestClient, db: Store) -> None:
     found(db, title="Beobachtet", reason=MatchReason.WATCHLIST)
-    assert "Beobachtet" not in client.get("/vorschlaege").text
+    assert "Beobachtet" not in client.get("/suggestions").text
 
 
 # --- entscheiden ------------------------------------------------------------
@@ -135,7 +135,7 @@ def test_a_watchlist_title_is_not_a_suggestion(client: TestClient, db: Store) ->
 def test_a_decision_creates_the_book_and_the_relation(client: TestClient, db: Store) -> None:
     found(db, item_id="7", title="Der Kannibalenhügel", author="Viktor Sauer")
 
-    client.post("/vorschlaege/entscheiden", data={"kind": "owned", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"]})
 
     book = next(b for b in db.books() if b.title == "Der Kannibalenhügel")
     kinds = {row.kind for row in db.relations_of("test", book.id) if row.active}
@@ -145,9 +145,9 @@ def test_a_decision_creates_the_book_and_the_relation(client: TestClient, db: St
 def test_a_decided_find_never_comes_back(client: TestClient, db: Store) -> None:
     found(db, item_id="7", title="Der Kannibalenhügel")
 
-    client.post("/vorschlaege/entscheiden", data={"kind": "dismissed", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "dismissed", "keys": ["beam:7"]})
 
-    assert "Der Kannibalenhügel" not in client.get("/vorschlaege").text
+    assert "Der Kannibalenhügel" not in client.get("/suggestions").text
 
 
 def test_a_decided_find_takes_its_cover_along(client: TestClient, db: Store) -> None:
@@ -182,7 +182,7 @@ def test_a_decided_find_takes_its_cover_along(client: TestClient, db: Store) -> 
         NOW,
     )
 
-    client.post("/vorschlaege/entscheiden", data={"kind": "watching", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "watching", "keys": ["beam:7"]})
 
     book_id = db.book_by_source_item("beam", "7")
     assert db.book(book_id).cover_file == file_name(url)
@@ -195,7 +195,7 @@ def test_dismissing_suppresses_the_book_at_every_source(client: TestClient, db: 
     found(db, item_id="7", title="Der Kannibalenhügel", isbn=isbn)
     found(db, item_id="99", title="Der Kannibalenhügel", isbn=isbn, source="onleihe")
 
-    client.post("/vorschlaege/entscheiden", data={"kind": "dismissed", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "dismissed", "keys": ["beam:7"]})
 
     pile = view.pending(db, load_settings())
     assert all(item.isbn != isbn for item in pile.items)
@@ -206,11 +206,11 @@ def test_several_finds_are_decided_at_once(client: TestClient, db: Store) -> Non
         found(db, item_id=str(number), title=f"Fund {number}")
 
     client.post(
-        "/vorschlaege/entscheiden",
+        "/suggestions/decide",
         data={"kind": "dismissed", "keys": ["beam:0", "beam:1", "beam:2"]},
     )
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
     assert "Fund 0" not in body and "Fund 2" not in body
 
 
@@ -220,7 +220,7 @@ def test_an_existing_book_is_matched_rather_than_duplicated(client: TestClient, 
     before = len(db.books())
     found(db, item_id="7", title="Die sieben Schwestern", author="Lucinda Riley")
 
-    client.post("/vorschlaege/entscheiden", data={"kind": "owned", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"]})
 
     assert len(db.books()) == before
 
@@ -229,7 +229,7 @@ def test_the_source_link_is_recorded(client: TestClient, db: Store) -> None:
     """Sonst stünde derselbe Fund beim nächsten Lauf wieder im Stapel."""
     found(db, item_id="7", title="Der Kannibalenhügel")
 
-    client.post("/vorschlaege/entscheiden", data={"kind": "owned", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"]})
 
     book = next(b for b in db.books() if b.title == "Der Kannibalenhügel")
     link = db.get_book_source(book.id, "beam")
@@ -238,13 +238,13 @@ def test_the_source_link_is_recorded(client: TestClient, db: Store) -> None:
 
 def test_deciding_nothing_changes_nothing(client: TestClient, db: Store) -> None:
     before = len(db.books())
-    client.post("/vorschlaege/entscheiden", data={"kind": "dismissed"})
+    client.post("/suggestions/decide", data={"kind": "dismissed"})
     assert len(db.books()) == before
 
 
 def test_an_unknown_key_is_ignored_not_fatal(client: TestClient, db: Store) -> None:
     response = client.post(
-        "/vorschlaege/entscheiden", data={"kind": "owned", "keys": ["beam:gibtsnicht"]}
+        "/suggestions/decide", data={"kind": "owned", "keys": ["beam:gibtsnicht"]}
     )
     assert response.status_code == 200
 
@@ -255,7 +255,7 @@ def test_an_unknown_action_is_refused(client: TestClient, db: Store) -> None:
     zurueck."""
     found(db, item_id="7")
     response = client.post(
-        "/vorschlaege/entscheiden", data={"kind": "verschlungen", "keys": ["beam:7"]}
+        "/suggestions/decide", data={"kind": "verschlungen", "keys": ["beam:7"]}
     )
     assert response.status_code == 400
     assert db.book_by_source_item("beam", "7") is None
@@ -266,7 +266,7 @@ def test_the_title_leads_to_the_page_of_the_find(client: TestClient, db: Store) 
     Fundseite schon, und dort steht die Begruendung des Tors."""
     found(db, item_id="7", title="Der Kannibalenhügel")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert 'href="/discovery/beam/7"' in body
     marker = body.index('href="/discovery/beam/7"')
@@ -279,7 +279,7 @@ def test_clicking_the_title_does_not_tick_the_checkbox(client: TestClient, db: S
     statt zur Fundseite zu fuehren."""
     found(db, item_id="7")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     start = body.index('href="/discovery/beam/7"')
     assert "stopPropagation" in body[body.rindex("<a", 0, start) : body.index(">", start)]
@@ -299,7 +299,7 @@ def test_the_phone_has_no_selection_bar(client: TestClient, db: Store) -> None:
     einen Sonderfall, der am Rechner bequemer ist. Unter ``sm`` faellt sie weg."""
     found(db, item_id="7")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     leiste = _tag_um(body, "sticky bottom-0")
     assert "hidden" in leiste.split('"')[1].split()
@@ -313,7 +313,7 @@ def test_on_the_phone_a_tap_on_the_row_ticks_nothing(client: TestClient, db: Sto
     ohne Alpine bleibt alles wie vorher."""
     found(db, item_id="7")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     kaestchen = _tag_um(body, 'name="keys"')
     assert ':disabled="klein"' in kaestchen
@@ -328,9 +328,9 @@ def test_each_row_carries_the_three_decisions(client: TestClient, db: Store) -> 
     nicht erst ankreuzen muessen."""
     found(db, item_id="7", title="Der Kannibalenhügel")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
-    assert 'hx-post="/vorschlaege/beam/7/entscheiden"' in body
+    assert 'hx-post="/suggestions/beam/7/decide"' in body
     for kind in ("dismissed", "owned", "watching"):
         assert f'value="{kind}"' in body
 
@@ -341,7 +341,7 @@ def test_a_row_decision_touches_exactly_one_find(client: TestClient, db: Store) 
     found(db, item_id="7", title="Der Kannibalenhügel")
     found(db, item_id="8", title="Ein anderer Fund")
 
-    client.post("/vorschlaege/beam/7/entscheiden", data={"kind": "owned"})
+    client.post("/suggestions/beam/7/decide", data={"kind": "owned"})
 
     titel = {book.title for book in db.books()}
     assert "Der Kannibalenhügel" in titel
@@ -354,14 +354,14 @@ def test_a_row_decision_answers_with_nothing_so_the_row_disappears(
     """htmx tauscht die Zeile gegen die Antwort — leer heisst: weg damit."""
     found(db, item_id="7")
 
-    response = client.post("/vorschlaege/beam/7/entscheiden", data={"kind": "dismissed"})
+    response = client.post("/suggestions/beam/7/decide", data={"kind": "dismissed"})
 
     assert response.status_code == 200
     assert response.text.strip() == ""
 
 
 def test_an_unknown_find_in_a_row_decision_is_refused(client: TestClient, db: Store) -> None:
-    response = client.post("/vorschlaege/beam/gibtsnicht/entscheiden", data={"kind": "owned"})
+    response = client.post("/suggestions/beam/gibtsnicht/decide", data={"kind": "owned"})
 
     assert response.status_code == 404
 
@@ -372,7 +372,7 @@ def test_the_selection_counter_recounts_when_a_row_vanishes(
     """Verschwindet eine angehakte Zeile, zaehlte der Zaehler sonst Geister."""
     found(db, item_id="7")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "htmx:after-swap.window" in body
 
@@ -396,14 +396,14 @@ def test_the_pile_counts_what_it_does_not_show(db: Store) -> None:
 def test_alpine_is_actually_loaded(client: TestClient) -> None:
     """Der Build holte Alpine und kein Template lud es — 55 KB Abhängigkeit
     ohne Nutzen. Entweder eine Seite braucht es, oder es fliegt raus (ADR 20)."""
-    assert "vendor/alpine.min.js" in client.get("/vorschlaege").text
+    assert "vendor/alpine.min.js" in client.get("/suggestions").text
 
 
 def test_the_pile_counts_what_is_ticked_in_the_browser(client: TestClient, db: Store) -> None:
     """Bei fünfzig Zeilen ist "wie viele habe ich angehakt" die Frage vor jedem
     Knopfdruck — und reiner Browserzustand: kein Server kennt sie."""
     found(db)
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert 'x-data="{' in body
     assert 'x-text="chosen"' in body
@@ -414,10 +414,10 @@ def test_without_alpine_the_page_stays_a_plain_form(client: TestClient, db: Stor
     """x-cloak verbirgt, was ohne Alpine sinnlos wäre. Fällt das Skript aus,
     fehlt der Zähler — die Seite funktioniert weiter."""
     found(db)
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "x-cloak" in body
-    assert '<form method="post" action="/vorschlaege/entscheiden"' in body
+    assert '<form method="post" action="/suggestions/decide"' in body
 
 
 # --- die Zeile wie in der Übersicht (Vorschlagsseite) -----------------------
@@ -447,7 +447,7 @@ def test_the_pitch_replaces_the_blurb(client: TestClient, db: Store) -> None:
     beobachtet = found(db, title="Der Kannibalenhügel", blurb="Ein Schiff, allein im Dunkeln.")
     urteil(db, beobachtet, stars=4, pitch="Ein Ermittler am Limit, und die Jagd beginnt sofort.")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Ein Ermittler am Limit" in body
     assert "Ein Schiff, allein im Dunkeln." not in body
@@ -458,14 +458,14 @@ def test_without_a_judgement_the_blurb_still_shows(client: TestClient, db: Store
     nichts."""
     found(db, blurb="Ein Schiff, allein im Dunkeln.")
 
-    assert "Ein Schiff, allein im Dunkeln." in client.get("/vorschlaege").text
+    assert "Ein Schiff, allein im Dunkeln." in client.get("/suggestions").text
 
 
 def test_the_stars_of_the_gate_are_shown(client: TestClient, db: Store) -> None:
     beobachtet = found(db, title="Der Kannibalenhügel")
     urteil(db, beobachtet, stars=4, pitch="Kurz und knapp.")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "4 von 5" in body
     assert "ic-star" in body
@@ -475,14 +475,14 @@ def test_an_unjudged_find_shows_no_stars(client: TestClient, db: Store) -> None:
     """Null Sterne wären eine Aussage. "Noch nicht bewertet" ist keine."""
     found(db, title="Der Kannibalenhügel")
 
-    assert "von 5 — Urteil des Werkzeugs" not in client.get("/vorschlaege").text
+    assert "von 5 — Urteil des Werkzeugs" not in client.get("/suggestions").text
 
 
 def test_the_row_carries_a_cover_and_the_source_symbol(client: TestClient, db: Store) -> None:
     """Dieselbe Sprache wie auf der Watchlist: grün Bibliothek, bernstein Shop."""
     found(db, title="Der Kannibalenhügel", price=399)
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "ic-shop" in body
     assert "ic-tag" in body  # Schnäppchen-Abzeichen auf dem Cover, 3,99 €
@@ -502,7 +502,7 @@ def test_a_long_title_is_shortened_in_the_row_and_whole_on_the_find_page(
     )
     found(db, item_id="lang", title=langer_titel)
 
-    liste = client.get("/vorschlaege").text
+    liste = client.get("/suggestions").text
     vor_dem_titel = liste[: liste.index(langer_titel)]
     titelabsatz = vor_dem_titel[vor_dem_titel.rindex("<p ") :]
     assert "line-clamp-2" in titelabsatz, titelabsatz
@@ -558,7 +558,7 @@ def test_what_the_gate_holds_back_is_not_a_task(client: TestClient, db: Store) -
     urteil(db, stark, stars=3, pitch="Traegt eine Sache ueberzeugend.")
 
     pile = view.pending(db, load_settings())
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert [item.title for item in pile.items] == ["Starker Fund"]
     assert pile.hidden_weak == 1
@@ -637,7 +637,7 @@ def test_a_suggestion_with_a_fetched_cover_shows_it(client: TestClient, db: Stor
         NOW,
     )
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
     assert f"/covers/{file_name(url)}" in body
 
 
@@ -649,7 +649,7 @@ def test_a_bundle_says_so_and_names_its_volumes(client: TestClient, db: Store) -
     genau das war der Grund fuer ADR 24."""
     found(db, title='Der Kruzifix-Killer / Der Vollstrecker', author='Chris Carter')
 
-    body = client.get('/vorschlaege').text
+    body = client.get('/suggestions').text
 
     assert '2 Bände' in body
     assert 'Der Kruzifix-Killer, Der Vollstrecker' in body
@@ -672,7 +672,7 @@ def test_a_bundle_without_volume_titles_only_states_the_fact(
         reason=MatchReason.PROFILE_AUTHOR,
     )
 
-    body = client.get('/vorschlaege').text
+    body = client.get('/suggestions').text
 
     assert 'Sammelausgabe' in body
 
@@ -680,7 +680,7 @@ def test_a_bundle_without_volume_titles_only_states_the_fact(
 def test_an_ordinary_title_carries_no_bundle_badge(client: TestClient, db: Store) -> None:
     found(db, title='Der Kruzifix-Killer', author='Chris Carter')
 
-    body = client.get('/vorschlaege').text
+    body = client.get('/suggestions').text
 
     assert 'Sammelausgabe' not in body
     assert 'Bände' not in body
@@ -691,7 +691,7 @@ def test_an_ordinary_title_carries_no_bundle_badge(client: TestClient, db: Store
 
 def test_the_stack_offers_every_sort_key(client: TestClient, db: Store) -> None:
     found(db)
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Sortiert nach" in body
     for order in sorting.SUGGESTIONS:
@@ -704,7 +704,7 @@ def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
     found(db, item_id="teuer", title="Kostet viel", price=499)
     found(db, item_id="billig", title="Kostet wenig", price=199)
 
-    body = client.get("/vorschlaege?sortiert=preis").text
+    body = client.get("/suggestions?sortiert=preis").text
 
     assert body.index("Kostet wenig") < body.index("Kostet viel")
 
@@ -724,7 +724,7 @@ def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -
 def test_the_filter_keeps_the_order(client: TestClient, db: Store) -> None:
     """Wer auf "Themen" klickt, behaelt seine Reihenfolge."""
     found(db)
-    body = client.get("/vorschlaege?sortiert=preis").text
+    body = client.get("/suggestions?sortiert=preis").text
 
     assert "anlass=genre_category" in body
     assert "sortiert=preis" in body
@@ -738,7 +738,7 @@ def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> 
     antwort = TestClient(
         create_app(), raise_server_exceptions=False, follow_redirects=False
     ).post(
-        "/vorschlaege/entscheiden",
+        "/suggestions/decide",
         data={
             "kind": str(RelationKind.DISMISSED),
             "keys": [f"{fund.source}:{fund.source_item_id}"],
@@ -746,12 +746,12 @@ def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> 
         },
     )
 
-    assert antwort.headers["location"] == "/vorschlaege?sortiert=preis"
+    assert antwort.headers["location"] == "/suggestions?sortiert=preis"
 
 
 def test_the_default_order_stays_out_of_the_links(client: TestClient, db: Store) -> None:
     found(db)
-    assert "sortiert=sterne" not in client.get("/vorschlaege").text
+    assert "sortiert=sterne" not in client.get("/suggestions").text
 
 
 def test_sorting_by_occasion_works_against_the_real_type(
@@ -766,7 +766,7 @@ def test_sorting_by_occasion_works_against_the_real_type(
     found(db, item_id="thema", title="Aus dem Regal", reason=MatchReason.GENRE_CATEGORY)
     found(db, item_id="autor", title="Von wem ich lese", reason=MatchReason.PROFILE_AUTHOR)
 
-    body = client.get("/vorschlaege?sortiert=anlass").text
+    body = client.get("/suggestions?sortiert=anlass").text
 
     assert body.index("Von wem ich lese") < body.index("Aus dem Regal")
 
@@ -780,7 +780,7 @@ def test_a_book_by_an_ai_author_never_reaches_the_stack(
                 "künstliche Intelligenz.")
     found(db, item_id="echt", title="Ein handgeschriebener Fund", author="Wer Auch Immer")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Ein handgeschriebener Fund" in body
     assert "Die Glocke von Kirchberg" not in body
@@ -798,7 +798,7 @@ def test_the_whole_work_goes_not_just_the_declaring_title(
     found(db, item_id="ohne", title="Nur ein Teaser", author="Matze K",
           blurb="Im Jahr 2100 verändert sich Pegau.")
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Nur ein Teaser" not in body
     assert "2 KI-erzeugt" in body
@@ -816,7 +816,7 @@ def test_a_thin_judgement_says_so_in_the_row(client: TestClient, db: Store) -> N
     db.put_rating(subject_of(fund), stars=4, confidence="teils", reason="…",
                   profile_version=1, now=NOW, origin=BY_MODEL)
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "teilweise belegt" in body
 
@@ -829,7 +829,7 @@ def test_a_well_founded_judgement_stays_silent(client: TestClient, db: Store) ->
     db.put_rating(subject_of(fund), stars=4, confidence="belegt", reason="…",
                   profile_version=1, now=NOW, origin=BY_MODEL)
 
-    body = client.get("/vorschlaege").text
+    body = client.get("/suggestions").text
 
     assert "Mit Leseprobe" in body
     assert "im Text belegt" not in body

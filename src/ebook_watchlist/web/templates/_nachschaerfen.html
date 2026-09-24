@@ -40,7 +40,7 @@
   <form method="post" action="{{ basis }}/facet" class="space-y-2">
     <p class="text-ink">Dieses Buch steckt in keiner deiner Facetten. Was hält dich daran?</p>
     <div class="flex flex-wrap gap-2">
-      {% for f in n.uncovered %}{{ wahlpille(f, "familie") }}{% endfor %}
+      {% for f in n.uncovered %}{{ wahlpille(f, "family") }}{% endfor %}
     </div>
     <button type="submit"
             class="tun inline-flex h-8 items-center rounded border border-accent bg-accent/10
@@ -56,14 +56,14 @@
       <span class="font-semibold text-accent">{{ v.name }}</span>
       <span class="text-soft">— tragen {{ titelreihe(v.books) }}</span></p>
     <form method="post" action="{{ basis }}/facet">
-      {% for f in v.families %}<input type="hidden" name="familie" value="{{ f }}">{% endfor %}
+      {% for f in v.families %}<input type="hidden" name="family" value="{{ f }}">{% endfor %}
       <button type="submit"
               class="tun inline-flex h-8 items-center gap-1 rounded border border-accent
                      bg-accent/10 px-3 font-medium text-accent hover:bg-accent/25">
         <svg class="i"><use href="#ic-heart"/></svg>Übernehmen</button>
     </form>
     <form method="post" action="{{ basis }}/decline">
-      {% for f in v.families %}<input type="hidden" name="familie" value="{{ f }}">{% endfor %}
+      {% for f in v.families %}<input type="hidden" name="family" value="{{ f }}">{% endfor %}
       <button type="submit" class="text-xs text-soft underline underline-offset-2
                                    hover:text-ink">passt nicht</button>
     </form>
@@ -86,10 +86,10 @@
     <ul class="space-y-2">
       {% for f in n.lost %}
       <li class="flex flex-wrap items-center gap-2">
-        {{ wahlpille(f, "familie", weg=true) }}
+        {{ wahlpille(f, "family", weg=true) }}
         {% if f.also_in %}
         <span class="text-xs text-soft">steckt auch in {{ titelreihe(f.also_in) }} —</span>
-        <select name="umfang-{{ f.family_id }}" aria-label="Wie weit es gilt"
+        <select name="scope-{{ f.family_id }}" aria-label="Wie weit es gilt"
                 class="h-7 rounded border border-rule bg-paper px-1 text-xs text-ink">
           <option value="here">nur bei diesem Buch</option>
           <option value="general">auch bei anderen</option>

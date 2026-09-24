@@ -11,7 +11,7 @@
 <span class="flex items-center gap-0.5">
   {% for value in range(1, 6) %}
   {% set on = my_stars is not none and value <= my_stars %}
-  <form method="post" action="/book/{{ book_id }}/sterne">
+  <form method="post" action="/book/{{ book_id }}/stars">
     <input type="hidden" name="stars" value="{{ value }}">
     {# `aspect-square` neben `tun`: auf einem Beruehrungsgeraet zwingt die
        Mindesthoehe von 44 px die Breite mit, sonst waere der Stern 22 px breit

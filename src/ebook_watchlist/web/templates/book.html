@@ -120,7 +120,7 @@
     <span class="wenn-auf inline-flex items-center gap-1.5">
       <svg class="i"><use href="#ic-x"/></svg>Abbrechen</span>
   </summary>
-  <form method="post" action="/book/{{ page.book_id }}/bearbeiten"
+  <form method="post" action="/book/{{ page.book_id }}/edit"
         class="mt-2 flex flex-wrap items-end gap-3 rounded-lg border border-rule
                bg-card p-4">
     <label class="flex flex-col gap-1">
@@ -266,7 +266,7 @@
    und wird nie gefragt, hier stand deshalb fuer immer nichts. Knopf und Stand
    kommen aus derselben Vorlage wie auf der Fundseite (#15). #}
 {% call abschnitt("Bewertung", "ic-star") %}
-  {% with url="/book/" ~ page.book_id ~ "/bewerten", job=urteil_job,
+  {% with url="/book/" ~ page.book_id ~ "/rate", job=urteil_job,
           vorhanden=page.judgements | rejectattr("is_human") | rejectattr("is_foreign")
                     | list | length > 0 %}
   {% include "_urteil_stand.html" %}
@@ -292,7 +292,7 @@
   {{ sterne(page.book_id, page.my_stars) }}
   {# Zuruecknehmen schreibt keine Null: "nicht bewertet" und "passt ueberhaupt
      nicht" sind zwei verschiedene Auskuenfte. #}
-  <form method="post" action="/book/{{ page.book_id }}/sterne">
+  <form method="post" action="/book/{{ page.book_id }}/stars">
     <input type="hidden" name="stars" value="">
     <button type="submit" class="text-xs text-soft underline underline-offset-2
                                  hover:text-ink">zurücknehmen</button>
@@ -401,7 +401,7 @@
 {% call abschnitt("Beobachtungen", "ic-clock") %}
   <span class="ml-auto">{% include "_book_status.html" %}</span>
   {% if page.watching %}
-  <form hx-post="/book/{{ page.book_id }}/nachsehen"
+  <form hx-post="/book/{{ page.book_id }}/recheck"
         hx-target="#buch-stand-{{ page.book_id }}" hx-swap="outerHTML">
     <button type="submit" title="jetzt nachsehen"
             class="flex rounded p-1 text-soft hover:bg-hair hover:text-accent">

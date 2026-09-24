@@ -33,7 +33,7 @@
   {% set attrs %}
   {%- if absenden %}type="submit" name="kind" value="{{ kind }}"
   {%- else %}type="button" onclick="event.stopPropagation()"
-    hx-post="/vorschlaege/{{ source }}/{{ item_id }}/entscheiden"
+    hx-post="/suggestions/{{ source }}/{{ item_id }}/decide"
     hx-vals='{"kind": "{{ kind }}"}'
     hx-target="{{ ziel }}" hx-swap="outerHTML"{% endif %}
   {% endset %}

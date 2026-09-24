@@ -1,4 +1,4 @@
-"""Die Startseite unter ``/`` und der Umzug der Übersicht nach ``/uebersicht`` (Issue #5)."""
+"""Die Startseite unter ``/`` und der Umzug der Übersicht nach ``/overview`` (Issue #5)."""
 
 from __future__ import annotations
 
@@ -241,7 +241,7 @@ def test_finishing_an_offer_stays_on_the_start_page(client: TestClient, db: Stor
     seen(db, schwestern.id, price=399, available=True)
 
     antwort = client.post(
-        f"/watchlist/{schwestern.id}/abschliessen",
+        f"/watchlist/{schwestern.id}/finish",
         data={"kind": "owned", "zurueck": "/"},
     )
 
@@ -294,7 +294,7 @@ def test_open_suggestions_are_offered_with_the_three_decisions(
 
     assert "1 von 1 zu entscheiden" in body
     assert "Der Kannibalenhügel" in body
-    assert 'action="/vorschlaege/entscheiden"' in body
+    assert 'action="/suggestions/decide"' in body
     for kind in ("dismissed", "owned", "watching"):
         assert f'value="{kind}"' in body
 
@@ -307,7 +307,7 @@ def test_each_decision_has_its_own_distinct_icon(client: TestClient, db: Store) 
     found(db, item_id="7", title="Der Kannibalenhügel")
 
     body = client.get("/").text
-    form = body[body.index('action="/vorschlaege/entscheiden"') :]
+    form = body[body.index('action="/suggestions/decide"') :]
     form = form[: form.index("</form>")]
 
     def icon_of(kind: str) -> str:
@@ -334,7 +334,7 @@ def test_the_owned_button_is_coloured_like_a_purchase_not_like_the_library(
     found(db, item_id="7", title="Der Kannibalenhügel")
 
     body = client.get("/").text
-    form = body[body.index('action="/vorschlaege/entscheiden"') :]
+    form = body[body.index('action="/suggestions/decide"') :]
     start = form.index('value="owned"')
     knopf = form[start : form.index("</button>", start)]
 
@@ -352,7 +352,7 @@ def test_a_decision_is_a_verb_on_the_button_and_the_same_verb_on_the_pile(
     found(db, item_id="7", title="Der Kannibalenhügel")
 
     start = client.get("/").text
-    stapel = client.get("/vorschlaege").text
+    stapel = client.get("/suggestions").text
 
     for wort in ("Ausschließen", "Hab ich", "Beobachten"):
         assert wort in start, wort
@@ -370,13 +370,13 @@ def test_deciding_from_the_start_page_returns_to_the_start_page(
     client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=False)
 
     response = client.post(
-        "/vorschlaege/entscheiden",
+        "/suggestions/decide",
         data={"kind": "owned", "keys": ["beam:7"], "zurueck": "/"},
     )
 
     assert response.status_code == 303
     assert response.headers["location"].startswith("/")
-    assert not response.headers["location"].startswith("/vorschlaege")
+    assert not response.headers["location"].startswith("/suggestions")
 
 
 def test_a_foreign_return_address_leads_back_to_the_pile(data_dir: Path, db: Store) -> None:
@@ -386,11 +386,11 @@ def test_a_foreign_return_address_leads_back_to_the_pile(data_dir: Path, db: Sto
     client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=False)
 
     response = client.post(
-        "/vorschlaege/entscheiden",
+        "/suggestions/decide",
         data={"kind": "dismissed", "keys": ["beam:7"], "zurueck": "https://boese.invalid/"},
     )
 
-    assert response.headers["location"] == "/vorschlaege"
+    assert response.headers["location"] == "/suggestions"
 
 
 # --- rueckgaengig -----------------------------------------------------------
@@ -406,13 +406,13 @@ def test_after_a_decision_the_start_page_offers_to_take_it_back(
     client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=True)
 
     body = client.post(
-        "/vorschlaege/entscheiden",
+        "/suggestions/decide",
         data={"kind": "dismissed", "keys": ["beam:7"], "zurueck": "/"},
     ).text
 
     assert "Rückgängig" in body
     assert "Der Kannibalenhügel" in body
-    assert 'action="/vorschlaege/zuruecknehmen"' in body
+    assert 'action="/suggestions/undo"' in body
     assert "0 von 0 zu entscheiden" in body
 
 
@@ -423,11 +423,11 @@ def test_taking_a_decision_back_puts_the_find_back_on_the_pile(
     found(db, item_id="7", title="Der Kannibalenhügel")
     client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=True)
     client.post(
-        "/vorschlaege/entscheiden", data={"kind": "owned", "keys": ["beam:7"], "zurueck": "/"}
+        "/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"], "zurueck": "/"}
     )
 
     body = client.post(
-        "/vorschlaege/zuruecknehmen", data={"key": "beam:7", "kind": "owned", "zurueck": "/"}
+        "/suggestions/undo", data={"key": "beam:7", "kind": "owned", "zurueck": "/"}
     ).text
 
     assert "1 von 1 zu entscheiden" in body
@@ -456,7 +456,7 @@ def test_the_columns_show_what_the_profile_says_and_count_the_rest(
     body = client.get("/").text
 
     assert "3 von 5 zu entscheiden" in body
-    assert body.count('action="/vorschlaege/entscheiden"') == 3
+    assert body.count('action="/suggestions/decide"') == 3
 
 
 def test_another_profile_shows_another_number(data_dir: Path, db: Store) -> None:
@@ -481,7 +481,7 @@ def test_another_profile_shows_another_number(data_dir: Path, db: Store) -> None
 
 
 def test_the_dashboard_lives_at_uebersicht(client: TestClient) -> None:
-    response = client.get("/uebersicht")
+    response = client.get("/overview")
 
     assert response.status_code == 200
     assert "Noch kein Lauf verzeichnet" in response.text
@@ -499,12 +499,12 @@ def test_the_navigation_leads_home_and_the_dashboard_stays_reachable(
     body = client.get("/watchlist").text
 
     assert ">Home<" in body
-    assert 'href="/uebersicht"' in body
+    assert 'href="/overview"' in body
     assert ">Übersicht</span>" in body
 
 
 def test_the_emblem_and_the_name_lead_home(client: TestClient) -> None:
-    body = client.get("/uebersicht").text
+    body = client.get("/overview").text
 
     assert re.search(r'<a href="/"[^>]*>\s*<img', body), "das Zeichen führt nicht auf /"
     assert re.search(r'<a href="/"[^>]*>Buchfink</a>', body), "der Name führt nicht auf /"

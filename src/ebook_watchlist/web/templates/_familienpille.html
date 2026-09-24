@@ -17,11 +17,11 @@
 {% set weg = seite == "lost" %}
 <form method="post" action="/intake/choice" class="inline-flex"
       hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
-  <input type="hidden" name="seite" value="{{ seite }}">
-  <input type="hidden" name="familie" value="{{ p.family_id }}">
-  <input type="hidden" name="schritt" value="{{ schritt }}">
-  {% if p.book_id %}<input type="hidden" name="buch" value="{{ p.book_id }}">{% endif %}
-  <input type="hidden" name="an" value="{{ '' if p.on else '1' }}">
+  <input type="hidden" name="side" value="{{ seite }}">
+  <input type="hidden" name="family" value="{{ p.family_id }}">
+  <input type="hidden" name="step" value="{{ schritt }}">
+  {% if p.book_id %}<input type="hidden" name="book" value="{{ p.book_id }}">{% endif %}
+  <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
   <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
           data-familie="{{ p.family_id }}"
           class="pille tun inline-flex h-7 items-center gap-1 rounded border px-3 text-xs

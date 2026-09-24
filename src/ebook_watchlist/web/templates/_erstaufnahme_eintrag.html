@@ -86,11 +86,11 @@
     <form method="post" action="{{ basis }}/retype" x-show="anders" x-cloak
           hx-post="{{ basis }}/retype" hx-target="{{ ziel }}" hx-swap="outerHTML"
           class="flex w-full flex-wrap items-end gap-2 pt-1">
-      <input name="titel" required autocomplete="off" value="{{ e.typed_title }}"
+      <input name="title" required autocomplete="off" value="{{ e.typed_title }}"
              aria-label="Titel"
              class="h-9 min-w-0 flex-1 rounded border border-rule bg-paper px-2 font-serif
                     text-sm text-ink outline-none focus:border-accent sm:w-56 sm:flex-none">
-      <input name="autor" autocomplete="off" value="{{ e.typed_author or '' }}"
+      <input name="author" autocomplete="off" value="{{ e.typed_author or '' }}"
              aria-label="Autor:in" placeholder="Autor:in"
              class="h-9 min-w-0 flex-1 rounded border border-rule bg-paper px-2 text-sm
                     text-ink outline-none focus:border-accent sm:w-44 sm:flex-none">

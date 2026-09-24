@@ -129,9 +129,9 @@
          der Watchlist stand, musste erst zurueck. #}
       {% for ziel, name, zeichen in (("/", "Home", none),
                                      ("/watchlist", "Watchlist", none),
-                                     ("/vorschlaege", "Vorschläge", none),
-                                     ("/profil", "Profil", none),
-                                     ("/uebersicht", "Übersicht", "ic-clock")) %}
+                                     ("/suggestions", "Vorschläge", none),
+                                     ("/profile", "Profil", none),
+                                     ("/overview", "Übersicht", "ic-clock")) %}
       {# Wo man steht, stand bisher nirgends — gleich aussehende Links.
          `aria-current` sagt es der Vorlesehilfe, die Farbe dem Auge. #}
       {% set aktiv = pfad == ziel %}

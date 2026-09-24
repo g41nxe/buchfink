@@ -91,7 +91,7 @@ def test_the_page_offers_to_correct_the_title(client: TestClient, db: Store) -> 
     body = client.get("/watchlist").text
 
     assert "Keine Quelle kennt diesen Titel" in body
-    assert f"/watchlist/{buch_id}/umbenennen" in body
+    assert f"/watchlist/{buch_id}/rename" in body
 
 
 def test_renaming_keeps_the_entry_and_drops_the_assignments(
@@ -102,7 +102,7 @@ def test_renaming_keeps_the_entry_and_drops_the_assignments(
     Titel und stießen sonst nie eine neue Suche an."""
     buch_id = eintrag(db, "Dunkle Gefilde", beam=str(LinkOutcome.NOT_FOUND))
 
-    client.post(f"/watchlist/{buch_id}/umbenennen", data={"title": "Profit", "author": "R. Morgan"})
+    client.post(f"/watchlist/{buch_id}/rename", data={"title": "Profit", "author": "R. Morgan"})
 
     buch = db.book(buch_id)
     assert buch.title == "Profit"
@@ -114,7 +114,7 @@ def test_renaming_keeps_the_entry_and_drops_the_assignments(
 def test_an_empty_title_changes_nothing(client: TestClient, db: Store) -> None:
     buch_id = eintrag(db, "Hardwired", beam=str(LinkOutcome.NOT_FOUND))
 
-    client.post(f"/watchlist/{buch_id}/umbenennen", data={"title": "   "})
+    client.post(f"/watchlist/{buch_id}/rename", data={"title": "   "})
 
     assert db.book(buch_id).title == "Hardwired"
 
@@ -122,7 +122,7 @@ def test_an_empty_title_changes_nothing(client: TestClient, db: Store) -> None:
 def test_i_know_hides_the_hint(client: TestClient, db: Store) -> None:
     buch_id = eintrag(db, "Hardware", beam=str(LinkOutcome.NOT_FOUND))
 
-    client.post(f"/watchlist/{buch_id}/fehlt", data={"title": "Hardware"})
+    client.post(f"/watchlist/{buch_id}/missing", data={"title": "Hardware"})
 
     eintrag_danach = eintraege(db)[buch_id]
     assert eintrag_danach.missing
@@ -134,9 +134,9 @@ def test_after_a_rename_the_hint_comes_back(client: TestClient, db: Store) -> No
     """Gemerkt wird der Titel, nicht das Buch: nach einer Umbenennung ist es
     eine neue Behauptung über eine neue Eingabe (ADR 27)."""
     buch_id = eintrag(db, "Hardware", beam=str(LinkOutcome.NOT_FOUND))
-    client.post(f"/watchlist/{buch_id}/fehlt", data={"title": "Hardware"})
+    client.post(f"/watchlist/{buch_id}/missing", data={"title": "Hardware"})
 
-    client.post(f"/watchlist/{buch_id}/umbenennen", data={"title": "Hardwired"})
+    client.post(f"/watchlist/{buch_id}/rename", data={"title": "Hardwired"})
     db.put_book_source(buch_id, "beam", outcome=str(LinkOutcome.NOT_FOUND), url=None,
                        resolved_at=NOW, reason="")
 
@@ -149,6 +149,6 @@ def test_the_note_survives_a_dismissal(client: TestClient, db: Store) -> None:
     db.put_relation(settings.slug, buch_id, str(RelationKind.WATCHING), now=NOW,
                     note="Cyberpunk-Actioner.")
 
-    client.post(f"/watchlist/{buch_id}/fehlt", data={"title": "Hardware"})
+    client.post(f"/watchlist/{buch_id}/missing", data={"title": "Hardware"})
 
     assert eintraege(db)[buch_id].note == "Cyberpunk-Actioner."

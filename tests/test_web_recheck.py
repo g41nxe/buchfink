@@ -126,11 +126,11 @@ def test_the_row_asks_again_while_something_runs(
     buch_id = eintrag(db)
 
     try:
-        body = client.post(f"/watchlist/{buch_id}/nachsehen").text
+        body = client.post(f"/watchlist/{buch_id}/recheck").text
     finally:
         losgelassen.set()
 
-    assert f'hx-get="/watchlist/{buch_id}/nachsehen"' in body
+    assert f'hx-get="/watchlist/{buch_id}/recheck"' in body
     assert "every 2s" in body
 
 
@@ -139,13 +139,13 @@ def test_the_row_stops_asking_when_it_is_over(client: TestClient, db: Store) -> 
     von selbst auf zu fragen (ADR 3, wie `_run_panel.html`)."""
     buch_id = eintrag(db)
 
-    body = client.get(f"/watchlist/{buch_id}/nachsehen").text
+    body = client.get(f"/watchlist/{buch_id}/recheck").text
 
     assert "every 2s" not in body
 
 
 def test_an_unknown_entry_is_not_found(client: TestClient, db: Store) -> None:
-    assert client.get("/watchlist/9999/nachsehen").status_code == 404
+    assert client.get("/watchlist/9999/recheck").status_code == 404
 
 
 # --- was der Review gefunden hat -------------------------------------------

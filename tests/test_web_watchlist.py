@@ -41,7 +41,7 @@ def test_the_watched_books_are_listed(client: TestClient) -> None:
 
 def test_the_page_is_reachable_from_the_dashboard(client: TestClient) -> None:
     """Eine Seite ohne Weg dorthin ist keine Seite."""
-    assert '/watchlist' in client.get("/uebersicht").text
+    assert '/watchlist' in client.get("/overview").text
 
 
 # --- aufnehmen --------------------------------------------------------------
@@ -146,7 +146,7 @@ def test_finishing_an_entry_offers_to_take_it_back(client: TestClient, db: Store
     book = db.books()[0]
 
     body = client.post(
-        f"/watchlist/{book.id}/abschliessen", data={"kind": str(RelationKind.OWNED)}
+        f"/watchlist/{book.id}/finish", data={"kind": str(RelationKind.OWNED)}
     ).text
 
     assert book.title in body
@@ -157,10 +157,10 @@ def test_taking_a_finished_entry_back_puts_it_on_the_list_again(
     client: TestClient, db: Store
 ) -> None:
     book = db.books()[0]
-    client.post(f"/watchlist/{book.id}/abschliessen", data={"kind": str(RelationKind.OWNED)})
+    client.post(f"/watchlist/{book.id}/finish", data={"kind": str(RelationKind.OWNED)})
 
     client.post(
-        "/watchlist/zuruecknehmen",
+        "/watchlist/undo",
         data={"book_id": str(book.id), "kind": str(RelationKind.OWNED)},
     )
 

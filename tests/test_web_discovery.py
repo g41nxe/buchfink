@@ -110,7 +110,7 @@ def test_the_gate_reasoning_is_readable_here_and_only_here(
 
     assert "Täterstimme ohne Reue, genau die Tonlage aus deinem Profil." in body
     assert "belegt" in body
-    assert client.get("/vorschlaege").text.count("Täterstimme ohne Reue") == 0
+    assert client.get("/suggestions").text.count("Täterstimme ohne Reue") == 0
 
 
 def test_the_price_stands_in_the_tile_of_its_source(client: TestClient, db: Store) -> None:
@@ -165,11 +165,11 @@ def test_a_taken_back_decision_leads_to_the_find_again(
     wieder im Stapel; sein Titel muss dann auch wieder auf die Fundseite
     fuehren und nicht auf eine Buchseite, auf der nichts mehr gilt."""
     fund(db)
-    client.post("/vorschlaege/entscheiden", data={"kind": "watching", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "watching", "keys": ["beam:7"]})
     book_id = db.book_by_source_item("beam", "7")
     client.post(
-        "/vorschlaege/zuruecknehmen",
-        data={"key": "beam:7", "kind": "watching", "zurueck": "/vorschlaege"},
+        "/suggestions/undo",
+        data={"key": "beam:7", "kind": "watching", "zurueck": "/suggestions"},
     )
 
     antwort = client.get("/discovery/beam/7")
@@ -189,7 +189,7 @@ def test_a_decision_with_an_unknown_kind_creates_nothing(
     fund(db)
 
     antwort = client.post(
-        "/vorschlaege/entscheiden", data={"kind": "gefaellt", "keys": ["beam:7"]}
+        "/suggestions/decide", data={"kind": "gefaellt", "keys": ["beam:7"]}
     )
 
     assert antwort.status_code == 400
@@ -214,7 +214,7 @@ def test_deciding_here_leads_to_the_new_book(client: TestClient, db: Store) -> N
     fund(db)
 
     antwort = client.post(
-        "/vorschlaege/entscheiden",
+        "/suggestions/decide",
         data={"kind": "watching", "keys": ["beam:7"], "zurueck": "buch"},
     )
 
@@ -229,7 +229,7 @@ def test_a_find_that_became_a_book_leads_to_its_book_page(
     """Nach einer Entscheidung gibt es eine Buchseite — die ist dann die
     reichere Ansicht, und ein alter Link soll nicht daran vorbeiführen."""
     fund(db)
-    client.post("/vorschlaege/entscheiden", data={"kind": "owned", "keys": ["beam:7"]})
+    client.post("/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"]})
 
     response = client.get("/discovery/beam/7")
 
@@ -276,11 +276,11 @@ def test_a_find_can_be_judged_again_from_its_page(
     monkeypatch.setattr(buchseite, "build_rater", lambda model: Stub())
 
     seite = client.get("/discovery/beam/7").text
-    assert "/discovery/beam/7/bewerten" in seite
+    assert "/discovery/beam/7/rate" in seite
 
-    client.post("/discovery/beam/7/bewerten")
+    client.post("/discovery/beam/7/rate")
     for _ in range(250):
-        if client.get("/discovery/beam/7/bewerten").headers.get("HX-Refresh") == "true":
+        if client.get("/discovery/beam/7/rate").headers.get("HX-Refresh") == "true":
             break
         threading.Event().wait(0.02)
 

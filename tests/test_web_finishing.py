@@ -53,7 +53,7 @@ def arten(db: Store, buch_id: int) -> dict[str, bool]:
 def test_buying_it_ends_the_watching(client: TestClient, db: Store) -> None:
     buch_id = beobachtet(db)
 
-    client.post(f"/watchlist/{buch_id}/abschliessen", data={"kind": "owned"})
+    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "owned"})
 
     zustand = arten(db, buch_id)
     assert zustand["owned"] is True
@@ -65,7 +65,7 @@ def test_what_is_finished_leaves_the_list(client: TestClient, db: Store) -> None
     buch_id = beobachtet(db)
     assert "Kugelblitz" in titel(db)
 
-    client.post(f"/watchlist/{buch_id}/abschliessen", data={"kind": "owned"})
+    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "owned"})
 
     assert "Kugelblitz" not in titel(db)
 
@@ -73,7 +73,7 @@ def test_what_is_finished_leaves_the_list(client: TestClient, db: Store) -> None
 def test_no_longer_interested_works_the_same_way(client: TestClient, db: Store) -> None:
     buch_id = beobachtet(db)
 
-    client.post(f"/watchlist/{buch_id}/abschliessen", data={"kind": "dismissed"})
+    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "dismissed"})
 
     assert arten(db, buch_id)["dismissed"] is True
     assert "Kugelblitz" not in titel(db)
@@ -84,7 +84,7 @@ def test_the_history_survives(client: TestClient, db: Store) -> None:
     selbst eine Auskunft (ADR 18)."""
     buch_id = beobachtet(db)
 
-    client.post(f"/watchlist/{buch_id}/abschliessen", data={"kind": "owned"})
+    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "owned"})
 
     assert arten(db, buch_id)["watching"] is False
     assert arten(db, buch_id)["owned"] is True
@@ -95,7 +95,7 @@ def test_a_kind_that_is_not_an_ending_changes_nothing(client: TestClient, db: St
     Beobachtung — sonst verschwände ein Buch, weil man es gelobt hat."""
     buch_id = beobachtet(db)
 
-    client.post(f"/watchlist/{buch_id}/abschliessen", data={"kind": "liked"})
+    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "liked"})
 
     assert arten(db, buch_id)["watching"] is True
     assert "Kugelblitz" in titel(db)

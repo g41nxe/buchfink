@@ -321,7 +321,7 @@ def test_a_book_without_a_judgement_shows_nothing_rather_than_zero_stars(
 def test_she_can_set_her_own_stars(client: TestClient, db: Store) -> None:
     book = db.books()[0]
 
-    client.post(f"/book/{book.id}/sterne", data={"stars": "4"})
+    client.post(f"/book/{book.id}/stars", data={"stars": "4"})
 
     row = db.rating(book_subject(book.id), 1, origin=BY_READER)
     assert row.stars == 4
@@ -330,9 +330,9 @@ def test_she_can_set_her_own_stars(client: TestClient, db: Store) -> None:
 
 def test_taking_them_back_writes_no_zero(client: TestClient, db: Store) -> None:
     book = db.books()[0]
-    client.post(f"/book/{book.id}/sterne", data={"stars": "4"})
+    client.post(f"/book/{book.id}/stars", data={"stars": "4"})
 
-    client.post(f"/book/{book.id}/sterne", data={"stars": ""})
+    client.post(f"/book/{book.id}/stars", data={"stars": ""})
 
     assert db.rating(book_subject(book.id), 1, origin=BY_READER) is None
     assert "Noch nicht bewertet" in client.get(f"/book/{book.id}").text
@@ -385,8 +385,8 @@ def test_a_judgement_against_an_older_leseprofil_says_so(client: TestClient, db:
 def test_a_nonsense_star_count_is_refused(client: TestClient, db: Store) -> None:
     book = db.books()[0]
 
-    assert client.post(f"/book/{book.id}/sterne", data={"stars": "9"}).status_code == 400
-    assert client.post(f"/book/{book.id}/sterne", data={"stars": "vier"}).status_code == 400
+    assert client.post(f"/book/{book.id}/stars", data={"stars": "9"}).status_code == 400
+    assert client.post(f"/book/{book.id}/stars", data={"stars": "vier"}).status_code == 400
 
 
 # --- warum das hier steht (Ticket 22) ---------------------------------------
@@ -645,7 +645,7 @@ def test_the_title_can_be_corrected_from_the_book_page(client: TestClient, db: S
     db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
     db.put_book_source(buch.id, "beam", outcome="not_found", url=None, resolved_at=NOW, reason="")
 
-    client.post(f"/book/{buch.id}/bearbeiten",
+    client.post(f"/book/{buch.id}/edit",
                 data={"title": "Profit", "author": "Richard K. Morgan", "note": "Konzernduelle."})
 
     assert db.book(buch.id).title == "Profit"
@@ -663,7 +663,7 @@ def test_editing_the_title_leaves_the_note_alone(client: TestClient, db: Store) 
     db.set_relation_details(settings.slug, buch.id, str(RelationKind.WATCHING),
                             {"note": 'Band 1, Originaltitel "Market Forces".'}, now=NOW)
 
-    client.post(f"/book/{buch.id}/bearbeiten", data={"title": "Anders", "author": "Wer"})
+    client.post(f"/book/{buch.id}/edit", data={"title": "Anders", "author": "Wer"})
 
     assert view.build(db, settings, buch.id).note == 'Band 1, Originaltitel "Market Forces".'
 
@@ -691,9 +691,9 @@ def urteil_abwarten(client: TestClient, pfad: str) -> str:
     Die Seite fragt nach, solange er laeuft, und laesst sich neu laden, sobald
     er fertig ist — genau das tut der Test auch. Zurueck kommt die Seite.
     """
-    client.post(f"{pfad}/bewerten")
+    client.post(f"{pfad}/rate")
     for _ in range(250):
-        stand = client.get(f"{pfad}/bewerten")
+        stand = client.get(f"{pfad}/rate")
         if stand.headers.get("HX-Refresh") == "true":
             break
         threading.Event().wait(0.02)
@@ -771,7 +771,7 @@ def test_the_page_does_not_wait_for_the_model(
     monkeypatch.setattr(view, "build_rater", lambda model: Langsam(
         Rating(stars=4, reason="Passt.", confidence="teils", profile_version=1)))
     try:
-        stand = client.post(f"/book/{buch.id}/bewerten").text
+        stand = client.post(f"/book/{buch.id}/rate").text
 
         assert "beurteilt" in stand
         assert "every 2s" in stand
@@ -800,7 +800,7 @@ def test_the_old_judgement_stays_while_the_new_one_is_made(
     monkeypatch.setattr(view, "build_rater", lambda model: Langsam(
         Rating(stars=4, reason="Das neue.", confidence="teils", profile_version=1)))
     try:
-        client.post(f"/book/{buch.id}/bewerten")
+        client.post(f"/book/{buch.id}/rate")
 
         assert "Das alte Urteil." in client.get(f"/book/{buch.id}").text
     finally:
@@ -869,7 +869,7 @@ def test_the_button_stays_once_a_judgement_stands(client: TestClient, db: Store)
 
     body = client.get(f"/book/{buch.id}").text
 
-    assert f"/book/{buch.id}/bewerten" in body
+    assert f"/book/{buch.id}/rate" in body
     # Nur noch das Zeichen: das Wort steht im Hinweis, der Dauerhinweis ist
     # ganz weg — er sagte etwas ueber die Technik, nicht ueber das Buch.
     assert 'aria-label="neu beurteilen"' in body

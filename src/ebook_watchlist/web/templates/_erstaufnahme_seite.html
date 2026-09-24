@@ -22,18 +22,18 @@
   <form method="post" action="/intake/entry"
         hx-post="/intake/entry" hx-target="#seite-{{ side.kind }}" hx-swap="outerHTML"
         class="mt-3 flex flex-wrap items-end gap-2">
-    <input type="hidden" name="seite" value="{{ side.kind }}">
+    <input type="hidden" name="side" value="{{ side.kind }}">
     {# Auf dem Telefon hat der Titel eine Zeile für sich, Autor:in und Knopf
        teilen sich die nächste. #}
     <label class="flex w-full flex-col gap-1 sm:w-auto">
       <span class="text-xs font-medium text-soft">Titel</span>
-      <input name="titel" required autocomplete="off" {% if oob %}autofocus{% endif %}
+      <input name="title" required autocomplete="off" {% if oob %}autofocus{% endif %}
              class="h-9 w-full rounded border border-rule bg-paper px-2 font-serif text-sm
                     text-ink outline-none focus:border-accent sm:w-64">
     </label>
     <label class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-none">
       <span class="text-xs font-medium text-soft">Autor:in</span>
-      <input name="autor" autocomplete="off" placeholder="falls du sie weißt"
+      <input name="author" autocomplete="off" placeholder="falls du sie weißt"
              class="h-9 w-full rounded border border-rule bg-paper px-2 text-sm text-ink
                     outline-none focus:border-accent sm:w-48">
     </label>

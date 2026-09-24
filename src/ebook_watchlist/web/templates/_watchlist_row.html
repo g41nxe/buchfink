@@ -19,7 +19,7 @@
   <li id="eintrag-{{ entry.book_id }}"
       class="{{ 'opacity-55' if not entry.active }}"
       {% if check and check.busy %}
-      hx-get="/watchlist/{{ entry.book_id }}/nachsehen"
+      hx-get="/watchlist/{{ entry.book_id }}/recheck"
       hx-trigger="every 2s"
       hx-target="this"
       hx-swap="outerHTML"
@@ -102,7 +102,7 @@
           Oft stimmt der Titel nicht — ein Originaltitel, eine Beschreibung
           statt eines Namens, ein Wort daneben. Steht er anders im Laden?
         </p>
-        <form method="post" action="/watchlist/{{ entry.book_id }}/umbenennen"
+        <form method="post" action="/watchlist/{{ entry.book_id }}/rename"
               class="flex flex-wrap items-end gap-2">
           <label class="flex flex-col gap-1">
             <span class="text-xs font-medium text-soft">Titel</span>
@@ -120,7 +120,7 @@
                   class="tun rounded border border-accent bg-accent/10 tun inline-flex h-9 items-center justify-center px-3 text-sm
                          font-medium text-accent hover:bg-accent/25">Aktualisieren</button>
         </form>
-        <form method="post" action="/watchlist/{{ entry.book_id }}/fehlt" class="mt-2">
+        <form method="post" action="/watchlist/{{ entry.book_id }}/missing" class="mt-2">
           <input type="hidden" name="title" value="{{ entry.title }}">
           <button type="submit"
                   class="text-xs text-soft underline underline-offset-2 hover:text-ink"
@@ -153,7 +153,7 @@
           ({{ entry.candidates | length }})</span>
       </summary>
 
-      <form method="post" action="/watchlist/{{ entry.book_id }}/zuordnen"
+      <form method="post" action="/watchlist/{{ entry.book_id }}/assign"
             class="mt-1 rounded-lg border border-rule bg-paper p-3">
         <input type="hidden" name="source" value="{{ entry.choice_source }}">
         {# Zurueck dorthin, wo entschieden wurde — nicht immer in den Filter. #}

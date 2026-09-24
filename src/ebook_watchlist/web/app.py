@@ -117,6 +117,13 @@ TEMPLATES.env.filters["sterne"] = _sterne
 #: from the data directory would turn a read-only page into a file browser.
 DIGEST_NAME = re.compile(r"^digest-\d{4}-\d{2}-\d{2}(?:-\d{4})?\.html$")
 
+#: Alte deutsche Adressen, die noch als Lesezeichen existieren koennen.
+OLD_ADDRESSES: dict[str, str] = {
+    "/uebersicht": "/overview",
+    "/vorschlaege": "/suggestions",
+    "/profil": "/profile",
+}
+
 #: FastAPI liest Formularfelder ueber diese Marker. Als Modulkonstante,
 #: damit im Funktionskopf kein Aufruf steht (ruff B008).
 _SELECTED = Form(default=[])
@@ -367,7 +374,7 @@ def create_app() -> FastAPI:
             },
         )
 
-    @app.get("/uebersicht", response_class=HTMLResponse)
+    @app.get("/overview", response_class=HTMLResponse)
     def dashboard(request: Request) -> HTMLResponse:
         try:
             settings = load_settings()
@@ -523,7 +530,7 @@ def create_app() -> FastAPI:
         )
         return RedirectResponse(f"/book/{book_id}", status_code=303)
 
-    @app.post("/watchlist/{book_id}/nachsehen")
+    @app.post("/watchlist/{book_id}/recheck")
     def watchlist_recheck(
         request: Request, book_id: int, zurueck: str = "/watchlist"
     ) -> HTMLResponse:
@@ -536,7 +543,7 @@ def create_app() -> FastAPI:
         rechecker.start(book_id)
         return _zeile(request, book_id, zurueck=zurueck)
 
-    @app.get("/watchlist/{book_id}/nachsehen")
+    @app.get("/watchlist/{book_id}/recheck")
     def watchlist_recheck_status(
         request: Request, book_id: int, zurueck: str = "/watchlist"
     ) -> HTMLResponse:
@@ -581,7 +588,7 @@ def create_app() -> FastAPI:
         """
         return "/" if ziel == "/" else "/watchlist"
 
-    @app.post("/watchlist/{book_id}/abschliessen")
+    @app.post("/watchlist/{book_id}/finish")
     def watchlist_finish(
         book_id: int, kind: str = Form(...), zurueck: str = Form("/watchlist")
     ) -> RedirectResponse:
@@ -607,7 +614,7 @@ def create_app() -> FastAPI:
             f"{ziel}{trenner}undo={book_id}&kind={kind}", status_code=303
         )
 
-    @app.post("/watchlist/zuruecknehmen")
+    @app.post("/watchlist/undo")
     def watchlist_undo(
         book_id: int = Form(...), kind: str = Form(...), zurueck: str = Form("/watchlist")
     ) -> RedirectResponse:
@@ -654,7 +661,7 @@ def create_app() -> FastAPI:
         """
         return ziel if ziel in ("/watchlist", "/watchlist?nur=unklar") else "/watchlist"
 
-    @app.post("/watchlist/{book_id}/umbenennen")
+    @app.post("/watchlist/{book_id}/rename")
     def watchlist_rename(
         book_id: int, title: str = Form(...), author: str = Form("")
     ) -> RedirectResponse:
@@ -672,7 +679,7 @@ def create_app() -> FastAPI:
             rechecker.start(book_id)
         return RedirectResponse("/watchlist", status_code=303)
 
-    @app.post("/watchlist/{book_id}/fehlt")
+    @app.post("/watchlist/{book_id}/missing")
     def watchlist_missing(book_id: int, title: str = Form(...)) -> RedirectResponse:
         """„Kenne ich" — und das haelt.
 
@@ -696,7 +703,7 @@ def create_app() -> FastAPI:
         store.set_relation_details(settings.slug, book_id, kind, details, now=datetime.now())
         return RedirectResponse("/watchlist", status_code=303)
 
-    @app.post("/watchlist/{book_id}/zuordnen")
+    @app.post("/watchlist/{book_id}/assign")
     def watchlist_assign(
         book_id: int,
         source: str = Form(...),
@@ -771,7 +778,7 @@ def create_app() -> FastAPI:
             },
         )
 
-    @app.post("/book/{book_id}/bewerten")
+    @app.post("/book/{book_id}/rate")
     def book_rate(request: Request, book_id: int) -> Response:
         """Das Tor jetzt ueber dieses Buch urteilen lassen (Ticket 55, #15).
 
@@ -780,12 +787,12 @@ def create_app() -> FastAPI:
         laeuft, startet keinen zweiten.
         """
         urteiler.start(("book", book_id))
-        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/bewerten")
+        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/rate")
 
-    @app.get("/book/{book_id}/bewerten")
+    @app.get("/book/{book_id}/rate")
     def book_rate_status(request: Request, book_id: int) -> Response:
         """Hier fragt die Seite nach, solange das Urteil entsteht."""
-        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/bewerten")
+        return _urteil_stand(request, ("book", book_id), f"/book/{book_id}/rate")
 
     @app.post("/book/{book_id}/portrait")
     def book_portray(request: Request, book_id: int) -> Response:
@@ -802,7 +809,7 @@ def create_app() -> FastAPI:
         """Hier fragt die Seite nach, solange der Steckbrief entsteht."""
         return _steckbrief_stand(request, book_id)
 
-    @app.post("/book/{book_id}/bearbeiten")
+    @app.post("/book/{book_id}/edit")
     def book_edit(
         book_id: int,
         title: str = Form(...),
@@ -823,7 +830,7 @@ def create_app() -> FastAPI:
             rechecker.start(book_id)
         return RedirectResponse(f"/book/{book_id}", status_code=303)
 
-    @app.post("/book/{book_id}/nachsehen")
+    @app.post("/book/{book_id}/recheck")
     def book_recheck(request: Request, book_id: int) -> HTMLResponse:
         """Diesen einen Eintrag jetzt pruefen — von seiner eigenen Seite aus.
 
@@ -834,7 +841,7 @@ def create_app() -> FastAPI:
         rechecker.start(book_id)
         return _buch_stand(request, book_id)
 
-    @app.get("/book/{book_id}/nachsehen")
+    @app.get("/book/{book_id}/recheck")
     def book_recheck_status(request: Request, book_id: int) -> HTMLResponse:
         """Dasselbe Fragment, das der POST liefert — htmx fragt hier nach."""
         return _buch_stand(request, book_id)
@@ -888,29 +895,29 @@ def create_app() -> FastAPI:
         return RedirectResponse(f"/book/{book_id}#nachschaerfen", status_code=303)
 
     @app.post("/book/{book_id}/sharpen/facet")
-    def sharpen_facet(book_id: int, familie: list[str] = _FAMILIES) -> RedirectResponse:
+    def sharpen_facet(book_id: int, family: list[str] = _FAMILIES) -> RedirectResponse:
         """Eine neue Facette aus Familien dieses Buchs."""
         return _nachschaerfen(book_id, lambda store, settings: sharpening.add_facet(
-            store, settings, book_id, familie, now=datetime.now()))
+            store, settings, book_id, family, now=datetime.now()))
 
     @app.post("/book/{book_id}/sharpen/decline")
-    def sharpen_decline(book_id: int, familie: list[str] = _FAMILIES) -> RedirectResponse:
+    def sharpen_decline(book_id: int, family: list[str] = _FAMILIES) -> RedirectResponse:
         """Ein Vorschlag passt nicht und kommt nicht wieder."""
         return _nachschaerfen(book_id, lambda store, settings: sharpening.decline(
-            store, settings, familie, now=datetime.now()))
+            store, settings, family, now=datetime.now()))
 
     @app.post("/book/{book_id}/sharpen/counterweight")
     async def sharpen_counterweight(request: Request, book_id: int) -> RedirectResponse:
         """Gegengewichte aus einem *Doof*-Buch; je Familie ihr Umfang."""
         formular = await request.form()
         umfaenge = {
-            str(f): str(formular.get(f"umfang-{f}") or intake.GENERAL)
-            for f in formular.getlist("familie")
+            str(f): str(formular.get(f"scope-{f}") or intake.GENERAL)
+            for f in formular.getlist("family")
         }
         return _nachschaerfen(book_id, lambda store, settings: sharpening.add_counterweights(
             store, settings, book_id, umfaenge, now=datetime.now()))
 
-    @app.post("/book/{book_id}/sterne")
+    @app.post("/book/{book_id}/stars")
     def book_stars(book_id: int, stars: str = Form("")) -> RedirectResponse:
         """Die eigenen Sterne der Leserin setzen — oder zurücknehmen.
 
@@ -971,21 +978,21 @@ def create_app() -> FastAPI:
             },
         )
 
-    @app.post("/discovery/{source}/{item_id}/bewerten")
+    @app.post("/discovery/{source}/{item_id}/rate")
     def discovery_rate(request: Request, source: str, item_id: str) -> Response:
         """Einen Fund neu beurteilen lassen — derselbe Weg wie auf der Buchseite (#15)."""
         key = ("item", source, item_id)
         urteiler.start(key)
-        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/bewerten")
+        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/rate")
 
-    @app.get("/discovery/{source}/{item_id}/bewerten")
+    @app.get("/discovery/{source}/{item_id}/rate")
     def discovery_rate_status(request: Request, source: str, item_id: str) -> Response:
         key = ("item", source, item_id)
-        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/bewerten")
+        return _urteil_stand(request, key, f"/discovery/{source}/{item_id}/rate")
 
     # --- Triage (Ticket 08) -------------------------------------------------
 
-    @app.get("/vorschlaege", response_class=HTMLResponse)
+    @app.get("/suggestions", response_class=HTMLResponse)
     def triage_page(
         request: Request, anlass: str = "", sortiert: str = ""
     ) -> HTMLResponse:
@@ -1022,24 +1029,24 @@ def create_app() -> FastAPI:
                 "gewaehlt": gewaehlt,
                 # Ein Filter wirft die Sortierung nicht weg und umgekehrt.
                 "links": {
-                    "alle": _link("/vorschlaege", sortiert=gewaehlt),
+                    "alle": _link("/suggestions", sortiert=gewaehlt),
                     "profile_author": _link(
-                        "/vorschlaege", anlass="profile_author", sortiert=gewaehlt
+                        "/suggestions", anlass="profile_author", sortiert=gewaehlt
                     ),
                     "genre_category": _link(
-                        "/vorschlaege", anlass="genre_category", sortiert=gewaehlt
+                        "/suggestions", anlass="genre_category", sortiert=gewaehlt
                     ),
                 },
             },
         )
 
-    @app.post("/vorschlaege/entscheiden")
+    @app.post("/suggestions/decide")
     def triage_decide(
         kind: str = Form(...),
         keys: list[str] = _SELECTED,
         anlass: str = Form(""),
         sortiert: str = Form(""),
-        zurueck: str = Form("/vorschlaege"),
+        zurueck: str = Form("/suggestions"),
     ) -> RedirectResponse:
         """Eine Entscheidung auf die Auswahl anwenden.
 
@@ -1075,10 +1082,10 @@ def create_app() -> FastAPI:
         # Ausschliessen von drei Funden steht man sonst in einer anders
         # geordneten Liste als der, aus der man sie gewaehlt hat (#37).
         return RedirectResponse(
-            _link("/vorschlaege", anlass=anlass, sortiert=sortiert), status_code=303
+            _link("/suggestions", anlass=anlass, sortiert=sortiert), status_code=303
         )
 
-    @app.post("/vorschlaege/{source}/{item_id}/entscheiden", response_class=HTMLResponse)
+    @app.post("/suggestions/{source}/{item_id}/decide", response_class=HTMLResponse)
     def triage_decide_one(source: str, item_id: str, kind: str = Form(...)) -> HTMLResponse:
         """Genau diesen einen Fund entscheiden (Issue #9).
 
@@ -1104,7 +1111,7 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="kein solcher Fund")
         return HTMLResponse("")
 
-    @app.post("/vorschlaege/zuruecknehmen")
+    @app.post("/suggestions/undo")
     def triage_undo(
         key: str = Form(...), kind: str = Form(...), zurueck: str = Form("/")
     ) -> RedirectResponse:
@@ -1113,11 +1120,11 @@ def create_app() -> FastAPI:
         home.undo(
             _store_for(paths.db_path()), load_settings(), key, kind, now=datetime.now()
         )
-        return RedirectResponse("/" if zurueck == "/" else "/vorschlaege", status_code=303)
+        return RedirectResponse("/" if zurueck == "/" else "/suggestions", status_code=303)
 
     # --- Profiluebersicht (Ticket 09) ---------------------------------------
 
-    @app.get("/profil", response_class=HTMLResponse)
+    @app.get("/profile", response_class=HTMLResponse)
     def profile_overview(request: Request) -> HTMLResponse:
         """Nur lesend, und das ist die Entscheidung.
 
@@ -1203,19 +1210,19 @@ def create_app() -> FastAPI:
 
     @app.post("/intake/entry")
     def intake_add(
-        request: Request, seite: str = Form(...), titel: str = Form(""), autor: str = Form("")
+        request: Request, side: str = Form(...), title: str = Form(""), author: str = Form("")
     ) -> Response:
         try:
             eintrag = intake.add(
-                _store_for(paths.db_path()), load_settings(), seite, titel, autor,
+                _store_for(paths.db_path()), load_settings(), side, title, author,
                 now=datetime.now(),
             )
         except intake.IntakeError as exc:
-            if seite not in intake.SIDES:
+            if side not in intake.SIDES:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
-            return _intake_answer(request, seite, str(exc))
+            return _intake_answer(request, side, str(exc))
         erkenner.start(("intake", eintrag))
-        return _intake_answer(request, seite)
+        return _intake_answer(request, side)
 
     def _intake_row(entry_id: int):
         row = _store_for(paths.db_path()).intake_entry(entry_id)
@@ -1243,11 +1250,11 @@ def create_app() -> FastAPI:
 
     @app.post("/intake/entry/{entry_id}/retype")
     def intake_retype(
-        request: Request, entry_id: int, titel: str = Form(""), autor: str = Form("")
+        request: Request, entry_id: int, title: str = Form(""), author: str = Form("")
     ) -> Response:
         row = _intake_row(entry_id)
         try:
-            intake.retype(_store_for(paths.db_path()), entry_id, titel, autor)
+            intake.retype(_store_for(paths.db_path()), entry_id, title, author)
         except intake.IntakeError as exc:
             return _intake_answer(request, row.side, str(exc))
         erkenner.start(("intake", entry_id))
@@ -1300,30 +1307,30 @@ def create_app() -> FastAPI:
     @app.post("/intake/choice")
     def intake_choose(
         request: Request,
-        seite: str = Form(...),
-        familie: str = Form(...),
-        buch: str = Form(""),
-        an: str = Form(""),
-        schritt: int = Form(3),
+        side: str = Form(...),
+        family: str = Form(...),
+        book: str = Form(""),
+        on: str = Form(""),
+        step: int = Form(3),
     ) -> Response:
         """Eine Familie antippen oder wieder lösen — sofort gespeichert."""
         try:
             intake.choose(
-                _store_for(paths.db_path()), load_settings(), seite, familie,
-                book_id=int(buch) if buch else None, on=bool(an),
+                _store_for(paths.db_path()), load_settings(), side, family,
+                book_id=int(book) if book else None, on=bool(on),
             )
         except (intake.IntakeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return _after_choice(request, schritt)
+        return _after_choice(request, step)
 
     @app.post("/intake/scope")
     def intake_scope(
-        request: Request, familie: str = Form(...), buch: int = Form(...),
-        umfang: str = Form(...),
+        request: Request, family: str = Form(...), book: int = Form(...),
+        scope: str = Form(...),
     ) -> Response:
         """Die Nachfrage beim Gegengewicht: nur hier, überall, oder mit dem Genre."""
         try:
-            intake.set_scope(_store_for(paths.db_path()), load_settings(), familie, buch, umfang)
+            intake.set_scope(_store_for(paths.db_path()), load_settings(), family, book, scope)
         except intake.IntakeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _after_choice(request, 4)
@@ -1339,16 +1346,16 @@ def create_app() -> FastAPI:
 
     @app.post("/intake/profile")
     def intake_adopt(
-        facette: list[str] = _FACETS, gegengewicht: list[str] = _WEIGHTS
+        facet: list[str] = _FACETS, counterweight: list[str] = _WEIGHTS
     ) -> RedirectResponse:
         """Bestätigt wird die erste Fassung; alles abgewählt heißt neu anfangen."""
         fassung = intake.adopt(
             _store_for(paths.db_path()), load_settings(),
-            {int(i) for i in facette if i.isdigit()},
-            {int(i) for i in gegengewicht if i.isdigit()},
+            {int(i) for i in facet if i.isdigit()},
+            {int(i) for i in counterweight if i.isdigit()},
             now=datetime.now(),
         )
-        return RedirectResponse("/profil" if fassung else "/intake", status_code=303)
+        return RedirectResponse("/profile" if fassung else "/intake", status_code=303)
 
     # --- Jetzt laufen (Ticket 10) -------------------------------------------
 
@@ -1402,6 +1409,20 @@ def create_app() -> FastAPI:
         if not path.is_file():
             raise HTTPException(status_code=404, detail="no such digest")
         return HTMLResponse(path.read_text(encoding="utf-8"))
+
+    # Die Routen hießen bis zum 24.09.2026 deutsch; seitdem englisch wie jeder
+    # Bezeichner (ADR 22). Die drei Seiten, die jemand als Lesezeichen haben
+    # kann, leiten dauerhaft weiter — mit ihrer Abfrage, damit Filter und
+    # Sortierung mitkommen.
+    def _umleiten(neu: str):
+        def umleitung(request: Request) -> RedirectResponse:
+            abfrage = request.url.query
+            return RedirectResponse(neu + (f"?{abfrage}" if abfrage else ""), status_code=301)
+
+        return umleitung
+
+    for alt, neu in OLD_ADDRESSES.items():
+        app.add_api_route(alt, _umleiten(neu), methods=["GET"], include_in_schema=False)
 
     return app
 

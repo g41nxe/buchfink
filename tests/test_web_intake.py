@@ -80,7 +80,7 @@ def modell(monkeypatch: pytest.MonkeyPatch) -> Modell:
 
 
 def nennen(client: TestClient, titel: str, autor: str = "", seite: str = "liked") -> str:
-    client.post("/intake/entry", data={"seite": seite, "titel": titel, "autor": autor})
+    client.post("/intake/entry", data={"side": seite, "title": titel, "author": autor})
     return abwarten(client)
 
 
@@ -177,7 +177,7 @@ def test_the_books_stand_in_the_shelves_of_the_profile_page(client, db, modell) 
     nennen(client, "Cry Baby")
     client.post(f"/intake/entry/{_eintrag(db, 'Cry Baby').id}/confirm")
 
-    assert "Cry Baby" in client.get("/profil").text
+    assert "Cry Baby" in client.get("/profile").text
 
 
 def test_another_book_asks_again_with_what_was_typed(client, db, modell) -> None:
@@ -185,7 +185,7 @@ def test_another_book_asks_again_with_what_was_typed(client, db, modell) -> None
     eintrag = _eintrag(db, "Das Buch, das es nicht gibt")
 
     client.post(f"/intake/entry/{eintrag.id}/retype",
-                data={"titel": "Leopard", "autor": "Jo Nesbø"})
+                data={"title": "Leopard", "author": "Jo Nesbø"})
     body = abwarten(client)
 
     assert "Panserhjerte" in body
@@ -247,7 +247,7 @@ def test_three_confirmed_loved_books_open_the_way_on(client, db, modell) -> None
 
 
 def test_the_profile_page_leads_into_the_intake(client) -> None:
-    body = client.get("/profil").text
+    body = client.get("/profile").text
 
     assert 'href="/intake"' in body and "Erstaufnahme beginnen" in body
 
@@ -302,9 +302,9 @@ HX = {"HX-Request": "true"}
 
 
 def tippen(client, familie, seite="loved", buch=None, an=True, schritt=3) -> str:
-    daten = {"seite": seite, "familie": familie, "an": "1" if an else "", "schritt": schritt}
+    daten = {"side": seite, "family": familie, "on": "1" if an else "", "step": schritt}
     if buch is not None:
-        daten["buch"] = buch
+        daten["book"] = buch
     return client.post("/intake/choice", data=daten, headers=HX).text
 
 
@@ -355,7 +355,7 @@ def test_with_the_genre_it_becomes_a_bundle(client, buecher) -> None:
     tippen(client, "big_world", seite="lost", buch=buecher["H"], schritt=4)
 
     body = client.post("/intake/scope",
-                       data={"familie": "big_world", "buch": buecher["H"], "umfang": "genre"},
+                       data={"family": "big_world", "book": buecher["H"], "scope": "genre"},
                        headers=HX).text
 
     entwurf = body.split("data-entwurf", 1)[1]
@@ -375,7 +375,7 @@ def test_adopting_saves_the_first_version_and_the_code_judges(client, db, bueche
     tippen(client, "leisurely", seite="lost", buch=buecher["H"], schritt=4)
 
     antwort = client.post("/intake/profile",
-                          data={"facette": ["0"], "gegengewicht": ["0"]})
+                          data={"facet": ["0"], "counterweight": ["0"]})
 
     profil = db.reading_profile(load_settings().slug)
     assert profil.version == 1
@@ -420,9 +420,9 @@ def test_frequent_families_go_last_only_with_a_neutral_stock(db, buecher) -> Non
 def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, buecher) -> None:
     tippen(client, "harsh")
     tippen(client, "brooding")
-    client.post("/intake/profile", data={"facette": ["0"]})
+    client.post("/intake/profile", data={"facet": ["0"]})
 
-    body = client.get("/profil").text
+    body = client.get("/profile").text
 
     assert "Erstaufnahme beginnen" not in body and "data-leseprofil" in body
     assert "hart · gezeichnete Figur" in body

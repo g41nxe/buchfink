@@ -22,7 +22,7 @@
 {% macro watchlist_aktionen(entry, abschluss, icons, zurueck="/watchlist") %}
 <span class="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in abschluss %}
-  <form method="post" action="/watchlist/{{ entry.book_id }}/abschliessen"
+  <form method="post" action="/watchlist/{{ entry.book_id }}/finish"
         class="contents">
     <input type="hidden" name="kind" value="{{ kind }}">
     <input type="hidden" name="zurueck" value="{{ zurueck }}">
@@ -38,7 +38,7 @@
      Kennung, und `zurueck` reist mit: sonst zeigte die nachgeladene Zeile auf
      der Startseite plötzlich auf die Watchlist. #}
   {% set nachsehen %}type="button"
-    hx-post="/watchlist/{{ entry.book_id }}/nachsehen?zurueck={{ zurueck }}"
+    hx-post="/watchlist/{{ entry.book_id }}/recheck?zurueck={{ zurueck }}"
     hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
   {{ zeichenknopf("jetzt nachsehen", "ic-refresh", attrs=nachsehen) }}
 

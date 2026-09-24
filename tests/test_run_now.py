@@ -58,7 +58,7 @@ def runs_of(store: Store) -> list:
 
 
 def test_the_dashboard_offers_to_start_a_run(client: TestClient) -> None:
-    body = client.get("/uebersicht").text
+    body = client.get("/overview").text
 
     assert "Jetzt prüfen" in body
     assert 'hx-post="/run"' in body
@@ -127,7 +127,7 @@ def test_the_rest_of_the_page_is_brought_up_to_date_when_the_run_ends(
     )
 
     # Und danach steht der frische Lauf wirklich auf der Seite.
-    assert "ui" in client.get("/uebersicht").text
+    assert "ui" in client.get("/overview").text
 
 
 # --- es läuft schon einer --------------------------------------------------
@@ -200,7 +200,7 @@ def test_a_killed_run_is_not_still_listed_as_running_in_the_journal(
 ) -> None:
     store.start_run("test", "cron", datetime.now(), pid=DEAD_PID)
 
-    assert "abgebrochen" in client.get("/uebersicht").text
+    assert "abgebrochen" in client.get("/overview").text
 
 
 def test_a_run_that_hung_for_hours_is_given_up_on(

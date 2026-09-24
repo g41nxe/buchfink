@@ -200,12 +200,12 @@ trifft (ADR 29).
 | Pfad | Was dort steht |
 | --- | --- |
 | `/` | Startseite: wann zuletzt geprüft wurde, was jetzt zu haben ist, worüber zu entscheiden ist — vor dem ersten Lauf erklärt sie sich. Wie viele Zeilen je Abschnitt stehen, sagt das Profil (`home_offers`, `home_suggestions`) |
-| `/uebersicht` | Übersicht: Zustand der Quellen, die letzten Läufe, die Tagesberichte — und der Knopf „jetzt laufen". Nicht im Menü; der Zeitpunkt „zuletzt geprüft“ auf der Startseite führt hin |
+| `/overview` | Übersicht: Zustand der Quellen, die letzten Läufe, die Tagesberichte — und der Knopf „jetzt laufen". Nicht im Menü; der Zeitpunkt „zuletzt geprüft“ auf der Startseite führt hin |
 | `/watchlist` | Was du beobachtest, mit Preis und Ausleihstatus in einer Zeile |
 | `/book/{id}` | Alles über ein Buch: Beziehungen, Quellen, Preisverlauf, Urteile — und deine eigenen Sterne |
 | `/discovery/{quelle}/{nummer}` | Die Seite zu einem Fund: dieselbe wie die Buchseite, ohne das, was es vor einer Entscheidung nicht gibt (ADR 18). Sobald eine Beziehung gilt, führt sie auf die Buchseite |
-| `/vorschlaege` | Der Stapel: entweder je Zeile ein Zeichen, oder mehrere ankreuzen und unten gemeinsam entscheiden |
-| `/profil` | Was das Werkzeug über dich zu wissen glaubt. Nur zum Lesen — mit Absicht |
+| `/suggestions` | Der Stapel: entweder je Zeile ein Zeichen, oder mehrere ankreuzen und unten gemeinsam entscheiden |
+| `/profile` | Was das Werkzeug über dich zu wissen glaubt. Nur zum Lesen — mit Absicht |
 
 Start mit `python -m ebook_watchlist.web`. Die Oberfläche bindet an alle
 Schnittstellen, damit sie vom Handy im selben Netz erreichbar ist, und hat
