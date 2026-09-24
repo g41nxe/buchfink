@@ -42,7 +42,7 @@ from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
 from .portrait import VocabularyError, load_vocabulary, portray_find
-from .rating import build_rater
+from .rating import RatingUnavailable, build_rater
 from .render import render_html, render_text
 from .seed import sow
 from .sources import build_sources
@@ -95,7 +95,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         type=int,
         default=10,
         metavar="N",
-        help="wie viele Vorschläge 'rate' beurteilt (Voreinstellung 10)",
+        help="wie viele Vorschläge 'rate' beschreibt (Voreinstellung 10)",
     )
     parser.add_argument("--enable", metavar="QUELLE", help="eine pausierte Quelle wieder aufnehmen")
     parser.add_argument("--disable", metavar="QUELLE", help="eine Quelle pausieren")
@@ -593,28 +593,41 @@ def _fetch_suggestion_covers(
 
 
 def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int:
-    """Den Rückstand beurteilen, ohne eine Quelle zu fragen (Ticket 19).
+    """Den Rückstand beschreiben, für den Stapel (Ticket 19, #48).
 
     Das Tor im Lauf sieht nur **Erstsichtungen**. Was einmal im Snapshot steht,
     erzeugt beim nächsten Lauf kein Delta mehr — der angesammelte Rückstand ist
     für das Tor also unsichtbar, und ohne diesen Weg bliebe er es für immer.
+    Seit #48 legt dieser Weg die fehlenden **Steckbriefe** an, statt Sterne zu
+    vergeben: das Urteil rechnet der Code.
 
-    Beurteilt wird nur, was auch gemeldet würde — der Stapel folgt derselben
+    Beschrieben wird nur, was auch gemeldet würde — der Stapel folgt derselben
     Regel wie der Digest (Schnäppchen oder ausleihbar). Von 358 offenen Funden
-    bleiben damit 107; die übrigen 251 kosten weder eine Anfrage noch ein
-    Urteil, denn sie erreichen die Leserin ohnehin nicht. Fällt ein Preis, sind
-    sie wieder da.
+    bleiben damit 107; die übrigen 251 kosten weder eine Anfrage noch einen
+    Steckbrief, denn sie erreichen die Leserin ohnehin nicht. Fällt ein Preis,
+    sind sie wieder da.
 
     Für genau diese Bücher wird der **ganze** Klappentext nachgeladen. Die
     Kachel trägt im Median 197 Zeichen und ist zu 85 % abgeschnitten; die
     Detailseite trägt rund das Zehnfache. Eine Anfrage je Buch, und nur hier —
     beim Sammeln wären es dreihundert.
+
+    Ohne Leseprofil wird nichts beschrieben (ADR 33, Punkt 8): es gäbe nichts,
+    wogegen sich rechnen ließe.
     """
-    from .rating import load_leseprofil, rate_in_batches
-    from .ratings import BY_MODEL, VIA_BACKLOG, subject_of
+    from .judging import load_judge
+    from .ratings import subject_of
     from .web import triage
 
     store = Store(paths.db_path())
+    judge = load_judge(store, settings.slug)
+    if judge is None:
+        print(
+            "Kein Leseprofil (oder kein lesbares Vokabular): erst die Erstaufnahme "
+            "machen, dann gibt es etwas, wogegen sich rechnen ließe.",
+            file=sys.stderr,
+        )
+        return EXIT_CONFIG_ERROR
     rater = build_rater(settings.rating_model)
     if rater is None:
         print(
@@ -625,9 +638,9 @@ def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int
         return EXIT_CONFIG_ERROR
 
     # Der ganze Stapel, nicht die erste Seite: er ist bestbewertet-zuerst
-    # sortiert, Unbeurteiltes steht hinten. Auf ``wieviele`` gekuerzt wird
-    # deshalb erst **nach** dem Aussortieren — sonst bekaeme dieser Weg genau
-    # die Buecher, die schon ein Urteil haben, und nie die offenen.
+    # sortiert, Unbeschriebenes steht hinten. Auf ``wieviele`` gekürzt wird
+    # deshalb erst **nach** dem Aussortieren — sonst bekäme dieser Weg genau
+    # die Bücher, die schon einen Steckbrief haben, und nie die offenen.
     stapel = triage.pending(store, settings, limit=10_000).items
     keys = {item.key for item in stapel}
     beobachtungen = [
@@ -636,62 +649,45 @@ def _rate(settings: Settings, wieviele: int, sources, client: HttpClient) -> int
         if f"{observation.source}:{observation.source_item_id}" in keys
     ]
 
-    # Ein Urteil zur aktuellen Profilversion steht; es noch einmal zu holen
-    # kostet eine Detailseite und einen Modellaufruf fuer dieselbe Antwort.
-    # Ein Urteil zu einer *aelteren* Version steht nicht mehr fuer den
-    # heutigen Geschmack — das wird neu beurteilt (Ticket 25).
-    version = load_leseprofil()[1]
-    vorhanden = store.ratings_for(subject_of(o) for o in beobachtungen)
-    beobachtungen = [
-        observation
-        for observation in beobachtungen
-        if (urteil := vorhanden.get((subject_of(observation), BY_MODEL))) is None
-        or urteil.profile_version != version
-    ]
+    # Ein Steckbrief zum heutigen Vokabular steht: ihn noch einmal zu holen
+    # kostet eine Detailseite und einen Modellaufruf für dieselbe Antwort. Ein
+    # Steckbrief zu einem *älteren* Vokabular gilt nicht mehr und wird neu
+    # angelegt (ADR 33).
+    vorhanden = judge.portraits(store, [subject_of(o) for o in beobachtungen])
+    beobachtungen = [o for o in beobachtungen if subject_of(o) not in vorhanden]
     if not beobachtungen:
-        print("Nichts offen — jeder Vorschlag im Stapel hat ein Urteil.")
+        print("Nichts offen — jeder Vorschlag im Stapel hat einen Steckbrief.")
         _fetch_suggestion_covers(store, settings, client)
         return EXIT_OK
     beobachtungen = beobachtungen[:wieviele]
 
     beobachtungen = gather_evidence(store, settings, beobachtungen, sources)
-    print(f"{len(beobachtungen)} Vorschläge, Bündel zu {settings.rating_batch_size} …")
-    urteile = rate_in_batches(rater, beobachtungen, size=settings.rating_batch_size)
+    print(f"{len(beobachtungen)} Vorschläge …")
 
     now = datetime.now()
     verteilung: dict[int, int] = {}
     for observation in beobachtungen:
-        rating = urteile.get(observation.key)
-        if rating is None:
-            print(f"  ohne Urteil  {observation.title[:52]}")
+        try:
+            portrait = portray_find(observation, rater.ask, judge.vocabulary)
+        except RatingUnavailable as exc:
+            print(f"  ohne Steckbrief  {observation.title[:52]} ({exc})")
             continue
-        store.put_rating(
-            subject_of(observation),
-            stars=rating.stars,
-            confidence=rating.confidence,
-            reason=rating.reason,
-            profile_version=rating.profile_version,
-            now=now,
-            origin=BY_MODEL,
-            pitch=rating.pitch,
-            via=VIA_BACKLOG,
-            hits=rating.hits,
-            misses=rating.misses,
-            model_stars=rating.model_stars,
-            deductions=rating.deductions,
-        )
-        verteilung[rating.stars] = verteilung.get(rating.stars, 0) + 1
+        store.put_portrait(subject_of(observation), portrait, now=now)
+        verdict = judge.verdict(portrait)
+        if verdict is None:
+            print(f"  unbekannt  {observation.title[:52]}")
+            continue
+        verteilung[verdict.stars] = verteilung.get(verdict.stars, 0) + 1
         print(
-            f"  {'★' * rating.stars}{'☆' * (5 - rating.stars)} {rating.confidence:<9}"
+            f"  {'★' * verdict.stars}{'☆' * (5 - verdict.stars)} {verdict.percent:>3} %"
             f" {observation.title[:52]}"
         )
-        # Ein fehlender Pitch kostet kein Urteil (die Sterne tragen für sich),
-        # aber er wird genannt: still fehlend hiesse, eine Lücke auf der Seite
-        # nie zu bemerken.
-        print(f"            {rating.pitch or 'OHNE PITCH'}")
+        # Ein fehlender Kurztext kostet den Steckbrief nichts, aber er wird
+        # genannt: still fehlend hieße, eine Lücke auf der Seite nie zu bemerken.
+        print(f"            {portrait.pitch or 'OHNE PITCH'}")
 
     # Eine Bewertung, die nicht unterscheidet, ist wertlos — deshalb steht die
-    # Verteilung da und nicht nur die Zahl der Urteile.
+    # Verteilung da und nicht nur die Zahl der Steckbriefe.
     gezaehlt = ", ".join(
         f"{sterne}★ ×{anzahl}" for sterne, anzahl in sorted(verteilung.items(), reverse=True)
     )

@@ -270,19 +270,21 @@ def test_a_second_digest_on_the_same_day_does_not_erase_the_first(data_dir: Path
     assert {p.name for p in digests.iterdir()} == {first.name, second.name}
 
 
-# --- den Rueckstand beurteilen (Ticket 19) ---------------------------------
+# --- den Rueckstand beschreiben (Ticket 19, #48) ---------------------------
 
 
-def test_rating_the_backlog_asks_only_about_what_has_no_judgement(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+@needs_vocabulary
+def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Der Stapel ist bestbewertet-zuerst sortiert, Unbeurteiltes steht hinten.
-    Wer die erste Seite nimmt, bekommt genau die Buecher, die schon ein Urteil
-    haben — und die offenen nie."""
+    """Der Stapel ist bestbewertet-zuerst sortiert, Unbeschriebenes steht hinten.
+    Wer die erste Seite nimmt, bekommt genau die Buecher, die schon einen
+    Steckbrief haben — und die offenen nie. ``ebw rate`` legt seit #48 die
+    fehlenden Steckbriefe an, statt Sterne zu vergeben."""
+    from conftest import describe, give_profile
     from ebook_watchlist import run as run_module
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.rating import Rating, load_leseprofil
-    from ebook_watchlist.ratings import BY_MODEL
+    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
     from ebook_watchlist.store import Store
 
     now = datetime(2026, 9, 5, 9, 0)
@@ -302,41 +304,44 @@ def test_rating_the_backlog_asks_only_about_what_has_no_judgement(
 
     run_id = store.start_run("test", "cli", now)
     store.append(run_id, "test", [fund("alt"), fund("neu")], now)
-    store.put_rating(
-        "item:beam:alt",
-        stars=4,
-        confidence="belegt",
-        reason="Passt.",
-        profile_version=load_leseprofil()[1],
-        now=now,
-        origin=BY_MODEL,
-        pitch="Kurz und gut.",
-    )
+    give_profile(store)
+    describe(store, "item:beam:alt", 4, "Kurz und gut.")
+    vocabulary = load_vocabulary()
+    asked: list[Observation] = []
 
-    class Stub:
-        def __init__(self) -> None:
-            self.calls: list[Observation] = []
+    def portray_find(observation, ask, vocab):
+        asked.append(observation)
+        traits = tuple(Trait(t, f"Satz zu {t}", "wissen") for t in ("quest", "adventure"))
+        return Portrait(known=True, fingerprint=fingerprint(vocabulary), pitch="Neu.",
+                        traits=traits)
 
-        def rate(self, observation: Observation) -> Rating:
-            self.calls.append(observation)
-            return Rating(
-                stars=4,
-                reason="Passt.",
-                confidence="belegt",
-                profile_version=load_leseprofil()[1],
-                pitch="Kurz und gut.",
-            )
+    class Rater:
+        def ask(self, prompt, max_tokens):  # pragma: no cover - portray_find ist ersetzt
+            raise AssertionError
 
-    stub = Stub()
-    monkeypatch.setattr(run_module, "build_rater", lambda model: stub)
+    monkeypatch.setattr(run_module, "build_rater", lambda model: Rater())
+    monkeypatch.setattr(run_module, "portray_find", portray_find)
 
     assert main(["rate"]) == EXIT_OK
-    assert [call.source_item_id for call in stub.calls] == ["neu"]
-    # Der Weg steht am Urteil (#10): ueber den Rueckstand, nicht im Lauf.
-    from ebook_watchlist.ratings import VIA_BACKLOG
 
-    neu = store.ratings_for(["item:beam:neu"])[("item:beam:neu", BY_MODEL)]
-    assert neu.via == VIA_BACKLOG
+    assert [o.source_item_id for o in asked] == ["neu"]
+    assert store.portrait("item:beam:neu", fingerprint(vocabulary)) is not None
+    out = capsys.readouterr().out
+    assert "Fund neu" in out and "Neu." in out and "51 %" in out  # zwei Muster: 0,51
+
+
+@needs_vocabulary
+def test_describing_the_backlog_needs_a_profile(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Ohne Profil wird nichts beurteilt (ADR 33, Punkt 8) — und nichts
+    beschrieben, das sich nicht rechnen liesse."""
+    from ebook_watchlist import run as run_module
+
+    monkeypatch.setattr(run_module, "build_rater", lambda model: object())
+
+    assert main(["rate"]) == EXIT_CONFIG_ERROR
+    assert "Leseprofil" in capsys.readouterr().err
 
 
 # --- ein Rundgang am Tag reicht ---------------------------------------------
