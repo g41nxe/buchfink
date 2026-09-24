@@ -55,8 +55,13 @@
   <ul class="mb-4 grid gap-3 sm:grid-cols-2">
     {% for f in view.facets %}
     <li class="rounded border border-accent/40 px-3 py-2">
-      <p class="text-sm font-semibold text-accent">{{ f.name }}</p>
-      <p class="mt-1 flex items-center gap-2 text-xs text-soft" aria-label="Stärke: {{ f.strength }}">
+      <ul class="space-y-1">
+        {% for name, satz in f.parts %}
+        <li class="text-xs"><span class="font-semibold text-accent">{{ name }}</span>
+          <span class="text-soft">— {{ satz }}</span></li>
+        {% endfor %}
+      </ul>
+      <p class="mt-1.5 flex items-center gap-2 text-xs text-soft" aria-label="Stärke: {{ f.strength }}">
         <span class="inline-flex gap-0.5">
           {% for i in range(1, 5) %}
           <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>

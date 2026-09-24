@@ -13,7 +13,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ..config import Settings
-from ..facets import STRENGTHS, family_name, family_names, is_pattern, strength
+from ..facets import (
+    STRENGTHS,
+    family_description,
+    family_name,
+    family_names,
+    is_pattern,
+    strength,
+)
 from ..portrait import VocabularyError, load_vocabulary
 from ..rating import (
     LESEPROFIL_PATH,
@@ -99,6 +106,8 @@ class FacetLine:
     level: int = 0
     #: Nur bei Gegengewichten.
     genre: str | None = None
+    #: Nur bei Facetten: je Merkmal sein Name und der Satz, was es heißt.
+    parts: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,7 +215,7 @@ def build(store: Store, settings: Settings) -> Overview:
     except RatingUnavailable:
         scheme = None
 
-    facetten, gegen, liked = _facet_profile(store, settings)
+    facets, counterweights, liked = _facet_profile(store, settings)
 
     return Overview(
         authors=collect(InterestKey.AUTHOR),
@@ -221,18 +230,20 @@ def build(store: Store, settings: Settings) -> Overview:
         profile_version=version,
         leseprofil_path=str(LESEPROFIL_PATH.name),
         scheme=scheme,
-        facet_profile=profil.version if (profil := store.reading_profile(settings.slug)) else None,
+        facet_profile=(
+            profile.version if (profile := store.reading_profile(settings.slug)) else None
+        ),
         intake_named=len(store.intake_entries(settings.slug)),
-        facets=facetten,
-        counterweights=gegen,
+        facets=facets,
+        counterweights=counterweights,
         liked=liked,
     )
 
 
 def _facet_profile(store: Store, settings: Settings):
     """Das Leseprofil aus Facetten, lesbar gemacht — oder nichts."""
-    profil = store.reading_profile(settings.slug)
-    if profil is None:
+    profile = store.reading_profile(settings.slug)
+    if profile is None:
         return (), (), ()
     try:
         vocabulary = load_vocabulary()
@@ -244,22 +255,28 @@ def _facet_profile(store: Store, settings: Settings):
     # Steckbrief fehlt.
     from .sharpening import carried_by, liked_shelf
 
-    regal = liked_shelf(store, settings, vocabulary)
+    shelf = liked_shelf(store, settings, vocabulary)
 
-    def zeile(f) -> FacetLine:
-        traeger = carried_by(f.families, regal)
-        buecher = tuple(b.title for b in traeger) or f.books
-        wort = strength(len(buecher))
-        return FacetLine(family_names(f.families, vocabulary), buecher, strength=wort,
-                         level=STRENGTHS.index(wort) + 1)
+    def facet_line(f) -> FacetLine:
+        carriers = carried_by(f.families, shelf)
+        titles = tuple(b.title for b in carriers) or f.books
+        word = strength(len(titles))
+        return FacetLine(
+            family_names(f.families, vocabulary), titles, strength=word,
+            level=STRENGTHS.index(word) + 1,
+            parts=tuple(
+                (family_name(x, vocabulary), family_description(x, vocabulary))
+                for x in f.families
+            ),
+        )
 
-    facetten = tuple(zeile(f) for f in profil.facets)
-    gegen = tuple(
+    facets = tuple(facet_line(f) for f in profile.facets)
+    counterweights = tuple(
         FacetLine(family_names(c.families, vocabulary), c.books, genre=c.genre)
-        for c in profil.counterweights
+        for c in profile.counterweights
     )
     liked = tuple(
         LikedLine(family_name(g.family, vocabulary), is_pattern(g.family, vocabulary), g.boosted)
-        for g in sorted(profil.liked, key=lambda g: not g.boosted)
+        for g in sorted(profile.liked, key=lambda g: not g.boosted)
     )
-    return facetten, gegen, liked
+    return facets, counterweights, liked

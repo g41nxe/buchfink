@@ -488,7 +488,14 @@ def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, b
     body = client.get("/profile").text
 
     assert "Erstaufnahme beginnen" not in body and "data-leseprofil" in body
-    assert "gezeichnete Figur · hart" in body
+    # Jede Facette nennt ihre Merkmale mit dem Satz, was sie heißen — wie im Entwurf.
+    from ebook_watchlist.portrait import load_vocabulary
+
+    vocabulary = load_vocabulary()
+    facet = body.split("Erkannte Kombinationen", 1)[1]
+    assert "gezeichnete Figur" in facet and "hart" in facet
+    assert vocabulary.family("brooding").description in facet
+    assert vocabulary.family("harsh").description in facet
 
 
 def test_a_confirmed_book_can_be_removed_again(client, db, buecher) -> None:
