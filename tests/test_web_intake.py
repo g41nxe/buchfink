@@ -316,24 +316,24 @@ def _fragen(body: str) -> str:
     return body.split("data-entwurf", 1)[0]
 
 
-def test_screen_3_lists_what_several_books_share_without_grouping_by_book(client,
-                                                                          buecher) -> None:
-    """Keine Gruppen „Weil du A und B mochtest" — die lasen sich wie
-    Buchvergleiche (24.09.2026). Die Bücher stehen nur hinter „warum?"."""
+def test_screen_3_lists_everything_the_loved_books_carry_as_cards(client, buecher) -> None:
+    """Alle Merkmale und, für sich, alle Erzählmuster — nicht nach Büchern
+    gruppiert (24.09.2026). Bücher stehen nur in den Belegen."""
     fragen = _fragen(client.get("/intake/common").text)
 
-    for familie in ("harsh", "brooding", "menacing", "atmospheric"):
-        assert f'data-familie="{familie}"' in fragen
-    assert "Weil du" not in fragen and "Nur in" not in fragen
-    warum = fragen.split("warum?", 1)[1]
-    assert "Kruzifix Killer" in warum and "Satz zu violent." in warum
+    merkmale, muster = fragen.split('data-abschnitt="Erzählmuster"', 1)
+    for familie in ("harsh", "brooding", "atmospheric", "intricate"):
+        assert f'data-familie="{familie}"' in merkmale
+    assert 'data-familie="pursuit"' in muster and 'data-familie="quest"' in muster
+    assert "Weil du" not in fragen
+    assert "Kruzifix Killer" in fragen and "Satz zu violent." in fragen
 
 
-def test_what_only_one_book_carries_is_not_on_the_list(client, buecher) -> None:
-    """Das fragt die Abdeckung, wenn das Buch sonst in keiner Facette steckt."""
+def test_what_more_books_carry_ranks_higher(client, buecher) -> None:
+    """Gerankt wird vorerst nach der Zahl der Bücher (#62 bringt die Ausprägung)."""
     fragen = _fragen(client.get("/intake/common").text)
 
-    assert 'data-familie="intricate"' not in fragen
+    assert fragen.index('data-familie="harsh"') < fragen.index('data-familie="intricate"')
 
 
 def test_before_any_tap_no_book_is_asked_for_on_its_own(client, buecher) -> None:
@@ -453,18 +453,11 @@ def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, b
     assert "hart · gezeichnete Figur" in body
 
 
-def test_books_that_share_nothing_are_asked_for_at_once(client, db) -> None:
-    """Teilen die Bücher gar nichts, gibt es auf Bildschirm 3 nichts anzutippen;
-    dann fragt die Abdeckung sofort nach jedem."""
-    bestaetigt(db, "liked", "Das Rosie-Projekt", _bild(
-        "Roman", None, ["quirky", "funny", "likeable", "romantic"], "opposites_attract"))
-    bestaetigt(db, "liked", "Leopard", _bild(
-        "Krimi", None, ["violent", "brooding", "menacing", "flawed"], "pursuit"))
+def test_the_coverage_asks_once_something_is_tapped(client, buecher) -> None:
+    tippen(client, "harsh")
+    body = tippen(client, "brooding")
 
-    body = client.get("/intake/common").text
-
-    assert "teilen nichts miteinander" in body
-    assert body.count("data-abdeckung") == 2
+    assert "data-abdeckung" in body
 
 
 def test_a_confirmed_book_can_be_removed_again(client, db, buecher) -> None:

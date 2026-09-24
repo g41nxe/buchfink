@@ -13,6 +13,55 @@
 {% for t in titel %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
 {%- endmacro %}
 
+{# Ein Merkmal oder Erzählmuster als Karte (Bildschirm 3, 24.09.2026).
+
+   Die ganze Karte ist der Knopf: antippen heißt ♥, wie bei der Pille. Darauf
+   Name, ein Satz aus dem Vokabular, was es heißt, und die Stärke als Skala.
+   Die Belege — je Buch der Satz aus dem Steckbrief — klappen darunter auf;
+   nur dort stehen Bücher.
+
+   Erwartet: `k` (die Karte), `schritt`. #}
+{% macro familienkarte(k, schritt) %}
+{% set p = k.pill %}
+<li class="flex flex-col rounded-lg border transition
+           {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
+    x-data="{ belege: false }">
+  <form method="post" action="/intake/choice" class="flex-1"
+        hx-post="/intake/choice" hx-target="#wahl" hx-swap="outerHTML">
+    <input type="hidden" name="side" value="loved">
+    <input type="hidden" name="family" value="{{ p.family_id }}">
+    <input type="hidden" name="step" value="{{ schritt }}">
+    <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
+    <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
+            data-familie="{{ p.family_id }}"
+            class="tun block h-full w-full px-4 pt-3 pb-2 text-left">
+      <span class="flex items-center gap-1.5 text-sm font-semibold
+                   {{ 'text-accent' if p.on else 'text-ink' }}">
+        <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-heart"/></svg>
+        {{ p.name }}
+      </span>
+      <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
+      <span class="mt-2 flex items-center gap-2 text-xs text-soft"
+            aria-label="Stärke: {{ k.strength }}">
+        <span class="inline-flex gap-0.5">
+          {% for i in range(1, 5) %}
+          <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= k.level else 'bg-hair' }}"></i>
+          {% endfor %}
+        </span>{{ k.strength }}{% if p.frequent %}<span class="opacity-70">· bei vielen Büchern</span>{% endif %}
+      </span>
+    </button>
+  </form>
+  <button type="button" @click="belege = !belege"
+          class="mx-4 mb-2 self-start text-xs text-soft underline decoration-rule
+                 underline-offset-2 hover:text-ink">Belege</button>
+  <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+    {% for titel, satz in k.evidence %}
+    <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>
+    {% endfor %}
+  </ul>
+</li>
+{% endmacro %}
+
 {% macro familienpille(p, seite, schritt) %}
 {% set weg = seite == "lost" %}
 <form method="post" action="/intake/choice" class="inline-flex"

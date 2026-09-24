@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Collection
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from ..config import Settings
@@ -281,6 +281,8 @@ class ShelfBook:
     genre: str | None
     #: Familie → der Satz aus dem Steckbrief, der sie an diesem Buch zeigt.
     families: dict[str, str]
+    #: Familie → das Merkmal, über das das Buch sie trägt.
+    terms: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,11 +329,22 @@ class ScopeQuestion:
 
 
 @dataclass(frozen=True, slots=True)
-class Why:
-    """Die Belege zu einer Familie: je Buch der Satz aus seinem Steckbrief."""
+class Card:
+    """Ein Merkmal oder Erzählmuster auf Bildschirm 3, als Karte.
 
-    name: str
-    sentences: tuple[tuple[str, str], ...]
+    Name, ein Satz, was es heißt, wie stark es bei der Leserin vertreten ist,
+    und aufklappbar die Belege — je Buch der Satz aus dem Steckbrief. Bücher
+    stehen nur dort, als Beleg, nicht als Gruppe (24.09.2026).
+    """
+
+    pill: Pill
+    description: str
+    strength: str
+    evidence: tuple[tuple[str, str], ...]
+
+    @property
+    def level(self) -> int:
+        return STRENGTHS.index(self.strength) + 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -404,11 +417,11 @@ class Choosing:
     """Was Bildschirm 3 und 4 zeigen, und das Profil darunter."""
 
     loved: tuple[ShelfBook, ...]
-    #: Bildschirm 3: was mehrere geliebte Bücher tragen, als eine Liste —
-    #: nicht nach Büchern gruppiert (24.09.2026).
-    common: tuple[Pill, ...]
-    #: Die Belege dazu, nur hinter „warum?".
-    why: tuple[Why, ...]
+    #: Bildschirm 3: alle Merkmale der geliebten Bücher, gerankt — nicht nach
+    #: Büchern gruppiert. Daraus bündelt das Werkzeug die Facetten.
+    terms: tuple[Card, ...]
+    #: Bildschirm 3, für sich: alle Erzählmuster der geliebten Bücher.
+    patterns: tuple[Card, ...]
     lost: tuple[LostBook, ...]
     draft: Draft
 
@@ -421,13 +434,16 @@ def shelf_book(store: Store, vocabulary, book_id: int) -> ShelfBook | None:
     if bild is None or not bild.known:
         return None
     familien: dict[str, str] = {}
+    begriffe: dict[str, str] = {}
     for trait in bild.traits:
         if trait.term in vocabulary.terms:
-            familien.setdefault(vocabulary.family_of(trait.term).id, trait.sentence)
+            familie = vocabulary.family_of(trait.term).id
+            familien.setdefault(familie, trait.sentence)
+            begriffe.setdefault(familie, trait.term)
     # Fein genug für ein Gegengewicht mit Genre: "High Fantasy" statt
     # "Fantasy", sonst träfe es auch Grimdark (#44).
     genre = bild.subgenre.split("/")[0].strip() if bild.subgenre else bild.genre
-    return ShelfBook(str(buch.id), buch.id, buch.title, genre, familien)
+    return ShelfBook(str(buch.id), buch.id, buch.title, genre, familien, begriffe)
 
 
 def _shelf_books(store: Store, settings: Settings, vocabulary, side: str) -> list[ShelfBook]:
@@ -492,19 +508,27 @@ def choosing(store: Store, settings: Settings) -> Choosing:
         for f in b.families:
             traeger.setdefault(f, []).append(b)
 
-    # Bildschirm 3: eine Liste dessen, was mehrere geliebte Bücher tragen —
-    # nicht nach Büchern gruppiert. Die Gruppen „Weil du A und B mochtest"
-    # zerfielen mit echten Büchern in viele kleine und lasen sich wie ein
-    # Vergleich von Buch zu Buch (24.09.2026). Welche Bücher dahinterstehen,
-    # sagt nur „warum?". Was ein einziges Buch trägt, fragt die Abdeckung.
-    gemeinsam = sorted(
-        (f for f, bs in traeger.items() if len(bs) > 1),
+    # Bildschirm 3: alles, was die geliebten Bücher tragen, gerankt — nicht
+    # nach Büchern gruppiert. Die Gruppen „Weil du A und B mochtest" lasen
+    # sich wie Vergleiche von Buch zu Buch (24.09.2026). Gerankt wird vorerst
+    # nach der Zahl der Bücher; mit #62 kommt die Ausprägung im Buch dazu.
+    # Häufiges im neutralen Bestand steht hinten.
+    rang = sorted(
+        traeger,
         key=lambda f: (-len(traeger[f]), f in haeufig, family_name(f, vocabulary).casefold()),
     )
-    warum = tuple(
-        Why(family_name(f, vocabulary), tuple((b.title, b.families[f]) for b in traeger[f]))
-        for f in gemeinsam
-    )
+
+    def karte(f: str) -> Card:
+        begriff = next(b.terms[f] for b in traeger[f] if f in b.terms)
+        return Card(
+            pille(f, f in an),
+            vocabulary.terms[begriff].description,
+            strength(len(traeger[f])),
+            tuple((b.title, b.families[f]) for b in traeger[f]),
+        )
+
+    merkmale = tuple(karte(f) for f in rang if not vocabulary.is_pattern(f))
+    muster = tuple(karte(f) for f in rang if vocabulary.is_pattern(f))
 
     verloren = []
     for d in enttaeuscht:
@@ -529,11 +553,8 @@ def choosing(store: Store, settings: Settings) -> Choosing:
         verloren.append(LostBook(d.title, d.book_id, tuple(dgruppen), fragen))
 
     entwurf = _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille,
-                     fragen_jetzt=bool(an) or not gemeinsam)
-    return Choosing(
-        tuple(geliebt), tuple(pille(f, f in an) for f in gemeinsam), warum, tuple(verloren),
-        entwurf,
-    )
+                     fragen_jetzt=bool(an))
+    return Choosing(tuple(geliebt), merkmale, muster, tuple(verloren), entwurf)
 
 
 def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille, *,
@@ -547,8 +568,7 @@ def _draft(vocabulary, geliebt, enttaeuscht, traeger, an, weg, pille, *,
         for f in facetten
     )
     # Die Abdeckung fragt erst, wenn angetippt wurde: vorher steckt jedes Buch
-    # in keiner Facette, und rechts stünde jedes für sich. Teilen die Bücher
-    # gar nichts, gibt es nichts anzutippen — dann fragt sie sofort.
+    # in keiner Facette, und rechts stünde jedes für sich.
     offen = uncovered(facetten, [b.key for b in geliebt]) if fragen_jetzt else []
     fragen = tuple(
         Uncovered(b.title, tuple(pille(f, f in an) for f in b.families))
