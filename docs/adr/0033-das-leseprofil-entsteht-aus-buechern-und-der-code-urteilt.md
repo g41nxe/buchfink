@@ -148,5 +148,5 @@ Code.
 > vergibt; Tobias' 20 Grundhandlungen als Familien, über die gefragt und
 > verglichen wird. Statt der Gegenteil-Probe gilt für Erzählmuster die
 > Meiden-Probe: Gibt es Leser:innen, die genau dieses Muster meiden? Die
-> Abwägung der Quellen steht in `docs/research/story-pattern-vocabularies.md`;
+> Abwägung der Quellen steht in `vocabulary/story-pattern-vocabularies.md` (nicht in Git, #59);
 > ungeklärt ist die Lizenz der NoveList-Bezeichnungen.

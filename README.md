@@ -100,7 +100,8 @@ nur mit `-m live`. Der Code ist englisch, alles Gelesene deutsch — die
 Begriffe dazwischen stehen in [CONTEXT.md](CONTEXT.md).
 
 Das Vokabular der Merkmale und Erzählmuster (`vocabulary/merkmale.yaml`,
-`vocabulary/erzaehlmuster.yaml`) liegt **nicht** im Repository: es beruht auf
+`vocabulary/erzaehlmuster.yaml`, dazu die Recherche
+`vocabulary/story-pattern-vocabularies.md`) liegt **nicht** im Repository: es beruht auf
 NoveList, und ob es veröffentlicht werden darf, ist ungeklärt (#59). Ohne
 diese Dateien gibt es keinen Steckbrief und keine Erstaufnahme; die Tests dazu
 werden übersprungen. Ein anderes Verzeichnis lässt sich mit
