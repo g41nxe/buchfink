@@ -159,6 +159,22 @@ def data_dir(unseeded_data_dir: Path, schema_template: Path) -> Path:
     main(["seed"])
     return unseeded_data_dir
 
+
+def _vocabulary_present() -> bool:
+    from ebook_watchlist.portrait import PATTERNS_PATH, VOCABULARY_PATH
+
+    return VOCABULARY_PATH.exists() and PATTERNS_PATH.exists()
+
+
+#: Das Vokabular der Merkmale und Erzählmuster ist nicht in Git (#59). Wo es
+#: fehlt — in einem frischen Klon —, werden die Tests übersprungen, die es
+#: brauchen, statt zu scheitern.
+needs_vocabulary = pytest.mark.skipif(
+    not _vocabulary_present(),
+    reason="vocabulary/ fehlt: das Vokabular liegt nicht in Git (#59)",
+)
+
+
 @pytest.fixture(autouse=True)
 def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     """Kein Test greift nach draußen — außer den ausdrücklich als ``live``

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from conftest import needs_vocabulary
 from ebook_watchlist.portrait import (
     Portrait,
     Trait,
@@ -25,6 +26,8 @@ from ebook_watchlist.portrait import (
 )
 from ebook_watchlist.rating import RatingUnavailable
 from ebook_watchlist.store import Store
+
+pytestmark = needs_vocabulary
 
 NOW = datetime(2026, 9, 24, 10, 0)
 

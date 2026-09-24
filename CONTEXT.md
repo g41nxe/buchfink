@@ -419,7 +419,7 @@ Not a Thema: a Thema is the shop's category.
 *deutsch: Grundhandlung*
 
 One of Tobias' twenty master plots — *Heldenreise*, *Katz und Maus*, *Rache* …
-— serving as the family of Story Patterns (`docs/erzaehlmuster.yaml`). Unlike
+— serving as the family of Story Patterns (`vocabulary/erzaehlmuster.yaml`). Unlike
 an Appeal Family it is assignable itself: a book can be a *Heldenreise* without
 any finer pattern, as *Otherland* is. Facets and counterweights compare on it,
 across genres.

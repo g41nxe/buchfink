@@ -14,12 +14,15 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import intake
 from ebook_watchlist.web.app import create_app
+
+pytestmark = needs_vocabulary
 
 NOW = datetime(2026, 9, 24, 3, 0)
 

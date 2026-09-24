@@ -1,7 +1,7 @@
 """Der Steckbrief eines Buchs: was ein Modell einmal über ein Buch sagt (#45).
 
 Das Modell sieht jedes Buch genau einmal, unabhängig von jeder Leserin, und gibt
-ihm Merkmale aus dem festen Vokabular in ``docs/merkmale.yaml``: zu jedem einen
+ihm Merkmale aus dem festen Vokabular in ``vocabulary/merkmale.yaml``: zu jedem einen
 Satz, der nur unter diesem Buch stehen kann, und worauf er beruht. Dazu, welches
 Buch es ist, Genre und Pitch. Geurteilt wird hier nicht; das tut später der
 Code (ADR 33, Punkt 4).
@@ -16,7 +16,7 @@ der Rose* und an einem erfundenen Titel geprüft; dazu kommen das Erkennen des
 Buchs und der Pitch, die ADR 33 in denselben Aufruf legt.
 
 Im selben Aufruf vergibt das Modell auch Erzählmuster aus
-``docs/erzaehlmuster.yaml`` (#49). Sie sind Wörter desselben Vokabulars, in
+``vocabulary/erzaehlmuster.yaml`` (#49). Sie sind Wörter desselben Vokabulars, in
 einer eigenen Dimension: so können Facetten und Gegengewichte sie enthalten,
 ohne dass der Code sie anders behandeln müsste. Gezählt werden sie getrennt —
 vier bis acht Merkmale und dazu ein bis drei Muster.
@@ -25,6 +25,7 @@ vier bis acht Merkmale und dazu ein bis drei Muster.
 from __future__ import annotations
 
 import hashlib
+import os
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -35,8 +36,14 @@ import yaml
 
 from .rating import RatingUnavailable, _json_object
 
-VOCABULARY_PATH = Path(__file__).resolve().parents[2] / "docs" / "merkmale.yaml"
-PATTERNS_PATH = VOCABULARY_PATH.with_name("erzaehlmuster.yaml")
+#: Wo das Vokabular liegt. Nicht in Git: es beruht auf NoveList, und ob es
+#: veröffentlicht werden darf, ist ungeklärt (#59). Ein anderes Verzeichnis
+#: lässt sich mit ``EBW_VOCABULARY_DIR`` angeben.
+VOCABULARY_DIR = Path(
+    os.environ.get("EBW_VOCABULARY_DIR") or Path(__file__).resolve().parents[2] / "vocabulary"
+)
+VOCABULARY_PATH = VOCABULARY_DIR / "merkmale.yaml"
+PATTERNS_PATH = VOCABULARY_DIR / "erzaehlmuster.yaml"
 #: Die Dimension, in der die Erzählmuster stehen.
 PATTERN_DIMENSION = "Erzählmuster"
 
@@ -54,7 +61,7 @@ MAX_TOKENS = 2000
 
 
 class VocabularyError(Exception):
-    """``docs/merkmale.yaml`` oder ``docs/erzaehlmuster.yaml`` widerspricht sich
+    """``merkmale.yaml`` oder ``erzaehlmuster.yaml`` widerspricht sich, fehlt
     oder ist nicht lesbar."""
 
 

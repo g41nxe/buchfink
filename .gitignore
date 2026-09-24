@@ -1,5 +1,9 @@
 # runtime data (ADR 12)
 data/
+# Das Vokabular der Merkmale und Erzählmuster beruht auf NoveList (EBSCO); ob
+# es veröffentlicht werden darf, ist ungeklärt (#59). Bis dahin liegt es nur
+# lokal. Ohne es gibt es keinen Steckbrief und keine Erstaufnahme.
+vocabulary/
 # Sicherungen der Datenbank aus dem Container (docs/betrieb.md)
 data-sicherung/
 

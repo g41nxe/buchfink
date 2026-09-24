@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import Settings, load_settings
 from ebook_watchlist.models import Availability, LinkOutcome, MatchReason, Observation
@@ -1258,6 +1259,7 @@ def _leopard() -> str:
     }, ensure_ascii=False)
 
 
+@needs_vocabulary
 def test_the_button_draws_a_portrait_once(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1278,6 +1280,7 @@ def test_the_button_draws_a_portrait_once(
     assert "Nordic Noir" in body
 
 
+@needs_vocabulary
 def test_a_book_the_model_does_not_know_says_so(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1289,6 +1292,7 @@ def test_a_book_the_model_does_not_know_says_so(
     assert "kennt dieses Buch nicht" in body
 
 
+@needs_vocabulary
 def test_without_a_model_nothing_changes_and_the_page_says_why(
     client: TestClient, db: Store
 ) -> None:
@@ -1300,6 +1304,7 @@ def test_without_a_model_nothing_changes_and_the_page_says_why(
     assert "Kein Bewerter eingerichtet" in body
 
 
+@needs_vocabulary
 def test_a_failed_call_stores_nothing(db: Store, monkeypatch: pytest.MonkeyPatch) -> None:
     from ebook_watchlist.portrait import fingerprint, load_vocabulary
 
@@ -1314,6 +1319,7 @@ def test_a_failed_call_stores_nothing(db: Store, monkeypatch: pytest.MonkeyPatch
     assert db.portrait(view.portrait_subject(buch), fingerprint(load_vocabulary())) is None
 
 
+@needs_vocabulary
 def test_a_book_with_an_isbn_keeps_its_portrait_at_the_isbn(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1329,6 +1335,7 @@ def test_a_book_with_an_isbn_keeps_its_portrait_at_the_isbn(
     assert db.portrait("isbn:9783548289441", fingerprint(load_vocabulary())).known
 
 
+@needs_vocabulary
 def test_a_portrait_survives_the_book_getting_an_isbn(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1365,6 +1372,7 @@ def _profil():
     )
 
 
+@needs_vocabulary
 def test_with_profile_and_portrait_the_page_shows_the_fit(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1380,6 +1388,7 @@ def test_with_profile_and_portrait_the_page_shows_the_fit(
     assert passung.reasons[0].text == "hart · gezeichnete Figur"
 
 
+@needs_vocabulary
 def test_the_fit_stands_under_the_judgement(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1414,6 +1423,7 @@ def test_without_a_portrait_there_is_no_fit(db: Store) -> None:
     assert view.build(db, load_settings(), buch.id).fit is None
 
 
+@needs_vocabulary
 def test_story_patterns_stand_apart_from_the_terms(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:

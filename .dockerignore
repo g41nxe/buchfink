@@ -1,4 +1,6 @@
 # Laufzeitdaten gehoeren ins Volume, nicht ins Image (ADR 12).
+# `vocabulary/` steht bewusst NICHT hier: es ist nicht in Git (#59), soll aber
+# ins lokal gebaute Image, sonst gibt es dort keinen Steckbrief.
 data/
 data-sicherung/
 

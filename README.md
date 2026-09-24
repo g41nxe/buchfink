@@ -99,6 +99,13 @@ Kein Netzzugriff in der Suite; Smoke-Tests gegen die echten Quellen laufen
 nur mit `-m live`. Der Code ist englisch, alles Gelesene deutsch — die
 Begriffe dazwischen stehen in [CONTEXT.md](CONTEXT.md).
 
+Das Vokabular der Merkmale und Erzählmuster (`vocabulary/merkmale.yaml`,
+`vocabulary/erzaehlmuster.yaml`) liegt **nicht** im Repository: es beruht auf
+NoveList, und ob es veröffentlicht werden darf, ist ungeklärt (#59). Ohne
+diese Dateien gibt es keinen Steckbrief und keine Erstaufnahme; die Tests dazu
+werden übersprungen. Ein anderes Verzeichnis lässt sich mit
+`EBW_VOCABULARY_DIR` angeben.
+
 ## Betrieb
 
 Läuft am besten als täglicher Cron- oder Zeitplaner-Job, eine Dateisperre
