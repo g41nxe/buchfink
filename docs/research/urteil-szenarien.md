@@ -386,3 +386,126 @@ Rangplätze.
 - Die Recherche liest mehrere Quellen nur als Abstract oder aus zweiter Hand; das
   steht dort je Quelle mit dem Lesestand, und die Aussagen hier hängen nicht
   daran, wo dieser dünn ist.
+
+## 10. Nachtrag: Ziele, Review der Liste, Gesamtlösung (25.09.2026, abends)
+
+Die Leserin hat drei Vorschläge aus Abschnitt 7 zurückgewiesen, und zu Recht: die
+**Abdeckung** am Tor (B-1 b) würde gut passende Bücher abschneiden, nur weil gerade
+viele passen; **neu beschreiben lassen** löst ein dünnes, aber passendes Buch
+nicht (und ein Merkmal ergänzen kann nur, wer das Buch kennt); ein **Deckel für
+Muster** benachteiligt die Hälfte der Bücher, die nur eines tragen (43 von 86
+Steckbriefen). Dieser Abschnitt setzt deshalb bei den Zielen neu an und prüft jeden
+Vorschlag dagegen, ob er einen anderen guten Fall beschädigt.
+
+### 10.1 Ziele und Erwartungen an das Urteil
+
+| Ziel | Erwartung |
+|---|---|
+| **Z1 Passung, nicht Menge** | Gemessen wird, wie viel **von diesem Buch** dein Geschmack ist, nicht wie viele Treffer es sammelt. Ein Buch, das nur vier Merkmale trägt und alle vier sind deine, passt sehr gut. |
+| **Z2 unabhängig von der Profilgröße** | Ein schmales Profil kann ein passendes Buch erkennen; ein breites macht nicht jedes Buch passend. Über eine Dimension, zu der du nichts gesagt hast, weiß das Urteil nichts — sie zählt weder für noch gegen. |
+| **Z3 Ausprägung zählt** | Was ein Buch prägt, zählt mehr als was am Rand vorkommt, bei Vorlieben wie bei Ablehnungen. |
+| **Z4 Ablehnung wirkt nach Stärke** | Ein prägendes Gegengewicht zieht deutlich ab, eines am Rand wenig. Eine Kombination, die du liebst, rettet kein Buch, das vor allem aus dem besteht, was dich enttäuscht hat. |
+| **Z5 Muster als eigene Frage** | Ein Erzählmuster sagt, *was für eine Geschichte* es ist; Merkmale sagen, *wie sie sich liest*. Ein Buch mit einem gemochten Muster ist nicht schlechter als eines mit drei. |
+| **Z6 ehrlich bei dünner Beschreibung** | Wenig Beschreibung heißt: das Urteil rückt zur Mitte, statt nach unten zu fallen; es wird gekennzeichnet, nicht bestraft. |
+| **Z7 ruhig gegen Rauschen** | Eine andere Beschreibung desselben Buchs soll die Stufe selten ändern. |
+| **Z8 erklärbar, schnell, ohne Modell** | Jede Zeile der Begründung ist ein Beitrag; ein neues Profil wirkt sofort (ADR 33). |
+| **Z9 an den eigenen Büchern geprüft** | Deine gemochten Bücher passieren; was dich enttäuscht hat, nicht; aus einer Stichprobe passiert eher weniger als mehr (Qualität vor Masse). |
+
+### 10.2 Die Liste aus Abschnitt 6/7, geprüft gegen die Ziele
+
+| # | Befund | ursprünglicher Vorschlag | Review | neu |
+|---|---|---|---|---|
+| 1 | schmales Profil erreicht das Tor nie | Tor öffnet bei unerreichbarer Schwelle | ✗ hält dann auch klare Ablehnungen nicht mehr zurück | durch Z1/Z2 gelöst: Passung je Dimension, zu der du etwas gesagt hast |
+| 2 | breites Profil lässt mehr durch | Tor als Abdeckung (beste k %) | ✗ schneidet gute Bücher ab, wenn viele gut sind (Einwand der Leserin) | gestrichen. Die Menge regelt die **Anzeige** (der Stapel ist nach Übereinstimmung sortiert), nicht das Tor. Die Passung als Anteil wächst nicht mit dem Profil |
+| 3 | Rundungsfehler an der Schwelle | Toleranz | ✓ | bleibt |
+| 4 | Gewicht im Buch zählt nicht | Faktor je Stufe | ✓ | Teil der Gesamtlösung (Z3) |
+| 5 | Stufe wackelt | erst messen | ✓ | bleibt; die Formel allein löst es nicht (10.4) |
+| 6 | dünne Steckbriefe | zeigen, kennzeichnen; neu beschreiben; Merkmal ergänzen | ⚠ neu beschreiben/ergänzen ist keine Lösung für ein unbekanntes Buch (Einwand der Leserin) | Passung als Anteil mit Glättung (Z1, Z6): ein dünnes, passendes Buch steht oben, nicht unten; Kennzeichnung nur als Hinweis |
+| 7 | Längenverzerrung | teilweise Längennormierung | ✓, aber einzeln gedacht | fällt mit 6 zusammen: der Anteil ist längenneutral |
+| 8 | Facetten sind eine Klippe | anteilig bei 3+ Familien | ⚠ | Facette wird ein **Bonus** auf eine schon gute Passung, keine eigene Stufe; zwei von drei zählen über ihre Merkmale |
+| 9 | Facette zählt doppelt | Mitglieder nicht noch einmal zählen | ✓ | erledigt sich: Mitglieder zählen einmal im Anteil, die Facette als Bonus |
+| 10 | Muster zu schwer | Deckel für ein einzelnes Muster | ✗ benachteiligt Bücher mit genau einem Muster (Einwand der Leserin; 43 von 86) | **bestes** gemochtes Muster zählt, nicht die Zahl der Muster (Z5): ein Muster = drei Muster |
+| 11 | Ablehnung grob | Abzug nach Gewicht, später je Buch | ✓ | Teil der Gesamtlösung (Z4); das Gegengewicht zählt zusätzlich im Anteil gegen |
+| 12 | häufige wie seltene Merkmale | IDF später | ✓ | bleibt später; Stichprobe zu klein |
+| 13 | Referenzautor:innen am Tor | Ausnahme | ✓ | bleibt, Frage an die Leserin |
+| 14 | Profil nur aus Gegengewichten | Minimum oder Gegengewichte anwenden | ✓ | Gegengewichte anwenden: ohne Gemochtes ist die Passung neutral, die Ablehnung wirkt |
+| 15 | Widerspruch gemocht/Gegengewicht | Hinweis | ✓ | bleibt |
+| 16 | Genre als Freitext | feste Liste | ✓ | bleibt (#53) |
+| 17 | keine Lernschleife | Zufall knapp unter dem Tor, Lernen mit Prior | ✓ | bleibt, Stufe 3 |
+| 18 | kein Prüfstand | Szenarien als Test, Messskript | ✓ | bleibt, Stufe 0, **vor** der Umstellung |
+
+### 10.3 Die Gesamtlösung
+
+Drei Fragen statt einer Summe, jede mit eigener Zeile in der Begründung:
+
+1. **Wie viel von diesem Buch ist dein Geschmack?** (Merkmale)
+   Nur Merkmale aus Dimensionen, zu denen dein Profil etwas sagt (gemocht,
+   Facette oder Gegengewicht). Jedes zählt mit seinem Gewicht im Buch (prägend 1,0,
+   deutlich 0,7, am Rand 0,4), ein verstärktes 1,5-fach.
+   `A = (Gewicht der gemochten + α·p₀) / (Gewicht aller + α)`, geglättet zum
+   Vorab-Anteil p₀ = 0,1 mit α = 2: bei dünner Beschreibung rückt der Wert zur Mitte,
+   statt zu kippen (Z6; das ist ein Bayes-Mittel, vgl. urteil-verfahren.md 3.3/C3,
+   3.6/F2).
+2. **Erzählt es eine Geschichte, die du magst?** (Muster)
+   Das **beste** gemochte Muster im Buch: 0,35, verstärkt 0,5. Eins oder drei macht
+   keinen Unterschied (Z5).
+3. **Trägt es eine deiner Kombinationen?** (Facette)
+   Ganz getroffen: Bonus 0,4. Die Mitglieder stecken schon in 1.
+
+`Übereinstimmung = 1 − (1 − A)·(1 − Muster)·(1 − Facette)`, danach das stärkste
+zutreffende Gegengewicht: `× (1 − 0,5·Gewicht im Buch)`, also prägend × 0,5,
+deutlich × 0,65, am Rand × 0,8. Sterne und Tor wie heute (ab 0,4 drei Sterne), mit
+Toleranz an der Schwelle.
+
+### 10.4 Gemessen (Prototyp, nicht geeicht)
+
+Szenarien (Auswahl; heute → Gesamtlösung):
+
+| Fall | heute | Gesamtlösung | Ziel |
+|---|---|---|---|
+| vier Merkmale, alle gemocht | 2★ 34 % | **4★ 62 %** | Z1 ✓ |
+| drei gemochte von fünf | 2★ 27 % | 3★ 42 % | Z1 ✓ |
+| acht Merkmale, vier gemocht | 2★ 34 % | 2★ 39 % | Z1 ✓ (Hälfte ist Hälfte) |
+| zwei Merkmale, beide gemocht (dünn) | 3★ 51 % | 4★ 74 % | Z6 ✓ |
+| Profil aus drei Merkmalen, Buch trägt alle drei | 2★ 27 % | 3★ 48 % | Z2 ✓ |
+| Profil aus einem Merkmal, Buch trägt es, andere Dimensionen | 1★ 10 % | 2★ 33 % | Z2 ⚠ (Glättung hält zurück, gewollt) |
+| hart prägend gegen am Rand | 27 % / 27 % | 51 % / 44 % | Z3 ✓ |
+| Facette + gemächlich **prägend** | 3★ 56 % | **2★ 30 %** | Z4 ✓ |
+| Facette + gemächlich am Rand | 3★ 56 % | 3★ 49 % | Z4 ✓ |
+| ein Muster + drei gemochte Merkmale | 3★ 56 % | 4★ 74 % | Z5 ✓ |
+| drei Muster + dieselben Merkmale | 4★ 79 % | 4★ 74 % | Z5 ✓ (gleich) |
+| nur verstärktes Muster, Merkmale neutral | 3★ 40 % | 3★ 52 % | ⚠ die Geschichte passt; ob das allein reicht, entscheidet die Leserin |
+| eine Facette, sonst nichts Gemochtes | 5★ 86 % | 4★ 60 % | Doppelzählung weg ✓ |
+
+Eigene Bücher (Fassung 6): alle sieben gemochten mit Steckbrief bleiben bei 4 bis 5
+Sternen (67 bis 85 %); *Herr der Ringe* bleibt bei 1 Stern. **Der Schwarm** steht
+bei 4 Sternen (79 %), heute bei 5 (92 %): **das löst keine Formel**, denn seit
+Fassung 6 steht im Profil nichts mehr, was ihn ablehnt (das Gegengewicht
+„große Welt" gilt nur noch bei Fantasy); das gehört ins Nachschärfen mit „Doof".
+
+Stichprobe (55 Stapelfunde mit Steckbrief):
+
+| | heute | Gesamtlösung |
+|---|---|---|
+| durchs Tor | 32 | 38 |
+| Korrelation mit der Zahl der Merkmale | 0,31 | 0,19 |
+| Durchlass bei 1 / 3 / 5 / 8 / 12 gemochten Merkmalen | 0 / 0 / 5 / 6 / 8 | 9 / 6 / 9 / 21 / 28 |
+| Stufenwechsel, wenn 40 % der Merkmale fehlen | 27 % | 38 % |
+
+**Was nicht gelöst ist.** Z7: eine Rechnung, die den *Anteil* misst, reagiert auf jedes
+Merkmal einer kurzen Beschreibung; mehr Glättung senkt den Wechsel kaum
+(α = 3: 35 %) und nimmt schmalen Profilen die Wirkung. Die Streuung muss an der
+Beschreibung behandelt werden: erst messen (Stufe 0, Wiederholungsmessung), dann
+ggf. nur *prägende* und *deutliche* Merkmale zählen oder zweimal beschreiben.
+Z9: das Tor lässt mehr durch als heute (38 statt 32 von 55); die Eichung (p₀, α,
+Schwelle) gehört auf den Prüfstand, bevor etwas umgestellt wird.
+
+### 10.5 Reihenfolge
+
+1. **Prüfstand** (Stufe 0): Szenarien als Test mit den Zielen Z1 bis Z9 als
+   Zusicherungen, Messskript, Wiederholungsmessung der Beschreibung.
+2. **Gesamtlösung hinter dem Prüfstand**, als eine Änderung an `fit()` mit neuen
+   Zahlen in `bewertungsschema.yaml` und ADR-33-Nachtrag; die heutige Rechnung
+   bleibt als Vergleich im Messskript.
+3. Danach einzeln: Referenzautor:innen, Profil nur aus Gegengewichten, Widerspruch,
+   Genre, später Lernen mit Prior.
