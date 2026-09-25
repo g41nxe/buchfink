@@ -19,11 +19,20 @@ def test_every_button_reads_the_same_word() -> None:
     Knopf steht das Handlungswort — Stapel, Startseite, Watchlist-Menue, Fund-
     und Buchseite —, der Zustandsname beschreibt ein Buch in Prosa, im Profil
     und im Tagesbericht. Keine Ansicht mischt."""
-    from ebook_watchlist.relations import ACTION_LABELS, RELATION_LABELS, RelationKind
+    from ebook_watchlist.relations import (
+        ACTION_LABELS,
+        RELATION_LABELS,
+        REMOVED,
+        REMOVED_ACTION,
+        RelationKind,
+    )
     from ebook_watchlist.web import book, profile_page, triage, watchlist
 
     for schluessel, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS):
-        assert wort == ACTION_LABELS[RelationKind(schluessel)]
+        # Von der Watchlist nehmen ist keine Art, sein Wort steht daneben (#72).
+        erwartet = REMOVED_ACTION if schluessel == REMOVED else (
+            ACTION_LABELS[RelationKind(schluessel)])
+        assert wort == erwartet
     for schluessel, name in profile_page._RELATION_LABELS:
         assert name == RELATION_LABELS[RelationKind(schluessel)]
 

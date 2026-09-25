@@ -17,7 +17,14 @@ from ..judging import load_judge
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
 from ..ratings import book_subject, subject_of
-from ..relations import DONE_LABELS, RelationKind, label_of, labelled_actions
+from ..relations import (
+    DONE_LABELS,
+    REMOVED,
+    REMOVED_ACTION,
+    RelationKind,
+    label_of,
+    labelled_actions,
+)
 from ..sources import registry
 from ..store import Store
 from . import sorting
@@ -35,7 +42,9 @@ RESTRICTIONS = ("library", "shop")
 #: derselben Reihenfolge stehen (#22).
 CLOSINGS: tuple[tuple[str, str], ...] = labelled_actions(
     RelationKind.DISMISSED, RelationKind.OWNED
-)
+) + ((REMOVED, REMOVED_ACTION),)
+#: Was eine Zeile abschliessen kann: die zwei Arten und das Entfernen (#72).
+_FINISHING = (str(RelationKind.OWNED), str(RelationKind.DISMISSED), REMOVED)
 
 
 def _details(row) -> dict:
@@ -430,7 +439,13 @@ def entries(
         for kind in (RelationKind.OWNED, RelationKind.DISMISSED)
         for row in store.relations(profile_slug, kind=str(kind))
     }
-    relations = [row for row in relations if row.book_id not in closed]
+    # Entfernt ist nicht pausiert: ein stillgelegtes Beobachten mit ``removed``
+    # steht nicht mehr auf der Liste (#72). Wer es wieder beobachtet, holt es
+    # zurück — dann ist es aktiv, und der Vermerk zählt nicht mehr.
+    relations = [
+        row for row in relations
+        if row.book_id not in closed and (row.active or not _details(row).get(REMOVED))
+    ]
     book_ids = [relation.book_id for relation in relations]
     latest = store.latest_by_book(profile_slug, book_ids)
     # Drei Abfragen fuer die ganze Liste statt zwei je Zeile: neunzehn
@@ -599,7 +614,7 @@ class Undo:
 
 def undo_for(store: Store, book_id: int, kind: str) -> Undo | None:
     """Nichts, wenn die Adresse etwas nennt, das es nicht gibt."""
-    if kind not in (str(RelationKind.OWNED), str(RelationKind.DISMISSED)):
+    if kind not in _FINISHING:
         return None
     book = store.book(book_id)
     return Undo(book_id, kind, book.title) if book is not None else None
@@ -613,9 +628,12 @@ def unfinish(
     Stillgelegt, nicht gelöscht (ADR 18): dass das Buch einmal als gekauft
     galt, bleibt als ruhende Zeile stehen.
     """
-    if kind not in (str(RelationKind.OWNED), str(RelationKind.DISMISSED)):
+    if kind not in _FINISHING:
         return
-    store.deactivate_relation(profile_slug, book_id, kind, now=now)
+    if kind == REMOVED:
+        _mark_removed(store, profile_slug, book_id, False, now=now)
+    else:
+        store.deactivate_relation(profile_slug, book_id, kind, now=now)
     store.put_relation(profile_slug, book_id, str(RelationKind.WATCHING), now=now)
 
 
@@ -634,10 +652,38 @@ def finish(
     Stillgelegt, nicht geloescht: dass ein Buch einmal beobachtet wurde, ist
     selbst eine Auskunft (ADR 18).
     """
-    if kind not in (str(RelationKind.OWNED), str(RelationKind.DISMISSED)):
+    if kind not in _FINISHING:
         return
-    store.put_relation(profile_slug, book_id, kind, now=now)
+    if kind == REMOVED:
+        # Nichts über das Buch: kein Besitz, kein Ausschließen, kein Urteil.
+        # Es darf wieder als Vorschlag kommen (#72).
+        _mark_removed(store, profile_slug, book_id, True, now=now)
+    else:
+        store.put_relation(profile_slug, book_id, kind, now=now)
     store.deactivate_relation(profile_slug, book_id, str(RelationKind.WATCHING), now=now)
+
+
+def _mark_removed(
+    store: Store, profile_slug: str, book_id: int, removed: bool, *, now: datetime
+) -> None:
+    watching = next(
+        (r for r in store.relations_of(profile_slug, book_id)
+         if r.kind == str(RelationKind.WATCHING)),
+        None,
+    )
+    if watching is None:
+        return
+    details = _details(watching)
+    if removed:
+        details[REMOVED] = True
+    else:
+        details.pop(REMOVED, None)
+    active = watching.active
+    store.set_relation_details(
+        profile_slug, book_id, str(RelationKind.WATCHING), details, now=now
+    )
+    if not active:
+        store.deactivate_relation(profile_slug, book_id, str(RelationKind.WATCHING), now=now)
 
 
 def set_restriction(

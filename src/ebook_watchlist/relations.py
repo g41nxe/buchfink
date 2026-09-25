@@ -101,7 +101,15 @@ def labelled(*kinds: RelationKind) -> tuple[tuple[str, str], ...]:
 #: "Hab ich" steht auf dem Knopf, "als vorhanden vermerkt" im Rueckblick.
 #: Steht hier und nicht in einer der Seiten: Startseite und Watchlist bieten
 #: dieselbe Ruecknahme an, und zwei Tabellen waeren zwei, die auseinanderlaufen.
+#: Von der Watchlist genommen, ohne etwas über das Buch zu sagen (#72). Keine
+#: eigene Art: ein stillgelegtes ``watching`` mit ``removed`` im Beutel, damit
+#: es nicht als pausiert auf der Liste stehen bleibt.
+REMOVED = "removed"
+#: Das Knopfwort dazu, neben den Wörtern der Arten (``ACTION_LABELS``).
+REMOVED_ACTION = "von der Watchlist nehmen"
+
 DONE_LABELS: dict[str, str] = {
+    REMOVED: "von der Watchlist genommen",
     str(RelationKind.DISMISSED): "verworfen",
     str(RelationKind.OWNED): "als vorhanden vermerkt",
     str(RelationKind.WATCHING): "in Beobachtung genommen",
@@ -172,12 +180,16 @@ def check_details(key: str, details: dict) -> dict:
     sind Tippfehler, die sich nur durch verändertes Verhalten bemerkbar machten
     — die teuerste Art, einen Fehler zu finden (ADR 18).
     """
-    unknown = set(details) - {"tier", "sources", "note", "restrict", "known_missing", "reasons"}
+    unknown = set(details) - {
+        "tier", "sources", "note", "restrict", "known_missing", "reasons", "removed"
+    }
     if unknown:
         raise ConfigurationError(
             f"unbekannte Angaben zu {key!r}: {', '.join(sorted(unknown))} "
-            "(bekannt: known_missing, note, reasons, restrict, sources, tier)"
+            "(bekannt: known_missing, note, reasons, removed, restrict, sources, tier)"
         )
+    if "removed" in details and not isinstance(details["removed"], bool):
+        raise ConfigurationError(f"'removed' bei {key!r} ist ja oder nein")
     reasons = details.get("reasons")
     if reasons is not None and not (
         isinstance(reasons, dict)

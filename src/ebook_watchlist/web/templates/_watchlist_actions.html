@@ -1,4 +1,4 @@
-{# Was man mit einem beobachteten Buch tun kann, als vier Zeichen (#22).
+{# Was man mit einem beobachteten Buch tun kann, als fünf Zeichen (#22, #72).
 
    Eine Stelle für Watchlist und Startseite: dieselbe Zeile soll überall
    dasselbe anbieten. Auf der Startseite fehlten die Zeichen ganz, während
@@ -9,7 +9,9 @@
    steht in `_icon_button.html` — derselbe wie auf der Vorschlagsseite, und
    die zwei ersten Zeichen stehen dort in derselben Reihenfolge.
 
-   Zwei davon beenden den Eintrag und nehmen ihn aus der Liste. Bisher standen
+   Drei davon beenden den Eintrag und nehmen ihn aus der Liste: Ausschließen
+   und Hab ich sagen etwas über das Buch, *von der Watchlist nehmen* nicht
+   (#72) — das Buch darf danach wieder als Vorschlag kommen. Bisher standen
    sie im Menü hinter einer Trennlinie; offen in der Zeile brauchen sie einen
    Weg zurück statt einer Nachfrage (ADR 30) — gelöscht wird nichts (ADR 18).
    `back` sagt, auf welcher Seite dieser Weg angeboten wird.
@@ -20,7 +22,7 @@
 {% from "_icon_button.html" import icon_button %}
 
 {% macro watchlist_actions(entry, closings, icons, back="/watchlist") %}
-<span class="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
+<span class="grid w-full grid-cols-5 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in closings %}
   <form method="post" action="/watchlist/{{ entry.book_id }}/finish"
         class="contents">
@@ -28,7 +30,7 @@
     <input type="hidden" name="back" value="{{ back }}">
     {% set attrs %}type="submit"{% endset %}
     {{ icon_button(label, icons[kind],
-                   tone=("danger" if kind == "dismissed" else "amber"),
+                   tone={"dismissed": "danger", "owned": "amber"}.get(kind, "accent"),
                    attrs=attrs) }}
   </form>
   {% endfor %}

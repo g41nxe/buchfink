@@ -621,3 +621,61 @@ def test_the_default_order_stays_out_of_the_links(client: TestClient) -> None:
     """`?sortiert=offen` an jedem Verweis waere Laerm: die Voreinstellung gilt
     ohnehin."""
     assert "sortiert=offen" not in client.get("/watchlist").text
+
+
+# --- von der Watchlist nehmen, ohne Urteil (#72) ------------------------------------------
+
+
+def test_removing_takes_the_entry_off_without_saying_anything_about_the_book(
+    client: TestClient, db: Store
+) -> None:
+    book = db.books()[0]
+
+    body = client.post(f"/watchlist/{book.id}/finish", data={"kind": "removed"}).text
+
+    assert f'id="eintrag-{book.id}"' not in body
+    assert "von der Watchlist genommen" in body and "Rückgängig" in body
+    kinds = {r.kind: r for r in db.relations_of("test", book.id)}
+    # Kein Besitz, kein Ausschließen, kein Urteil: es darf wieder vorgeschlagen werden.
+    assert set(kinds) == {str(RelationKind.WATCHING)}
+    assert not kinds[str(RelationKind.WATCHING)].active
+
+
+def test_a_removed_entry_comes_back_with_undo(client: TestClient, db: Store) -> None:
+    book = db.books()[0]
+    client.post(f"/watchlist/{book.id}/finish", data={"kind": "removed"})
+
+    client.post("/watchlist/undo", data={"book_id": str(book.id), "kind": "removed"})
+
+    assert f'id="eintrag-{book.id}"' in client.get("/watchlist").text
+
+
+def test_a_removed_entry_is_not_a_paused_one(client: TestClient, db: Store) -> None:
+    """Pausiert bleibt auf der Liste; entfernt nicht."""
+    pausiert = db.books()[0]
+    entfernt = db.find_or_create_book(isbn=None, title="Zweites Buch", author="B",
+                                      now=datetime(2026, 9, 26, 12, 0))
+    db.put_relation("test", entfernt.id, str(RelationKind.WATCHING),
+                    now=datetime(2026, 9, 26, 12, 0))
+    client.post(f"/watchlist/{pausiert.id}/active", data={"active": "0"})
+    client.post(f"/watchlist/{entfernt.id}/finish", data={"kind": "removed"})
+
+    body = client.get("/watchlist").text
+
+    assert f'id="eintrag-{pausiert.id}"' in body
+    assert f'id="eintrag-{entfernt.id}"' not in body
+
+
+def test_watching_again_brings_a_removed_book_back(client: TestClient, db: Store) -> None:
+    book = db.books()[0]
+    client.post(f"/watchlist/{book.id}/finish", data={"kind": "removed"})
+
+    client.post(f"/watchlist/{book.id}/active", data={"active": "1"})
+
+    assert f'id="eintrag-{book.id}"' in client.get("/watchlist").text
+
+
+def test_the_row_offers_to_take_the_entry_off_the_list(client: TestClient, db: Store) -> None:
+    body = client.get("/watchlist").text
+
+    assert 'aria-label="von der Watchlist nehmen"' in body

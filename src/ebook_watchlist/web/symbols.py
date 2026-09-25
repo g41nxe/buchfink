@@ -12,7 +12,7 @@ diese Trennung kommt aus ADR 20).
 
 from __future__ import annotations
 
-from ..relations import RelationKind
+from ..relations import REMOVED, RelationKind
 
 #: Sprite-Namen aus ``base.html``. Keins ist anderswo besetzt: ``ic-play``
 #: heißt in der Watchlist-Zeile „aktivieren", ``ic-user`` steht im Profil für
@@ -27,4 +27,6 @@ RELATION_ICONS: dict[str, str] = {
     # ein Urteil über das Buch, „Ausgeschlossen" eine Anweisung ans Werkzeug.
     str(RelationKind.DISLIKED): "ic-ban",
     str(RelationKind.DISMISSED): "ic-x",
+    # Eine Liste mit Minus: vom Zettel streichen, ohne Urteil über das Buch (#72).
+    REMOVED: "ic-unlist",
 }
