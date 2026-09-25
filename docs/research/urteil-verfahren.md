@@ -22,11 +22,12 @@ Zahl.
 
 ## TL;DR
 
-- **Wenig davon ist neu für den Code, das meiste ist eine Umbenennung dessen,
-  was er schon ahnt.** Das Urteil ist ein **saturierender, additiver
-  Aggregator mit handgesetzten Gewichten** (Noisy-OR über Treffer). Die
-  Literatur hat für jede der neun Schwächen ein benanntes Gegenstück — meist
-  eine Zeile Arithmetik, kein Modell.
+- **Das Urteil ist ein saturierender Aggregator mit handgesetzten Gewichten**
+  (Noisy-OR über Treffer), kein Wahrscheinlichkeitsmodell. Für die meisten der
+  neun Schwächen gibt es in der Literatur ein benanntes Gegenstück, und das
+  ist meist eine kleine Ergänzung (eine Zeile Arithmetik, kein neues Modell);
+  keines löst eine Schwäche allein durch die Formel, wo Daten der Leserin
+  fehlen (S9).
 - **Am meisten Ertrag ohne Modellaufruf und ohne Leserinnen-Daten:**
   (1) Seltenheit gewichten (IDF, Spärck Jones 1972), (2) das Tor über die
   *Menge* statt über eine absolute Zahl steuern (Chow 1970, El-Yaniv/Wiener 2010:
@@ -161,11 +162,12 @@ Häufigkeit durch eine sättigende Stufe und normiert die Länge nur teilweise.
   theoretisches Fundament und keine Leistungsgarantie hat.
   **Für uns:** die Zeile in `bewertungsschema.yaml` („Ablehnung wiegt … etwa ein
   Fünftel“) ist 0,15/0,75 = 0,2 (eigene Rechnung); Salton/Buckley kommen mit
-  0,25/0,75 ≈ 0,33 auf denselben Bereich, den die Leserin mit 0,35 „von Hand“
-  gefunden hat. Diese Werte stammen aus **Suchanfragen mit vielen beurteilten
-  Dokumenten**; keine Quelle sagt etwas über 3 enttäuschende Bücher. Der
-  Handbefund („1 : 5 war zu wenig“) widerspricht der Literatur nicht, er liegt
-  am oberen Rand ihres Spielraums.
+  0,25/0,75 ≈ 0,33, ziemlich genau dort, wo das Schema mit 0,35 „von Hand“
+  an den eigenen Büchern gelandet ist. Diese Werte stammen aus **Suchanfragen
+  mit vielen beurteilten Dokumenten**; keine Quelle sagt etwas über 2–3
+  enttäuschende Bücher. Der Handbefund („1 : 5 war zu wenig“) widerspricht der
+  Literatur nicht: 0,15 (Lehrbuch) ist ihr *Startwert*, 0,25 (Salton/Buckley) der
+  gemessen bessere.
 - **IDF.** Spärck Jones 1972 (**[Z]**, über Robertson 2004 **[V]**): ein Merkmal,
   das in vielen Dokumenten steckt, unterscheidet schlecht und bekommt weniger
   Gewicht; die Formel ist idf = log(N/n_i). Robertson 2004 zeigt, dass sich das im
@@ -327,9 +329,9 @@ Summe der Gewichte der getroffenen Merkmale plus das Vorab-Verhältnis.
   Verhältnisses. Die genauen Bewertungen der Trainingsbücher gehen als Gewichte
   der Beispiele ein. Ergebnis: schon bei 10 Trainingsbüchern eine mittlere
   Rangkorrelation (rs ≥ 0,3) in vier von fünf Datensätzen, bei 20 Büchern lagen
-  die drei bestbewerteten Empfehlungen im Mittel über 8 (bei Ausnahmen).
+  die drei bestbewerteten Empfehlungen im Mittel über 8 (Ausnahmen: LIT1 und SF).
   *Vorbehalt:* das sind Wörter aus Klappentexten und Rezensionen, nicht
-  4–8 Merkmale, und die Datensätze haben 500–936 Bücher, die eine Nutzerin
+  4–8 Merkmale, und die Datensätze haben 500–936 Bücher, die je eine Person
   bewertet hat.
 - **Pazzani/Billsus 1997** **[V]**: Naive Bayes lernt Nutzerprofile
   inkrementell; bei 10–45 Beispielen „vielversprechend“, in zwei Bereichen
@@ -339,8 +341,9 @@ Summe der Gewichte der getroffenen Merkmale plus das Vorab-Verhältnis.
   signifikant schlechter**, auch mit mehreren Nachbarn (Abschnitt 3 der
   Arbeit). Vom Nutzer *angegebene* Profilmerkmale, als Prior in den Zähler
   gesetzt, halfen besonders bei kleinen Trainingsmengen; nur diese Merkmale zu
-  benutzen war „mindestens so genau“ wie die Prior-Methode. Das ist eine
-  starke Stütze für unser Vorgehen, die Leserin die Merkmale antippen zu lassen.
+  benutzen war „mindestens so genau“ wie die Prior-Methode. Das stützt unser
+  Vorgehen, die Leserin die Merkmale antippen zu lassen — belegt an Webseiten,
+  nicht an Büchern.
 - **Domingos/Pazzani 1997** **[A]**: die Klassifikation kann auch bei stark
   verletzter Unabhängigkeit optimal sein, die *Wahrscheinlichkeiten* dagegen
   nicht. Niculescu-Mizil/Caruana 2005 **[V]** bestätigen: Naive Bayes schiebt
@@ -419,8 +422,8 @@ But It Often Is Not“ (ECSQARU 2011, Springer) ist mir nur als Titel begegnet
   drei Sterne zu etwa 27 % und vier Sterne zu etwa 5 % erreicht. Ein Leck
   verschöbe alle Werte, und ohne Daten für p₀ wäre es eine weitere handgesetzte
   Zahl.
-- Noisy-OR hat **keine Grenze nach oben ohne Sättigung**: mit k Merkmalen à 0,1
-  erreichen 3 Merkmale 0,27, 5 Merkmale 0,41, 9 Merkmale 0,60, 16 Merkmale 0,82,
+- Noisy-OR **sättigt, aber langsam und je nach Profil an anderer Stelle**: mit
+  k Merkmalen à 0,1 erreichen 3 Merkmale 0,27, 5 Merkmale 0,41, 9 Merkmale 0,60, 16 Merkmale 0,82,
   30 Merkmale 0,96 (eigene Rechnung). Ein Profil mit einem einzigen gemochten
   Merkmal kommt nie über 0,2 (verstärkt) und damit nie ans Tor bei 3 Sternen;
   ein einzelnes verstärktes Erzählmuster kommt dagegen auf 0,4, gerade drei
@@ -530,8 +533,9 @@ Wahrscheinlichkeiten** zeigen (was das Werkzeug schon tut).
   Regel** und das Gegengewicht ebenso; das Glossar sagt, was passiert, wenn man
   sie kompensatorisch macht: Teiltreffer summieren sich, bis ein Buch passt, das
   „niemandem“ gefällt. Beides stützt die Alles-oder-nichts-Regel — bei einem
-  *Preis*: eine Klippe. Der Abzug, den die Facette *nicht* bekommt, wird durch
-  die einzeln zählenden gemochten Merkmale gemildert (seit 24.09.2026). Ein
+  *Preis*: eine Klippe. Was ein Teiltreffer an Facettenbeitrag nicht bekommt,
+  fängt teilweise auf, dass die getroffenen Merkmale einzeln zählen (seit
+  24.09.2026). Ein
   weicher Übergang, der die Konjunktion nicht aufgibt, wäre ein **Minimum der
   Merkmalsgewichte** im Buch (bei Gewicht im Buch, S5) statt einem Ja/Nein
   (**eigener Vorschlag; nirgends geprüft**).
@@ -755,10 +759,10 @@ dreierlei:
    „nicht“ (`known`). Für eine saubere Zahl braucht es dieselbe Anweisung
    zweimal.
 2. **Mitteln senkt Streuung.** Wang u. a. 2023 (Self-Consistency, ICLR;
-   arXiv 2203.11171) **[A]** zeigen, dass das Stichprobenziehen mehrerer
-   Antworten und das Wählen der häufigsten Rechenaufgaben und Schlussfolgerungen
-   verbessert; das ist ein *anderer* Aufgabentyp (Antwort, nicht Merkmalsliste).
-   Es ist ein Hinweis, kein Beleg für unseren Fall.
+   arXiv 2203.11171) **[A]** zeigen, dass mehrere gezogene Antworten und die
+   am häufigsten erreichte das Ergebnis bei Rechen- und Schlussfolgerungs-
+   aufgaben verbessern; das ist ein *anderer* Aufgabentyp (eine Antwort, keine
+   Merkmalsliste). Es ist ein Hinweis, kein Beleg für unseren Fall.
 3. **Elementare Statistik:** die Streuung eines Mittelwerts von n unabhängigen
    Messungen sinkt mit 1/√n; ob die Wiederholungen des Modells unabhängig sind,
    ist offen.
@@ -799,7 +803,7 @@ gekennzeichnete Menge knapp unter dem Tor.
   dagegen, dass er ohne andere Nutzer auskommt; Rashid u. a. 2002 rechnen
   Erhebung für Kollaboration und brauchen viele Nutzer.
 - **Tag Genome selbst lernen.** 50.203 Bewertungen von 676 Nutzern bei
-  Vig u. a. — ein Tausendfaches unserer Daten; wir *haben* die Relevanz als Stufe
+  Vig u. a. — mehr als das Tausendfache unserer Daten; wir *haben* die Relevanz als Stufe
   vom Modell.
 - **Regress-Tag/Per-Buch-Regression.** Überanpasst bei wenig Daten (Sen u. a.
   2009).
