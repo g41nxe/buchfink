@@ -936,6 +936,79 @@ def test_the_button_draws_a_portrait_once(
     assert "Nordic Noir" in body
 
 
+class _Changing(StubAsker):
+    """Antwortet der Reihe nach; die letzte Antwort gilt für jede weitere Frage."""
+
+    def __init__(self, *answers: str) -> None:
+        super().__init__(answers[0])
+        self.answers = answers
+
+    def ask(self, text: str, max_tokens: int = 300) -> str:
+        self.asked.append(text)
+        return self.answers[min(len(self.asked), len(self.answers)) - 1]
+
+
+def steckbrief_neu(client: TestClient, pfad: str) -> str:
+    """Den Knopf „neu beschreiben“ drücken und auf den Hintergrundjob warten."""
+    client.post(f"{pfad}/portrait?again=1")
+    for _ in range(250):
+        if client.get(f"{pfad}/portrait").headers.get("HX-Refresh") == "true":
+            break
+        threading.Event().wait(0.02)
+    else:
+        raise AssertionError("der Steckbrief wurde nicht fertig")
+    return client.get(pfad).text
+
+
+@needs_vocabulary
+def test_the_reader_can_ask_for_a_new_portrait_and_it_replaces_the_old_one(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ein dünner Steckbrief macht das Urteil dünn (*Dark Matter*, 25.09.2026:
+    ein falsches Muster statt *Rätsel*). Die Leserin soll neu fragen können; der
+    neue Steckbrief kommt dazu, der alte bleibt in der Tabelle (ADR 5)."""
+    buch = db.books()[0]
+    neu = _leopard().replace("Der Leopoldsapfel wird genau ausgemalt.", "Ein ganz anderer Satz.")
+    fragt = _Changing(_leopard(), neu)
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    assert "Der Leopoldsapfel wird genau ausgemalt." in body
+
+    body = steckbrief_neu(client, f"/book/{buch.id}")
+
+    assert len(fragt.asked) == 2
+    assert "Ein ganz anderer Satz." in body
+    assert "Der Leopoldsapfel wird genau ausgemalt." not in body
+
+
+@needs_vocabulary
+def test_a_plain_click_still_costs_nothing_when_a_portrait_exists(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buch = db.books()[0]
+    fragt = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+    steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert len(fragt.asked) == 1
+
+
+@needs_vocabulary
+def test_the_page_offers_the_new_description_only_next_to_an_existing_portrait(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buch = db.books()[0]
+    again = f'hx-post="/book/{buch.id}/portrait?again=1"'
+    assert again not in client.get(f"/book/{buch.id}").text  # es gibt noch keinen
+
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert again in body
+
+
 @needs_vocabulary
 def test_a_book_the_model_does_not_know_says_so(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch

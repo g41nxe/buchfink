@@ -728,11 +728,17 @@ def _stored_portrait(store: Store, book, vocabulary_fingerprint: str) -> Portrai
     return found
 
 
-def portray(store: Store, settings: Settings, book_id: int, *, now: datetime) -> str:
+def portray(
+    store: Store, settings: Settings, book_id: int, *, now: datetime, again: bool = False
+) -> str:
     """Den Steckbrief dieses Buchs anlegen, falls es noch keinen gibt (#45).
 
     Einmal je Buch: liegt schon einer mit passendem Fingerabdruck vor, wird
     nicht gefragt. Gespeichert wird erst bei Erfolg (ADR 7).
+
+    ``again``: die Leserin hat ausdrücklich um einen neuen gebeten, weil der alte
+    das Buch dünn beschreibt. Dann wird gefragt, auch wenn einer steht; der neue
+    kommt dazu und gilt fortan, der alte bleibt in der Tabelle (ADR 5).
 
     Belege werden hier nicht geholt. Der Steckbrief soll ohne Vorgeschichte
     auskommen, wie bei der Erstaufnahme (#44); steht ein Klappentext am Buch,
@@ -750,7 +756,11 @@ def portray(store: Store, settings: Settings, book_id: int, *, now: datetime) ->
         return str(exc)
     subject = portrait_subject(book)
     stored = _stored_portrait(store, book, fingerprint(vocabulary))
-    if stored is not None and not worth_asking_again(stored, text_now=bool(book.blurb)):
+    if (
+        stored is not None
+        and not again
+        and not worth_asking_again(stored, text_now=bool(book.blurb))
+    ):
         return ""
 
     portrayer = build_portrayer(settings.rating_model, vocabulary)
@@ -812,8 +822,11 @@ def portray_observation(
     subject: str | None = None,
     blurb: str | None = None,
     with_evidence: bool = True,
+    again: bool = False,
 ) -> str:
     """Zu einem Fund den Steckbrief anlegen — für die Fundseite (#48).
+
+    ``again``: wie bei :func:`portray` — die Leserin hat um einen neuen gebeten.
 
     Einmal je Fund: liegt schon einer mit passendem Fingerabdruck vor, wird
     nicht gefragt. Gespeichert wird **erst bei Erfolg** (ADR 7). Vorher werden
@@ -832,7 +845,7 @@ def portray_observation(
     # Ein Steckbrief, der steht, kostet nichts — auch ein „unbekannt“, das mit
     # Text entstand. Nur ein „unbekannt“ ohne Text darf noch einmal, sobald einer
     # da ist; ob er da ist, weiß erst die Detailseite (unten).
-    if stored is not None and (stored.known or stored.with_text):
+    if stored is not None and not again and (stored.known or stored.with_text):
         return ""
     portrayer = build_portrayer(settings.rating_model, vocabulary)
     if portrayer is None:
@@ -847,8 +860,12 @@ def portray_observation(
     thin = not observation.blurb or is_truncated(observation.blurb)
     if thin and blurb:
         observation = replace(observation, blurb=blurb)
-    if stored is not None and not worth_asking_again(
-        stored, text_now=bool(observation.blurb or observation.keywords)
+    if (
+        stored is not None
+        and not again
+        and not worth_asking_again(
+            stored, text_now=bool(observation.blurb or observation.keywords)
+        )
     ):
         return ""
     try:

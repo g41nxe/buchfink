@@ -4,9 +4,12 @@
    Zeile alle zwei Sekunden nach, und ist er fertig, lädt die Seite neu (ADR 3,
    kein Websocket).
 
-   Anders als beim Urteil steht der Knopf nur, solange es keinen Steckbrief
-   gibt. Dasselbe Buch trägt immer denselben Steckbrief (ADR 33); ein zweiter
-   Knopf würde etwas versprechen, das er nicht hält.
+   Der Knopf zum Anlegen steht, solange es keinen Steckbrief gibt. Dasselbe Buch
+   trägt sonst immer denselben (ADR 33), und ein Klick kostet dann nichts. Wer
+   ausdrücklich einen neuen will — weil der alte das Buch dünn beschreibt —,
+   drückt „neu beschreiben" (`?again=1`): das fragt das Modell noch einmal, der
+   neue kommt dazu und gilt fortan, der alte bleibt in der Tabelle (ADR 5). Weil
+   es einen Aufruf kostet, fragt der Knopf nach.
 
    Erwartet: `url`, `job` (der Stand, oder nichts), `present`; `retry`, wenn ein
    „unbekannt“ ohne Text steht und inzwischen einer beiliegt. #}
@@ -25,6 +28,15 @@
   {% else %}
   {% if job and job.trouble %}
   <span class="text-danger">{{ job.trouble }}</span>
+  {% endif %}
+  {% if present %}
+  <button type="button" hx-post="{{ url }}?again=1" hx-target="#steckbrief-stand"
+          hx-swap="outerHTML"
+          hx-confirm="Den Steckbrief neu beschreiben lassen? Das fragt das Modell noch einmal; der neue ersetzt den alten in der Anzeige."
+          title="Neu beschreiben (fragt das Modell noch einmal)" aria-label="Neu beschreiben"
+          class="tun flex items-center gap-1 rounded p-1 hover:bg-hair hover:text-accent">
+    <svg class="i"><use href="#ic-refresh"/></svg>
+    <span class="hidden sm:inline">neu beschreiben</span></button>
   {% endif %}
   {% if not present %}
   <button type="button" hx-post="{{ url }}" hx-target="#steckbrief-stand" hx-swap="outerHTML"

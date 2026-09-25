@@ -288,6 +288,41 @@ def test_a_find_can_be_described_from_its_page(
 
 
 @needs_vocabulary
+def test_a_find_can_be_described_anew_on_request(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Derselbe Knopf wie auf der Buchseite: ein dünner Steckbrief eines Funds macht
+    sein Urteil dünn, und unter drei Sternen verschwindet er aus dem Stapel."""
+    import threading
+
+    from ebook_watchlist.web import book as book_page
+    from test_web_book import _Changing, _leopard
+
+    fund(db, item_id="7")
+    give_profile(db)
+    neu = _leopard().replace("Der Leopoldsapfel wird genau ausgemalt.", "Ein ganz anderer Satz.")
+    asker = _Changing(_leopard(), neu)
+    monkeypatch.setattr(book_page, "build_portrayer", portrayer_via(asker))
+
+    def wait() -> None:
+        for _ in range(250):
+            if client.get("/discovery/beam/7/portrait").headers.get("HX-Refresh") == "true":
+                return
+            threading.Event().wait(0.02)
+        raise AssertionError("der Steckbrief wurde nicht fertig")
+
+    client.post("/discovery/beam/7/portrait")
+    wait()
+    assert 'hx-post="/discovery/beam/7/portrait?again=1"' in client.get("/discovery/beam/7").text
+
+    client.post("/discovery/beam/7/portrait?again=1")
+    wait()
+
+    assert len(asker.asked) == 2
+    assert "Ein ganz anderer Satz." in client.get("/discovery/beam/7").text
+
+
+@needs_vocabulary
 def test_a_second_click_costs_no_second_call(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:

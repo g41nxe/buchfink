@@ -262,6 +262,11 @@ def create_app() -> FastAPI:
     launcher = RunLauncher()
     rechecker = Rechecker()
 
+    #: Wer ausdrücklich um einen neuen Steckbrief gebeten hat (Knopf „neu
+    #: beschreiben"): die Schlüssel der Jobs, die dann auch fragen sollen, wenn
+    #: schon einer steht. Der Job holt sich sein Zeichen beim Start ab.
+    portrait_again: set = set()
+
     def _portray_work(key) -> Report:
         """Die Arbeit des zweiten Verwalters: einen Steckbrief anlegen (#45, #48).
 
@@ -270,11 +275,26 @@ def create_app() -> FastAPI:
         Buchseite, ``("item", "beam", "7")`` für einen Fund.
         """
         store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
+        again = key in portrait_again
+        portrait_again.discard(key)
         if key[0] == "book":
-            return Report(trouble=book.portray(store, settings, key[1], now=now))
-        return Report(trouble=discovery.portray(store, settings, key[1], key[2], now=now))
+            return Report(trouble=book.portray(store, settings, key[1], now=now, again=again))
+        return Report(
+            trouble=discovery.portray(store, settings, key[1], key[2], now=now, again=again)
+        )
 
     portrait_jobs = Rechecker(work=_portray_work)
+
+    def _start_portrait(key, again: str) -> None:
+        """Den Job anstoßen; mit ``again=1`` auch, wenn schon ein Steckbrief steht.
+
+        Das Zeichen wird nur gesetzt, wenn nichts läuft: sonst bliebe es bis zur
+        nächsten Arbeit liegen und machte einen gewöhnlichen Klick teuer.
+        """
+        running = portrait_jobs.state(key)
+        if again == "1" and not (running is not None and running.busy):
+            portrait_again.add(key)
+        portrait_jobs.start(key)
 
     def _portrait_status(request: Request, key, url: str) -> Response:
         """Das Fragment neben *Steckbrief*, solange einer entsteht.
@@ -764,13 +784,14 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/book/{book_id}/portrait")
-    def book_portray(request: Request, book_id: int) -> Response:
+    def book_portray(request: Request, book_id: int, again: str = "") -> Response:
         """Den Steckbrief dieses Buchs anlegen lassen (#45).
 
         Im Hintergrund wie das Urteil. Gibt es schon einen, kostet der Klick
-        keinen Aufruf: dasselbe Buch trägt immer denselben Steckbrief.
+        keinen Aufruf: dasselbe Buch trägt immer denselben Steckbrief — es sei
+        denn, die Leserin bittet mit ``again=1`` ausdrücklich um einen neuen.
         """
-        portrait_jobs.start(("book", book_id))
+        _start_portrait(("book", book_id), again)
         return _portrait_status(request, ("book", book_id), f"/book/{book_id}/portrait")
 
     @app.get("/book/{book_id}/portrait")
@@ -958,10 +979,12 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/discovery/{source}/{item_id}/portrait")
-    def discovery_portray(request: Request, source: str, item_id: str) -> Response:
+    def discovery_portray(
+        request: Request, source: str, item_id: str, again: str = ""
+    ) -> Response:
         """Einen Fund beschreiben lassen — derselbe Weg wie auf der Buchseite (#48)."""
         key = ("item", source, item_id)
-        portrait_jobs.start(key)
+        _start_portrait(key, again)
         return _portrait_status(request, key, f"/discovery/{source}/{item_id}/portrait")
 
     @app.get("/discovery/{source}/{item_id}/portrait")

@@ -98,7 +98,10 @@ class Page:
         return max(0, len(self.history) - HISTORY_ROWS)
 
 
-def portray(store: Store, settings: Settings, source: str, item_id: str, *, now: datetime) -> str:
+def portray(
+    store: Store, settings: Settings, source: str, item_id: str, *, now: datetime,
+    again: bool = False,
+) -> str:
     """Zu einem Fund von seiner Seite aus den Steckbrief anlegen (#48).
 
     Dieselbe Funktion wie im Lauf und auf der Buchseite, nur der Fund ist ein
@@ -108,7 +111,7 @@ def portray(store: Store, settings: Settings, source: str, item_id: str, *, now:
     seen = store.observations_for_item(settings.slug, source, item_id)
     if not seen:
         return "Diesen Fund hat noch niemand gesehen — es gibt nichts zu beschreiben."
-    return portray_observation(store, settings, seen[0], now=now)
+    return portray_observation(store, settings, seen[0], now=now, again=again)
 
 
 def build(store: Store, settings: Settings, source: str, item_id: str) -> Page | None:
