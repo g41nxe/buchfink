@@ -593,3 +593,24 @@ def test_only_here_in_the_intake_keeps_the_family_out_of_the_form(client, db, bu
     (rel,) = [r for r in db.relations_of(load_settings().slug, buecher["H"])
               if r.kind == "disliked"]
     assert json.loads(rel.details)["reasons"] == {"here": ["big_world"]}
+
+
+def test_frequent_families_are_not_recounted_for_every_tap(db, buecher, monkeypatch) -> None:
+    """Gezählt wird neu, wenn ein Steckbrief oder eine Beziehung dazukommt —
+    nicht bei jedem Tipp auf Bildschirm 3 und 4 (#58)."""
+    from ebook_watchlist.portrait import load_vocabulary
+
+    wort = load_vocabulary()
+    for i in range(intake.NEUTRAL_MIN_BOOKS):
+        db.put_portrait(f"item:y:{i}", _bild("Roman", None, ["atmospheric", "funny"]), now=NOW)
+    intake.frequent_families(db, load_settings(), wort)
+    geladen = []
+    echt = db.latest_portraits
+    monkeypatch.setattr(db, "latest_portraits", lambda fp: geladen.append(fp) or echt(fp))
+
+    intake.frequent_families(db, load_settings(), wort)
+    assert geladen == []
+
+    db.put_portrait("item:y:neu", _bild("Roman", None, ["harsh"]), now=NOW)
+    intake.frequent_families(db, load_settings(), wort)
+    assert len(geladen) == 1

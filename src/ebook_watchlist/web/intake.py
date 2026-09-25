@@ -488,6 +488,10 @@ def _shelf_books(store: Store, settings: Settings, vocabulary, side: str) -> lis
     return [b for b in books if b is not None]
 
 
+#: Die zuletzt gezählten häufigen Familien, je Datenbank: (Stand, Ergebnis).
+_FREQUENT: dict[tuple, tuple[tuple, set[str]]] = {}
+
+
 def frequent_families(store: Store, settings: Settings, vocabulary) -> set[str]:
     """Familien, die auf dem neutralen Bestand bei sehr vielen Büchern stehen.
 
@@ -495,7 +499,22 @@ def frequent_families(store: Store, settings: Settings, vocabulary) -> set[str]:
     "gezeichnete Figur" oft, weil sie solche Bücher liebt, und das abzuwerten
     hieße, ihren Geschmack zu bestrafen (#44). Ohne genug neutralen Bestand
     wird nicht sortiert.
+
+    Gezählt wird nur neu, wenn seit dem letzten Mal ein Steckbrief oder eine
+    Beziehung dazukam (#58): das läuft bei jedem Tipp auf Bildschirm 3 und 4,
+    und der Bestand wächst mit jedem Lauf.
     """
+    key = (str(store.path), settings.slug, fingerprint(vocabulary))
+    stand = store.high_water()
+    cached = _FREQUENT.get(key)
+    if cached is not None and cached[0] == stand:
+        return set(cached[1])
+    result = _count_frequent(store, settings, vocabulary)
+    _FREQUENT[key] = (stand, result)
+    return set(result)
+
+
+def _count_frequent(store: Store, settings: Settings, vocabulary) -> set[str]:
     # Ein Abruf für alle Bücher statt einer Abfrage je Beziehung: das läuft
     # bei jedem Tipp auf Bildschirm 3 und 4.
     related_book_ids = {row.book_id for row in store.relations(settings.slug, active_only=False)}

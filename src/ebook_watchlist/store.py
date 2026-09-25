@@ -1881,6 +1881,15 @@ class Store:
                 row.active = False
             session.commit()
 
+    def high_water(self) -> tuple[int, int]:
+        """Die höchste Nummer bei Steckbriefen und Beziehungen — billig zu
+        fragen, und sie wächst mit jeder neuen Zeile. Woran ein Zwischenspeicher
+        merkt, dass er veraltet ist (#58)."""
+        with self.session() as session:
+            portraits = session.scalar(select(func.max(PortraitRow.id))) or 0
+            relations = session.scalar(select(func.max(BookRelationRow.id))) or 0
+            return portraits, relations
+
     def latest_portraits(self, fingerprint: str) -> dict[str, Portrait]:
         """Der jüngste Steckbrief je Gegenstand mit diesem Fingerabdruck.
 
