@@ -14,8 +14,8 @@
    gefüllt. Die Klassen stehen ausgeschrieben, weil Tailwind nur findet, was
    wörtlich dasteht.
 #}
-{% macro zustandsknopf(kind, label, icon=none, active=false, value=none, off_when=none,
-                       extra="") %}
+{% macro state_button(kind, label, icon=none, active=false, value=none, off_when=none,
+                      extra="") %}
 {# Engeres Polster und kleinere Schrift auf dem Telefon: mit `px-3` und
    `text-sm` messen die drei Knoepfe des Stapels zusammen 346 px und brauchen
    bei 327 px Platz zwei Reihen. Mit `px-2` und `text-xs` sind es 276.

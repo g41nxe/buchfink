@@ -8,7 +8,7 @@
    `max-w-prose`: über die vollen 720 px liefen rund 95 Zeichen je Zeile, und
    ab etwa 75 verliert das Auge den Zeilenanfang.
 #}
-{% macro klappentext(text) %}
+{% macro blurb(text) %}
 {% if text %}
 {# "mehr anzeigen" nur, wenn es mehr zu sehen gibt: ob der Text ueberhaupt an
    die fuenf Zeilen stoesst, weiss erst der Browser — er haengt an Schriftgroesse

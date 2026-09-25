@@ -288,7 +288,7 @@ def create_app() -> FastAPI:
         if job is None or not job.busy:
             return Response(status_code=204, headers={"HX-Refresh": "true"})
         return TEMPLATES.TemplateResponse(
-            request, "_portrait_status.html", {"url": url, "job": job, "vorhanden": False}
+            request, "_portrait_status.html", {"url": url, "job": job, "present": False}
         )
 
     def _run_in_progress(store: Store, settings) -> bool:

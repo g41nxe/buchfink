@@ -14,7 +14,7 @@
    Quelle das Buch nennt, steht darunter im Abschnitt „Quellen", in ganzen
    Sätzen (#22).
 #}
-{% macro beobachtungen(sichtungen, verborgen=0) %}
+{% macro observations(sightings, hidden=0) %}
 <div class="overflow-x-auto">
 <table class="w-full border-collapse text-sm whitespace-nowrap sm:min-w-xl">
   <thead>
@@ -28,7 +28,7 @@
     </tr>
   </thead>
   <tbody class="divide-y divide-hair">
-    {% for sighting in sichtungen %}
+    {% for sighting in sightings %}
     <tr class="align-top">
       <td class="py-2 pr-3 tabular-nums whitespace-nowrap text-soft">
         {{ sighting.when.strftime("%d.%m. %H:%M") if sighting.when else "" }}</td>
@@ -55,9 +55,9 @@
   </tbody>
 </table>
 </div>
-{% if verborgen %}
+{% if hidden %}
 {# Nicht verschwiegen, nur nicht gezeigt: der Snapshot behält jede Sichtung. #}
 <p class="mt-2 text-xs text-soft">
-  {{ verborgen }} ältere Sichtung{{ "en" if verborgen > 1 }} nicht gezeigt.</p>
+  {{ hidden }} ältere Sichtung{{ "en" if hidden > 1 }} nicht gezeigt.</p>
 {% endif %}
 {% endmacro %}

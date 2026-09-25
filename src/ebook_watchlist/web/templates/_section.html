@@ -10,14 +10,14 @@
    Inhalt landet hinter dem Wort und schiebt sich mit `ml-auto` an den rechten
    Rand.
 
-   `rand` gibt es, weil nicht jeder Abschnitt gleich weit von seinem Vorgänger
+   `margin` gibt es, weil nicht jeder Abschnitt gleich weit von seinem Vorgänger
    steht: in einer Spalte der Startseite sind die 32 Pixel der Detailseiten zu
    viel.
 #}
-{% macro abschnitt(titel, zeichen=none, rand="mt-8 mb-3") %}
-<h2 class="{{ rand }} flex flex-wrap items-center gap-2 border-b border-rule pb-2 text-sm
+{% macro section(title, icon=none, margin="mt-8 mb-3") %}
+<h2 class="{{ margin }} flex flex-wrap items-center gap-2 border-b border-rule pb-2 text-sm
            font-semibold text-accent">
-  {% if zeichen %}<svg class="i"><use href="#{{ zeichen }}"/></svg>{% endif %}
-  {{ titel }}{% if caller %}{{ caller() }}{% endif %}
+  {% if icon %}<svg class="i"><use href="#{{ icon }}"/></svg>{% endif %}
+  {{ title }}{% if caller %}{{ caller() }}{% endif %}
 </h2>
 {% endmacro %}

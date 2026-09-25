@@ -22,7 +22,7 @@ def test_every_button_reads_the_same_word() -> None:
     from ebook_watchlist.relations import ACTION_LABELS, RELATION_LABELS, RelationKind
     from ebook_watchlist.web import book, profile_page, triage, watchlist
 
-    for schluessel, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.ABSCHLUSS):
+    for schluessel, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS):
         assert wort == ACTION_LABELS[RelationKind(schluessel)]
     for schluessel, name in profile_page._RELATION_LABELS:
         assert name == RELATION_LABELS[RelationKind(schluessel)]
@@ -51,7 +51,7 @@ def test_a_state_name_that_is_no_action_word_never_reaches_a_button() -> None:
     from ebook_watchlist.web import book, triage, watchlist
 
     nur_zustand = set(RELATION_LABELS.values()) - set(ACTION_LABELS.values())
-    auf_knoepfen = {wort for _, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.ABSCHLUSS)}
+    auf_knoepfen = {wort for _, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS)}
     assert not nur_zustand & auf_knoepfen
 
 

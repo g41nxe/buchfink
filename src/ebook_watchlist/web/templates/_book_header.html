@@ -13,9 +13,9 @@
 #}
 {% from "_cover.html" import cover %}
 
-{% macro kopf(titel, autor=none, reihe=none, cover_file=none, borrowable=false,
-              deal=false, pille=none, kacheln=none, herkunft=none,
-              run_in_progress=false) %}
+{% macro header(title, author=none, series=none, cover_file=none, borrowable=false,
+                deal=false, pill=none, tiles=none, origin=none,
+                run_in_progress=false) %}
 {# Zwei Breiten, eine Vorlage — dieselben zwei wie ueberall (`sm`, 48rem).
 
    Telefon: Cover links, Titel und Autor:in rechts daneben, die Kacheln
@@ -35,7 +35,7 @@
 <div class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-4 sm:gap-x-5
             sm:gap-y-3">
   <div class="sm:row-span-2">
-    {{ cover(titel, cover_file, borrowable, deal, gross=true) }}
+    {{ cover(title, cover_file, borrowable, deal, large=true) }}
   </div>
 
   <div class="min-w-0 self-center sm:self-end">
@@ -43,11 +43,11 @@
        einen ganzen Werbesatz, und ungekuerzt schoebe er die Kacheln nach
        unten. #}
     <h1 class="line-clamp-3 font-serif text-xl font-semibold tracking-tight sm:text-2xl">
-      {{ titel }}</h1>
-    <p class="mt-0.5 text-sm text-soft sm:text-base">{{ autor or "unbekannt" }}
-      {%- if reihe %} · {{ reihe }}{% endif %}</p>
+      {{ title }}</h1>
+    <p class="mt-0.5 text-sm text-soft sm:text-base">{{ author or "unbekannt" }}
+      {%- if series %} · {{ series }}{% endif %}</p>
 
-    {% if pille %}<div class="mt-2 flex flex-wrap items-center gap-2">{{ pille }}</div>{% endif %}
+    {% if pill %}<div class="mt-2 flex flex-wrap items-center gap-2">{{ pill }}</div>{% endif %}
   </div>
 
   {# Auf dem Telefon ueber beide Spalten: neben dem Cover blieben einer Kachel
@@ -57,15 +57,15 @@
        Kachel darunter in derselben Spalte und ist genauso breit wie die
        darueber. Seit #33 sind es hoechstens zwei — eine Kachel je Quellenart
        —, und auf dem Telefon stehen sie untereinander. #}
-    {% if kacheln %}
+    {% if tiles %}
     <div class="grid grid-cols-1 items-start gap-3
-                sm:grid-cols-[repeat(auto-fit,minmax(14rem,1fr))]">{{ kacheln }}</div>
+                sm:grid-cols-[repeat(auto-fit,minmax(14rem,1fr))]">{{ tiles }}</div>
     {% endif %}
 
     {# Warum dieses Buch ueberhaupt hereinkam. Ein Watchlist-Titel bekommt
        hier nichts: warum er da steht, weiss die Leserin, sie hat ihn
        hingeschrieben. #}
-    {% if herkunft %}{{ herkunft }}{% endif %}
+    {% if origin %}{{ origin }}{% endif %}
 
     {# Der grosse Lauf fasst jedes Buch an. Bisher sah man auf dieser Seite
        nicht, dass sich die Angaben gleich aendern koennen (#15). Steht im

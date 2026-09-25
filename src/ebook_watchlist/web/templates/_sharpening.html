@@ -9,16 +9,16 @@
 
    Erwartet: `n` (das Nachschärfen), `book_id`, `portrait_job` (der Stand
    des Steckbriefs, oder nichts). #}
-{% from "_family_pill.html" import titelreihe, nachschaerfenkarte %}
-{% set basis = "/book/" ~ book_id ~ "/sharpen" %}
-{% macro wahlpille(f, name, weg=false, an=false) %}
+{% from "_family_pill.html" import title_row, sharpening_card %}
+{% set base = "/book/" ~ book_id ~ "/sharpen" %}
+{% macro choice_pill(f, name, gone=false, on=false) %}
 <label class="pille tun inline-flex h-7 cursor-pointer items-center gap-1 rounded border
               border-rule px-3 text-xs text-soft transition sm:rounded-full
               {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
-                 if weg else
+                 if gone else
                  'has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:text-accent hover:border-accent hover:text-accent' }}">
   <input type="checkbox" name="{{ name }}" value="{{ f.family_id }}" class="sr-only"
-         {% if an %}checked{% endif %}>
+         {% if on %}checked{% endif %}>
   {{ f.name }}{% if f.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}
 </label>
 {% endmacro %}
@@ -45,7 +45,7 @@
   {% elif n.kind == "liked" %}
   <p class="mb-2 text-ink">Was hält dich an diesem Buch? Tipp an, was für dich zählt.</p>
   <ul class="grid items-start gap-3 sm:grid-cols-2">
-    {% for k in n.cards %}{{ nachschaerfenkarte(k, book_id, n.can_boost) }}{% endfor %}
+    {% for k in n.cards %}{{ sharpening_card(k, book_id, n.can_boost) }}{% endfor %}
   </ul>
 
   {% else %}
@@ -54,15 +54,15 @@
     ganz — die bleibt, wie sie ist.</p>
   {% endfor %}
   {% if n.lost %}
-  <form method="post" action="{{ basis }}/counterweight" class="space-y-2">
+  <form method="post" action="{{ base }}/counterweight" class="space-y-2">
     <p class="text-ink">Was hat dich an diesem Buch verloren? Es zählt dann gegen andere
       Bücher, schließt aber keines aus.</p>
     <ul class="space-y-2">
       {% for f in n.lost %}
       <li class="flex flex-wrap items-center gap-2">
-        {{ wahlpille(f, "family", weg=true) }}
+        {{ choice_pill(f, "family", gone=true) }}
         {% if f.also_in %}
-        <span class="text-xs text-soft">steckt auch in {{ titelreihe(f.also_in) }} —</span>
+        <span class="text-xs text-soft">steckt auch in {{ title_row(f.also_in) }} —</span>
         <select name="scope-{{ f.family_id }}" aria-label="Wie weit es gilt"
                 class="h-7 rounded border border-rule bg-paper px-1 text-xs text-ink">
           <option value="here">nur bei diesem Buch</option>

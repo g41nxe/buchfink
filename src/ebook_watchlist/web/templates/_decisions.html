@@ -8,7 +8,7 @@
    Drittel der Zeilenbreite. Das Wort erscheint beim Überfahren und bei
    Tastaturfokus — als eigene Blase, nicht als `title`: der native Hinweis
    kommt erst nach einer Sekunde und auf dem Telefon gar nicht. Wie ein
-   solcher Knopf aussieht, steht in `_zeichenknopf.html`; die Watchlist-Zeile
+   solcher Knopf aussieht, steht in `_icon_button.html`; die Watchlist-Zeile
    benutzt denselben (#22).
 
    Zwei Bauarten, ein Aussehen. Im Stapel entscheidet htmx: die Seite ist
@@ -17,27 +17,27 @@
    `stopPropagation`, weil die Zeile dort das Label eines Kästchens ist.
    Auf der Startseite steht jede Zeile in ihrem eigenen Formular, das
    `back=/` mitschickt; dort sind es gewöhnliche Absende-Knöpfe, damit die
-   Seite danach die Zeile zum Zurücknehmen zeigen kann (ADR 30). `absenden`
+   Seite danach die Zeile zum Zurücknehmen zeigen kann (ADR 30). `submit`
    schaltet um.
 #}
-{% from "_zeichenknopf.html" import zeichenknopf %}
+{% from "_icon_button.html" import icon_button %}
 
-{% macro entscheidungen(source, item_id, actions, icons, ziel="closest li",
-                        absenden=false) %}
+{% macro decisions(source, item_id, actions, icons, target="closest li",
+                   submit=false) %}
 {# Auf dem Telefon eine Reihe über die volle Breite der Zeile, am Schreibtisch
    eine Reihe unter dem Preis: dort kostet die Handlungszone nur die Breite
    des Preises (96 px statt 136), und die 40 gehen an Titel und Pitch. #}
 <span class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in actions %}
-  {% set ton = "danger" if kind == "dismissed" else ("amber" if kind == "owned" else "accent") %}
+  {% set tone = "danger" if kind == "dismissed" else ("amber" if kind == "owned" else "accent") %}
   {% set attrs %}
-  {%- if absenden %}type="submit" name="kind" value="{{ kind }}"
+  {%- if submit %}type="submit" name="kind" value="{{ kind }}"
   {%- else %}type="button" onclick="event.stopPropagation()"
     hx-post="/suggestions/{{ source }}/{{ item_id }}/decide"
     hx-vals='{"kind": "{{ kind }}"}'
-    hx-target="{{ ziel }}" hx-swap="outerHTML"{% endif %}
+    hx-target="{{ target }}" hx-swap="outerHTML"{% endif %}
   {% endset %}
-  {{ zeichenknopf(label, icons[kind], ton=ton, attrs=attrs) }}
+  {{ icon_button(label, icons[kind], tone=tone, attrs=attrs) }}
   {% endfor %}
 </span>
 {% endmacro %}

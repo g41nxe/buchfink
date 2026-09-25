@@ -11,12 +11,12 @@
 
    Erwartet: `e`, `jobs`. #}
 {% set job = jobs.get(e.id) %}
-{% set basis = "/intake/entry/" ~ e.id %}
+{% set base = "/intake/entry/" ~ e.id %}
 {% set target = "#side-" ~ e.side %}
 <li id="eintrag-{{ e.id }}" data-zustand="{{ e.state }}"
     class="rounded-lg border border-rule bg-card px-4 py-3 text-sm"
     {% if e.state == "asking" and job and job.busy %}
-    hx-get="{{ basis }}" hx-trigger="every 2s" hx-target="this" hx-swap="outerHTML"
+    hx-get="{{ base }}" hx-trigger="every 2s" hx-target="this" hx-swap="outerHTML"
     {% endif %}>
 
   {% if e.state == "confirmed" %}
@@ -29,8 +29,8 @@
     {% if e.author %}<span class="text-soft">{{ e.author }}</span>{% endif %}
     {# Auch ein bestätigtes Buch lässt sich wieder herausnehmen; es trägt dann
        nichts mehr bei. #}
-    <form method="post" action="{{ basis }}/remove" class="ml-auto self-center"
-          hx-post="{{ basis }}/remove" hx-target="{{ ziel }}" hx-swap="outerHTML">
+    <form method="post" action="{{ base }}/remove" class="ml-auto self-center"
+          hx-post="{{ base }}/remove" hx-target="{{ target }}" hx-swap="outerHTML">
       <button type="submit" title="entfernen" aria-label="entfernen"
               class="flex rounded p-1 text-soft hover:bg-hair hover:text-danger">
         <svg class="i"><use href="#ic-x"/></svg></button>
@@ -48,8 +48,8 @@
     {% if job and job.trouble %}
     <span class="text-danger">— {{ job.trouble }}</span>
     {% endif %}
-    <form method="post" action="{{ basis }}/retry" class="ml-auto"
-          hx-post="{{ basis }}/retry" hx-target="{{ ziel }}" hx-swap="outerHTML">
+    <form method="post" action="{{ base }}/retry" class="ml-auto"
+          hx-post="{{ base }}/retry" hx-target="{{ target }}" hx-swap="outerHTML">
       <button type="submit" class="text-xs text-accent underline underline-offset-2">Nochmal</button>
     </form>
     {% endif %}
@@ -73,8 +73,8 @@
      meist fehlt nur die Autorin oder ein Wort. #}
   <div class="mt-2 flex flex-wrap items-center gap-2" x-data="{ anders: false }">
     {% if e.state == "proposed" %}
-    <form method="post" action="{{ basis }}/confirm"
-          hx-post="{{ basis }}/confirm" hx-target="{{ ziel }}" hx-swap="outerHTML">
+    <form method="post" action="{{ base }}/confirm"
+          hx-post="{{ base }}/confirm" hx-target="{{ target }}" hx-swap="outerHTML">
       <button type="submit"
               class="tun inline-flex h-8 items-center gap-1 rounded border border-accent
                      bg-accent/10 px-3 text-sm font-medium text-accent hover:bg-accent/25">
@@ -85,14 +85,14 @@
             class="tun inline-flex h-8 items-center rounded border border-rule px-3 text-sm
                    text-soft hover:border-accent hover:text-accent">
       {{ "Anderes Buch" if e.state == "proposed" else "Anders eingeben" }}</button>
-    <form method="post" action="{{ basis }}/remove" class="ml-auto"
-          hx-post="{{ basis }}/remove" hx-target="{{ ziel }}" hx-swap="outerHTML">
+    <form method="post" action="{{ base }}/remove" class="ml-auto"
+          hx-post="{{ base }}/remove" hx-target="{{ target }}" hx-swap="outerHTML">
       <button type="submit" title="entfernen" aria-label="entfernen"
               class="flex rounded p-1 text-soft hover:bg-hair hover:text-danger">
         <svg class="i"><use href="#ic-x"/></svg></button>
     </form>
-    <form method="post" action="{{ basis }}/retype" x-show="anders" x-cloak
-          hx-post="{{ basis }}/retype" hx-target="{{ ziel }}" hx-swap="outerHTML"
+    <form method="post" action="{{ base }}/retype" x-show="anders" x-cloak
+          hx-post="{{ base }}/retype" hx-target="{{ target }}" hx-swap="outerHTML"
           class="flex w-full flex-wrap items-end gap-2 pt-1">
       <input name="title" required autocomplete="off" value="{{ e.typed_title }}"
              aria-label="Titel"

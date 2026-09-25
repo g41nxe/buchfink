@@ -14,22 +14,22 @@
    Knopf sagt, was er tun wird. #}
 
 {% block content %}
-{% with step=5, frage="Dein Profil",
-        hilfe="Das hat die Erstaufnahme aus deinen Büchern gemacht. Ändern kannst du es auf Schritt 3 und 4; hier bestätigst du." %}
+{% with step=5, question="Dein Profil",
+        help="Das hat die Erstaufnahme aus deinen Büchern gemacht. Ändern kannst du es auf Schritt 3 und 4; hier bestätigst du." %}
 {% include "_intake_step.html" %}
 {% endwith %}
 
-{% set gemocht = choice.liked | length %}
-{% set gegen = choice.draft.weights | length %}
+{% set liked_count = choice.liked | length %}
+{% set against_count = choice.draft.weights | length %}
 <form method="post" action="/intake/profile">
-  {% if not gemocht %}
+  {% if not liked_count %}
   <p class="mb-4 text-sm text-soft italic">Noch nichts angetippt — tipp auf
     <a href="/intake/common" class="text-accent underline underline-offset-2">Schritt 3</a>
     an, was dich an deinen Büchern hält.</p>
   {% endif %}
 
   <div class="max-w-2xl">
-    {% with bestaetigung=true %}{% include "_intake_draft.html" %}{% endwith %}
+    {% with confirmation=true %}{% include "_intake_draft.html" %}{% endwith %}
   </div>
 
   <p class="mt-6 max-w-xl text-sm text-soft">
@@ -39,7 +39,7 @@
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
     <a href="{{ '/intake/lost' if choice.lost else '/intake/common' }}"
        class="text-soft hover:text-ink">← Zurück</a>
-    {% if gemocht or gegen %}
+    {% if liked_count or against_count %}
     <button type="submit"
             class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
                    font-medium text-accent hover:bg-accent/25">Übernehmen</button>

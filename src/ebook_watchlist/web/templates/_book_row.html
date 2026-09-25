@@ -23,38 +23,38 @@
    Die feste Spaltenbreite am Schreibtisch sorgt dafuer, dass die Betraege
    ueber alle Zeilen hinweg dieselbe Spalte teilen.
 
-   `preis_inhalt` fuer den einen Fall, in dem der Betrag mehr ist als eine
+   `price_body` fuer den einen Fall, in dem der Betrag mehr ist als eine
    Zahl: waehrend ein enger Lauf nachsieht, steht der zuletzt bekannte
    gedaempft da, mit einem Zeichen daneben (Ticket 51). #}
-{% macro preisblock(preis, preis_inhalt, oben, oben_farbe, deal) %}
+{% macro price_block(price, price_body, above, above_tone, deal) %}
 {# Die Werte kommen als Parameter herein: ein Makro sieht die Variablen der
    aufrufenden Vorlage nicht, und ohne sie blieb der Betrag stumm leer. #}
-<span class="block h-4 text-xs {{ oben_farbe }}">{{ oben or "" }}</span>
-{% if preis_inhalt %}{{ preis_inhalt }}
+<span class="block h-4 text-xs {{ above_tone }}">{{ above or "" }}</span>
+{% if price_body %}{{ price_body }}
 {% else %}
 <span class="text-lg font-semibold tabular-nums {{ 'text-amber' if deal }}">
-  {{ preis or "—" }}</span>
+  {{ price or "—" }}</span>
 {% endif %}
 {% endmacro %}
 
-{% macro zeile(
-    titel,
-    titel_url=none,
-    autor=none,
+{% macro row(
+    title,
+    title_url=none,
+    author=none,
     cover_file=none,
     borrowable=false,
     deal=false,
-    pille=none,
-    unter_autor=none,
-    kennzahlen=none,
+    pill=none,
+    under_author=none,
+    figures=none,
     pitch=none,
-    oben=none,
-    oben_farbe="text-soft",
-    preis=none,
-    preis_inhalt=none,
-    aktionen=none,
-    auswahl=none,
-    umschliessend=false
+    above=none,
+    above_tone="text-soft",
+    price=none,
+    price_body=none,
+    actions=none,
+    selection=none,
+    enclosing=false
 ) %}
 {# Ein Steckplatz aus `{% raw %}{% set %}{% endraw %}` ist nie leer: er
    liefert eine Zeichenkette aus Leerzeichen, und die ist wahr. Ohne diese
@@ -62,19 +62,19 @@
    sichtbar an der Kennzahlenspalte, die fuer einen Fund ohne Urteil und ohne
    Pitch leer blieb und auf dem Telefon trotzdem eine ganze Reihe kostete
    (`basis-full`). #}
-{% set pille = pille.strip() or none if pille else none %}
-{% set unter_autor = unter_autor.strip() or none if unter_autor else none %}
-{% set kennzahlen = kennzahlen.strip() or none if kennzahlen else none %}
-{% set aktionen = aktionen.strip() or none if aktionen else none %}
-{% set auswahl = auswahl.strip() or none if auswahl else none %}
-{% set preis_inhalt = preis_inhalt.strip() or none if preis_inhalt else none %}
+{% set pill = pill.strip() or none if pill else none %}
+{% set under_author = under_author.strip() or none if under_author else none %}
+{% set figures = figures.strip() or none if figures else none %}
+{% set actions = actions.strip() or none if actions else none %}
+{% set selection = selection.strip() or none if selection else none %}
+{% set price_body = price_body.strip() or none if price_body else none %}
 
-{# `umschliessend`: die Vorschlagsseite macht die ganze Zeile zum Label ihres
+{# `enclosing`: die Vorschlagsseite macht die ganze Zeile zum Label ihres
    Kästchens — auf dem Telefon ist ein Kästchen von 16 Pixeln kein Ziel.
    Alles Anklickbare darin traegt deshalb `stopPropagation`. #}
-{% set tag = "label" if umschliessend else "div" %}
+{% set tag = "label" if enclosing else "div" %}
 <{{ tag }} class="flex flex-wrap items-start gap-x-4 gap-y-2 py-3
-            {{ 'cursor-pointer hover:bg-card' if umschliessend }}">
+            {{ 'cursor-pointer hover:bg-card' if enclosing }}">
   {# Das Kaestchen auf halber Hoehe, wie Preis und Handlungen: oben
      ausgerichtet klebte es an der Titelzeile und sah wie deren Aufzaehlungs-
      punkt aus. Der Steckplatz wird dafuer umschlossen, damit jede Seite die
@@ -84,11 +84,11 @@
      Handlungen. Vorn stehend nahm es dem Titel 36 der 327 Pixel und trennte
      ihn vom Cover. `order-last` bei beiden — gleicher Rang heisst
      Dokumentreihenfolge, also Kaestchen zuerst. #}
-  {% if auswahl %}
+  {% if selection %}
   {# Unter `sm` verborgen: auf dem Telefon gibt es keine Mehrfachauswahl (#13). #}
-  <span class="order-last hidden shrink-0 self-center sm:order-none sm:flex">{{ auswahl }}</span>
+  <span class="order-last hidden shrink-0 self-center sm:order-none sm:flex">{{ selection }}</span>
   {% endif %}
-  {{ cover(titel, cover_file, borrowable, deal, strecken=true) }}
+  {{ cover(title, cover_file, borrowable, deal, stretch=true) }}
 
   {# Anlass, Titel, Autor — die schmalere der beiden Textspalten.
 
@@ -114,41 +114,41 @@
     <div class="flex items-baseline gap-2">
       <p class="line-clamp-2 min-w-0 flex-1 font-serif text-base font-semibold
                 tracking-tight">
-        {% if titel_url %}
-        <a href="{{ titel_url }}" title="{{ titel }}" onclick="event.stopPropagation()"
-           class="hover:underline underline-offset-2">{{ titel }}</a>
-        {% else %}<span title="{{ titel }}">{{ titel }}</span>{% endif %}
+        {% if title_url %}
+        <a href="{{ title_url }}" title="{{ title }}" onclick="event.stopPropagation()"
+           class="hover:underline underline-offset-2">{{ title }}</a>
+        {% else %}<span title="{{ title }}">{{ title }}</span>{% endif %}
       </p>
-      {% if preis is not none or oben %}
-      <span class="shrink-0 text-right leading-tight sm:hidden">{{ preisblock(preis, preis_inhalt, oben, oben_farbe, deal) }}</span>
+      {% if price is not none or above %}
+      <span class="shrink-0 text-right leading-tight sm:hidden">{{ price_block(price, price_body, above, above_tone, deal) }}</span>
       {% endif %}
     </div>
-    <p class="truncate text-sm text-soft">{{ autor or "unbekannt" }}</p>
+    <p class="truncate text-sm text-soft">{{ author or "unbekannt" }}</p>
     {# Anlass und Quelle in einer Zeile unter dem Autor: die Pille sagt,
        *warum* das Buch hier steht, das Symbol *wo* es zu holen ist — beides
        Herkunft, beides klein, beides an derselben Stelle. #}
-    {% if unter_autor or pille %}
+    {% if under_author or pill %}
     <div class="mt-1 flex flex-wrap items-center gap-2">
-      {{ unter_autor if unter_autor }}
-      {{ pille if pille }}
+      {{ under_author if under_author }}
+      {{ pill if pill }}
     </div>
     {% endif %}
   </div>
 
   {# Kennzahlen und Pitch — die breitere Spalte. Sie bekommt den groesseren
      Teil, weil der Pitch der laengste Inhalt der Zeile ist. #}
-  {% if kennzahlen or pitch %}
+  {% if figures or pitch %}
   {# `basis-full` auf dem Telefon: sonst blieb neben dem Pitch genug Platz fuer
      das Kaestchen, und es stand mitten im Text statt in der letzten Reihe.
      Ab `sm` wieder Grundbreite null, damit die festen Teile ihren Platz
      zuerst bekommen. #}
   <div class="min-w-40 basis-full flex-[1.6_1_0%] sm:basis-0">
-    {% if kennzahlen %}{{ kennzahlen }}{% endif %}
+    {% if figures %}{{ figures }}{% endif %}
     {# Drei Zeilen, aus demselben Grund wie beim Titel: der Pitch ist ein
        Satz, der Klappentext ein Absatz — nebeneinander in einer Liste muessen
        beide dieselbe Hoehe kosten duerfen. #}
     {% if pitch %}
-    <p class="line-clamp-2 sm:line-clamp-3 {{ 'mt-1' if kennzahlen }}
+    <p class="line-clamp-2 sm:line-clamp-3 {{ 'mt-1' if figures }}
               text-sm text-ink">{{ pitch }}</p>
     {% endif %}
   </div>
@@ -165,12 +165,12 @@
   <div class="order-last flex w-full items-center justify-end gap-3
               sm:order-none sm:w-auto sm:flex-none sm:flex-col sm:items-center
               sm:gap-2.5 sm:self-center">
-    {% if preis is not none or oben %}
+    {% if price is not none or above %}
     <div class="hidden shrink-0 leading-tight sm:flex sm:w-24 sm:flex-col sm:items-center">
-      {{ preisblock(preis, preis_inhalt, oben, oben_farbe, deal) }}
+      {{ price_block(price, price_body, above, above_tone, deal) }}
     </div>
     {% endif %}
-    {% if aktionen %}{{ aktionen }}{% endif %}
+    {% if actions %}{{ actions }}{% endif %}
   </div>
 </{{ tag }}>
 {% endmacro %}

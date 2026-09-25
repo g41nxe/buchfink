@@ -2,8 +2,8 @@
 {% block title %}Watchlist — Buchfink{% endblock %}
 
 {% from "_cover.html" import cover %}
-{% from "_ruecknahme.html" import ruecknahme %}
-{% from "_sortierung.html" import sortierung %}
+{% from "_undo_bar.html" import undo_bar %}
+{% from "_sort_select.html" import sort_select %}
 
 {% block content %}
 {% if undo %}
@@ -11,7 +11,7 @@
 <input type="hidden" name="book_id" value="{{ undo.book_id }}">
 <input type="hidden" name="kind" value="{{ undo.kind }}">
 {% endset %}
-{{ ruecknahme(undo.title, undo.done, "/watchlist/undo", fields) }}
+{{ undo_bar(undo.title, undo.done, "/watchlist/undo", fields) }}
 {% endif %}
 
 <h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Watchlist</h1>
@@ -79,7 +79,7 @@
 {% if only_unsure %}<input type="hidden" name="nur" value="unklar">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
-  {{ sortierung(orders, sort, "/watchlist", sort_fields) }}
+  {{ sort_select(orders, sort, "/watchlist", sort_fields) }}
   <span class="ml-auto text-xs text-soft">
     {{ entries | length }} Titel</span>
 </div>

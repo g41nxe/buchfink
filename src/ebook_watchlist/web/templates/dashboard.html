@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% from "_abschnitt.html" import abschnitt %}
+{% from "_section.html" import section %}
 <h1 class="mb-4 font-serif text-2xl font-semibold tracking-tight">Übersicht</h1>
 
 {% include "_run_panel.html" %}
@@ -18,7 +18,7 @@
 </div>
 {% endif %}
 
-{{ abschnitt("Quellen", "ic-plug") }}
+{{ section("Quellen", "ic-plug") }}
 {% if sources %}
 <ul class="divide-y divide-hair">
   {% for source in sources %}
@@ -52,7 +52,7 @@
 </p>
 {% endif %}
 
-{{ abschnitt("Tagesberichte", "ic-doc", rand="mt-10 mb-3") }}
+{{ section("Tagesberichte", "ic-doc", margin="mt-10 mb-3") }}
 {% if digests %}
 <ul class="divide-y divide-hair">
   {% for digest in digests %}
@@ -71,7 +71,7 @@
 </p>
 {% endif %}
 
-{{ abschnitt("Läufe", "ic-clock", rand="mt-10 mb-3") }}
+{{ section("Läufe", "ic-clock", margin="mt-10 mb-3") }}
 {% if runs %}
 {# Fehlermeldungen werden lang; auf einem Telefon muss die Tabelle scrollen
    duerfen, statt die Seite breit zu ziehen. #}

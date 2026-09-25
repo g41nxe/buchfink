@@ -190,7 +190,7 @@
 {% block content %}{% endblock %}
 </main>
 
-{% from "_farbschema.html" import farbschema %}
+{% from "_color_scheme.html" import color_scheme %}
 {# Der Fussbereich traegt, was zur Anwendung gehoert und zu keiner Seite. Bis
    #19 gab es ihn nicht, und der Farbschalter haette in die Kopfzeile gemusst —
    dort ist bei 375 px kein Platz mehr: die Navigation misst mit ihren fuenf
@@ -204,7 +204,7 @@
        machte den Fussbereich 116 px hoch — fuer einen Satz, der in der
        Kopfzeile ohnehin steht, sobald der Bildschirm ihn traegt. #}
     <span class="hidden sm:inline">Buchfink — weniger suchen, mehr lesen.</span>
-    {{ farbschema() }}
+    {{ color_scheme() }}
   </div>
 </footer>
 

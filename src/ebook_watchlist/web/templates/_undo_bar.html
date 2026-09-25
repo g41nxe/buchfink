@@ -10,12 +10,12 @@
    Startseite nimmt einen Fund zurück (`key`), die Watchlist einen Eintrag
    (`book_id`). Beides kommt als **Steckplatz** herein, fertig gerendert.
 #}
-{% macro ruecknahme(titel, getan, ziel, felder) %}
+{% macro undo_bar(title, done, target, fields) %}
 <div class="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-rule
             bg-card px-4 py-2 text-sm">
-  <span>„{{ titel }}" {{ getan }}.</span>
-  <form method="post" action="{{ ziel }}">
-    {{ felder }}
+  <span>„{{ title }}" {{ done }}.</span>
+  <form method="post" action="{{ target }}">
+    {{ fields }}
     <button type="submit" class="tun text-accent underline underline-offset-2">Rückgängig</button>
   </form>
 </div>

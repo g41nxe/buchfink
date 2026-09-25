@@ -13,9 +13,9 @@
    Quelle, ein Buch seit der zweiten Bibliothek bis zu drei — die Kachel ist
    dieselbe.
 #}
-{% macro kachel(display, library=false, url=none, preis=none, verfuegbarkeit=none,
-                ersatz=none, deal=false, wann=none, pille=none, fuellt=false) %}
-{% set ton = ("text-accent" if library else "text-amber") if url else "text-soft" %}
+{% macro tile(display, library=false, url=none, price=none, availability=none,
+              fallback=none, deal=false, when=none, pill=none, fills=false) %}
+{% set tone = ("text-accent" if library else "text-amber") if url else "text-soft" %}
 <{{ "a" if url else "div" }}
    {% if url %}href="{{ url }}" target="_blank" rel="noopener"
    title="{{ display }} öffnen" class="kachel-klickbar cursor-pointer {% else %}
@@ -23,16 +23,16 @@
       breit wie der ganze Kopf, und ein Preis in einem 1024 Pixel breiten
       Kasten sieht aus wie ein Fehler. Auf der Buchseite stehen seit #33 zwei
       Kacheln nebeneinander, je eine Quellenart — dort fuellt jede ihre Spalte
-      (`fuellt`), sonst klaffte rechts neben ihr eine Luecke.
+      (`fills`), sonst klaffte rechts neben ihr eine Luecke.
 
       `min-w-44`: die Untergrenze, ab der Wert und Zeitpunkt nebeneinander
       Platz haben. Die gleiche Breite beim Umbruch regelt der Kopf, nicht die
       Kachel. #}
-   class="{% endif %}{{ ton }} relative flex min-w-44 flex-col
-          {{ "w-full" if fuellt else "max-w-xs" }}
+   class="{% endif %}{{ tone }} relative flex min-w-44 flex-col
+          {{ "w-full" if fills else "max-w-xs" }}
           justify-between overflow-hidden rounded-lg border border-rule bg-card
           px-3 pt-2 pr-12 pb-2.5">
-  <svg class="kachelbild {{ ton }}" aria-hidden="true">
+  <svg class="kachelbild {{ tone }}" aria-hidden="true">
     <use href="#{{ 'ic-lib' if library else 'ic-shop' }}"/></svg>
   <div class="relative mb-2 flex flex-wrap items-center gap-1.5 text-xs
               tracking-wide uppercase">
@@ -40,18 +40,18 @@
     {{ display }}
     {# Der Anlass steht in der Kachel statt unter dem Autor: dort war er eine
        eigene Zeile fuer zwei Woerter, und der Kopf wuchs um sie. #}
-    {% if pille %}<span class="ml-1 normal-case">{{ pille }}</span>{% endif %}
+    {% if pill %}<span class="ml-1 normal-case">{{ pill }}</span>{% endif %}
   </div>
   <div class="relative">
-    {% if preis %}
+    {% if price %}
     <span class="block font-serif text-lg leading-none font-medium tabular-nums
-                 {{ 'text-amber' if deal else 'text-ink' }}">{{ preis }}</span>
-    {% elif verfuegbarkeit %}
+                 {{ 'text-amber' if deal else 'text-ink' }}">{{ price }}</span>
+    {% elif availability %}
     <span class="block text-lg leading-none font-medium
-                 {{ 'text-accent' if verfuegbarkeit == 'ausleihbar' else 'text-ink' }}"
-          >{{ verfuegbarkeit }}</span>
+                 {{ 'text-accent' if availability == 'ausleihbar' else 'text-ink' }}"
+          >{{ availability }}</span>
     {% else %}
-    <span class="block text-lg leading-none font-medium text-soft">{{ ersatz or "—" }}</span>
+    <span class="block text-lg leading-none font-medium text-soft">{{ fallback or "—" }}</span>
     {% endif %}
     {# Der Zeitpunkt gehoert zu *dieser* Quelle: zwei Quellen koennen zu
        verschiedenen Zeiten gesprochen haben, heute nur zufaellig nicht. Ohne
@@ -59,7 +59,7 @@
        dieser Kachel tiefer als der ihrer Nachbarin, und ein Strich sagt "dazu
        ist nichts bekannt" — leer sagt gar nichts. #}
     <span class="mt-2 block text-[11px] tabular-nums text-soft">
-      {% if wann %}{{ wann.strftime("%d.%m. %H:%M") }}{% else %}&mdash;{% endif %}</span>
+      {% if when %}{{ when.strftime("%d.%m. %H:%M") }}{% else %}&mdash;{% endif %}</span>
   </div>
 </{{ "a" if url else "div" }}>
 {% endmacro %}

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ page.title }} — Buchfink{% endblock %}
 
-{% from "_abschnitt.html" import abschnitt %}
-{% from "_klappentext.html" import klappentext %}
-{% from "_buchkopf.html" import kopf %}
-{% from "_quellenkachel.html" import kachel %}
-{% from "_beobachtungen.html" import beobachtungen %}
-{% from "_urteil.html" import urteil %}
-{% from "_zustandsknopf.html" import zustandsknopf %}
+{% from "_section.html" import section %}
+{% from "_blurb.html" import blurb %}
+{% from "_book_header.html" import header %}
+{% from "_source_tile.html" import tile %}
+{% from "_observations.html" import observations %}
+{% from "_judgement_row.html" import judgement_row %}
+{% from "_state_button.html" import state_button %}
 
 {% block content %}
 {# Ein Fund, zu dem noch nichts gesagt wurde. Kein Buch, also keine
@@ -22,7 +22,7 @@
 </p>
 
 {# Anlass als Pille, an derselben Stelle wie auf der Buchseite. #}
-{% set anlass_pille %}
+{% set origin_pill %}
 {% if page.origin %}
 <span class="rounded px-1.5 py-0.5 text-xs font-medium
              {{ 'bg-accent/15 text-accent' if page.origin.author_driven
@@ -32,25 +32,25 @@
 
 {# Eine Kachel, nicht zwei: ein Fund kennt nur die Quelle, die ihn gefunden
    hat. Ein Buch hat sie fuer beide. #}
-{% set kacheln %}
-{{ kachel(
+{% set tiles %}
+{{ tile(
      page.source_label,
      library=page.source_category == "library",
      url=page.url,
-     preis=page.price,
-     verfuegbarkeit=page.availability,
+     price=page.price,
+     availability=page.availability,
      deal=page.deal,
-     wann=page.last_seen,
-     pille=anlass_pille) }}
+     when=page.last_seen,
+     pill=origin_pill) }}
 {% endset %}
 
-{{ kopf(
+{{ header(
      page.title,
-     autor=page.author,
-     reihe=page.series,
+     author=page.author,
+     series=page.series,
      cover_file=page.cover_file,
      deal=page.deal,
-     kacheln=kacheln,
+     tiles=tiles,
      run_in_progress=run_in_progress) }}
 
 {# Die drei Entscheidungen, dieselben wie im Stapel und auf der Startseite.
@@ -60,7 +60,7 @@
    Unter derselben Ueberschrift wie auf der Buchseite, aber weiter oben: dort
    ist die Frage eine unter vielen, hier ist sie der Grund, warum die Seite
    ueberhaupt offen ist. #}
-{{ abschnitt("Was du dazu sagst", "ic-tag") }}
+{{ section("Was du dazu sagst", "ic-tag") }}
 <form method="post" action="/suggestions/decide"
       class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
   <input type="hidden" name="keys" value="{{ page.key }}">
@@ -68,14 +68,14 @@
      das Buch schon. #}
   <input type="hidden" name="back" value="buch">
   {% for kind, label in actions %}
-  {{ zustandsknopf(kind, label, icon=icons[kind], value=kind,
-                   extra="w-full sm:w-auto") }}
+  {{ state_button(kind, label, icon=icons[kind], value=kind,
+                  extra="w-full sm:w-auto") }}
   {% endfor %}
 </form>
 
 {% if page.blurb %}
-{{ abschnitt("Klappentext", "ic-doc") }}
-{{ klappentext(page.blurb) }}
+{{ section("Klappentext", "ic-doc") }}
+{{ blurb(page.blurb) }}
 {% endif %}
 
 {# Die Übereinstimmung mit dem Leseprofil, ausgeschrieben (ADR 19, ADR 33): der
@@ -83,31 +83,31 @@
    Abschnitt steht immer, denn der Knopf braucht einen Platz: ein Fund ohne
    Steckbrief lässt sich beschreiben, und unter drei Sternen verschwindet er
    aus dem Stapel. Knopf und Stand aus derselben Vorlage wie auf der Buchseite. #}
-{% set fremd = page.judgements | selectattr("is_foreign") | list %}
-{% call abschnitt("Bewertung", "ic-star") %}
+{% set foreign = page.judgements | selectattr("is_foreign") | list %}
+{% call section("Bewertung", "ic-star") %}
   {% with url="/discovery/" ~ page.source ~ "/" ~ page.source_item_id ~ "/portrait",
-          job=portrait_job, vorhanden=page.described %}
+          job=portrait_job, present=page.described %}
   {% include "_portrait_status.html" %}
   {% endwith %}
 {% endcall %}
 {% if page.fit %}
-{% with fit=page.fit %}{% include "_passung.html" %}{% endwith %}
+{% with fit=page.fit %}{% include "_fit.html" %}{% endwith %}
 {% elif page.described %}
 <p class="text-sm text-soft">Noch kein Urteil: es gibt kein Leseprofil, oder das Modell
   kennt dieses Buch nicht.</p>
 {% else %}
 <p class="text-sm text-soft">Noch kein Steckbrief.</p>
 {% endif %}
-{% if fremd %}
+{% if foreign %}
 <ul class="mt-4 space-y-4">
-  {% for judgement in fremd %}
-  <li>{{ urteil(judgement) }}</li>
+  {% for judgement in foreign %}
+  <li>{{ judgement_row(judgement) }}</li>
   {% endfor %}
 </ul>
 {% endif %}
 
 {# Dieselbe Tabelle wie auf der Buchseite, dieselbe Grenze: ein Fund, der seit
    elf Laeufen dasselbe kostet, braucht keine elf Zeilen dafuer. #}
-{{ abschnitt("Beobachtungen", "ic-clock") }}
-{{ beobachtungen(page.recent_history, page.hidden_history) }}
+{{ section("Beobachtungen", "ic-clock") }}
+{{ observations(page.recent_history, page.hidden_history) }}
 {% endblock %}

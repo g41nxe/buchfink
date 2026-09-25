@@ -6,7 +6,7 @@
 
    Vier Zeichen statt eines Aufklappmenüs. Ein Menü verbirgt, was möglich ist,
    und niemand öffnet es, um nachzusehen. Wie ein solcher Knopf aussieht,
-   steht in `_zeichenknopf.html` — derselbe wie auf der Vorschlagsseite, und
+   steht in `_icon_button.html` — derselbe wie auf der Vorschlagsseite, und
    die zwei ersten Zeichen stehen dort in derselben Reihenfolge.
 
    Zwei davon beenden den Eintrag und nehmen ihn aus der Liste. Bisher standen
@@ -17,9 +17,9 @@
    Bei einem pausierten Eintrag wird aus ⏸ ein ▶. Nachsehen bleibt auch dort
    möglich: ein Lauf hängt nicht daran, ob der Eintrag ruht.
 #}
-{% from "_zeichenknopf.html" import zeichenknopf %}
+{% from "_icon_button.html" import icon_button %}
 
-{% macro watchlist_aktionen(entry, closings, icons, back="/watchlist") %}
+{% macro watchlist_actions(entry, closings, icons, back="/watchlist") %}
 <span class="grid w-full grid-cols-4 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in closings %}
   <form method="post" action="/watchlist/{{ entry.book_id }}/finish"
@@ -27,9 +27,9 @@
     <input type="hidden" name="kind" value="{{ kind }}">
     <input type="hidden" name="back" value="{{ back }}">
     {% set attrs %}type="submit"{% endset %}
-    {{ zeichenknopf(label, icons[kind],
-                    ton=("danger" if kind == "dismissed" else "amber"),
-                    attrs=attrs) }}
+    {{ icon_button(label, icons[kind],
+                   tone=("danger" if kind == "dismissed" else "amber"),
+                   attrs=attrs) }}
   </form>
   {% endfor %}
 
@@ -40,16 +40,16 @@
   {% set recheck %}type="button"
     hx-post="/watchlist/{{ entry.book_id }}/recheck?back={{ back }}"
     hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
-  {{ zeichenknopf("jetzt nachsehen", "ic-refresh", attrs=recheck) }}
+  {{ icon_button("jetzt nachsehen", "ic-refresh", attrs=recheck) }}
 
   <form method="post" action="/watchlist/{{ entry.book_id }}/active"
         class="contents">
     <input type="hidden" name="active" value="{{ '0' if entry.active else '1' }}">
     <input type="hidden" name="back" value="{{ back }}">
     {% set toggle %}type="submit"{% endset %}
-    {{ zeichenknopf("pausieren" if entry.active else "fortsetzen",
-                    "ic-pause" if entry.active else "ic-play",
-                    attrs=toggle) }}
+    {{ icon_button("pausieren" if entry.active else "fortsetzen",
+                   "ic-pause" if entry.active else "ic-play",
+                   attrs=toggle) }}
   </form>
 </span>
 {% endmacro %}

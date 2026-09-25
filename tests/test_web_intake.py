@@ -105,6 +105,15 @@ def _eintrag(db: Store, titel: str):
 # --- nennen und erkennen ---------------------------------------------------------
 
 
+def test_every_entry_button_swaps_its_own_side(client, modell) -> None:
+    """Die Knöpfe eines Eintrags tauschen die Seite aus, auf der er steht — ein
+    leeres Ziel (#65) ließe htmx den Knopf selbst ersetzen."""
+    body = nennen(client, "Der Schwarm", "Frank Schätzing")
+
+    assert 'hx-target="#side-liked"' in body
+    assert 'hx-target=""' not in body
+
+
 def test_a_typo_in_the_author_leads_to_a_confirmable_proposal(client, modell) -> None:
     body = nennen(client, "Otherland", "Ted Williams")
 

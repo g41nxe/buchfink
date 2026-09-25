@@ -12,20 +12,20 @@
    Bei einer einzigen Quelle der Art steht hier nichts — sie sagte dasselbe wie
    die Kachel, nur kleiner.
 #}
-{% macro blasen(art) %}
-{% if art.sources | length > 1 %}
+{% macro bubbles(category) %}
+{% if category.sources | length > 1 %}
 <div class="flex flex-wrap gap-1.5">
-  {% for state in art.sources %}
-  {% set gefunden = state.outcome in ("linked", "confirmed") %}
-  {% set ton = ("text-accent border-accent/40" if art.library else "text-amber border-amber/40")
-               if gefunden else "border-rule text-soft opacity-60" %}
-  <{{ "a" if state.url and gefunden else "span" }}
-     {% if state.url and gefunden %}href="{{ state.url }}" target="_blank" rel="noopener"
+  {% for state in category.sources %}
+  {% set found = state.outcome in ("linked", "confirmed") %}
+  {% set tone = ("text-accent border-accent/40" if category.library else "text-amber border-amber/40")
+                if found else "border-rule text-soft opacity-60" %}
+  <{{ "a" if state.url and found else "span" }}
+     {% if state.url and found %}href="{{ state.url }}" target="_blank" rel="noopener"
      class="hover:opacity-80 {% else %}class="{% endif %}
-            inline-flex h-6 items-center gap-1 rounded-full border px-2 text-xs {{ ton }}"
+            inline-flex h-6 items-center gap-1 rounded-full border px-2 text-xs {{ tone }}"
      title="{{ state.display }}: {{ state.label }}">
-    <svg class="i"><use href="#{{ 'ic-lib' if art.library else 'ic-shop' }}"/></svg>
-    {{ state.display }}</{{ "a" if state.url and gefunden else "span" }}>
+    <svg class="i"><use href="#{{ 'ic-lib' if category.library else 'ic-shop' }}"/></svg>
+    {{ state.display }}</{{ "a" if state.url and found else "span" }}>
   {% endfor %}
 </div>
 {% endif %}

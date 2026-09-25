@@ -7,24 +7,24 @@
 
 {% block content %}
 {% if step == 3 %}
-{% with frage="Was hält dich an diesen Büchern?",
-        hilfe="Merkmale und Erzählmuster deiner geliebten Bücher, einzeln." %}
+{% with question="Was hält dich an diesen Büchern?",
+        help="Merkmale und Erzählmuster deiner geliebten Bücher, einzeln." %}
 {% include "_intake_step.html" %}
 {% endwith %}
 {% else %}
-{% with frage="Was dich verloren hat",
-        hilfe="Merkmale und Erzählmuster deiner enttäuschenden Bücher, einzeln." %}
+{% with question="Was dich verloren hat",
+        help="Merkmale und Erzählmuster deiner enttäuschenden Bücher, einzeln." %}
 {% include "_intake_step.html" %}
 {% endwith %}
 {% endif %}
 
 {% include "_intake_choices.html" %}
 
-{% set weiter = "/intake/profile" if step == 4 or not choice.lost else "/intake/lost" %}
+{% set next_url = "/intake/profile" if step == 4 or not choice.lost else "/intake/lost" %}
 <nav class="mt-8 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
   <a href="{{ '/intake' if step == 3 else '/intake/common' }}"
      class="text-soft hover:text-ink">← Zurück</a>
-  <a href="{{ weiter }}"
+  <a href="{{ next_url }}"
      class="tun inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
             font-medium text-accent hover:bg-accent/25">Weiter</a>
 </nav>

@@ -9,8 +9,8 @@
    Erzählmuster sagt, dass es eins ist. Ausgeblendet wird nichts (#44).
 
    Erwartet: `p` (die Pille), `side` (loved oder lost), `step`. #}
-{% macro titelreihe(titel) -%}
-{% for t in titel %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
+{% macro title_row(titles) -%}
+{% for t in titles %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
 {%- endmacro %}
 
 {# Ein Merkmal oder Erzählmuster als Karte (Bildschirm 3, 24.09.2026).
@@ -24,8 +24,8 @@
    drei (24.09.2026). Der Knopf steht nur an Angetipptem und ist aus, wenn
    schon drei verstärkt sind.
 
-   Erwartet: `k` (die Karte), `step`, `kann_verstaerken`. #}
-{% macro familienkarte(k, step, kann_verstaerken) %}
+   Erwartet: `k` (die Karte), `step`, `can_boost`. #}
+{% macro family_card(k, step, can_boost) %}
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
@@ -68,7 +68,7 @@
       <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
       <button type="submit" data-verstaerken="{{ p.family_id }}"
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
-              {% if not p.boosted and not kann_verstaerken %}disabled
+              {% if not p.boosted and not can_boost %}disabled
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
               class="tun inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
@@ -80,8 +80,8 @@
     {% endif %}
   </div>
   <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
-    {% for titel, satz in k.evidence %}
-    <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>
+    {% for title, sentence in k.evidence %}
+    <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
   </ul>
 </li>
@@ -93,14 +93,14 @@
    es ändert ein fertiges Profil, keinen Entwurf — und Formular und Ziel auf
    dieses eine Buch zeigen.
 
-   Erwartet: `k` (die Karte), `book_id`, `kann_verstaerken`. #}
-{% macro nachschaerfenkarte(k, book_id, kann_verstaerken) %}
+   Erwartet: `k` (die Karte), `book_id`, `can_boost`. #}
+{% macro sharpening_card(k, book_id, can_boost) %}
 {% set p = k.pill %}
-{% set basis = "/book/" ~ book_id ~ "/sharpen" %}
+{% set base = "/book/" ~ book_id ~ "/sharpen" %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
     x-data="{ belege: false }" data-karte="{{ p.family_id }}">
-  <form method="post" action="{{ basis }}/liked" class="flex-1">
+  <form method="post" action="{{ base }}/liked" class="flex-1">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
@@ -127,12 +127,12 @@
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
     {% if p.on %}
-    <form method="post" action="{{ basis }}/boost" class="ml-auto">
+    <form method="post" action="{{ base }}/boost" class="ml-auto">
       <input type="hidden" name="family" value="{{ p.family_id }}">
       <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
       <button type="submit" data-verstaerken="{{ p.family_id }}"
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
-              {% if not p.boosted and not kann_verstaerken %}disabled
+              {% if not p.boosted and not can_boost %}disabled
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
               class="tun inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
@@ -144,8 +144,8 @@
     {% endif %}
   </div>
   <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
-    {% for titel, satz in k.evidence %}
-    <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>
+    {% for title, sentence in k.evidence %}
+    <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
   </ul>
 </li>
@@ -159,7 +159,7 @@
    Verstärken: ein Gegengewicht hat keine abgestufte Stärke.
 
    Erwartet: `k` (die Karte). #}
-{% macro verlustkarte(k) %}
+{% macro loss_card(k) %}
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-danger bg-danger/10' if p.on else 'border-rule bg-card hover:border-danger/60' }}"
@@ -189,8 +189,8 @@
                    hover:text-ink">Belege</button>
   </div>
   <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
-    {% for titel, satz in k.evidence %}
-    <li><span class="font-serif italic text-ink">{{ titel }}</span>: {{ satz }}</li>
+    {% for title, sentence in k.evidence %}
+    <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
   </ul>
   {% if p.on and k.also_in %}
@@ -199,14 +199,14 @@
         class="mx-4 mb-3 flex flex-col gap-2 rounded border border-rule
                bg-paper px-3 py-2 text-xs" data-nachfrage="{{ p.family_id }}">
     <input type="hidden" name="family" value="{{ p.family_id }}">
-    <span class="text-soft">steckt auch in {{ titelreihe(k.also_in) }} —</span>
+    <span class="text-soft">steckt auch in {{ title_row(k.also_in) }} —</span>
     {% set options = [("here", "nur bei diesen Büchern"), ("general", "auch bei anderen")] %}
     {% if k.genre %}{% set options = options + [("genre", "nur bei " ~ k.genre)] %}{% endif %}
-    {% for wert, text in options %}
-    <button type="submit" name="scope" value="{{ wert }}"
-            aria-pressed="{{ 'true' if k.scope == wert else 'false' }}"
+    {% for value, text in options %}
+    <button type="submit" name="scope" value="{{ value }}"
+            aria-pressed="{{ 'true' if k.scope == value else 'false' }}"
             class="tun flex w-full items-center justify-center rounded border px-2.5 py-1.5 text-center
-                   {{ 'border-ink bg-hair text-ink' if k.scope == wert
+                   {{ 'border-ink bg-hair text-ink' if k.scope == value
                       else 'border-rule text-soft hover:text-ink' }}">{{ text }}</button>
     {% endfor %}
   </form>

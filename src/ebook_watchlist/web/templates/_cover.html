@@ -10,38 +10,38 @@
 
   Zwei Schalter, beide über die Größe:
 
-  * `strecken` — das Cover nimmt die Höhe des Textes daneben an, statt eine
+  * `stretch` — das Cover nimmt die Höhe des Textes daneben an, statt eine
     feste mitzubringen. Die Breite bleibt fest; käme sie aus der Höhe, hätte
     die Zeile zwei Unbekannte.
-  * `gross` — das Maß der Detailseiten. In einer Zeile misst das Cover 44
+  * `large` — das Maß der Detailseiten. In einer Zeile misst das Cover 44
     Pixel, neben einer Überschrift von 24 Pixeln wirkte dasselbe Maß verloren
     (Ticket 52).
 #}
 {% macro cover(title, cover_file=None, borrowable=False, deal=False,
-               strecken=False, gross=False) %}
-{% set breite = "w-24" if gross else ("w-16" if strecken else "w-11") %}
-{% if strecken and gross %}
+               stretch=False, large=False) %}
+{% set width = "w-24" if large else ("w-16" if stretch else "w-11") %}
+{% if stretch and large %}
 {# Auf dem Telefon steht der Kopf gestapelt und wird dadurch zweieinhalbmal
    so hoch wie auf dem Schreibtisch — ein mitgewachsenes Cover waere dort
    96 auf 250 Pixel und das Bild darin bis zur Unkenntlichkeit beschnitten.
    Deshalb erst ab `sm` mitwachsen, davor das feste Mass von 96 auf 144. #}
-{% set hoehe = "h-36 self-start sm:h-auto sm:min-h-36 sm:self-stretch" %}
-{% elif strecken %}
+{% set height = "h-36 self-start sm:h-auto sm:min-h-36 sm:self-stretch" %}
+{% elif stretch %}
 {# 96 px Mindesthoehe zu 64 px Breite: genau 2:3, das Mass eines Buchruecken.
    Mit 64 blieb bei einer kurzen Zeile — Titel, Autor, Symbole — ein
    quadratisches Bild stehen, und ein quadratisches Cover gibt es nicht. #}
-{% set hoehe = "min-h-24 self-stretch" %}
+{% set height = "min-h-24 self-stretch" %}
 {% else %}
-{% set hoehe = "h-36" if gross else "h-16" %}
+{% set height = "h-36" if large else "h-16" %}
 {% endif %}
-<div class="relative shrink-0 {{ breite }} {{ hoehe }}">
+<div class="relative shrink-0 {{ width }} {{ height }}">
   {# Beim Strecken liegt das Bild absolut im Rahmen. Im Fluss brachte es
      seine eigene Hoehe mit (ein 600x900-Cover misst bei 64 Pixel Breite 96)
      und wurde damit zum hoechsten Teil der Zeile — das Cover soll die Hoehe
      des Textes daneben annehmen, nicht sie bestimmen. #}
-  <div class="{{ 'absolute inset-0' if strecken else 'h-full w-full' }}
+  <div class="{{ 'absolute inset-0' if stretch else 'h-full w-full' }}
               overflow-hidden
-              {{ 'rounded shadow-[0_2px_8px_rgba(0,0,0,.4)]' if gross
+              {{ 'rounded shadow-[0_2px_8px_rgba(0,0,0,.4)]' if large
                  else 'rounded-sm shadow-[0_1px_3px_rgba(0,0,0,.35)]' }}">
     {% if cover_file %}
     <img src="/covers/{{ cover_file }}" alt="" class="h-full w-full object-cover">
@@ -69,14 +69,14 @@
      nichts zu melden. #}
   {% if borrowable or deal %}
   <span class="absolute flex flex-col gap-1
-               {{ '-top-2 -right-2' if gross else '-top-1 -right-1' }}">
+               {{ '-top-2 -right-2' if large else '-top-1 -right-1' }}">
     {% if borrowable %}
     <span title="in der Bibliothek ausleihbar"
-          class="badge {{ 'badge-gross' if gross }} bg-accent">
+          class="badge {{ 'badge-gross' if large }} bg-accent">
       <svg><use href="#ic-lib"/></svg></span>
     {% endif %}
     {% if deal %}
-    <span title="Schnäppchen" class="badge {{ 'badge-gross' if gross }} bg-amber">
+    <span title="Schnäppchen" class="badge {{ 'badge-gross' if large }} bg-amber">
       <svg class="zipfel"><use href="#ic-tag"/></svg></span>
     {% endif %}
   </span>

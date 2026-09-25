@@ -2,7 +2,7 @@
 
    Zu lesen, nicht zu drücken: was das Werkzeug urteilt, ändert man nicht durch
    Anklicken. Die anklickbaren Sterne der Leserin sind ein anderes Element
-   (`_sterne.html`), und sie sehen bewusst anders aus — eine 4 von ihr ist eine
+   (`_stars.html`), und sie sehen bewusst anders aus — eine 4 von ihr ist eine
    Tatsache, eine 4 vom Modell ein Vorschlag (ADR 17).
 
    Eine Stelle für Stapel und Watchlist: beide zeigen dieselbe Spalte, und
@@ -12,7 +12,7 @@
    Ohne Urteil steht hier nichts — null Sterne wären eine Aussage,
    „noch nicht bewertet" ist keine.
 #}
-{% macro urteilssterne(stars, percent=none) %}
+{% macro verdict_stars(stars, percent=none) %}
 {% if stars is not none %}
 <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
   <span class="flex items-center gap-0.5 text-gold"

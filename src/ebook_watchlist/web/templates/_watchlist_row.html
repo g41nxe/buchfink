@@ -5,13 +5,13 @@
    Zwei Fassungen waeren zwei, die auseinanderlaufen.
 
    Das Geruest ist dasselbe wie auf Vorschlagsseite und Startseite
-   (`_buchzeile.html`, Issue #9). Was diese Seite eigenes hat, kommt als
+   (`_book_row.html`, Issue #9). Was diese Seite eigenes hat, kommt als
    Steckplatz herein: die Sammelausgaben-Pille, die Symbole der Quellen, der
    Betrag waehrend eines engen Laufs und das Menue. #}
-{% from "_buchzeile.html" import zeile %}
-{% from "_quellensymbole.html" import quellensymbole %}
-{% from "_watchlist_aktionen.html" import watchlist_aktionen %}
-{% from "_urteilssterne.html" import urteilssterne %}
+{% from "_book_row.html" import row %}
+{% from "_source_icons.html" import source_icons %}
+{% from "_watchlist_actions.html" import watchlist_actions %}
+{% from "_verdict_stars.html" import verdict_stars %}
   {# Solange ein enger Lauf laeuft, fragt die Zeile selbst nach — und hoert
      von selbst auf, sobald der Server sie ohne Trigger zurueckgibt. Dasselbe
      Muster wie `_run_panel.html`: kein Websocket, kein Timer, der
@@ -25,18 +25,18 @@
       hx-swap="outerHTML"
       {% endif %}>
 
-    {% set pille %}
+    {% set pill %}
     {% if entry.is_bundle %}
     <span class="rounded bg-amber/15 px-1.5 py-0.5 text-xs font-medium text-amber"
           title="Mehrere Bände in einer Ausgabe">Sammelausgabe</span>
     {% endif %}
     {% endset %}
 
-    {% set unter_autor %}
-    {{ quellensymbole(entry.source_groups, unresolved=entry.unresolved) }}
+    {% set under_author %}
+    {{ source_icons(entry.source_groups, unresolved=entry.unresolved) }}
     {% endset %}
 
-    {% set preis_inhalt %}
+    {% set price_body %}
     {% if check and check.busy %}
     {# Der zuletzt bekannte Betrag bleibt lesbar, nur gedaempft — er gilt
        gerade nicht, wird aber ueberprueft und nicht verworfen. Daneben sagt
@@ -55,31 +55,31 @@
     {% endif %}
     {% endset %}
 
-    {% set aktionen %}
-    {{ watchlist_aktionen(entry, closings, icons, back=back | default("/watchlist")) }}
+    {% set actions %}
+    {{ watchlist_actions(entry, closings, icons, back=back | default("/watchlist")) }}
     {% endset %}
 
     {# Dieselbe Spalte wie im Stapel (#16): was das Werkzeug urteilt, steht
        auch hier — die Zeile sagte bisher nur, was ein Buch kostet, nicht ob es
        sich lohnt. #}
-    {% set kennzahlen %}{{ urteilssterne(entry.stars, entry.percent) }}{% endset %}
+    {% set figures %}{{ verdict_stars(entry.stars, entry.percent) }}{% endset %}
 
-    {{ zeile(
+    {{ row(
          entry.title,
-         titel_url="/book/" ~ entry.book_id,
-         autor=(entry.author or "unbekannt") ~ ("" if entry.active else " · pausiert"),
+         title_url="/book/" ~ entry.book_id,
+         author=(entry.author or "unbekannt") ~ ("" if entry.active else " · pausiert"),
          cover_file=entry.cover_file,
          borrowable=entry.borrowable,
          deal=entry.deal,
-         pille=pille,
-         unter_autor=unter_autor,
-         kennzahlen=kennzahlen,
+         pill=pill,
+         under_author=under_author,
+         figures=figures,
          pitch=entry.pitch,
-         oben=entry.availability,
-         oben_farbe="text-accent" if entry.borrowable else "text-soft",
-         preis=entry.price,
-         preis_inhalt=preis_inhalt,
-         aktionen=aktionen) }}
+         above=entry.availability,
+         above_tone="text-accent" if entry.borrowable else "text-soft",
+         price=entry.price,
+         price_body=price_body,
+         actions=actions) }}
 
     {% if entry.missing and not entry.missing_known %}
     {# Keine Quelle kennt diesen Titel — und den hast du selbst geschrieben.
@@ -161,30 +161,30 @@
                value="{{ '/watchlist?nur=unklar' if only_unsure else '/watchlist' }}">
 
         <div class="streifen">
-          {% for kandidat in entry.candidates %}
+          {% for candidate in entry.candidates %}
           <label class="wahl">
             {# Nichts ist vorausgewaehlt: der Matcher konnte die Ausgaben nicht
                unterscheiden — eine davon vorzuwaehlen saehe aus wie eine
                Empfehlung, die es nicht gibt. `required` sorgt dafuer, dass
                „Bestaetigen" ohne Wahl nicht stillschweigend nichts tut. #}
             <input type="radio" name="url" required
-                   value="{{ kandidat.url or '' }}">
+                   value="{{ candidate.url or '' }}">
             <span class="feld">
-              {% if kandidat.cover_file %}
-              <img src="/covers/{{ kandidat.cover_file }}" alt="">
+              {% if candidate.cover_file %}
+              <img src="/covers/{{ candidate.cover_file }}" alt="">
               {% else %}
               {# Kein Bild geholt: ein gezeichneter Ruecken statt eines leeren
                  Kastens, damit die Reihe nicht auseinanderfaellt. #}
               <span class="block aspect-[2/3] w-full rounded-sm"
-                    style="background: hsl({{ 160 + ((kandidat.title | sum_chars) % 28) }} 30% 30%)"></span>
+                    style="background: hsl({{ 160 + ((candidate.title | sum_chars) % 28) }} 30% 30%)"></span>
               {% endif %}
               <span class="haken">&#10003;</span>
             </span>
             <span class="beschriftung mt-1 block text-xs leading-tight">
-              {{ kandidat.title }}
-              {% if kandidat.is_bundle %}
+              {{ candidate.title }}
+              {% if candidate.is_bundle %}
               <span class="mt-0.5 block text-amber">
-                {% if kandidat.volumes %}{{ kandidat.volumes | length }} Bände
+                {% if candidate.volumes %}{{ candidate.volumes | length }} Bände
                 {% else %}Sammelausgabe{% endif %}</span>
               {% endif %}
             </span>

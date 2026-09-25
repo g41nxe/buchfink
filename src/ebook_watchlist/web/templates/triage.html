@@ -2,12 +2,12 @@
 {% block title %}Vorschläge — Buchfink{% endblock %}
 
 {% from "_cover.html" import cover %}
-{% from "_buchzeile.html" import zeile %}
-{% from "_urteilssterne.html" import urteilssterne %}
-{% from "_entscheidungen.html" import entscheidungen %}
-{% from "_zustandsknopf.html" import zustandsknopf %}
-{% from "_pille.html" import pille %}
-{% from "_sortierung.html" import sortierung %}
+{% from "_book_row.html" import row %}
+{% from "_verdict_stars.html" import verdict_stars %}
+{% from "_decisions.html" import decisions %}
+{% from "_state_button.html" import state_button %}
+{% from "_pill.html" import pill %}
+{% from "_sort_select.html" import sort_select %}
 
 {% block content %}
 <h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Vorschläge</h1>
@@ -55,13 +55,13 @@
 {% if reason %}<input type="hidden" name="anlass" value="{{ reason }}">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
-  {{ pille("alle", url=links["alle"], active=not reason) }}
-  {{ pille("Autor:innen", url=links["profile_author"],
-           active=reason == "profile_author") }}
-  {{ pille("Themen", url=links["genre_category"],
-           active=reason == "genre_category", tone="amber") }}
+  {{ pill("alle", url=links["alle"], active=not reason) }}
+  {{ pill("Autor:innen", url=links["profile_author"],
+          active=reason == "profile_author") }}
+  {{ pill("Themen", url=links["genre_category"],
+          active=reason == "genre_category", tone="amber") }}
 
-  {{ sortierung(orders, sort, "/suggestions", sort_fields) }}
+  {{ sort_select(orders, sort, "/suggestions", sort_fields) }}
 
   <span class="ml-auto text-xs text-soft">
     {{ pile.total }} offen{% if pile.items | length < pile.total %},
@@ -113,12 +113,12 @@
     {# Dieselbe Zeile wie auf Watchlist und Startseite (Issue #9). Was diese
        Seite eigenes hat, kommt als Steckplatz herein: das Kaestchen, die
        Sterne des Tors, der Pitch und die drei Entscheidungen. #}
-    {% set auswahl %}
+    {% set selection %}
     <input type="checkbox" name="keys" value="{{ item.key }}" :disabled="klein"
            class="h-5 w-5 shrink-0 accent-[var(--color-accent)]">
     {% endset %}
 
-    {% set pille %}
+    {% set pill %}
     <span class="rounded px-1.5 py-0.5 text-xs font-medium
                  {{ 'bg-accent/15 text-accent' if item.reason == 'profile_author'
                     else 'bg-amber/15 text-amber' }}">{{ item.why_short }}</span>
@@ -133,7 +133,7 @@
     {% endif %}
     {% endset %}
 
-    {% set unter_autor %}
+    {% set under_author %}
     {# Der Weg zur Quelle, wie in der Watchlist-Zeile: Symbol in der Farbe
        der Quellenart, verlinkt, wenn es dort etwas zu sehen gibt. #}
     {% if item.url %}
@@ -149,8 +149,8 @@
     {% endif %}
     {% endset %}
 
-    {% set kennzahlen %}
-    {{ urteilssterne(item.stars, item.percent) }}
+    {% set figures %}
+    {{ verdict_stars(item.stars, item.percent) }}
     {# Der Buendelvorteil ist ein eigener Grund, hier zu stehen — weder
        Schnaeppchen noch Preissturz, sondern billiger als die Einzelbaende
        zusammen (ADR 24). #}
@@ -159,24 +159,24 @@
     {% endif %}
     {% endset %}
 
-    {% set aktionen %}
-    {{ entscheidungen(item.source, item.source_item_id, actions, icons) }}
+    {% set row_actions %}
+    {{ decisions(item.source, item.source_item_id, actions, icons) }}
     {% endset %}
 
-    {{ zeile(
+    {{ row(
          item.title,
-         titel_url="/discovery/" ~ item.source ~ "/" ~ item.source_item_id,
-         autor=item.author,
+         title_url="/discovery/" ~ item.source ~ "/" ~ item.source_item_id,
+         author=item.author,
          cover_file=item.cover_file,
          deal=item.deal,
-         pille=pille,
-         unter_autor=unter_autor,
-         kennzahlen=kennzahlen,
+         pill=pill,
+         under_author=under_author,
+         figures=figures,
          pitch=item.pitch or item.blurb,
-         preis=item.price,
-         aktionen=aktionen,
-         auswahl=auswahl,
-         umschliessend=true) }}
+         price=item.price,
+         actions=row_actions,
+         selection=selection,
+         enclosing=true) }}
   </li>
   {% endfor %}
 </ul>
@@ -225,8 +225,8 @@
        Zeichen, dieselbe Farbe (ADR 29). Ohne Alpine bleibt er klickbar und
        tut wie bisher nichts, wenn nichts angehakt ist — das ist der heutige
        Zustand, nicht schlechter. #}
-    {{ zustandsknopf(kind, label, icon=icons[kind], value=kind,
-                     off_when="chosen === 0") }}
+    {{ state_button(kind, label, icon=icons[kind], value=kind,
+                    off_when="chosen === 0") }}
     {% endfor %}
   </span>
 </div>

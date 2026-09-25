@@ -14,23 +14,23 @@
    Die Zeile bleibt damit gleich breit, egal wie viele Quellen dazukommen — in
    einer Liste sollen alle Zeilen gleich gebaut sein.
 
-   `stopp` setzt `stopPropagation` auf die Verweise: wo die ganze Zeile das
+   `stop` setzt `stopPropagation` auf die Verweise: wo die ganze Zeile das
    Label eines Kästchens ist, darf ein Klick auf die Quelle nicht auswählen.
 #}
-{% macro quellensymbole(gruppen, unresolved=false, stopp=false) %}
-{% for gruppe in gruppen %}
-{% set symbol = "ic-lib" if gruppe.library else "ic-shop" %}
-{% set ton = ("text-accent" if gruppe.library else "text-amber") if gruppe.found else "text-rule" %}
-<{{ "a" if gruppe.url else "span" }}
-   {% if gruppe.url %}href="{{ gruppe.url }}" target="_blank" rel="noopener"
-   {% if stopp %}onclick="event.stopPropagation()"{% endif %}
+{% macro source_icons(groups, unresolved=false, stop=false) %}
+{% for group in groups %}
+{% set symbol = "ic-lib" if group.library else "ic-shop" %}
+{% set tone = ("text-accent" if group.library else "text-amber") if group.found else "text-rule" %}
+<{{ "a" if group.url else "span" }}
+   {% if group.url %}href="{{ group.url }}" target="_blank" rel="noopener"
+   {% if stop %}onclick="event.stopPropagation()"{% endif %}
    class="hover:opacity-70 {% else %}class="{% endif %}
-          inline-flex items-center gap-0.5 {{ ton }}"
-   title="{{ gruppe.hint }}">
+          inline-flex items-center gap-0.5 {{ tone }}"
+   title="{{ group.hint }}">
   <svg class="i"><use href="#{{ symbol }}"/></svg>
-  {%- if gruppe.count > 1 %}<span class="text-[0.7rem] tabular-nums"
-    >{{ gruppe.count }}</span>{% endif %}
-</{{ "a" if gruppe.url else "span" }}>
+  {%- if group.count > 1 %}<span class="text-[0.7rem] tabular-nums"
+    >{{ group.count }}</span>{% endif %}
+</{{ "a" if group.url else "span" }}>
 {% endfor %}
 {% if unresolved %}
 <span class="text-xs text-soft italic">noch nicht gesucht</span>

@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% macro felder_ruecknahme(undo) %}
+{% macro undo_fields(undo) %}
 <input type="hidden" name="key" value="{{ undo.key }}">
 <input type="hidden" name="kind" value="{{ undo.kind }}">
 <input type="hidden" name="back" value="/">
 {% endmacro %}
 
 {% block content %}
-{% from "_abschnitt.html" import abschnitt %}
+{% from "_section.html" import section %}
 {% from "_hero.html" import hero with context %}
-{% from "_buchzeile.html" import zeile %}
-{% from "_quellensymbole.html" import quellensymbole %}
-{% from "_watchlist_aktionen.html" import watchlist_aktionen %}
-{% from "_urteilssterne.html" import urteilssterne %}
-{% from "_entscheidungen.html" import entscheidungen %}
-{% from "_ruecknahme.html" import ruecknahme %}
+{% from "_book_row.html" import row %}
+{% from "_source_icons.html" import source_icons %}
+{% from "_watchlist_actions.html" import watchlist_actions %}
+{% from "_verdict_stars.html" import verdict_stars %}
+{% from "_decisions.html" import decisions %}
+{% from "_undo_bar.html" import undo_bar %}
 {% if view.first_run %}
 {# Der Leerzustand erklärt, was hier stehen wird, und zeigt einen Weg. Die
    drei Verkaufsargumente stehen nur hier: Rückkehrer blenden sie aus, und
@@ -45,12 +45,12 @@
   </div>
 </div>
 <div class="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-6">
-  {% for symbol, titel, satz in arguments %}
+  {% for symbol, title, sentence in arguments %}
   <div class="min-w-52 flex-1 text-center">
     <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-hair
                  text-2xl text-accent"><svg class="i"><use href="#{{ symbol }}"/></svg></span>
-    <div class="mt-2 font-medium">{{ titel }}</div>
-    <div class="text-sm text-soft">{{ satz }}</div>
+    <div class="mt-2 font-medium">{{ title }}</div>
+    <div class="text-sm text-soft">{{ sentence }}</div>
   </div>
   {% endfor %}
 </div>
@@ -128,7 +128,7 @@
 </div>
 
 {% if undo %}
-{{ ruecknahme(undo.title, undo.done, "/suggestions/undo", felder_ruecknahme(undo)) }}
+{{ undo_bar(undo.title, undo.done, "/suggestions/undo", undo_fields(undo)) }}
 {% endif %}
 
 {% if undo_entry %}
@@ -137,7 +137,7 @@
 <input type="hidden" name="kind" value="{{ undo_entry.kind }}">
 <input type="hidden" name="back" value="/">
 {% endset %}
-{{ ruecknahme(undo_entry.title, undo_entry.done, "/watchlist/undo", fields) }}
+{{ undo_bar(undo_entry.title, undo_entry.done, "/watchlist/undo", fields) }}
 {% endif %}
 
 {# Untereinander, nicht nebeneinander: die geteilte Buchzeile (Issue #9)
@@ -149,7 +149,7 @@
 <section class="mb-10">
   {# Der Weg zur ganzen Liste steht in der Ueberschriftenzeile, nicht unter
      der Liste: dort sieht man ihn, bevor man scrollt. #}
-  {% call abschnitt(view.offers_total ~ " jetzt zu haben", "ic-tag", rand="mb-2") %}
+  {% call section(view.offers_total ~ " jetzt zu haben", "ic-tag", margin="mb-2") %}
     {# Nicht bernstein/gruen gefuellt wie "Jetzt pruefen": drei gleich farbige
        Knoepfe dicht beieinander lasen sich wie eine verwirrte Wiederholung,
        egal wie sie zueinander ausgerichtet waren. Ruhig bis zum Hover —
@@ -165,32 +165,32 @@
     {# Dieselbe Kennung wie auf der Watchlist: der enge Lauf tauscht die Zeile
        gegen sich selbst aus, und das soll hier wie dort gehen. #}
     <li id="eintrag-{{ entry.book_id }}">
-      {% set unter_autor %}
-      {{ quellensymbole(entry.source_groups) }}
+      {% set under_author %}
+      {{ source_icons(entry.source_groups) }}
       {% endset %}
       {# Dieselben vier Zeichen wie auf der Watchlist (#22): es ist dieselbe
          Zeile, und bei einem Schnaeppchen ist "Hab ich" die wahrscheinlichste
          Handlung ueberhaupt. #}
-      {% set aktionen %}
-      {{ watchlist_aktionen(entry, closings, icons, back="/") }}
+      {% set row_actions %}
+      {{ watchlist_actions(entry, closings, icons, back="/") }}
       {% endset %}
       {# Dieselbe Spalte wie auf der Watchlist und im Stapel (#16): es ist
          dieselbe Zeile, und sie soll ueberall dasselbe sagen. #}
-      {% set kennzahlen %}{{ urteilssterne(entry.stars, entry.percent) }}{% endset %}
-      {{ zeile(
+      {% set figures %}{{ verdict_stars(entry.stars, entry.percent) }}{% endset %}
+      {{ row(
            entry.title,
-           titel_url="/book/" ~ entry.book_id,
-           autor=entry.author,
+           title_url="/book/" ~ entry.book_id,
+           author=entry.author,
            cover_file=entry.cover_file,
            borrowable=entry.borrowable,
            deal=entry.deal,
-           unter_autor=unter_autor,
-           oben=entry.availability,
-           oben_farbe="text-accent" if entry.borrowable else "text-soft",
-           preis=entry.price,
-           kennzahlen=kennzahlen,
+           under_author=under_author,
+           above=entry.availability,
+           above_tone="text-accent" if entry.borrowable else "text-soft",
+           price=entry.price,
+           figures=figures,
            pitch=entry.pitch,
-           aktionen=aktionen) }}
+           actions=row_actions) }}
     </li>
   {% endfor %}
   </ul>
@@ -200,8 +200,8 @@
 </section>
 
 <section>
-  {% call abschnitt(view.suggestions|length ~ " von " ~ view.suggestions_total
-                    ~ " zu entscheiden", "ic-binoculars", rand="mb-2") %}
+  {% call section(view.suggestions|length ~ " von " ~ view.suggestions_total
+                  ~ " zu entscheiden", "ic-binoculars", margin="mb-2") %}
     <a href="/suggestions"
        class="tun ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
               border border-rule px-2 text-xs font-medium text-ink
@@ -211,13 +211,13 @@
   <ul class="divide-y divide-hair">
   {% for item in view.suggestions %}
     <li>
-      {% set pille %}
+      {% set pill %}
       <span class="rounded px-1.5 py-0.5 text-xs font-medium
                    {{ 'bg-accent/15 text-accent' if item.reason == 'profile_author'
                       else 'bg-amber/15 text-amber' }}">{{ item.why_short }}</span>
       {% endset %}
 
-      {% set unter_autor %}
+      {% set under_author %}
       {% if item.url %}
       <a href="{{ item.url }}" target="_blank" rel="noopener"
          title="{{ item.source_label }}: dort ansehen"
@@ -233,9 +233,9 @@
          Spalte darueber schon sagte, sie solle ueberall dasselbe sagen — und
          der Hinweis auf die Gewissheit waere prompt an dieser einen Stelle
          gefehlt. #}
-      {% set kennzahlen %}{{ urteilssterne(item.stars, item.percent) }}{% endset %}
+      {% set figures %}{{ verdict_stars(item.stars, item.percent) }}{% endset %}
 
-      {% set aktionen %}
+      {% set row_actions %}
       {# Ein Klick, keine Nachfrage — die Beziehung laesst sich stilllegen
          (ADR 18), und die Zeile darueber bietet genau das an. Dieselben drei
          Zeichen wie im Stapel, nur als gewoehnliche Absende-Knoepfe: das
@@ -247,23 +247,23 @@
       <form method="post" action="/suggestions/decide" class="w-full sm:w-auto">
         <input type="hidden" name="keys" value="{{ item.key }}">
         <input type="hidden" name="back" value="/">
-        {{ entscheidungen(item.source, item.source_item_id, actions, icons,
-                          absenden=true) }}
+        {{ decisions(item.source, item.source_item_id, actions, icons,
+                     submit=true) }}
       </form>
       {% endset %}
 
-      {{ zeile(
+      {{ row(
            item.title,
-           titel_url="/discovery/" ~ item.source ~ "/" ~ item.source_item_id,
-           autor=item.author,
+           title_url="/discovery/" ~ item.source ~ "/" ~ item.source_item_id,
+           author=item.author,
            cover_file=item.cover_file,
            deal=item.deal,
-           pille=pille,
-           unter_autor=unter_autor,
-           kennzahlen=kennzahlen,
+           pill=pill,
+           under_author=under_author,
+           figures=figures,
            pitch=item.pitch or item.blurb,
-           preis=item.price,
-           aktionen=aktionen) }}
+           price=item.price,
+           actions=row_actions) }}
     </li>
   {% endfor %}
   </ul>

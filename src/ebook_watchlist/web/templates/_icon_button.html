@@ -8,24 +8,24 @@
    Nur das Aussehen ist geteilt, nicht die Mechanik: ein Vorschlag wird über
    htmx entschieden, ein Watchlist-Eintrag über ein Formular. Was die Zeile
    eigenes braucht, kommt als Zeichenkette in `attrs` herein — derselbe
-   Steckplatz-Gedanke wie in `_buchzeile.html`.
+   Steckplatz-Gedanke wie in `_book_row.html`.
 
    Größe: auf dem Telefon die volle Breite seiner Spalte und 40 Pixel hoch,
    am Schreibtisch 36 im Quadrat. Die Reihe steht auf dem Telefon unter der
    Zeile; nebeneinander blieben dem Titel 107 der 327 Pixel.
 
-   `ton` folgt der Bedeutung wie bei `_zustandsknopf.html`: rot für Ablehnung,
+   `tone` folgt der Bedeutung wie bei `_state_button.html`: rot für Ablehnung,
    bernstein für Besitz, grün für alles Übrige.
 #}
-{% macro zeichenknopf(label, zeichen, ton="accent", attrs="") %}
+{% macro icon_button(label, icon, tone="accent", attrs="") %}
 <span class="group relative flex">
   <button aria-label="{{ label }}" {{ attrs|safe }}
           class="tun inline-flex h-10 w-full items-center justify-center rounded border
                  border-rule text-soft transition sm:h-9 sm:w-9
-                 {% if ton == 'danger' %}hover:border-danger hover:text-danger
-                 {% elif ton == 'amber' %}hover:border-amber hover:text-amber
+                 {% if tone == 'danger' %}hover:border-danger hover:text-danger
+                 {% elif tone == 'amber' %}hover:border-amber hover:text-amber
                  {% else %}hover:border-accent hover:text-accent{% endif %}">
-    <svg class="i"><use href="#{{ zeichen }}"/></svg>
+    <svg class="i"><use href="#{{ icon }}"/></svg>
   </button>
   {# Die Blase hängt unter dem Knopf und nimmt keine Klicks an. Über ihm
      verdeckte sie den Preis, der genau dort steht. Auf dem Telefon zeigt sie

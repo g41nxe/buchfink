@@ -19,7 +19,7 @@
    ein Gegengewicht hat keine abgestufte Stärke.
 
    Erwartet: `choice`, `step`. #}
-{% from "_family_pill.html" import familienkarte, verlustkarte %}
+{% from "_family_pill.html" import family_card, loss_card %}
 <div id="choice" class="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
   <div>
     {% if step == 3 %}
@@ -33,13 +33,13 @@
       sind. <span class="text-ink">{{ choice.boosted_count }} von 3 verstärkt.</span>
     </p>
     {% endif %}
-    {% for titel, karten in [
+    {% for title, cards in [
          ("Merkmale", choice.terms), ("Erzählmuster", choice.patterns),
-       ] if karten %}
-    <section class="mb-8" data-abschnitt="{{ titel }}">
-      <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
+       ] if cards %}
+    <section class="mb-8" data-abschnitt="{{ title }}">
+      <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ title }}</h2>
       <ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
-        {% for k in karten %}{{ familienkarte(k, step, choice.can_boost) }}{% endfor %}
+        {% for k in cards %}{{ family_card(k, step, choice.can_boost) }}{% endfor %}
       </ul>
     </section>
     {% endfor %}
@@ -54,13 +54,13 @@
       Tipp an, was dich verloren hat. Es zählt dann gegen andere Bücher, schließt aber
       keines aus.</p>
     {% endif %}
-    {% for titel, karten in [
+    {% for title, cards in [
          ("Merkmale", choice.lost_terms), ("Erzählmuster", choice.lost_patterns),
-       ] if karten %}
-    <section class="mb-8" data-abschnitt="{{ titel }}">
-      <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ titel }}</h2>
+       ] if cards %}
+    <section class="mb-8" data-abschnitt="{{ title }}">
+      <h2 class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">{{ title }}</h2>
       <ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
-        {% for k in karten %}{{ verlustkarte(k) }}{% endfor %}
+        {% for k in cards %}{{ loss_card(k) }}{% endfor %}
       </ul>
     </section>
     {% endfor %}
