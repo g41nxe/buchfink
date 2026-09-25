@@ -509,3 +509,18 @@ Schwelle) gehört auf den Prüfstand, bevor etwas umgestellt wird.
    bleibt als Vergleich im Messskript.
 3. Danach einzeln: Referenzautor:innen, Profil nur aus Gegengewichten, Widerspruch,
    Genre, später Lernen mit Prior.
+
+### 10.6 Was *Der Schwarm* an den Zielen ändert (Aussage der Leserin, 25.09.2026)
+
+> gemächlich und wenig Spannung, zu viele Schauplätze ohne Zusammenhang; nicht zu Ende gelesen.
+
+Der Steckbrief sagt über dasselbe Buch: *fachkundig*, *episch angelegt* (Familie
+große Welt), *großes Ensemble*, *gesellschaftskritisch*, **sich steigernd**
+(Familie nervenaufreibend), *bedrohlich*, *große Ideen*; kein *gemächlich*.
+Drei Lehren, die als Ziele fehlten:
+
+| Ziel | Erwartung | Was heute fehlt |
+|---|---|---|
+| **Z10 Deine Erfahrung geht vor** | Bei einem Buch, das du gelesen hast, gilt, was **du** über es sagst: fehlt im Steckbrief ein Merkmal (gemächlich) oder steht eines darin, das du anders erlebt hast (Spannung), ersetzt deine Angabe die des Modells für dieses Buch und für alles, was daraus folgt (Gegengewichte, Facetten). Ein Buch mit *Doof* wird nie empfohlen. | Der Steckbrief ist nicht zu berichtigen (#61); die Buchseite zeigt für ein *Doof*-Buch eine Übereinstimmung von 79 %, als wäre es ein Vorschlag. |
+| **Z11 Ablehnung so fein wie nötig** | Ein Gegengewicht kann ein **einzelnes Merkmal** meinen, nicht nur eine Familie: *episch angelegt* (viele Schauplätze, Der Schwarm) ist nicht *Weltenbau* (Neongrau, Herr der Ringe), auch wenn beide zur Familie große Welt gehören. | Gegengewichte gelten nur je Familie; die Einschränkung von „große Welt" auf Fantasy (Fassung 6) hat damit genau den Grund entfernt, aus dem *Der Schwarm* enttäuscht hat. |
+| **Z12 Enttäuschendes prüft das Profil** | Jedes Buch mit *Doof* ist eine Probe: das Profil muss es unter das Tor bringen, sonst fehlt ihm eine Ablehnung, und die Seite sagt das beim Nachschärfen. | Nichts prüft das; *Der Schwarm* steht seit Fassung 6 bei 5 Sternen, ohne dass es jemandem auffällt. |
