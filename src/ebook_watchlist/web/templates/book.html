@@ -207,7 +207,8 @@
    beruht, steht im Titel, nicht im Bild. #}
 {% call section("Steckbrief", "ic-search") %}
   {% with url="/book/" ~ page.book_id ~ "/portrait", job=portrait_job,
-          present=page.portrait is not none %}
+          present=page.portrait is not none and not page.portrait_retry,
+          retry=page.portrait_retry %}
   {% include "_portrait_status.html" %}
   {% endwith %}
 {% endcall %}

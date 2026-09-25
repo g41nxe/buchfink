@@ -8,7 +8,8 @@
    gibt. Dasselbe Buch trägt immer denselben Steckbrief (ADR 33); ein zweiter
    Knopf würde etwas versprechen, das er nicht hält.
 
-   Erwartet: `url`, `job` (der Stand, oder nichts), `present`. #}
+   Erwartet: `url`, `job` (der Stand, oder nichts), `present`; `retry`, wenn ein
+   „unbekannt“ ohne Text steht und inzwischen einer beiliegt. #}
 <span id="steckbrief-stand"
       class="mt-2 flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-xs
              font-normal text-soft sm:mt-0 sm:ml-auto sm:w-auto sm:justify-end"
@@ -27,7 +28,8 @@
   {% endif %}
   {% if not present %}
   <button type="button" hx-post="{{ url }}" hx-target="#steckbrief-stand" hx-swap="outerHTML"
-          title="Steckbrief anlegen" aria-label="Steckbrief anlegen"
+          title="{{ 'Noch einmal beschreiben: jetzt liegt ein Text bei' if retry else 'Steckbrief anlegen' }}"
+          aria-label="{{ 'Noch einmal beschreiben' if retry else 'Steckbrief anlegen' }}"
           class="tun flex items-center rounded p-1 hover:bg-hair hover:text-accent">
     <svg class="i"><use href="#ic-refresh"/></svg></button>
   {% endif %}

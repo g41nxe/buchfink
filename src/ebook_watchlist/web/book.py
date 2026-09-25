@@ -381,6 +381,9 @@ class Page:
     latest: tuple[Sighting, ...] = ()
     #: Der Steckbrief, sobald es einen gibt (#45).
     portrait: PortraitView | None = None
+    #: Ein „unbekannt“, das ohne Text entstand, und inzwischen liegt einer bei: der
+    #: Knopf zum Anlegen steht dann wieder da (``worth_asking_again``).
+    portrait_retry: bool = False
     #: Die Übereinstimmung mit dem Leseprofil, sobald es Profil und Steckbrief gibt.
     fit: FitView | None = None
 
@@ -661,6 +664,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
 
     # Ein unlesbares Vokabular kostet nur den Steckbrief, nicht die Seite.
     portrait = None
+    portrait_retry = False
     fit_view = None
     try:
         vocabulary = load_vocabulary()
@@ -671,6 +675,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         if stored is not None:
             portrait = _portrait_view(stored, vocabulary, book)
             fit_view = _fit_view(store, settings, stored, vocabulary)
+            portrait_retry = worth_asking_again(stored, text_now=bool(book.blurb))
 
     return Page(
         book_id=book.id,
@@ -695,6 +700,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         watching=str(RelationKind.WATCHING) in known
         and known[str(RelationKind.WATCHING)].active,
         portrait=portrait,
+        portrait_retry=portrait_retry,
         fit=fit_view,
     )
 

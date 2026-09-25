@@ -978,6 +978,25 @@ def test_an_unknown_answer_without_text_is_asked_again_once_a_blurb_is_there(
 
 
 @needs_vocabulary
+def test_the_button_returns_for_an_unknown_book_once_a_text_is_there(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Die Buchseite fragt nie von selbst; der Knopf ist der Weg. Er stand nur,
+    solange es keinen Steckbrief gab — ein gespeichertes „unbekannt“ nahm ihn weg,
+    und die zweite Chance war nicht zu erreichen."""
+    buch = db.books()[0]
+    button = f'hx-post="/book/{buch.id}/portrait"'
+    _give_blurb(db, buch.id, "")
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker('{"bekannt": false}')))
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    assert "kennt dieses Buch nicht" in body and button not in body  # noch kein Text
+
+    _give_blurb(db, buch.id, "Ein Klappentext, der das Buch endlich beschreibt.")
+
+    assert button in client.get(f"/book/{buch.id}").text
+
+
+@needs_vocabulary
 def test_an_unknown_answer_given_with_text_stays_and_costs_no_second_call(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -991,6 +1010,7 @@ def test_an_unknown_answer_given_with_text_stays_and_costs_no_second_call(
 
     assert len(fragt.asked) == 1
     assert "kennt dieses Buch nicht" in body
+    assert f'hx-post="/book/{buch.id}/portrait"' not in body  # nichts Neues zu fragen
 
 
 @needs_vocabulary
