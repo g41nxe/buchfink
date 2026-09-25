@@ -71,7 +71,7 @@ Gegengewicht. Alles andere ist die Mitte des Netzes.
    `A = (Σ Gewicht · Vorliebe⁺ − Σ Gewicht · Ablehnung + α·p₀) / (Σ Gewicht + α)`,
    α = 4, p₀ = 0,2. Die Glättung zieht ein dünn beschriebenes Buch zur Mitte, statt
    es kippen zu lassen (Z6).
-2. **Erzählmuster, die zweite Spinne** (Nachtrag, siehe 3.5): dieselbe Rechnung wie
+2. **Erzählmuster, die zweite Spinne** (siehe 3.4): dieselbe Rechnung wie
    für die Merkmale, über die Erzählmuster des Buchs aus bekannten Grundhandlungen,
    jedes mit Gewicht 1 (ein Muster steht nur da, wenn es die Geschichte trägt), mit
    eigener Glättung α_p = 1. Ein positiver Wert B hebt: `× (1 − 0,35·B)` im Produkt;
@@ -88,7 +88,7 @@ Gegengewicht. Alles andere ist die Mitte des Netzes.
 Toleranz gegen Rundungsfehler. **Tor** ab drei Sternen. Kein Urteil wie heute, wenn das
 Buch unbekannt ist oder das Profil nichts weiß.
 
-### 3.5 Zwei Spinnen: wie es sich liest, was es erzählt
+### 3.4 Zwei Spinnen: wie es sich liest, was es erzählt
 
 Merkmale und Erzählmuster beantworten verschiedene Fragen und bekommen je ein eigenes
 Netz: die **erste Spinne** über die Merkmale (Stimmung, Figuren, Handlung, Tempo,
@@ -123,7 +123,7 @@ Gemessen gegen die erste Fassung (bestes Muster):
 Die zweite Spinne ist im Prototyp die Voreinstellung (`muster_spinne`). Für die Anzeige
 heißt das: zwei Netze nebeneinander, *wie es sich liest* und *was es erzählt*.
 
-### 3.4 Die Begründung
+### 3.5 Die Begründung
 
 Jede Zeile ist ein Teil der Rechnung: „passt zu dir: hart (prägend), gezeichnete Figur",
 „spricht dagegen: episch angelegt", „Geschichte: Rätsel", „trägt deine Kombination …".
