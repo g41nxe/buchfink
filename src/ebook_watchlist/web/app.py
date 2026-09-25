@@ -59,7 +59,7 @@ def _link(path: str, **params: str) -> str:
 
     Filter und Sortierung stehen beide in der Abfrage und duerfen einander
     nicht abwerfen: wer im Stapel auf "Themen" klickt, behaelt seine
-    Reihenfolge (#37). Leere Werte fallen weg — `?anlass=` ist dasselbe wie
+    Reihenfolge (#37). Leere Werte fallen weg — `?reason=` ist dasselbe wie
     nichts und liest sich nur schlechter.
 
     Hier und nicht in der Vorlage: die rechnet nichts.
@@ -715,7 +715,7 @@ def create_app() -> FastAPI:
         book_id: int,
         source: str = Form(...),
         url: str = Form(""),
-        was: str = Form(...),
+        action: str = Form(...),
         back: str = Form("/watchlist"),
     ) -> RedirectResponse:
         """Bestaetigen, ablehnen, oder eine Ablehnung zuruecknehmen.
@@ -726,14 +726,14 @@ def create_app() -> FastAPI:
         """
         store = _store_for(paths.db_path())
         now = datetime.now()
-        if was == "bestaetigen" and url:
+        if action == "confirm" and url:
             assignments.confirm(store, book_id, source, url, now)
             # Bestaetigt heisst: die Adresse steht. Der Preis dazu soll nicht
             # bis zum naechsten grossen Lauf warten (Ticket 51).
             rechecker.start(book_id)
-        elif was == "keiner":
+        elif action == "none":
             assignments.reject_all(store, book_id, source, now)
-        elif was == "zurueck":
+        elif action == "restore":
             assignments.restore(store, book_id, source, now)
         # Dorthin zurueck, wo entschieden wurde. Vorher stand hier fest
         # ``?nur=unklar``: wer aus der vollen Liste heraus bestaetigte, landete
@@ -1010,8 +1010,11 @@ def create_app() -> FastAPI:
 
     @app.get("/suggestions", response_class=HTMLResponse)
     def triage_page(
-        request: Request, anlass: str = "", sortiert: str = ""
+        request: Request, reason: str = "", anlass: str = "", sortiert: str = ""
     ) -> HTMLResponse:
+        # `anlass` ist der alte Name des Filters (#57); eine Adresse als
+        # Lesezeichen führt weiter zum selben Stapel.
+        reason = reason or anlass
         try:
             settings = load_settings()
         except ConfigError as exc:
@@ -1025,7 +1028,7 @@ def create_app() -> FastAPI:
         pile = triage.pending(
             _store_for(paths.db_path()),
             settings,
-            reason=anlass or None,
+            reason=reason or None,
             sort=order.slug,
         )
         return TEMPLATES.TemplateResponse(
@@ -1037,7 +1040,7 @@ def create_app() -> FastAPI:
                 "pile": pile,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
-                "reason": anlass,
+                "reason": reason,
                 "orders": sorting.SUGGESTIONS,
                 "sort": order.slug,
                 # Das Formular schickt es mit, damit die Entscheidung in
@@ -1047,10 +1050,10 @@ def create_app() -> FastAPI:
                 "links": {
                     "all": _link("/suggestions", sortiert=chosen),
                     "profile_author": _link(
-                        "/suggestions", anlass="profile_author", sortiert=chosen
+                        "/suggestions", reason="profile_author", sortiert=chosen
                     ),
                     "genre_category": _link(
-                        "/suggestions", anlass="genre_category", sortiert=chosen
+                        "/suggestions", reason="genre_category", sortiert=chosen
                     ),
                 },
             },
@@ -1060,7 +1063,7 @@ def create_app() -> FastAPI:
     def triage_decide(
         kind: str = Form(...),
         keys: list[str] = _SELECTED,
-        anlass: str = Form(""),
+        reason: str = Form(""),
         sortiert: str = Form(""),
         back: str = Form("/suggestions"),
     ) -> RedirectResponse:
@@ -1098,7 +1101,7 @@ def create_app() -> FastAPI:
         # Ausschliessen von drei Funden steht man sonst in einer anders
         # geordneten Liste als der, aus der man sie gewaehlt hat (#37).
         return RedirectResponse(
-            _link("/suggestions", anlass=anlass, sortiert=sortiert), status_code=303
+            _link("/suggestions", reason=reason, sortiert=sortiert), status_code=303
         )
 
     @app.post("/suggestions/{source}/{item_id}/decide", response_class=HTMLResponse)

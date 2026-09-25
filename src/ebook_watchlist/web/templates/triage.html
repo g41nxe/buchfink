@@ -52,7 +52,7 @@
    aussehende Pillenreihen untereinander waeren die schlechtere Wahl gewesen:
    die eine wirft Zeilen weg, die andere ordnet sie nur um. #}
 {% set sort_fields %}
-{% if reason %}<input type="hidden" name="anlass" value="{{ reason }}">{% endif %}
+{% if reason %}<input type="hidden" name="reason" value="{{ reason }}">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
   {{ pill("alle", url=links["all"], active=not reason) }}
@@ -104,7 +104,7 @@
       {# Verschwindet eine angehakte Zeile durch einen Zeilenknopf, zaehlte
          der Zaehler sonst Geister: das Entfernen loest kein `change` aus. #}
       @htmx:after-swap.window="recount()">
-<input type="hidden" name="anlass" value="{{ reason }}">
+<input type="hidden" name="reason" value="{{ reason }}">
 <input type="hidden" name="sortiert" value="{{ chosen }}">
 
 <ul class="divide-y divide-hair">

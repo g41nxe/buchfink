@@ -119,10 +119,20 @@ def test_the_pile_can_be_filtered_by_origin(client: TestClient, db: Store) -> No
     found(db, item_id="a", title="Vom Autor", reason=MatchReason.PROFILE_AUTHOR)
     found(db, item_id="t", title="Vom Thema", reason=MatchReason.GENRE_CATEGORY)
 
-    body = client.get("/suggestions?anlass=profile_author").text
+    body = client.get("/suggestions?reason=profile_author").text
 
     assert "Vom Autor" in body
     assert "Vom Thema" not in body
+
+
+def test_an_old_filter_address_still_filters(client: TestClient, db: Store) -> None:
+    """`anlass` hieß der Filter bis #57; ein Lesezeichen führt zum selben Stapel."""
+    found(db, item_id="a", title="Vom Autor", reason=MatchReason.PROFILE_AUTHOR)
+    found(db, item_id="t", title="Vom Thema", reason=MatchReason.GENRE_CATEGORY)
+
+    body = client.get("/suggestions?anlass=profile_author").text
+
+    assert "Vom Autor" in body and "Vom Thema" not in body
 
 
 def test_a_watchlist_title_is_not_a_suggestion(client: TestClient, db: Store) -> None:
@@ -728,7 +738,7 @@ def test_the_filter_keeps_the_order(client: TestClient, db: Store) -> None:
     found(db)
     body = client.get("/suggestions?sortiert=preis").text
 
-    assert "anlass=genre_category" in body
+    assert "reason=genre_category" in body
     assert "sortiert=preis" in body
 
 

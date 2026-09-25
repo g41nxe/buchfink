@@ -193,16 +193,16 @@
         </div>
 
         <div class="mt-3 flex flex-wrap items-center gap-2">
-          <button type="submit" name="was" value="bestaetigen"
+          <button type="submit" name="action" value="confirm"
                   class="tun rounded border border-accent bg-accent/10 tun inline-flex h-9 items-center justify-center px-3 text-sm
                          font-medium text-accent hover:bg-accent/25">Bestätigen</button>
-          <button type="submit" name="was" value="keiner" formnovalidate
+          <button type="submit" name="action" value="none" formnovalidate
                   class="tun rounded border border-rule bg-card tun inline-flex h-9 items-center justify-center px-3 text-sm text-soft
                          hover:border-danger hover:bg-danger/10 hover:text-danger"
                   title="Keine dieser Ausgaben ist es — dieselben werden nicht noch
                          einmal vorgelegt, eine neue schon">Nichts passt</button>
           {% if entry.rejected %}
-          <button type="submit" name="was" value="zurueck" formnovalidate
+          <button type="submit" name="action" value="restore" formnovalidate
                   class="ml-auto text-xs text-soft underline underline-offset-2
                          hover:text-ink">
             {{ entry.rejected | length }} abgelehnt — wieder anzeigen</button>
