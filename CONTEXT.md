@@ -481,8 +481,8 @@ book — lies inside the reader's Taste Form, less what lies in its rejecting pa
 the Story Patterns form a second spider with the same computation, and a full
 Facet adds a bonus. What the form knows nothing about counts neither way, and a
 thin Steckbrief stays careful. Deliberately asymmetric: a book is not expected
-to carry everything the reader likes. Rejection counts per disappointing book,
-the strongest one per term (MultiNeg), at a fixed ratio to agreement (Rocchio).
+to carry everything the reader likes. Rejection is averaged over the
+disappointing books and weighs a third of agreement (Rocchio, γ/β = 0.33).
 
 ### Reader's Reasons
 *deutsch: deine Sicht (Gründe der Leserin)*

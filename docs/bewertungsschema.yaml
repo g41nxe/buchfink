@@ -22,12 +22,16 @@ urteil_formueberdeckung:
     deutlich: 0.7
     rand: 0.4
     ohne_angabe: 0.7
-  # Wie stark ein enttäuschendes Buch gegenüber einem durchschnittlichen
-  # gemochten wiegt (Rocchio, γ/β; die Literatur nennt 0,2 bis 0,33). Je
-  # Merkmal zählt das stärkste enttäuschende Buch (MultiNeg), nicht die Summe.
-  # Stärkere Ablehnung kostete gemochte Bücher (Otherland, OFFF) und hielt den
-  # Schwarm trotzdem nicht: sein Steckbrief kennt die Gründe der Leserin nicht.
-  ablehnung_verhaeltnis: 0.2
+  # Wie stark ein durchschnittliches enttäuschendes Buch gegenüber einem
+  # durchschnittlichen gemochten wiegt (Rocchio, γ/β; die Literatur nennt 0,2
+  # bis 0,33), gemittelt über die enttäuschenden Bücher. Das Stärkste je
+  # Merkmal (MultiNeg, ablehnung_gemittelt: false) war an den synthetischen
+  # Leserinnen instabil: je mehr enttäuschende Bücher, desto mehr gemeinsame
+  # Familien lehnte ein einziges Buch voll ab, und die Ausbeute fiel mit
+  # jedem bewerteten Buch (Methode, Abschnitt 13). An den eigenen Büchern der
+  # Leserin liegen beide gleich auf.
+  ablehnung_verhaeltnis: 0.33
+  ablehnung_gemittelt: true
   # Was die Leserin selbst zu einem gelesenen Buch sagt, das der Steckbrief
   # nicht nennt (beim Schwarm *gemächlich*), wiegt wie ein prägendes Merkmal.
   grund_der_leserin: 1.0

@@ -476,3 +476,50 @@ ADR 33). Abweichungen vom Prototyp, beide nach Review:
 Gegenprobe Code gegen Prototyp an den 24 bewerteten Büchern und der
 Stichprobe: höchstens 3 Prozentpunkte Unterschied, 32 gegen 33 von 53 über dem
 Tor. Die Gründe der Leserin zu einem enttäuschenden Buch fehlen im Code noch.
+
+## 13. Synthetische Leserinnen (26.09.2026)
+
+Die echte Leserin ist eine Stichprobe von eins, und über die meisten Bücher
+kennen wir ihr Urteil nicht. `prototyp/synthetische_leser.py` gibt fünf
+synthetischen Leserinnen einen **wahren Geschmack als Regel** über die Familien
+eines Steckbriefs. Die Regeln sind absichtlich Kombinationen, keine gewichteten
+Summen, sonst prüfte der Prüfstand nur, ob die Methode sich selbst ähnelt:
+
+- **Krimi:** düster und spannend, aber nicht witzig.
+- **Zwei Richtungen:** düstere Spannung oder warmer Witz.
+- **Ideen:** große Ideen, aber nicht gemächlich (die Schwarm-Regel).
+- **Figuren:** Figuren vor Handlung, prägende Härte stört immer.
+- **Erzählmuster:** Rätsel und Katz und Maus, nie Heldenreise.
+
+Jede tippt drei Familien an und nennt ein Gegengewicht, bewertet *k* Bücher aus
+dem Pool (78 echte Steckbriefe und 5 Gegenproben) und bekommt dann Urteile über
+den Rest. Gemessen am Tor, je 40 Durchgänge: Treffsicherheit / Ausbeute /
+Ablehnung in Prozent.
+
+| Leserin, k = 10 | alte Rechnung | stärkstes je Merkmal, 0,2 | gemittelt, 0,33 |
+|---|---|---|---|
+| Krimi | 95 / 62 / 94 | 93 / 86 / 88 | 93 / 88 / 86 |
+| Zwei Richtungen | 100 / 49 / 100 | 100 / 85 / 96 | 100 / 82 / 99 |
+| Ideen | 100 / 44 / 100 | 100 / 94 / 100 | 100 / 94 / 100 |
+| Figuren | 100 / 1 / 100 | 78 / 46 / 80 | 78 / 51 / 80 |
+| Erzählmuster | 100 / 20 / 100 | 99 / 84 / 94 | 100 / 86 / 95 |
+
+**Befund.**
+
+1. Die alte Rechnung ist fast überall zu eng: Sie lässt wenig durch, und was
+   durchkommt, stimmt. Bei „Figuren“ findet sie praktisch nichts.
+2. Die Formüberdeckung findet doppelt so viel oder mehr bei gleicher
+   Treffsicherheit. Das bestätigt den Befund an der echten Leserin (Abschnitt 11).
+3. **Das Stärkste je Merkmal (MultiNeg) ist instabil.** Bei „Figuren“ fällt die
+   Ausbeute, je mehr Bücher die Leserin bewertet (k = 5, 10, 20: 60, 46, 38 %).
+   Ein einziges enttäuschendes Buch, in dem eine gemeinsame Familie prägt,
+   lehnt sie voll ab, auch wenn fast alle gemochten Bücher sie tragen. Gemittelt
+   (Rocchio) mit 0,33 bleibt es stabil (49, 51, 65 %) und ist sonst gleichauf.
+   An der echten Leserin liegen beide gleich (18 von 22, Gegenproben 4 von 5).
+   Der Code mittelt jetzt; das Schema erlaubt beides (`ablehnung_gemittelt`).
+4. „Figuren“ bleibt schwer: Die Regel hängt am Gewicht („hart nur, wenn
+   prägend“), das bildet eine Rechnung über Familien nur annähernd ab.
+5. Der Pool ist schief: viel Science-Fiction, Krimi und Horror, kaum
+   Gemächliches oder Romantisches. Drei Leserinnen haben fünf oder weniger
+   Bücher, die sie nicht mögen; ihre Ablehnungswerte sind wacklig. Ein
+   breiterer Pool kommt mit jedem neuen Steckbrief.

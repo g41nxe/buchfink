@@ -107,11 +107,12 @@ def learn(
     """Die Geschmacksform: aus den Büchern gelernt, das Getippte als Startwert.
 
     Zustimmung wird über die gemochten Bücher summiert. Ablehnung zählt je
-    enttäuschendem Buch getrennt, und für jedes Merkmal das stärkste
-    (MultiNeg, Wang/Fang/Zhai 2008): zwei enttäuschende Bücher mit demselben
-    Merkmal lehnen es nicht doppelt ab. Wie stark ein enttäuschendes Buch
-    gegenüber einem durchschnittlichen gemochten wiegt, ist das Verhältnis
-    des Rocchio-Verfahrens (γ/β).
+    enttäuschendem Buch getrennt: entweder für jedes Merkmal das stärkste
+    Buch (MultiNeg, Wang/Fang/Zhai 2008), oder gemittelt über die
+    enttäuschenden Bücher (Rocchio); das Schema sagt, welches. Wie stark ein
+    enttäuschendes Buch gegenüber einem durchschnittlichen gemochten wiegt,
+    ist das Verhältnis des Rocchio-Verfahrens (γ/β). In beiden Fällen lehnen
+    zwei gleiche enttäuschende Bücher nicht stärker ab als eines.
     """
 
     def family_of(term: str) -> str:
@@ -121,6 +122,10 @@ def learn(
     limited = {(book, f) for c in genre_rules for book in c.books for f in c.families}
     liked_books = sum(1 for r in rated if r.sign > 0)
     n = max(1, liked_books)
+    m = max(1, sum(1 for r in rated if r.sign < 0))
+
+    def combine(old: float, w: float) -> float:
+        return old + w if weights.rejection_mean else max(old, w)
 
     agree_family: dict[str, float] = defaultdict(float)
     agree_term: dict[str, float] = defaultdict(float)
@@ -137,16 +142,18 @@ def learn(
             elif (book.title, f) not in limited:
                 # An diesem Buch hat die Leserin die Ablehnung auf ein Genre
                 # beschränkt; dann gilt die Regel, nicht die Form.
-                reject_family[f] = max(reject_family[f], w)
-                reject_term[term] = max(reject_term[term], w)
+                reject_family[f] = combine(reject_family[f], w)
+                reject_term[term] = combine(reject_term[term], w)
         # Was sie selbst nennt, wiegt wie ein prägendes Merkmal; es gilt der
         # Familie, weil sie in Familien spricht, nicht in Merkmalen.
         for f in book.added:
             if book.sign > 0:
                 agree_family[f] += weights.reader_reason
             else:
-                reject_family[f] = max(reject_family[f], weights.reader_reason)
-    lam = weights.rejection_ratio * n
+                reject_family[f] = combine(reject_family[f], weights.reader_reason)
+    # Gemittelt: die Summe über m Bücher geteilt durch m. Das Stärkste steht
+    # schon für ein Buch und wird nicht geteilt.
+    lam = weights.rejection_ratio * n / (m if weights.rejection_mean else 1)
     for f, w in reject_family.items():
         agree_family[f] -= lam * w
     for term, w in reject_term.items():

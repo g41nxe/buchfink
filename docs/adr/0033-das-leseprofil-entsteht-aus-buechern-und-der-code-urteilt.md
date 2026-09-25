@@ -312,3 +312,9 @@ Code.
 > denselben Weg wie das Tor. Die alte Rechnung liegt als Nachbau in
 > `docs/research/prototyp/alte_rechnung.py`, damit der Prüfstand vergleichen
 > kann.
+>
+> Korrektur am selben Tag: Die Ablehnung wird über die enttäuschenden Bücher
+> **gemittelt** (Rocchio, γ/β = 0,33) statt je Merkmal das stärkste Buch zu
+> nehmen. An synthetischen Leserinnen fiel mit MultiNeg die Ausbeute, je mehr
+> Bücher sie bewerteten: ein einziges enttäuschendes Buch lehnte jede Familie
+> voll ab, die es mit den gemochten teilt (Methode, Abschnitt 13).

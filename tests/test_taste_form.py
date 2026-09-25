@@ -101,9 +101,14 @@ def test_a_disappointing_book_pulls_down_what_it_carries(wort, gewichte) -> None
     assert mit.share < ohne.share
 
 
-def test_rejection_counts_per_disappointing_book_not_summed(wort, gewichte) -> None:
-    """Zwei enttäuschende Bücher mit demselben Merkmal zählen es nicht doppelt
-    (MultiNeg): es zählt das stärkste."""
+@pytest.mark.parametrize("gemittelt", [True, False])
+def test_the_same_disappointing_book_twice_does_not_reject_twice(wort, gewichte,
+                                                                  gemittelt) -> None:
+    """Gemittelt (Rocchio) wie beim Stärksten je Merkmal (MultiNeg): ein zweites
+    gleiches enttäuschendes Buch ändert die Ablehnung nicht."""
+    from dataclasses import replace
+
+    gewichte = replace(gewichte, rejection_mean=gemittelt)
     gemocht = gelesen("Leichenblässe", 1, THRILLER, wort, gewichte)
     eins = gelesen("Herr der Ringe", -1, EPOS, wort, gewichte)
     zwei = gelesen("Das Rad der Zeit", -1, EPOS, wort, gewichte)
