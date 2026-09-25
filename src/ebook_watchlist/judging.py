@@ -1,9 +1,11 @@
-"""Das Urteil über einen Fund, gerechnet statt gespeichert (ADR 33, #48).
+"""Das Urteil über einen Fund, gerechnet statt gespeichert (ADR 33, #48, #79).
 
 Eine Stelle für Tor, Stapel, Tagesbericht und Buchseite: aus dem Steckbrief
-eines Buchs und dem Leseprofil der Leserin werden Prozent, Sterne und
-Begründung. Nichts davon wird gespeichert — eine neue Profilfassung wirkt
-damit sofort und ohne Modellaufruf auf alles.
+eines Buchs und der Geschmacksform der Leserin werden Prozent, Sterne und
+Begründung. Die Form wird aus dem Leseprofil und ihren bewerteten Büchern
+gelernt (``taste_form``). Nichts davon wird gespeichert — eine neue
+Profilfassung oder ein neu bewertetes Buch wirkt damit sofort und ohne
+Modellaufruf auf alles.
 """
 
 from __future__ import annotations
@@ -13,9 +15,12 @@ from dataclasses import dataclass
 
 import yaml
 
-from .facets import ReadingProfile, Reason, Weights, fit, load_weights
+from .facets import ReadingProfile, Reason, Weights, load_weights
 from .portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
+from .ratings import book_subject
+from .relations import RelationKind
 from .store import Store
+from .taste_form import RatedBook, TasteForm, book_terms, learn, overlap
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,16 +70,20 @@ def judge(
     profile: ReadingProfile | None,
     vocabulary: Vocabulary,
     weights: Weights,
+    form: TasteForm | None = None,
 ) -> Verdict | None:
     """Das gerechnete Urteil — oder ``None``, wenn nicht geurteilt wird.
 
     Nicht geurteilt wird ohne Steckbrief, über ein Buch, das das Modell nicht
     kennt, und ohne Profil (ADR 33, Punkt 8). Ein Fund ohne Urteil wird nie
-    zurückgehalten (ADR 7).
+    zurückgehalten (ADR 7). Ohne ``form`` wird sie aus dem Profil allein
+    gelernt, ohne Bücher.
     """
     if portrait is None or profile is None:
         return None
-    result = fit(portrait, profile, vocabulary, weights)
+    if form is None:
+        form = learn(profile, (), vocabulary, weights)
+    result = overlap(portrait, profile, form, vocabulary, weights)
     if result is None:
         return None
     return Verdict(
@@ -106,6 +115,8 @@ class Judge:
     stamp: str
     #: Wessen Profil das ist.
     slug: str = ""
+    #: Die Geschmacksform, aus Profil und bewerteten Büchern gelernt.
+    form: TasteForm | None = None
 
     @property
     def threshold(self) -> int:
@@ -113,7 +124,7 @@ class Judge:
         return self.weights.gate_stars
 
     def verdict(self, portrait: Portrait | None) -> Verdict | None:
-        return judge(portrait, self.profile, self.vocabulary, self.weights)
+        return judge(portrait, self.profile, self.vocabulary, self.weights, self.form)
 
     def verdict_among(
         self, portraits: Mapping[str, Portrait], subjects: Sequence[str]
@@ -147,4 +158,43 @@ def load_judge(store: Store, slug: str) -> Judge | None:
         weights = load_weights()
     except (VocabularyError, OSError, KeyError, ValueError, yaml.YAMLError):
         return None
-    return Judge(profile, vocabulary, weights, fingerprint(vocabulary), slug)
+    stamp = fingerprint(vocabulary)
+    rated = rated_books(store, slug, vocabulary, weights, stamp)
+    form = learn(profile, rated, vocabulary, weights)
+    return Judge(profile, vocabulary, weights, stamp, slug, form)
+
+
+def rated_books(
+    store: Store, slug: str, vocabulary: Vocabulary, weights: Weights, stamp: str
+) -> tuple[RatedBook, ...]:
+    """Die Bücher, die die Leserin gelesen und bewertet hat, mit ihren Merkmalen.
+
+    Ein Buch ohne Steckbrief zum geltenden Vokabular oder eines, das das Modell
+    nicht kennt, lehrt die Form nichts und fehlt. Der Steckbrief hängt an der
+    ISBN, wo es eine gibt, sonst an der Buchnummer — in derselben Reihenfolge,
+    in der die Buchseite ihn anlegt (``web.book.portrait_subject``).
+    """
+    marked = [
+        (sign, relation.book_id)
+        for sign, kind in ((1, RelationKind.LIKED), (-1, RelationKind.DISLIKED))
+        for relation in store.relations(slug, kind=str(kind))
+    ]
+    books = {book_id: store.book(book_id) for _, book_id in marked}
+    subjects = {
+        book_id: ([f"isbn:{b.isbn}"] if b and b.isbn else []) + [book_subject(book_id)]
+        for book_id, b in books.items()
+    }
+    portraits = store.portraits_for([s for ss in subjects.values() for s in ss], stamp)
+    rated = []
+    for sign, book_id in marked:
+        portrait = next(
+            (portraits[s] for s in subjects[book_id] if s in portraits and portraits[s].known),
+            None,
+        )
+        book = books[book_id]
+        if portrait is None or book is None:
+            continue
+        rated.append(
+            RatedBook(book.title, sign, book_terms(portrait, vocabulary, weights), portrait.genre)
+        )
+    return tuple(rated)

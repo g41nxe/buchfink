@@ -1193,7 +1193,7 @@ def test_with_profile_and_portrait_the_page_shows_the_fit(
 
     passung = view.build(db, load_settings(), buch.id).fit
 
-    assert (passung.stars, passung.percent, passung.version) == (5, 80, 1)
+    assert (passung.stars, passung.percent, passung.version) == (4, 56, 1)
     assert passung.reasons[0].text == "hart · gezeichnete Figur"
 
 

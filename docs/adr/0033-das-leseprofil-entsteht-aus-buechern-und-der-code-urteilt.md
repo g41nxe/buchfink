@@ -288,3 +288,27 @@ Code.
 > (`rating_model`). Die Gewichte verteilen sich brauchbar: rund ein Drittel der
 > Merkmale ist prägend, im Schnitt zwei je Buch.
 
+
+> **Nachtrag vom 26.09.2026: die Formüberdeckung ersetzt die Rechnung (#79).**
+> Das Urteil rechnet jetzt `taste_form.py`. Die Geschmacksform wird aus den
+> bewerteten Büchern der Leserin gelernt (*Mag ich* und *Doof*, jedes Merkmal so
+> stark, wie es im Buch wiegt), das Getippte und die Familien der Facetten sind
+> der Startwert. Das Urteil ist der Anteil des Buchs, der in der Form liegt,
+> weniger dem Teil in ihrer Ablehnung, geglättet, damit ein dünner Steckbrief
+> vorsichtig bleibt; die Erzählmuster sind eine zweite Spinne, eine ganze
+> Facette gibt einen Aufschlag, ein Gegengewicht mit Genre bleibt eine Regel.
+> Ablehnung zählt je enttäuschendem Buch, je Merkmal das stärkste (MultiNeg),
+> mit dem Verhältnis 0,2 zur Zustimmung (Rocchio). Die Werte stehen im
+> Bewertungsschema (`urteil_formueberdeckung`); Herleitung und Prüfstand in
+> `docs/research/urteil-methode.md`.
+>
+> Warum: Die alte Rechnung erkannte an 22 gemochten Büchern 14, fast nur die
+> Thriller; die Formüberdeckung erkennt 18, jedes ohne sich selbst gelernt, und
+> weist vier von fünf Gegenproben ab. Sie schwankt stärker, wenn ein Steckbrief
+> dünner wird (rund 37 statt 26 % Stufenwechsel); das ist tragbar, weil jedes
+> Buch einmal beschrieben wird.
+>
+> `load_judge` lernt die Form einmal je Liste; die Buchseite urteilt über
+> denselben Weg wie das Tor. Die alte Rechnung liegt als Nachbau in
+> `docs/research/prototyp/alte_rechnung.py`, damit der Prüfstand vergleichen
+> kann.

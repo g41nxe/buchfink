@@ -12,14 +12,13 @@ import json
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-import yaml
-
 from ..cleaning import is_truncated
 from ..config import Settings
 from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
-from ..facets import Reason, fit, load_weights
+from ..facets import Reason
 from ..http import HttpClient, build_user_agent
+from ..judging import load_judge
 from ..models import Availability, MatchReason
 from ..portrait import (
     Portrait,
@@ -331,25 +330,23 @@ class FitView:
     reasons: tuple[Reason, ...]
 
 
-def _fit_view(
-    store: Store, settings: Settings, portrait: Portrait, vocabulary: Vocabulary
-) -> FitView | None:
-    """Ohne Profil in der Datenbank wird nicht geurteilt (ADR 33, Punkt 8)."""
-    profile = store.reading_profile(settings.slug)
-    if profile is None:
+def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
+    """Ohne Profil in der Datenbank wird nicht geurteilt (ADR 33, Punkt 8).
+
+    Über ``load_judge``, damit die Buchseite mit derselben Geschmacksform
+    rechnet wie das Tor — gelernt aus Profil und bewerteten Büchern.
+    """
+    judge = load_judge(store, settings.slug)
+    if judge is None:
         return None
-    try:
-        weights = load_weights()
-    except (OSError, KeyError, ValueError, yaml.YAMLError):
-        return None
-    result = fit(portrait, profile, vocabulary, weights)
-    if result is None:
+    verdict = judge.verdict(portrait)
+    if verdict is None or verdict.percent is None:
         return None
     return FitView(
-        stars=result.stars,
-        percent=round(result.share * 100),
-        version=profile.version,
-        reasons=result.reasons,
+        stars=verdict.stars,
+        percent=verdict.percent,
+        version=judge.profile.version,
+        reasons=verdict.reasons,
     )
 
 
@@ -674,7 +671,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         stored = _stored_portrait(store, book, fingerprint(vocabulary))
         if stored is not None:
             portrait = _portrait_view(stored, vocabulary, book)
-            fit_view = _fit_view(store, settings, stored, vocabulary)
+            fit_view = _fit_view(store, settings, stored)
             portrait_retry = worth_asking_again(stored, text_now=bool(book.blurb))
 
     return Page(

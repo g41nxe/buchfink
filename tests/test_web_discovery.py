@@ -102,9 +102,9 @@ def test_the_reasoning_is_readable_here_and_only_here(client: TestClient, db: St
 
     body = client.get("/discovery/beam/7").text
 
-    assert "data-fit" in body and "4 von 5" in body and "66" in body
-    assert "Satz zu quest" in body
-    assert "Satz zu quest" not in client.get("/suggestions").text
+    assert "data-fit" in body and "4 von 5" in body and "56" in body
+    assert "Satz zu gritty" in body
+    assert "Satz zu gritty" not in client.get("/suggestions").text
 
 
 def test_without_a_portrait_the_page_offers_to_make_one(client: TestClient, db: Store) -> None:

@@ -831,7 +831,7 @@ def test_the_row_shows_the_percent_beside_the_stars(client: TestClient, db: Stor
 
     body = client.get("/suggestions").text
 
-    assert "66 %" in body  # drei Muster zu 0,3: 1 - 0,7³ = 0,657
+    assert "56 %" in body  # die ganze Facette "gezeichnete Figur · hart"
     assert "aus deinem Leseprofil gerechnet" in body
 
 
@@ -846,9 +846,10 @@ def test_a_new_profile_reorders_the_stack_without_asking_the_model(
     urteil(db, found(db, item_id="a", title="Trägt eine Sache"), stars=2, pitch="Eins.")
     assert view.pending(db, load_settings()).hidden_weak == 1
 
+    # Jetzt mag sie auch das Poetische, über das die Form vorher nichts wusste.
     give_profile(db, profile=ReadingProfile(
         facets=(), counterweights=(),
-        liked=(Liked("quest", True), Liked("adventure"), Liked("pursuit")),
+        liked=(Liked("brooding"), Liked("lyrical")),
     ))
 
     pile = view.pending(db, load_settings())

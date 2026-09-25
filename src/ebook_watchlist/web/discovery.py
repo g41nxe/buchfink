@@ -153,7 +153,7 @@ def build(store: Store, settings: Settings, source: str, item_id: str) -> Page |
         stored = store.portrait(subject_of(newest), fingerprint(vocabulary))
         described = stored is not None
         if stored is not None:
-            fit = _fit_view(store, settings, stored, vocabulary)
+            fit = _fit_view(store, settings, stored)
 
     return Page(
         source=source,

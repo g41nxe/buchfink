@@ -176,25 +176,34 @@ needs_vocabulary = pytest.mark.skipif(
 
 
 #: Welche Merkmale ein Steckbrief tragen muss, damit das Urteil aus
-#: :func:`judging_profile` auf genau diese Sterne kommt (#48). Drei gemochte
-#: Erzählmuster zählen je 0,3; die Facette "gezeichnete Figur · hart" 0,8.
+#: :func:`judging_profile` auf genau diese Sterne kommt (#48, #79). Gerechnet
+#: mit der Formüberdeckung und den Werten des Bewertungsschemas: gemächlich
+#: liegt im ablehnenden Teil; ein gemochtes Merkmal neben einem, über das die
+#: Form nichts weiß, bleibt bei 2 (ein dünner Steckbrief ist vorsichtig); die
+#: ganze Facette "gezeichnete Figur · hart" hebt auf 4, mit zwei Mustern dazu auf 5.
 STAR_TERMS = {
     1: ("leisurely",),
-    2: ("quest",),
-    3: ("quest", "adventure"),
-    4: ("quest", "adventure", "pursuit"),
-    5: ("brooding", "gritty", "quest"),
+    2: ("brooding", "lyrical"),
+    3: ("quest", "gritty"),
+    4: ("brooding", "gritty"),
+    5: ("quest", "adventure", "brooding", "gritty", "violent"),
 }
 
 
 def judging_profile():
     """Ein Leseprofil, an dem sich Sterne von 1 bis 5 genau steuern lassen."""
-    from ebook_watchlist.facets import Facet, Liked, ReadingProfile
+    from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile
 
     return ReadingProfile(
         facets=(Facet(("brooding", "harsh"), ("Leichenblässe", "Sharp Objects")),),
-        counterweights=(),
-        liked=(Liked("quest"), Liked("adventure"), Liked("pursuit")),
+        counterweights=(Counterweight(("leisurely",), None, ("Herr der Ringe",)),),
+        liked=(
+            Liked("brooding"),
+            Liked("harsh"),
+            Liked("quest"),
+            Liked("adventure"),
+            Liked("pursuit"),
+        ),
     )
 
 

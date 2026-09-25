@@ -122,7 +122,7 @@ def test_the_verdict_of_a_passing_find_is_reported(store, vocabulary, weights) -
     _, report = run(store, vocabulary, weights, [first_seen(found)], Portrayer(vocabulary, GOOD))
 
     verdict = report.judgements[found.key]
-    assert verdict.stars >= 4 and verdict.percent >= 60 and verdict.pitch == "Ein Buch."
+    assert verdict.stars >= 4 and verdict.percent >= 55 and verdict.pitch == "Ein Buch."
 
 
 def test_a_book_is_described_once_not_every_run(store, vocabulary, weights) -> None:

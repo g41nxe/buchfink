@@ -10,7 +10,7 @@ from datetime import datetime
 
 import pytest
 
-from conftest import describe, give_profile, needs_vocabulary
+from conftest import STAR_TERMS, describe, give_profile, needs_vocabulary
 from ebook_watchlist.judge_titles import Entry, judge_titles, read_entries, update_yaml
 from ebook_watchlist.judging import load_judge
 from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
@@ -34,8 +34,7 @@ class FakePortrayer:
                 known=True,
                 fingerprint=fingerprint(load_vocabulary()),
                 pitch=f"Über {o.title}.",
-                traits=tuple(Trait(t, f"Satz zu {t}", "wissen")
-                             for t in ("quest", "adventure", "pursuit")),
+                traits=tuple(Trait(t, f"Satz zu {t}", "wissen") for t in STAR_TERMS[4]),
             )
             for o in observations
         }

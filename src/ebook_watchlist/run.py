@@ -41,7 +41,7 @@ from .evidence import gather as gather_evidence
 from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
 from .models import Observation, SourceFailure
-from .portrait import VocabularyError, load_vocabulary
+from .portrait import VocabularyError, fingerprint, load_vocabulary
 from .portrayer import build_portrayer
 from .render import render_html, render_text
 from .seed import sow
@@ -323,6 +323,9 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
     Zeichen und ist zu 85 % abgeschnitten, die Detailseite rund das Zehnfache.
     Es sind höchstens so viele Anfragen wie das Budget Bücher zulässt.
     """
+    from .judging import rated_books
+    from .taste_form import learn
+
     try:
         vocabulary = load_vocabulary()
         weights = load_weights()
@@ -332,6 +335,16 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
 
     profile = store.reading_profile(settings.slug)
     portrayer = build_portrayer(settings.rating_model, vocabulary) if profile is not None else None
+    form = (
+        learn(
+            profile,
+            rated_books(store, settings.slug, vocabulary, weights, fingerprint(vocabulary)),
+            vocabulary,
+            weights,
+        )
+        if profile is not None
+        else None
+    )
 
     kept, report = gate.apply(
         deltas,
@@ -343,6 +356,7 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         threshold=weights.gate_stars,
         budget=settings.rating_budget,
         now=now,
+        form=form,
         evidence=(
             lambda observations: gather_evidence(store, settings, observations, sources)
         )

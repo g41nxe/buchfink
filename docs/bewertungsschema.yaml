@@ -9,43 +9,56 @@
 #
 # Nichts hier nennt einen Geschmack; die Datei gilt für jede Leserin gleich.
 
-# Die Werte sind Startwerte (Grill vom 23.09.2026, #44); sobald genug eigene
-# Urteile vorliegen, werden sie gelernt statt gesetzt.
-urteil_aus_merkmalen:
-  # Jeder Grund, das Buch zu mögen, zählt für sich; die Gründe werden als
-  # Noisy-OR verbunden und verstärken sich, ohne je 100 % zu erreichen.
-  #
-  # Eine Facette — eine Kombination gemochter Merkmale, die mehrere geliebte
-  # Bücher gemeinsam tragen — zählt, wenn das Buch sie ganz trägt.
-  facette_ganz: 0.8
-  # Jedes gemochte Merkmal, das das Buch trägt, zählt schwach für sich
-  # (#64). 0,1 lässt jedes Urteil aus dem Versuch, wie es war; 0,15 hob
-  # "von allem ein bisschen" auf 3 Sterne.
-  merkmal_einzeln: 0.1
-  # Was die Leserin verstärkt hat (höchstens drei), bekommt diesen Aufschlag
-  # (24.09.2026): ein Merkmal 0,1 → 0,2, ein Erzählmuster 0,3 → 0,4. Ab 0,2
-  # Aufschlag käme "brutal, aber flache Figur" durchs Tor.
-  verstaerkt_aufschlag: 0.1
-  # Ein gemochtes Erzählmuster ist ein eigener Grund, nie Teil einer
-  # Facette (#63).
-  erzaehlmuster: 0.3
-  # Nur das stärkste Gegengewicht zählt, und es zieht diesen Anteil ab.
-  # Ablehnung wiegt beim Standardverfahren Rocchio etwa ein Fünftel der
-  # Zustimmung; an den eigenen Büchern war das zu wenig (24.09.2026): "Der
-  # Schwarm", von der Leserin als enttäuschend genannt, kam mit 0,2 auf 47 %
-  # und damit durchs Tor. Ab etwa 0,33 fällt er unter drei Sterne; 0,35 lässt
-  # die gemochten Bücher unberührt. Mehrere Gegengewichte werden nicht
-  # summiert: die aus einem Buch zählten es sonst mehrfach.
-  gegengewicht: 0.35
+# Die Werte der Formüberdeckung (#79, docs/research/urteil-methode.md). Geeicht
+# am Prüfstand vom 25./26.09.2026: 22 gemochte und 2 enttäuschende Bücher der
+# Leserin, jedes ohne sich selbst gelernt, 5 Gegenproben und eine Stichprobe
+# von 53 Funden. Die alte Rechnung (Noisy-OR über Facetten und Merkmale) liegt
+# in der Git-Historie und als Nachbau in docs/research/prototyp/alte_rechnung.py.
+urteil_formueberdeckung:
+  # Wie stark ein Merkmal im Buch wiegt, nach dem Gewicht, das das Modell
+  # vergibt (#62). Ohne Angabe: ein Steckbrief aus der Zeit davor.
+  gewicht_im_buch:
+    praegend: 1.0
+    deutlich: 0.7
+    rand: 0.4
+    ohne_angabe: 0.7
+  # Wie stark ein enttäuschendes Buch gegenüber einem durchschnittlichen
+  # gemochten wiegt (Rocchio, γ/β; die Literatur nennt 0,2 bis 0,33). Je
+  # Merkmal zählt das stärkste enttäuschende Buch (MultiNeg), nicht die Summe.
+  # Stärkere Ablehnung kostete gemochte Bücher (Otherland, OFFF) und hielt den
+  # Schwarm trotzdem nicht: sein Steckbrief kennt die Gründe der Leserin nicht.
+  ablehnung_verhaeltnis: 0.2
+  # Das Getippte ist der Startwert der Form; es wiegt so viel wie zwei Bücher.
+  getipptes_wiegt_buecher: 2.0
+  getippt: 0.4
+  verstaerkt: 0.6
+  gegengewicht: 0.4
+  # Wie stark ein einzelnes Merkmal zu seiner Familie hin geglättet wird:
+  # *episch angelegt* ist nicht *Weltenbau*, aber beide sind *große Welt*.
+  merkmal_zur_familie: 1.0
+  # Ein typisches Gemochtes zählt voll: skaliert wird auf dieses Quantil der
+  # Vorlieben, nicht auf die stärkste.
+  voll_ab_quantil: 0.75
+  # Ein dünner Steckbrief strebt zum Grundwert, statt mit einem einzigen
+  # gemochten Merkmal auf 100 % zu springen (Z6).
+  glaettung: 4.0
+  grundwert: 0.2
+  # Die Erzählmuster als zweite Spinne: ein Buch trägt eins bis drei.
+  glaettung_muster: 1.0
+  muster_dafuer: 0.35
+  muster_dagegen: 0.5
+  # Eine Facette, die das Buch ganz trägt, gibt diesen Aufschlag.
+  facette_ganz: 0.25
+  # Ein Gegengewicht, das die Leserin auf ein Genre beschränkt hat, ist eine
+  # Regel, keine Richtung der Form: im Genre zieht es so viel ab (mal dem
+  # Gewicht des Merkmals im Buch).
+  gegengewicht_mit_genre: 0.5
   # Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19,
-  # #48). Ein beliebiges Buch erreicht drei Sterne zu etwa 27 %, vier nur zu
-  # etwa 5 %; mit einer einzigen Facette hielte vier fast alles Neue zurück.
-  # Ein Fund ohne Urteil wird nie zurückgehalten.
+  # #48). Ein Fund ohne Urteil wird nie zurückgehalten.
   tor_ab_sternen: 3
-  # Ab welcher Übereinstimmung wie viele Sterne; darunter einer. Null Sterne
-  # gibt es nur, wenn nichts Gemochtes getroffen ist und ein Gegengewicht trifft.
+  # Ab welcher Übereinstimmung wie viele Sterne; darunter einer.
   sterne_ab:
-    5: 0.8
-    4: 0.6
+    5: 0.7
+    4: 0.55
     3: 0.4
     2: 0.2

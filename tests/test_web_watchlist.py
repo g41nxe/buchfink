@@ -536,7 +536,7 @@ def test_the_row_carries_the_verdict_of_the_code(client: TestClient, db: Store) 
 
     eintrag = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
 
-    assert (eintrag.stars, eintrag.percent) == (4, 66)
+    assert (eintrag.stars, eintrag.percent) == (4, 56)
     assert eintrag.pitch == "Ein Forscher, 1977 tief in einer Mine."
     assert "Ein Forscher" in client.get("/watchlist").text
 

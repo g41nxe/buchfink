@@ -5,19 +5,12 @@ verstärkt), **gemochten Erzählmustern**, **Facetten** und **Gegengewichten**.
 Wie gut ein Buch dazu passt, rechnet dieser Code aus dem Steckbrief des Buchs;
 kein Modell wird gefragt.
 
-Jeder Grund, das Buch zu mögen, zählt für sich, und die Gründe werden als
-Noisy-OR verbunden — mehrere verstärken sich, ohne je Gewissheit zu erreichen:
-
-- eine Facette, die das Buch ganz trägt: 0,8. Eine Facette ist eine
-  Kombination gemochter Merkmale, die mehrere geliebte Bücher gemeinsam tragen;
-  das Werkzeug bildet sie selbst (``derive_facets``), die Leserin bestätigt sie
-  nicht (24.09.2026).
-- jedes gemochte Merkmal, das das Buch trägt: 0,1 (#64); verstärkt 0,2.
-- jedes gemochte Erzählmuster: 0,3; verstärkt 0,4 (#63). Erzählmuster stecken
-  nie in einer Facette.
-
-Das stärkste Gegengewicht zieht ein Fünftel ab. Die Werte stehen im
-Bewertungsschema (``urteil_aus_merkmalen``).
+Das Leseprofil ist das, was die Leserin angetippt hat. Geurteilt wird mit der
+Geschmacksform (``taste_form``), die aus ihren bewerteten Büchern gelernt wird
+und das Profil als Startwert nimmt (#79). Eine Facette ist eine Kombination
+gemochter Merkmale, die mehrere geliebte Bücher gemeinsam tragen; das Werkzeug
+bildet sie selbst (``derive_facets``), und ein Buch, das sie ganz trägt, bekommt
+einen Aufschlag. Erzählmuster stecken nie in einer Facette (#63).
 
 Ein Gegengewicht darf ein Genre enthalten, eine Facette nicht: im Gegengewicht
 grenzt es nur ein, was bestraft wird, in einer Facette grenzte es ein, was
@@ -31,10 +24,9 @@ Erstaufnahme (#50).
 
 from __future__ import annotations
 
-import math
 import re
 import sys
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -103,28 +95,45 @@ class ReadingProfile:
 
 @dataclass(frozen=True, slots=True)
 class Weights:
-    full: float
-    #: Ein gemochtes Merkmal, das das Buch trägt.
-    single: float
-    #: Was ein verstärktes Merkmal oder Erzählmuster dazubekommt.
-    boost: float
-    #: Ein gemochtes Erzählmuster.
-    pattern: float
-    counterweight: float
+    """Die Werte der Formüberdeckung (``taste_form``), aus dem Bewertungsschema."""
+
+    #: Wie stark ein Merkmal im Buch wiegt: prägend, deutlich, am Rand, und
+    #: ohne Angabe (ein Steckbrief aus der Zeit davor).
+    defining: float
+    clear: float
+    marginal: float
+    unweighted: float
+    #: Wie stark ein enttäuschendes Buch gegenüber einem durchschnittlichen
+    #: gemochten wiegt (Rocchio, γ/β).
+    rejection_ratio: float
+    #: Wie viele Bücher das Getippte als Startwert wiegt.
+    prior_books: float
+    prior_liked: float
+    prior_boosted: float
+    prior_against: float
+    #: Wie stark ein einzelnes Merkmal zu seiner Familie hin geglättet wird.
+    term_to_family: float
+    #: Welches Quantil der Vorlieben als voll gemocht gilt.
+    full_quantile: float
+    #: Glättung des Anteils und der Wert, zu dem ein dünner Steckbrief strebt.
+    smoothing: float
+    baseline: float
+    pattern_smoothing: float
+    pattern_for: float
+    pattern_against: float
+    facet_bonus: float
+    genre_counterweight: float
     #: (Sterne, ab welcher Übereinstimmung), absteigend.
     stars_from: tuple[tuple[int, float], ...]
     #: Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19).
     gate_stars: int
 
-    def liked(self, liked: Liked, pattern: bool) -> float:
-        return (self.pattern if pattern else self.single) + (self.boost if liked.boosted else 0)
+    def trait_weight(self, weight: str | None) -> float:
+        return {"defining": self.defining, "clear": self.clear,
+                "marginal": self.marginal}.get(weight or "", self.unweighted)
 
-
-@dataclass(frozen=True, slots=True)
-class FacetHit:
-    """Eine Facette, die das Buch ganz trägt."""
-
-    facet: Facet
+    def stars(self, share: float) -> int:
+        return next((s for s, ab in self.stars_from if share >= ab - 1e-9), 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,35 +166,31 @@ class Reason:
         return vorn + self.text + (" (verstärkt)" if self.boosted else "")
 
 
-@dataclass(frozen=True, slots=True)
-class Fit:
-    """Die Übereinstimmung eines Buchs mit einem Profil."""
-
-    #: Zwischen 0 und 1; ordnet die Liste.
-    share: float
-    #: 0 bis 5; fasst zusammen.
-    stars: int
-    #: Die Facetten, die das Buch ganz trägt.
-    hits: tuple[FacetHit, ...]
-    #: Die gemochten Merkmale und Erzählmuster, die es trägt.
-    liked: tuple[Liked, ...]
-    #: Das Gegengewicht, das abgezogen wurde, oder keines.
-    against: Counterweight | None
-    #: Die Begründung, Zeile für Zeile.
-    reasons: tuple[Reason, ...]
-
-
 def load_weights(path: Path | None = None) -> Weights:
-    """Die Gewichte aus dem Bewertungsschema."""
+    """Die Werte aus dem Bewertungsschema."""
     data = yaml.safe_load((path or SCHEME_PATH).read_text(encoding="utf-8"))
-    section = data["urteil_aus_merkmalen"]
+    section = data["urteil_formueberdeckung"]
+    in_book = section["gewicht_im_buch"]
     tiers = sorted(((int(s), float(ab)) for s, ab in section["sterne_ab"].items()), reverse=True)
     return Weights(
-        full=float(section["facette_ganz"]),
-        single=float(section["merkmal_einzeln"]),
-        boost=float(section["verstaerkt_aufschlag"]),
-        pattern=float(section["erzaehlmuster"]),
-        counterweight=float(section["gegengewicht"]),
+        defining=float(in_book["praegend"]),
+        clear=float(in_book["deutlich"]),
+        marginal=float(in_book["rand"]),
+        unweighted=float(in_book["ohne_angabe"]),
+        rejection_ratio=float(section["ablehnung_verhaeltnis"]),
+        prior_books=float(section["getipptes_wiegt_buecher"]),
+        prior_liked=float(section["getippt"]),
+        prior_boosted=float(section["verstaerkt"]),
+        prior_against=float(section["gegengewicht"]),
+        term_to_family=float(section["merkmal_zur_familie"]),
+        full_quantile=float(section["voll_ab_quantil"]),
+        smoothing=float(section["glaettung"]),
+        baseline=float(section["grundwert"]),
+        pattern_smoothing=float(section["glaettung_muster"]),
+        pattern_for=float(section["muster_dafuer"]),
+        pattern_against=float(section["muster_dagegen"]),
+        facet_bonus=float(section["facette_ganz"]),
+        genre_counterweight=float(section["gegengewicht_mit_genre"]),
         stars_from=tuple(tiers),
         gate_stars=int(section["tor_ab_sternen"]),
     )
@@ -200,7 +205,7 @@ def families_of(portrait: Portrait, vocabulary: Vocabulary) -> set[str]:
     }
 
 
-def _genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
+def genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
     """Ob das Buch zum Genre des Gegengewichts gehört — als ganzes Wort.
 
     "High Fantasy" steckt in "High Fantasy / Heroische Fantasy"; "Roman"
@@ -295,112 +300,6 @@ def is_pattern(family_id: str, vocabulary: Vocabulary) -> bool:
         return vocabulary.is_pattern(family_id)
     except KeyError:
         return False
-
-
-def fit(
-    portrait: Portrait, profile: ReadingProfile, vocabulary: Vocabulary, weights: Weights
-) -> Fit | None:
-    """Wie gut das Buch passt — oder ``None``, wenn nicht geurteilt wird.
-
-    Nicht geurteilt wird ohne Profil — weder Facetten noch Gemochtes (ADR 33,
-    Punkt 8) — und über ein Buch, das das Modell nicht kennt: ohne Merkmale
-    hieße jedes Urteil "passt nicht", und das wäre eine Behauptung, keine
-    Auskunft.
-
-    Teiltreffer einer Facette gibt es nicht mehr: was eine Facette zum Teil
-    trifft, zählt über ihre Merkmale einzeln (#64).
-    """
-    if not (profile.facets or profile.liked) or not portrait.known:
-        return None
-    book_families = families_of(portrait, vocabulary)
-
-    hits = [
-        FacetHit(facet) for facet in profile.facets if set(facet.families) <= book_families
-    ]
-    liked = tuple(g for g in profile.liked if g.family in book_families)
-
-    factors = [weights.full] * len(hits)
-    factors += [weights.liked(g, is_pattern(g.family, vocabulary)) for g in liked]
-    share = 1 - math.prod(1 - f for f in factors)
-    against = next(
-        (
-            c
-            for c in profile.counterweights
-            if all(f in book_families for f in c.families) and _genre_matches(c, portrait)
-        ),
-        None,
-    )
-    if against is not None:
-        share *= 1 - weights.counterweight
-
-    if share == 0:
-        stars = 0 if against is not None else 1
-    else:
-        stars = next((s for s, ab in weights.stars_from if share >= ab), 1)
-
-    return Fit(
-        share=share,
-        stars=stars,
-        hits=tuple(hits),
-        liked=liked,
-        against=against,
-        reasons=_reasons(
-            hits, liked, lambda f: is_pattern(f, vocabulary), against, portrait, vocabulary
-        ),
-    )
-
-
-def _reasons(
-    hits: list[FacetHit],
-    liked: Sequence[Liked],
-    is_story_pattern: Callable[[str], bool],
-    against: Counterweight | None,
-    portrait: Portrait,
-    vocabulary: Vocabulary,
-) -> tuple[Reason, ...]:
-    """Die Begründung aus Daten: welche Facette, welches Merkmal, und der Satz dazu.
-
-    Alles ist gleich gebaut — eine Marke, darunter die Sätze aus dem
-    Steckbrief. Nur der Satz: die Familie steht schon in der Marke, und zweimal
-    derselbe Name ist keine zweite Auskunft. Ein Merkmal, das schon in einer
-    getroffenen Facette steht, bekommt keine eigene Marke.
-    """
-
-    def evidence_for(family_ids: Sequence[str]) -> list[Reason]:
-        sentences = []
-        for family_id in family_ids:
-            sentence = next(
-                (
-                    trait.sentence
-                    for trait in portrait.traits
-                    if trait.term in vocabulary.terms
-                    and vocabulary.family_of(trait.term).id == family_id
-                ),
-                "",
-            )
-            if sentence:
-                sentences.append(Reason("beleg", sentence))
-        return sentences
-
-    lines: list[Reason] = []
-    for hit in hits:
-        lines.append(Reason("ganz", family_names(hit.facet.families, vocabulary)))
-        lines.extend(evidence_for(hit.facet.families))
-    families_in_hits = {f for hit in hits for f in hit.facet.families}
-    # Verstärktes zuerst, dann Merkmale vor Erzählmustern.
-    for entry in sorted(liked, key=lambda g: (not g.boosted, is_story_pattern(g.family))):
-        if entry.family in families_in_hits:
-            continue
-        kind = "muster" if is_story_pattern(entry.family) else "merkmal"
-        lines.append(Reason(kind, family_name(entry.family, vocabulary), entry.boosted))
-        lines.extend(evidence_for((entry.family,)))
-    if not hits and not liked:
-        lines.append(Reason("keine", "nichts Gemochtes getroffen"))
-    if against is not None:
-        genre_note = f" (bei {against.genre})" if against.genre else ""
-        lines.append(Reason("dagegen", family_names(against.families, vocabulary) + genre_note))
-        lines.extend(evidence_for(against.families))
-    return tuple(lines)
 
 
 #: Wie stark etwas belegt ist, als Skala statt als Zahl (#44): ein Buch ist

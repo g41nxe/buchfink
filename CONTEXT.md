@@ -325,12 +325,10 @@ what several loved books carry together is additionally bundled into a Facet
 by the tool, but the tap itself is never undone by that — a Liked Term keeps
 counting on its own even while it also sits inside a Facet.
 
-A Liked Term counts as an **independent, weak reason** in the Fit's noisy-OR: an
-Appeal Term alone is worth little, a Story Pattern more, because a shared story
-pattern showed in the Intake experiment (#44) to say more about taste than a
-single Appeal Term does. Up to three Liked Terms can be **boosted**
-(*verstärkt*): the reader marks the ones that matter most, and a boosted term
-counts for more. Untapping a Liked Term also removes its boost.
+A Liked Term is a **starting value of the Taste Form** (#79): the form begins
+where the reader tapped, and her rated books move it from there. Up to three
+Liked Terms can be **boosted** (*verstärkt*): the reader marks the ones that
+matter most, and a boosted term starts further out. Untapping a Liked Term also removes its boost.
 
 **Reader-facing name: none as a category** — the reader sees the Appeal Family
 or Story Pattern by its own name, tapped or not.
@@ -449,16 +447,11 @@ the book page it simply heads its patterns.
 ### Fit
 *deutsch: Übereinstimmung*
 
-How well a book suits a Reading Profile, computed by the code from the book's
-Steckbrief, the reader's Facets, Liked Terms and Counterweights (ADR 33): every
-Facet hit in full weighs 0.8; every Liked Term the book carries weighs on its
-own, a Story Pattern more than an Appeal Term, boosted more still; there are no
-partial Facet hits any more (24.09.2026). All of that is combined as a
-noisy-OR, and the strongest Counterweight takes about a third off (0.35, raised
-from a fifth on 24.09.2026 because a disliked book still passed the Rating
-Gate). The percentage
-orders; stars summarise it. No model is asked, so a new profile version
-recomputes every Fit at once.
+How well a book suits the reader, computed by the code from the book's
+Steckbrief and her Taste Form (ADR 33): since 26.09.2026 by **Form Overlap**
+(#79); until then a noisy-OR over Facets, Liked Terms and Counterweights. The
+percentage orders; stars summarise it. No model is asked, so a new profile
+version or a newly rated book recomputes every Fit at once.
 
 Not a **Profile Match** (*Profiltreffer*): that is the older, author-based way a
 Discovery came in.
@@ -468,7 +461,7 @@ Discovery came in.
 ### Taste Form
 *deutsch: Geschmacksform*
 
-*Proposed, not yet in the code (docs/research/urteil-methode.md).* The reader's
+*In the code since 26.09.2026 (`taste_form.py`, #79).* The reader's
 taste as a shape over the axes of the vocabulary (Appeal Terms and Story
 Patterns), like a spider graph: outward where she likes something, inward where
 she rejects it, at the centre where she has said nothing. How far it reaches is
@@ -479,11 +472,14 @@ or boosted as the starting value. She never states a strength herself.
 ### Form Overlap
 *deutsch: Formüberdeckung*
 
-*Proposed, not yet in the code.* The method that would replace today's Fit: how
+*In the code since 26.09.2026 (#79).* The method that computes the Fit: how
 much of a book's shape — its terms, each as strong as the model weighs it in the
 book — lies inside the reader's Taste Form, less what lies in its rejecting part;
-the best liked Story Pattern and a full Facet add to it. Deliberately
-asymmetric: a book is not expected to carry everything the reader likes.
+the Story Patterns form a second spider with the same computation, and a full
+Facet adds a bonus. What the form knows nothing about counts neither way, and a
+thin Steckbrief stays careful. Deliberately asymmetric: a book is not expected
+to carry everything the reader likes. Rejection counts per disappointing book,
+the strongest one per term (MultiNeg), at a fixed ratio to agreement (Rocchio).
 
 ### Portrayer
 *deutsch: Steckbrief-Ersteller*
@@ -604,10 +600,11 @@ shown by the strength scale.
 ### Rating Scheme
 *deutsch: Bewertungsschema*
 
-The numbers with which the code turns Facets and Liked Terms into a Fit
-(ADR 33): what a Facet hit in full weighs, what a single Liked Appeal Term or
-Story Pattern weighs (boosted or not), what a counterweight takes off, where the
-star thresholds lie, and from how many stars the Rating Gate lets a find through.
+The numbers with which the code learns the Taste Form and computes the Fit
+(ADR 33, #79): how much a term weighs in the book, how strongly a disappointing
+book rejects, how much the tapped profile weighs as a start, how a thin
+Steckbrief is smoothed, what a full Facet adds, where the star thresholds lie,
+and from how many stars the Rating Gate lets a find through.
 
 It names **no** axis of taste and would work unchanged for a different reader.
 The instructions to the old star-giving model that once stood here are gone

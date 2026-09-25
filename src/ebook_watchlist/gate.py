@@ -23,6 +23,7 @@ from .models import Delta, DeltaKind, MatchReason, Observation
 from .portrait import Portrait, PortrayalUnavailable, Vocabulary, fingerprint
 from .ratings import BY_READER, book_subject, subject_of
 from .store import Store
+from .taste_form import TasteForm
 
 
 @dataclass(slots=True)
@@ -103,6 +104,7 @@ def apply(
     budget: int,
     now: datetime,
     evidence: Callable[[list[Observation]], list[Observation]] | None = None,
+    form: TasteForm | None = None,
 ) -> tuple[list[Delta], GateReport]:
     """Entdeckungen unter dem Schwellwert aussortieren.
 
@@ -115,6 +117,9 @@ def apply(
     abzufeuern widerspräche derselben Zurückhaltung, die jede andere
     ausgehende Anfrage in diesem Projekt bindet (ADR 7). Ein vorhandener
     Steckbrief kostet nichts und zählt nicht mit.
+
+    ``form`` ist die Geschmacksform aus Profil und bewerteten Büchern; ohne
+    sie wird aus dem Profil allein geurteilt.
 
     ``evidence`` holt den ganzen Klappentext für genau die Bücher, die
     gleich beschrieben werden: die Kachel einer Trefferliste ist im Median
@@ -196,7 +201,7 @@ def apply(
             portrait = portraits.get(observation.key)
             if portrait is None and delta.kind is not DeltaKind.FIRST_SEEN:
                 portrait = store.portrait(subject_of(observation), stamp)
-            verdict = judge(portrait, profile, vocabulary, weights)
+            verdict = judge(portrait, profile, vocabulary, weights, form)
 
         if verdict is None:
             if delta.kind is DeltaKind.FIRST_SEEN:

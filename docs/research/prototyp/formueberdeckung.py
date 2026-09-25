@@ -9,26 +9,27 @@ import json
 import random
 import statistics
 import sys
+import sys as _sys
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 from sqlalchemy import select
 
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.facets import (
-    ReadingProfile,
-    _genre_matches,
-    fit,
-    is_pattern,
-)
+from ebook_watchlist.facets import ReadingProfile, genre_matches, is_pattern
 from ebook_watchlist.judging import load_judge
 from ebook_watchlist.portrait import Portrait, Trait
 from ebook_watchlist.store import PortraitRow, Store, _portrait_of
 
+_sys.path.insert(0, str(Path(__file__).parent))
+from alte_rechnung import Weights as OldWeights  # noqa: E402
+from alte_rechnung import fit  # noqa: E402
+
 store, settings = Store(paths.db_path()), load_settings()
 judge = load_judge(store, settings.slug)
-V, P6, W0 = judge.vocabulary, judge.profile, judge.weights
+V, P6, W0 = judge.vocabulary, judge.profile, OldWeights()
 random.seed(3)
 
 PAR = dict(
@@ -200,7 +201,7 @@ def verdict(portrait, form, profile):
         share = 1 - (1 - share) * (1 - PAR["beta"])
     share *= 1 - PAR["nu"] * pat_dis
     for c in form.genre_rules:
-        if all(f in fams for f in c.families) and _genre_matches(c, portrait):
+        if all(f in fams for f in c.families) and genre_matches(c, portrait):
             w = min(max(v for k, v in bt.items() if FAM.get(k, k) == f) for f in c.families)
             share *= 1 - PAR["genre_cw"] * w
     return max(0.0, min(1.0, share))

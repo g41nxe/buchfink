@@ -456,3 +456,23 @@ sind ohne sie. Die Werte in Abschnitt 10 (55 Bücher) sind davon leicht betroffe
 Kompromiss: deutlich mehr eigene Bücher als heute, Gegenproben abgewiesen, weniger
 Rauschen als die Richtungen. Offen bleiben das Rauschen (37 % gegenüber 26 %) und die
 Ablehnung, die erst mit mehr enttäuschenden Büchern prüfbar ist.
+
+## 12. Umsetzung (26.09.2026)
+
+Die einzelne Form ist im Code (`src/ebook_watchlist/taste_form.py`, Nachtrag zu
+ADR 33). Abweichungen vom Prototyp, beide nach Review:
+
+- **Ablehnung ohne Teilung durch die Zahl der enttäuschenden Bücher.** Der
+  Prototyp bildete je Merkmal das Maximum und teilte danach noch durch *m*. Ein
+  zweites enttäuschendes Buch mit denselben Merkmalen hätte die Ablehnung damit
+  halbiert. Das Maximum steht schon für ein Buch; im Code gilt λ = γ/β · *n* mit
+  γ/β = 0,2. Bei zwei enttäuschenden Büchern ist das der Prototyp mit 0,4:
+  18 von 22, Stichprobe 33 von 53, Gegenproben 4 von 5. Stärker (0,33 ohne
+  Teilung) kostete Otherland, OFFF und Die Verlorenen und hielt den Schwarm
+  trotzdem nicht.
+- **Die Familien einer Facette starten als gemocht.** Ein Profil, das nur
+  Facetten kennt, urteilt sonst gar nicht.
+
+Gegenprobe Code gegen Prototyp an den 24 bewerteten Büchern und der
+Stichprobe: höchstens 3 Prozentpunkte Unterschied, 32 gegen 33 von 53 über dem
+Tor. Die Gründe der Leserin zu einem enttäuschenden Buch fehlen im Code noch.

@@ -42,7 +42,7 @@ def test_a_book_that_carries_a_whole_facet_is_judged_high(vocabulary, weights) -
     verdict = judge(portrait(vocabulary, "brooding", "gritty"), PROFILE, vocabulary, weights)
 
     assert verdict is not None
-    assert verdict.stars >= 4 and verdict.percent >= 60
+    assert verdict.stars >= 4 and verdict.percent >= 55
     assert verdict.pitch == "Ein Buch."
     assert verdict.reasons
 

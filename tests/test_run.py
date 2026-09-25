@@ -331,7 +331,7 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     assert [o.source_item_id for o in asked] == ["neu"]
     assert store.portrait("item:beam:neu", fingerprint(vocabulary)) is not None
     out = capsys.readouterr().out
-    assert "Fund neu" in out and "Neu." in out and "51 %" in out  # zwei Muster: 0,51
+    assert "Fund neu" in out and "Neu." in out and "41 %" in out  # zwei Muster, nichts sonst
     # #69: die Zahl der Regelverstöße steht neben der Verteilung der Sterne, und
     # das Buch, das sie trägt, nennt sie.
     assert "Regelverstöße: 1 in 1 von 1 Steckbriefen" in out
