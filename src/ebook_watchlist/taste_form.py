@@ -132,8 +132,10 @@ def learn(
     reject_family: dict[str, float] = defaultdict(float)
     reject_term: dict[str, float] = defaultdict(float)
     for book in rated:
+        carried = set()
         for term, w in book.terms.items():
             f = family_of(term)
+            carried.add(f)
             if f in book.dropped:
                 continue  # das Buch war für sie nicht so (Z10)
             if book.sign > 0:
@@ -147,6 +149,8 @@ def learn(
         # Was sie selbst nennt, wiegt wie ein prägendes Merkmal; es gilt der
         # Familie, weil sie in Familien spricht, nicht in Merkmalen.
         for f in book.added:
+            if f in carried:
+                continue  # steht inzwischen im Steckbrief; zählt einmal
             if book.sign > 0:
                 agree_family[f] += weights.reader_reason
             else:
@@ -173,7 +177,10 @@ def learn(
     # Was sie selbst zu einem Buch nennt, ist eine Aussage wie ein Tipp: es
     # startet wie ein angetipptes Merkmal oder Gegengewicht.
     for book in rated:
+        carried = {family_of(t) for t in book.terms}
         for f in book.added:
+            if f in carried:
+                continue
             if book.sign > 0:
                 prior[f] = max(prior.get(f, 0.0), weights.prior_liked)
             else:
@@ -231,7 +238,10 @@ def overlap(
         if f not in form.known:
             continue  # darüber weiß die Form nichts (Z2)
         v = form.value(term, f)
-        named[f] = max(named.get(f, v), v) if v >= 0 else min(named.get(f, v), v)
+        # Die Familie heißt nach ihrem stärksten Merkmal im Buch, gleich in
+        # welcher Reihenfolge der Steckbrief sie nennt.
+        if abs(v) > abs(named.get(f, 0.0)):
+            named[f] = v
         if is_pattern(f, vocabulary):
             # Die zweite Spinne: ein Muster trägt kein Gewicht im Buch; es
             # steht nur da, wenn es die Geschichte trägt.

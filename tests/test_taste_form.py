@@ -13,7 +13,7 @@ import pytest
 from conftest import needs_vocabulary
 from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
 from ebook_watchlist.portrait import CLEAR, DEFINING, MARGINAL, Portrait, Trait, load_vocabulary
-from ebook_watchlist.taste_form import RatedBook, book_terms, learn, overlap
+from ebook_watchlist.taste_form import RatedBook, TasteForm, book_terms, learn, overlap
 
 pytestmark = needs_vocabulary
 
@@ -294,3 +294,30 @@ def test_the_reason_says_when_nothing_liked_is_touched(wort, gewichte) -> None:
 def test_the_gate_threshold_is_read_from_the_rating_scheme(gewichte) -> None:
     assert gewichte.gate_stars == 3
     assert [s for s, _ in gewichte.stars_from] == [5, 4, 3, 2]
+
+
+# --- aus dem Review (#79) -----------------------------------------------------------
+
+
+GEMISCHT = TasteForm(family={"harsh": 0.2, "brooding": 1.0},
+                     term={"violent": 0.6, "gritty": -0.5}, known=frozenset({"harsh", "brooding"}))
+
+
+@pytest.mark.parametrize("reihenfolge", [("violent", "gritty"), ("gritty", "violent")])
+def test_a_family_is_named_by_its_strongest_term(wort, gewichte, reihenfolge) -> None:
+    """Nicht nach der Reihenfolge im Steckbrief: das stärkste Merkmal entscheidet."""
+    buch = steckbrief("brooding", *reihenfolge)
+    ohne_facette = ReadingProfile(facets=(), counterweights=(), liked=GETIPPT.liked)
+    zeilen = [z.line for z in overlap(buch, ohne_facette, GEMISCHT, wort, gewichte).reasons]
+
+    assert "hart" in zeilen and "dagegen: hart" not in zeilen
+
+
+def test_an_added_family_the_book_already_carries_counts_once(wort, gewichte) -> None:
+    gemocht = gelesen("Leichenblässe", 1, THRILLER, wort, gewichte)
+    doppelt = RatedBook("Leichenblässe", 1, gemocht.terms, None, added=("brooding",))
+
+    einmal = learn(GETIPPT, (gemocht,), wort, gewichte)
+    zweimal = learn(GETIPPT, (doppelt,), wort, gewichte)
+
+    assert zweimal.family == einmal.family

@@ -10,12 +10,12 @@ Modellaufruf auf alles.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import yaml
 
+from . import reader_reasons
 from .facets import ReadingProfile, Reason, Weights, load_weights
 from .portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
 from .ratings import book_subject
@@ -176,24 +176,26 @@ def rated_books(
     in der die Buchseite ihn anlegt (``web.book.portrait_subject``).
     """
     marked = [
-        (sign, relation.book_id, _reasons(relation.details))
+        (sign, relation.book_id, reader_reasons.parse(relation.details)[1])
         for sign, kind in ((1, RelationKind.LIKED), (-1, RelationKind.DISLIKED))
         for relation in store.relations(slug, kind=str(kind))
     ]
-    books = {book_id: store.book(book_id) for _, book_id, _ in marked}
+    books = store.books_by_id([book_id for _, book_id, _ in marked])
     subjects = {
-        book_id: ([f"isbn:{b.isbn}"] if b and b.isbn else []) + [book_subject(book_id)]
+        book_id: ([f"isbn:{b.isbn}"] if b.isbn else []) + [book_subject(book_id)]
         for book_id, b in books.items()
     }
     portraits = store.portraits_for([s for ss in subjects.values() for s in ss], stamp)
     rated = []
     for sign, book_id, reasons in marked:
+        book = books.get(book_id)
+        if book is None:
+            continue
         portrait = next(
             (portraits[s] for s in subjects[book_id] if s in portraits and portraits[s].known),
             None,
         )
-        book = books[book_id]
-        if portrait is None or book is None:
+        if portrait is None:
             continue
         rated.append(
             RatedBook(
@@ -202,16 +204,7 @@ def rated_books(
                 book_terms(portrait, vocabulary, weights),
                 portrait.genre,
                 added=tuple(reasons.get("add", ())),
-                dropped=tuple(reasons.get("drop", ())) + tuple(reasons.get("here", ())),
+                dropped=reader_reasons.not_counted(reasons),
             )
         )
     return tuple(rated)
-
-
-def _reasons(details: str | None) -> dict[str, list[str]]:
-    """Was die Leserin zu dem Buch gesagt hat (``relations.REASON_KINDS``)."""
-    try:
-        reasons = json.loads(details or "{}").get("reasons") or {}
-    except (ValueError, AttributeError):
-        return {}
-    return reasons if isinstance(reasons, dict) else {}

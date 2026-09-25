@@ -417,3 +417,61 @@ def test_each_family_can_be_added_once() -> None:
     ids = [f for _, families in family_choices(load_vocabulary()) for f, _ in families]
 
     assert len(ids) == len(set(ids))
+
+
+def test_what_counts_only_here_shows_as_not_counted_and_can_be_taken_back(
+    client, db, profil
+) -> None:
+    buch(db, "Otherland", ["world_building", "intricate", "ensemble", "leisurely"])
+    b = buch(db, "Herr der Ringe", ["world_building", "sweeping", "bittersweet", "descriptive"],
+             kind="disliked")
+    client.post(f"/book/{b}/sharpen/counterweight",
+                data={"family": ["big_world"], "scope-big_world": "here"})
+
+    body = " ".join(seite(client, b).split())
+    assert 'name="drop" value="big_world" class="sr-only" checked' in body
+
+    client.post(f"/book/{b}/sharpen/reasons", data={})
+
+    assert _gruende(db, b, "disliked") == {}
+
+
+def test_a_counterweight_counts_the_family_again(client, db, profil) -> None:
+    buch(db, "Otherland", ["world_building", "intricate", "ensemble", "leisurely"])
+    b = buch(db, "Herr der Ringe", ["world_building", "sweeping", "bittersweet", "descriptive"],
+             kind="disliked")
+    client.post(f"/book/{b}/sharpen/counterweight",
+                data={"family": ["big_world"], "scope-big_world": "here"})
+
+    client.post(f"/book/{b}/sharpen/counterweight",
+                data={"family": ["big_world"], "scope-big_world": "general"})
+
+    assert _gruende(db, b, "disliked") == {}
+
+
+def test_a_stale_added_family_does_not_block_saving(client, db, profil) -> None:
+    """Steht eine ergänzte Familie inzwischen im Steckbrief, fällt sie still weg."""
+    b = buch(db, "Der Schwarm", ["intensifying", "world_building"], kind="disliked")
+    client.post(f"/book/{b}/sharpen/reasons", data={"add": ["leisurely"]})
+    buch(db, "Der Schwarm", ["intensifying", "world_building", "leisurely"], kind=None)
+
+    antwort = client.post(f"/book/{b}/sharpen/reasons", data={"add": ["leisurely"]})
+
+    assert antwort.status_code == 200
+    assert _gruende(db, b, "disliked") == {}
+
+
+def test_a_broken_bag_does_not_break_sharpening(db, profil) -> None:
+    b = buch(db, "Der Schwarm", ["intensifying", "world_building"], kind="disliked")
+    from sqlalchemy import update
+
+    from ebook_watchlist.store import BookRelationRow
+
+    with db.session() as s:
+        s.execute(update(BookRelationRow).where(BookRelationRow.book_id == b)
+                  .values(details="[]"))
+        s.commit()
+
+    from ebook_watchlist.web import sharpening
+
+    assert sharpening.build(db, load_settings(), b).dropped == frozenset()

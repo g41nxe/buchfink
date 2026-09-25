@@ -89,8 +89,9 @@
                  bg-amber/15"></span>dieses Buch</span>
   {% endif %}
   {% if unknown %}
-  <span>{{ unknown }} {{ "Merkmal" if unknown == 1 else "Merkmale" }} des Buchs kennt dein
-    Profil noch nicht — {{ "es zählt" if unknown == 1 else "sie zählen" }} nicht.</span>
+  <span>{{ unknown }} {{ "Merkmal" if unknown == 1 else "Merkmale" }} oder Muster des Buchs
+    kennt dein Profil noch nicht — {{ "es zählt" if unknown == 1 else "sie zählen" }}
+    nicht.</span>
   {% endif %}
 </p>
 {% endmacro %}

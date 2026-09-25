@@ -29,11 +29,11 @@ war.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+from .. import reader_reasons
 from ..config import Settings
 from ..facets import (
     MOST_BOOSTED,
@@ -52,7 +52,7 @@ from ..facets import (
     strength_level,
 )
 from ..portrait import VocabularyError, fingerprint, load_vocabulary
-from ..relations import REASON_KINDS, RelationKind
+from ..relations import RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait
 from .intake import Card, IntakeError, Pill, ShelfBook, defining_in, shelf_book
@@ -215,25 +215,17 @@ def family_choices(vocabulary) -> tuple[tuple[str, tuple[tuple[str, str], ...]],
     )
 
 
-def _reasons_of(store: Store, settings: Settings, book_id: int, kind: str) -> tuple[dict, dict]:
-    """Der Beutel an der Bewertung und die Gründe darin."""
-    relation = next(
-        (r for r in store.relations_of(settings.slug, book_id) if r.kind == kind and r.active),
-        None,
-    )
-    details = json.loads(relation.details or "{}") if relation is not None else {}
-    return details, dict(details.get("reasons") or {})
-
-
 def _view_of_reasons(store, settings, book_id, kind, shelf, vocabulary) -> dict:
-    _, reasons = _reasons_of(store, settings, book_id, kind)
+    _, reasons = reader_reasons.of(store, settings.slug, book_id, kind)
 
     def entry(f: str) -> Family:
         return Family(f, family_name(f, vocabulary), is_pattern(f, vocabulary))
 
     return {
         "own": tuple(entry(f) for f in shelf.families),
-        "dropped": frozenset(reasons.get("drop", ())),
+        # Was nur hier gestört hat, zählt so wenig wie was nicht stimmt: beides
+        # steht als abgewählt da und lässt sich hier zurücknehmen.
+        "dropped": frozenset(reader_reasons.not_counted(reasons)),
         "added": tuple(entry(f) for f in reasons.get("add", ())),
         "choices": tuple(
             (name, tuple((f, n) for f, n in families if f not in shelf.families))
@@ -253,9 +245,12 @@ def set_reasons(
 ) -> None:
     """Deine Sicht auf ein gelesenes Buch (#79): was nicht stimmt, was fehlte.
 
-    Ersetzt beides; was die Leserin beim Gegengewicht *nur hier* gewählt hat,
-    bleibt. Abwählen lässt sich nur, was der Steckbrief nennt; ergänzen nur,
-    was das Vokabular kennt und der Steckbrief nicht schon nennt.
+    Ersetzt beides. Was die Leserin beim Gegengewicht *nur hier* gewählt hat,
+    steht hier als abgewählt und geht in die neue Wahl auf. Abwählen lässt
+    sich nur, was der Steckbrief nennt; ergänzen nur, was das Vokabular kennt
+    und der Steckbrief nicht schon nennt. Was schon ergänzt war und inzwischen
+    im Steckbrief steht oder das Vokabular nicht mehr kennt, fällt still weg,
+    statt das Speichern zu blockieren.
     """
     kind = _kind(store, settings, book_id)
     if kind is None:
@@ -264,26 +259,21 @@ def set_reasons(
     drop = list(dict.fromkeys(f for f in drop if f))
     add = list(dict.fromkeys(f for f in add if f))
     known = {f for _, families in family_choices(vocabulary) for f, _ in families}
+    bag, reasons = reader_reasons.of(store, settings.slug, book_id, kind)
+    before = set(reasons.get("add", ()))
     for f in drop:
         if f not in shelf.families:
             raise IntakeError(f"{f} trägt dieses Buch nicht.")
-    for f in add:
+    for f in [f for f in add if f not in before]:
         if f not in known:
             raise IntakeError(f"{f} kennt das Vokabular nicht.")
         if f in shelf.families:
             raise IntakeError(f"{f} steht schon im Steckbrief.")
-    details, reasons = _reasons_of(store, settings, book_id, kind)
-    reasons.update({"drop": drop, "add": add})
-    _keep_reasons(store, settings, book_id, kind, details, reasons, now)
-
-
-def _keep_reasons(store, settings, book_id, kind, details, reasons, now) -> None:
-    kept = {k: reasons[k] for k in REASON_KINDS if reasons.get(k)}
-    if kept:
-        details["reasons"] = kept
-    else:
-        details.pop("reasons", None)
-    store.set_relation_details(settings.slug, book_id, kind, details, now=now)
+    reasons = {
+        "drop": drop,
+        "add": [f for f in add if f in known and f not in shelf.families],
+    }
+    reader_reasons.keep(store, settings.slug, book_id, kind, bag, reasons, now=now)
 
 
 def _book(store: Store, settings: Settings, book_id: int, kind: str):
@@ -387,12 +377,14 @@ def add_counterweights(
             new_weights.append(weight)
         else:
             only_here.append(f)
-    if only_here:
-        # *Nur bei diesem Buch* zählt gegen nichts — auch nicht, wenn die
-        # Geschmacksform aus dem Buch lernt (#79). Das steht an der Bewertung.
-        details, reasons = _reasons_of(store, settings, book_id, DISLIKED)
-        reasons["here"] = list(dict.fromkeys([*reasons.get("here", ()), *only_here]))
-        _keep_reasons(store, settings, book_id, DISLIKED, details, reasons, now)
+    # *Nur bei diesem Buch* zählt gegen nichts — auch nicht, wenn die
+    # Geschmacksform aus dem Buch lernt (#79). Wird eine Familie dagegen ein
+    # Gegengewicht, hat das Buch sie für sie getragen: sie zählt wieder.
+    reader_reasons.mark_only_here(store, settings.slug, book_id, DISLIKED, only_here, now=now)
+    reader_reasons.unmark(
+        store, settings.slug, book_id, DISLIKED, [f for f in scopes if f not in only_here],
+        now=now,
+    )
     counterweights, changed = merge_counterweights(profile.counterweights, new_weights)
     if not changed:
         return None

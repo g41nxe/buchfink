@@ -104,6 +104,7 @@ def _spider(
     vocabulary: Vocabulary,
     book: dict[str, float] | None = None,
     unknown: int = 0,
+    values: dict[str, float] | None = None,
 ) -> Spider | None:
     if len(chosen) < 3:
         return None
@@ -120,7 +121,7 @@ def _spider(
     chosen = sorted(chosen, key=lambda f: (dimension(f), family_name(f, vocabulary).casefold()))
     axes = []
     for i, f in enumerate(chosen):
-        value = form.family.get(f, 0.0)
+        value = (values or {}).get(f, form.family.get(f, 0.0))
         r = _radius(value)
         lx, ly = _point(i, len(chosen), RADIUS + 12)
         dx = lx - CENTER
@@ -168,15 +169,27 @@ def book_spiders(
     portrait: Portrait, form: TasteForm, vocabulary: Vocabulary, weights: Weights
 ) -> tuple[Spider | None, Spider | None]:
     """Das Buch über der Form: seine Familien zuerst, dann die stärksten der
-    Form, bis die Spinne voll ist — so sieht man auch, was dem Buch fehlt."""
+    Form, bis die Spinne voll ist — so sieht man auch, was dem Buch fehlt.
+
+    Wo das Buch eine Familie trägt, zeigt die Achse den Wert, mit dem das
+    Urteil gerechnet hat: den seines stärksten Merkmals, nicht den der
+    Familie. Sonst stünde eine Familie außen, die die Begründung darüber
+    „dagegen" nennt.
+    """
     carried: dict[str, float] = {}
+    values: dict[str, float] = {}
     for term, w in book_terms(portrait, vocabulary, weights).items():
         f = vocabulary.family_of(term).id
         carried[f] = max(carried.get(f, 0.0), w)
+        if f in form.known:
+            v = form.value(term, f)
+            if abs(v) >= abs(values.get(f, 0.0)):
+                values[f] = v
     spiders = []
     for patterns, title in ((False, "Merkmale"), (True, "Erzählmuster")):
         own = [f for f in carried if is_pattern(f, vocabulary) == patterns]
-        known = [f for f in own if f in form.known]
+        # Was im Buch am stärksten wiegt, bekommt zuerst eine Achse.
+        known = sorted((f for f in own if f in form.known), key=lambda f: -carried[f])
         chosen = known[:MOST_AXES]
         for f in _strongest(form, vocabulary, patterns):
             if len(chosen) >= MOST_AXES:
@@ -184,6 +197,16 @@ def book_spiders(
             if f not in chosen:
                 chosen.append(f)
         spiders.append(
-            _spider(title, chosen, form, vocabulary, carried, unknown=len(own) - len(known))
+            _spider(
+                title, chosen, form, vocabulary, carried, len(own) - len(known), values
+            )
         )
     return spiders[0], spiders[1]
+
+
+def unknown_families(
+    portrait: Portrait, form: TasteForm, vocabulary: Vocabulary, weights: Weights
+) -> int:
+    """Wie viele Familien des Buchs die Form nicht kennt — Merkmale und Muster."""
+    families = {vocabulary.family_of(t).id for t in book_terms(portrait, vocabulary, weights)}
+    return len(families - form.known)

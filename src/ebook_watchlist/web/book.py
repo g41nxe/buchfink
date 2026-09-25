@@ -43,7 +43,7 @@ from ..reasons import short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sources import build_sources, registry
 from ..store import Store
-from .spider import Spider, book_spiders
+from .spider import Spider, book_spiders, unknown_families
 from .watchlist import SourceState
 
 #: Die Reihenfolge, in der Urteile auf der Seite stehen: was ein Mensch gesagt
@@ -331,6 +331,8 @@ class FitView:
     reasons: tuple[Reason, ...]
     #: Das Buch über der Geschmacksform, Merkmale und Erzählmuster (#79).
     spiders: tuple[Spider, ...] = ()
+    #: Wie viele Familien des Buchs die Form nicht kennt: sie zählen nicht.
+    unknown: int = 0
 
 
 def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
@@ -356,6 +358,11 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
         version=judge.profile.version,
         reasons=verdict.reasons,
         spiders=tuple(s for s in spiders if s is not None),
+        unknown=(
+            unknown_families(portrait, judge.form, judge.vocabulary, judge.weights)
+            if judge.form is not None
+            else 0
+        ),
     )
 
 

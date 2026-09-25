@@ -118,3 +118,28 @@ def test_the_profile_page_draws_the_form(data_dir) -> None:
 
     assert 'data-spider="Merkmale"' in body and 'data-spider="Erzählmuster"' in body
     assert "egal — innen" in body
+
+
+def test_the_book_spider_shows_the_value_the_verdict_used(wort, gewichte) -> None:
+    """Die Spinne zeigt je Achse, womit das Urteil gerechnet hat: den Wert des
+    Merkmals, das das Buch trägt — nicht den seiner Familie."""
+    from ebook_watchlist.taste_form import TasteForm
+
+    form = TasteForm(family={"harsh": 0.2, "brooding": 1.0, "menacing": 0.8},
+                     term={"gritty": -0.5}, known=frozenset({"harsh", "brooding", "menacing"}))
+    buch = Portrait(known=True, fingerprint="x", traits=(Trait("gritty", "S.", "wissen"),))
+
+    merkmale, _ = book_spiders(buch, form, wort, gewichte)
+
+    assert {a.family_id: a.value for a in merkmale.axes}["harsh"] == -0.5
+
+
+def test_unknown_families_are_counted_over_both_spiders(wort, gewichte) -> None:
+    from ebook_watchlist.web.spider import unknown_families
+
+    buch = Portrait(known=True, fingerprint="x", traits=(
+        Trait("gritty", "S.", "wissen"), Trait("lyrical", "S.", "wissen"),
+        Trait("revenge", "S.", "wissen"),
+    ))
+
+    assert unknown_families(buch, form(wort, gewichte), wort, gewichte) == 2

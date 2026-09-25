@@ -578,3 +578,18 @@ def test_the_profile_screen_confirms_and_summarises_without_choices(client, buec
     assert "Zählt gegen ein Buch" in body and "gemächlich" in body
     assert "hart" in body
     assert "Übernehmen" in body
+
+
+def test_only_here_in_the_intake_keeps_the_family_out_of_the_form(client, db, buecher) -> None:
+    """Dieselbe Antwort, dieselbe Wirkung wie beim Nachschärfen (#79): *nur hier*
+    zählt gegen nichts — auch nicht, wenn die Geschmacksform aus dem Buch lernt."""
+    import json
+
+    tippen(client, "harsh")
+    tippen(client, "big_world", seite="lost", schritt=4)  # voreingestellt: nur hier
+
+    client.post("/intake/profile", data={})
+
+    (rel,) = [r for r in db.relations_of(load_settings().slug, buecher["H"])
+              if r.kind == "disliked"]
+    assert json.loads(rel.details)["reasons"] == {"here": ["big_world"]}

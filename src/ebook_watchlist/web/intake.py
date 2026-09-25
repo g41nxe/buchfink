@@ -24,6 +24,7 @@ from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 
+from .. import reader_reasons
 from ..config import Settings
 from ..facets import (
     GENERAL,
@@ -413,6 +414,10 @@ class Draft:
     weights: tuple[WeightCard, ...]
     #: Nur bei einem enttäuschenden Buch gestört — zählt nicht, steht aber da.
     only_here: tuple[str, ...]
+    #: Dasselbe als Familie und die Bücher, an denen es gilt: die Übernahme
+    #: schreibt es an ihre Bewertung, damit die Geschmacksform es nicht lernt
+    #: (#79) — wie beim Nachschärfen.
+    here: tuple[tuple[str, tuple[int, ...]], ...] = ()
 
     @property
     def empty(self) -> bool:
@@ -621,7 +626,7 @@ def _draft(vocabulary, liked, loved_carriers, lost_carriers, lost_scopes) -> Dra
         for f in facets
     )
 
-    new_weights, only_here = [], []
+    new_weights, only_here, here = [], [], []
     for f, scope in lost_scopes.items():
         carriers = lost_carriers.get(f)
         if not carriers:
@@ -637,6 +642,7 @@ def _draft(vocabulary, liked, loved_carriers, lost_carriers, lost_scopes) -> Dra
             weight = None
         if weight is None:
             only_here.append(family_name(f, vocabulary))
+            here.append((f, tuple(b.book_id for b in carriers)))
         else:
             new_weights.append(replace(weight, books=tuple(b.title for b in carriers)))
     weights, _ = merge_counterweights((), new_weights)
@@ -655,6 +661,7 @@ def _draft(vocabulary, liked, loved_carriers, lost_carriers, lost_scopes) -> Dra
         facets=facet_cards,
         weights=weight_cards,
         only_here=tuple(only_here),
+        here=tuple(here),
     )
 
 
@@ -715,6 +722,11 @@ def adopt(store: Store, settings: Settings, *, now: datetime) -> int | None:
     if not state.liked and not counterweights:
         store.reset_intake(settings.slug)
         return None
+    for family, book_ids in state.draft.here:
+        for book_id in book_ids:
+            reader_reasons.mark_only_here(
+                store, settings.slug, book_id, str(RelationKind.DISLIKED), (family,), now=now
+            )
     return store.put_reading_profile(
         settings.slug, ReadingProfile(facets, counterweights, state.liked),
         cause="Erstaufnahme", now=now
