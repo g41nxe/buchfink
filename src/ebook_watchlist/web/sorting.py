@@ -118,6 +118,20 @@ SUGGESTIONS: tuple[Order, ...] = (
 )
 
 
+OWNED: tuple[Order, ...] = (
+    # Meine Bücher (#71): ein Bestand, keine Aufgabe — also alphabetisch zuerst,
+    # und hier ist der Titel eine eigene Wahl, weil er die Voreinstellung ist.
+    Order("titel", "Titel A–Z", lambda book: (_title(book),)),
+    Order("autor", "Autor:in A–Z", lambda book: ((book.author or "").casefold(), _title(book))),
+    Order("neu", "zuletzt vermerkt", lambda book: (_newest_first(book.since), _title(book))),
+    Order(
+        "sterne",
+        "beste Übereinstimmung zuerst",
+        lambda book: (book.percent is None, -(book.percent or 0), _title(book)),
+    ),
+)
+
+
 def resolve(orders: tuple[Order, ...], slug: str | None) -> Order:
     """Der gemeinte Schlüssel — die Voreinstellung, wenn die Adresse Unsinn nennt.
 

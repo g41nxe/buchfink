@@ -149,6 +149,12 @@
   {% for shelf in view.counts %}
   {% if shelf.count %}
   <div x-show="offen === '{{ shelf.kind }}'" x-cloak class="pt-3">
+    {% if shelf.kind == "owned" %}
+    {# Die ganze Liste mit Titelbild, Suche und Sortierung (#71). #}
+    <p class="mb-2 text-right text-xs"><a href="/owned"
+       class="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent"
+       >Meine Bücher — alle ansehen</a></p>
+    {% endif %}
     <ul class="divide-y divide-hair">
       {% for book in shelf.books %}
       <li class="flex items-baseline justify-between gap-3 py-1.5">

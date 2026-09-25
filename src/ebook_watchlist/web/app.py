@@ -40,6 +40,7 @@ from . import (
     discovery,
     home,
     intake,
+    owned,
     profile_page,
     sharpening,
     sorting,
@@ -1136,6 +1137,33 @@ def create_app() -> FastAPI:
             _store_for(paths.db_path()), load_settings(), key, kind, now=datetime.now()
         )
         return RedirectResponse("/" if back == "/" else "/suggestions", status_code=303)
+
+    # --- Meine Bücher (#71) --------------------------------------------------
+
+    @app.get("/owned", response_class=HTMLResponse)
+    def owned_page(request: Request, sortiert: str = "") -> HTMLResponse:
+        """Alles, was die Leserin als *Hab ich* führt — nur zum Ansehen."""
+        try:
+            settings = load_settings()
+        except ConfigError as exc:
+            return TEMPLATES.TemplateResponse(
+                request,
+                "error.html",
+                {"message": str(exc), "asset_version": asset_version()},
+                status_code=500,
+            )
+        order, _ = sorting.chosen(sorting.OWNED, sortiert)
+        return TEMPLATES.TemplateResponse(
+            request,
+            "owned.html",
+            {
+                "settings": settings,
+                "asset_version": asset_version(),
+                "books": owned.build(_store_for(paths.db_path()), settings, order.slug),
+                "orders": sorting.OWNED,
+                "sort": order.slug,
+            },
+        )
 
     # --- Profiluebersicht (Ticket 09) ---------------------------------------
 

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Meine Bücher — Buchfink{% endblock %}
+
+{# Meine Bücher (#71): alles, was die Leserin als *Hab ich* führt. Ein
+   Bestand, keine Aufgabe — kein Knopf in der Zeile, jede führt auf ihre
+   Buchseite, und dort wird *Hab ich* gesetzt oder zurückgenommen.
+
+   Die Suche filtert in der Seite (Alpine, ADR 20): eine Liste von ein paar
+   Dutzend Büchern braucht keinen Weg zum Server. Sortiert wird über die
+   Adresse wie in Watchlist und Stapel. #}
+{% from "_cover.html" import cover %}
+{% from "_sort_select.html" import sort_select %}
+
+{% block content %}
+<header class="mb-6">
+  <h1 class="font-serif text-3xl font-semibold text-ink">Meine Bücher</h1>
+  <p class="mt-1 max-w-prose text-sm text-soft">Was du als <strong class="text-ink">Hab ich</strong>
+    vermerkt hast. Gesetzt und zurückgenommen wird das auf der Buchseite.</p>
+</header>
+
+{% if not books %}
+<p class="py-2 text-sm italic text-soft">Noch kein Buch als „Hab ich“ vermerkt.</p>
+{% else %}
+<div x-data="{ query: '',
+              hit(el) { return el.dataset.search.includes(this.query.toLowerCase()); },
+              count() { return [...this.$root.querySelectorAll('li[data-search]')]
+                                 .filter(el => this.hit(el)).length; } }">
+  <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
+    <label class="flex w-full items-center gap-2 sm:w-64">
+      <svg class="i shrink-0 text-soft"><use href="#ic-search"/></svg>
+      <span class="sr-only">In meinen Büchern suchen</span>
+      <input type="search" x-model="query" placeholder="Titel, Autor:in, Reihe"
+             class="h-9 w-full rounded border border-rule bg-paper px-2 text-sm text-ink
+                    placeholder:text-soft">
+    </label>
+    {{ sort_select(orders, sort, "/owned") }}
+    <span class="ml-auto text-xs text-soft">{{ books | length }} Bücher</span>
+  </div>
+
+  <ul class="divide-y divide-hair">
+    {% for b in books %}
+    <li data-search="{{ b.search }}"
+        x-show="!query || hit($el)">
+      <a href="/book/{{ b.book_id }}" class="flex items-center gap-3 py-2.5 hover:bg-hair/40">
+        {{ cover(b.title, b.cover_file) }}
+        <span class="min-w-0 flex-1">
+          <span class="block truncate font-serif text-base text-ink">{{ b.title }}</span>
+          <span class="block truncate text-xs text-soft">{{ b.author or "unbekannt" }}{% if b.series %}
+            · {{ b.series }}{% endif %}</span>
+        </span>
+        {% if b.stars is not none %}
+        <span class="flex shrink-0 items-center gap-0.5 text-gold"
+              aria-label="deine Sterne: {{ b.stars }} von 5" title="deine Sterne">
+          {% for value in range(1, 6) %}
+          <svg class="i" {% if value <= b.stars %}style="fill:currentColor"{% endif %}>
+            <use href="#ic-star"/></svg>
+          {% endfor %}
+        </span>
+        {% elif b.percent is not none %}
+        <span class="shrink-0 rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft"
+              title="Übereinstimmung mit deinem Leseprofil, {{ b.fit_stars }} von 5"
+              >{{ b.percent }}&nbsp;%</span>
+        {% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  <p x-show="query && !count()" x-cloak class="py-2 text-sm italic text-soft">Nichts gefunden.</p>
+</div>
+{% endif %}
+{% endblock %}
