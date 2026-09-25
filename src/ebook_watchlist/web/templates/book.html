@@ -224,15 +224,15 @@
   <span class="font-serif italic text-ink">{{ portrait.original_title }}</span>{% endif %}
 </p>
 {% if portrait.pitch %}
-<p class="mt-2 max-w-prose font-serif text-ink">{{ portrait.pitch }}</p>
+<p class="mt-2 max-w-prose text-sm leading-relaxed text-ink">{{ portrait.pitch }}</p>
 {% endif %}
 <dl class="mt-4 space-y-3">
   {% for family in portrait.families %}
   <div>
     <dt class="text-sm font-semibold text-ink">{{ family.name }}</dt>
     {% for trait in family.traits %}
-    <dd class="mt-1 max-w-prose text-sm text-soft" title="beruht auf: {{ trait.evidence }}">
-      {% if trait.name != family.name %}<span class="text-ink">{{ trait.name }}:</span>
+    <dd class="mt-1 max-w-prose text-sm leading-relaxed text-soft" title="beruht auf: {{ trait.evidence }}">
+      {% if trait.name != family.name %}<span class="font-medium text-ink">{{ trait.name }}:</span>
       {% endif %}{{ trait.sentence }}</dd>
     {% endfor %}
   </div>
@@ -248,8 +248,8 @@
   <div>
     <dt class="text-sm font-semibold text-ink">{{ family.name }}</dt>
     {% for trait in family.traits %}
-    <dd class="mt-1 max-w-prose text-sm text-soft" title="beruht auf: {{ trait.evidence }}">
-      {% if trait.name != family.name %}<span class="text-ink">{{ trait.name }}:</span>
+    <dd class="mt-1 max-w-prose text-sm leading-relaxed text-soft" title="beruht auf: {{ trait.evidence }}">
+      {% if trait.name != family.name %}<span class="font-medium text-ink">{{ trait.name }}:</span>
       {% endif %}{{ trait.sentence }}</dd>
     {% endfor %}
   </div>
