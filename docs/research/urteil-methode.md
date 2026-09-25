@@ -293,3 +293,40 @@ jede ohne Modellaufruf außer der ersten:
 
 Der größte Hebel ist aber kein Verfahren, sondern Daten: die acht gemochten Bücher ohne
 Steckbrief beschreiben lassen (ein Bündel), denn die Form lernt heute aus sieben.
+
+## 9. Mit frischen Steckbriefen: der Geschmack hat mehrere Richtungen (25.09.2026, spät)
+
+Die 17 Bücher der Leserin sind mit der aktuellen Anweisung neu beschrieben (drei
+Bündel; die Reihen durch ihren ersten Band). Vier kamen als *unbekannt* zurück, ohne
+Klappentext: *Cry Baby*, *Cupido*, *Leopard* (im Bündel, früher bekannt), *OFFF*.
+*Cry Baby* und *Sharp Objects* sind dasselbe Buch und zählen beim Lernen doppelt.
+
+**Befund.** Mit den frischen Steckbriefen erkennen weder die heutige Rechnung noch die
+Methode vier gemochte Bücher ohne sich selbst: *Yendi* 19 %, *Otherland* 13 %,
+*Achtsam morden* 31 %, *Auslöschung* 32 % (Methode mit γ/β = 0,33 und Maximum je Buch).
+Der Grund liegt nicht in der Rechnung, sondern im Geschmack: er hat **mehrere
+Richtungen**, und eine einzige gemittelte Form (Rocchio) liegt zwischen ihnen.
+
+Welches andere gemochte Buch einem Buch am ähnlichsten ist (Anteil geteilter Merkmale):
+
+| Richtung | Bücher | ähnlich untereinander |
+|---|---|---|
+| düster, hart, spannend | Leichenblässe, Die Verlorenen, Der Kruzifix-Killer, Sharp Objects, David Hunter, The Circle | 34 bis 100 % |
+| große Welten, große Ideen | Otherland, Auslöschung, Yendi | 29 bis 45 % |
+| warmherzig, schräg, witzig | Das Rosie-Projekt, Achtsam morden | 38 bis 41 % |
+
+Dazu ein Widerspruch, den eine Form nicht auflöst: *große Welt* und *großes Ensemble*
+tragen **Otherland** und **Auslöschung** (gemocht) ebenso wie **Der Schwarm**
+(enttäuschend). Abgelehnt ist nicht das Merkmal, sondern die Kombination beim Schwarm:
+große Welt, Ensemble, gemächlich, ohne Spannung.
+
+**Was daraus folgt.** Die Form muss mehrere Richtungen kennen. Ein Buch wird gegen die
+Richtung gemessen, die am besten zu ihm passt (das Maximum, wie MultiNeg auf der
+Seite der Ablehnung), und eine Ablehnung kann eine Kombination sein. Das ist der
+Gedanke der Facetten, von der anderen Seite: Facetten sind Kombinationen, die mehrere
+geliebte Bücher teilen; Richtungen sind Gruppen von Büchern, die einander ähneln.
+Die Literatur stützt das nur mittelbar (MultiNeg für Ablehnung, Nachbarverfahren; 3.5
+der Recherche, wo Nachbarn als alleiniges Urteil schwach abschnitten, bei vielen
+Textmerkmalen). Nächster Schritt: Richtungen als Prototyp (Gruppen aus den Büchern
+bilden, je Gruppe eine Form, das Maximum zählt), am selben Prüfstand, ohne
+Modellaufruf.
