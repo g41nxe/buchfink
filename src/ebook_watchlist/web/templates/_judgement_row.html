@@ -16,7 +16,7 @@
     {% endfor %}
   </span>
   <span class="text-sm tabular-nums text-soft">
-    <span class="font-semibold text-ink">{{ judgement.stars | sterne }}</span>&nbsp;/&nbsp;5</span>
+    <span class="font-semibold text-ink">{{ judgement.stars | stars }}</span>&nbsp;/&nbsp;5</span>
   {# Auf wie vielen Stimmen die Angabe ruht — nur fremde Urteile bringen das
      mit, und dort ist es die halbe Auskunft. #}
   {% if judgement.votes %}

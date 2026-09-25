@@ -55,7 +55,7 @@
 {% if reason %}<input type="hidden" name="anlass" value="{{ reason }}">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
-  {{ pill("alle", url=links["alle"], active=not reason) }}
+  {{ pill("alle", url=links["all"], active=not reason) }}
   {{ pill("Autor:innen", url=links["profile_author"],
           active=reason == "profile_author") }}
   {{ pill("Themen", url=links["genre_category"],
@@ -127,9 +127,9 @@
        (ADR 24). Nennt der Name die Baende, stehen sie dabei — sonst nur die
        Tatsache, denn geraten wird hier nichts. #}
     <span class="ml-1 rounded bg-amber/15 px-1.5 py-0.5 text-xs font-medium text-amber"
-          title="{% if item.baende %}Enthält: {{ item.baende | join(', ') }}
+          title="{% if item.volumes %}Enthält: {{ item.volumes | join(', ') }}
                  {% else %}Mehrere Bände in einer Ausgabe{% endif %}">
-      {% if item.baende %}{{ item.baende | length }} Bände{% else %}Sammelausgabe{% endif %}</span>
+      {% if item.volumes %}{{ item.volumes | length }} Bände{% else %}Sammelausgabe{% endif %}</span>
     {% endif %}
     {% endset %}
 

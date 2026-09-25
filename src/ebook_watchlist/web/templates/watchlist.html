@@ -59,14 +59,14 @@
     {{ open_choices }}
     {%- if open_choices == 1 %} Zuordnung braucht{% else %} Zuordnungen brauchen{% endif %}
     deine Entscheidung</span>
-  <a href="{{ links.alle if only_unsure else links.unklar }}"
+  <a href="{{ links.all if only_unsure else links.unsure }}"
      class="ml-auto tun inline-flex h-7 items-center rounded border border-rule bg-card px-2.5 text-xs font-medium
             hover:border-accent hover:text-accent">
     {{ 'alle zeigen' if only_unsure else 'nur diese zeigen' }}</a>
 </div>
 {% elif only_unsure %}
 <p class="mb-4 rounded-lg border border-rule bg-card px-3 py-2 text-sm text-soft">
-  Nichts offen — <a href="{{ links.alle }}" class="text-accent underline">alle zeigen</a>.</p>
+  Nichts offen — <a href="{{ links.all }}" class="text-accent underline">alle zeigen</a>.</p>
 {% endif %}
 
 {% if not entries %}

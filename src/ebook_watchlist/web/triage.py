@@ -101,7 +101,7 @@ class Suggestion:
         return looks_like_bundle(self.title)
 
     @property
-    def baende(self) -> tuple[str, ...]:
+    def volumes(self) -> tuple[str, ...]:
         """Die Bandtitel, wenn der Name sie nennt — sonst leer."""
         return volume_titles(self.title)
 
@@ -166,14 +166,14 @@ class Pile:
         schon der vierte — im leeren Stapel hing die ganze Zeile an zweien von
         ihnen, und "in anderen Sprachen" stand dort gar nicht.
         """
-        paare = (
+        pairs = (
             (self.hidden_junk, "Sammelbände und Gratistitel"),
             (self.hidden_priced, "weder Schnäppchen noch ausleihbar"),
             (self.hidden_weak, self._below_threshold),
             (self.hidden_language, "in anderen Sprachen"),
             (self.hidden_ai, "KI-erzeugt"),
         )
-        return tuple((zahl, wort) for zahl, wort in paare if zahl)
+        return tuple((count, word) for count, word in pairs if count)
 
 
 def _cover_file(observation: Observation, covers: CoverStore | None = None) -> str | None:
@@ -194,8 +194,8 @@ def _cover_file(observation: Observation, covers: CoverStore | None = None) -> s
     if not observation.cover_url:
         return None
     name = file_name(observation.cover_url)
-    ordner = covers if covers is not None else CoverStore(paths.covers_dir())
-    return name if ordner.has(name) else None
+    folder = covers if covers is not None else CoverStore(paths.covers_dir())
+    return name if folder.has(name) else None
 
 
 def _suggestion(
@@ -256,12 +256,12 @@ def pending(
     # Der Buendelvorteil braucht die Preise *anderer* Buecher (ADR 24).
     # Eine Stelle rechnet den Buendelvorteil aus — dieselbe, die der
     # Tagesbericht benutzt (ADR 24).
-    buendelvorteil = advantage_finder(store, settings)
+    find_advantage = advantage_finder(store, settings)
     # Einmal fuer die ganze Seite: der Ordner der Titelbilder wird sonst je
     # Zeile neu aufgeloest.
     covers = CoverStore(paths.covers_dir())
-    sprache_von = language_finder(store)
-    ki_autoren = ai_authors(store)
+    language_of = language_finder(store)
+    ai_author_names = ai_authors(store)
 
     items: list[Suggestion] = []
     hidden_junk = 0
@@ -279,19 +279,19 @@ def pending(
             continue
         # Vor der Preisregel und vor dem Urteil: ein Fund in fremder Sprache
         # ist kein Kandidat, gleich was er kostet oder wie er bewertet wurde.
-        if is_foreign(observation, settings, sprache_von):
+        if is_foreign(observation, settings, language_of):
             hidden_language += 1
             continue
         # Aus demselben Grund und an derselben Stelle: wer seine Texte von
         # einer Maschine schreiben laesst, ist kein Kandidat (#31).
-        if is_ai_authored(observation, ki_autoren):
+        if is_ai_authored(observation, ai_author_names):
             hidden_ai += 1
             continue
         # Dieselbe Regel wie im Digest, aus einer Stelle: was dich nie
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
         # weder eine Anfrage für den Klappentext noch ein Urteil.
-        vorteil = buendelvorteil(observation)
-        if not worth_announcing(observation, settings, bundle_advantage=vorteil):
+        advantage = find_advantage(observation)
+        if not worth_announcing(observation, settings, bundle_advantage=advantage):
             hidden_priced += 1
             continue
         # Dieselbe Schwelle wie im Digest: was das Tor zurückhält, ist keine
@@ -304,17 +304,17 @@ def pending(
         if reason and str(observation.match_reason) != reason:
             continue
         items.append(
-            _suggestion(observation, settings, verdict, vorteil, covers)
+            _suggestion(observation, settings, verdict, advantage, covers)
         )
 
     # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
     # ersten fuenfzig einer zufaelligen Reihe, nur huebsch geordnet.
     # Voreingestellt steht das Beste oben und Unbewertetes am Ende — es ist
     # keine Empfehlung, sondern eine offene Frage (#37).
-    geordnet = sorting.apply(sorting.SUGGESTIONS, items, sort)
+    ordered = sorting.apply(sorting.SUGGESTIONS, items, sort)
 
     return Pile(
-        items=tuple(geordnet[:limit]),
+        items=tuple(ordered[:limit]),
         total=len(items),
         hidden_junk=hidden_junk,
         hidden_priced=hidden_priced,
@@ -386,8 +386,8 @@ def decide(
         # ein Fund beim Uebergang zur Watchlist sein Bild: der Stapel rechnet
         # den Dateinamen aus der Adresse aus, die Watchlist-Zeile fragt die
         # `book`-Zeile — und die kannte ihn nicht.
-        bild = _cover_file(observation)
-        if bild and not book.cover_file:
-            store.set_cover(book.id, bild)
+        cover = _cover_file(observation)
+        if cover and not book.cover_file:
+            store.set_cover(book.id, cover)
         decided += 1
     return decided

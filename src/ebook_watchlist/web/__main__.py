@@ -23,7 +23,7 @@ DEFAULT_HOST = "0.0.0.0"  # noqa: S104 - deliberate, see above
 DEFAULT_PORT = 8437
 
 
-def _sichere_ausgabe() -> None:
+def _safe_output() -> None:
     """Eine Ausgabe, auf die sich schreiben laesst — notfalls eine Datei.
 
     Im Autostart laeuft die Oberflaeche unter ``pythonw.exe``, damit kein
@@ -42,8 +42,8 @@ def _sichere_ausgabe() -> None:
         sys.stderr.flush()
     except (AttributeError, OSError, ValueError):
         paths.data_dir().mkdir(parents=True, exist_ok=True)
-        ziel = (paths.data_dir() / "web.log").open("a", buffering=1, encoding="utf-8")
-        sys.stdout = sys.stderr = ziel
+        target = (paths.data_dir() / "web.log").open("a", buffering=1, encoding="utf-8")
+        sys.stdout = sys.stderr = target
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -61,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.data_dir is not None:
         os.environ["EBW_DATA_DIR"] = str(args.data_dir)
 
-    _sichere_ausgabe()
+    _safe_output()
     print(f"data:  {paths.data_dir()}", file=sys.stderr)
     print(f"serve: http://{args.host}:{args.port}/", file=sys.stderr)
     uvicorn.run(

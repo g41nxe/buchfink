@@ -189,9 +189,9 @@ def build(store: Store, settings: Settings) -> Overview:
             kind=kind,
             label=label,
             books=tuple(
-                Held(book_id=buch.id, title=buch.title, author=buch.author)
+                Held(book_id=book.id, title=book.title, author=book.author)
                 for row in store.relations(settings.slug, kind=kind)
-                if (buch := store.book(row.book_id)) is not None
+                if (book := store.book(row.book_id)) is not None
             ),
         )
         for kind, label in _RELATION_LABELS

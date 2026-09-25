@@ -63,8 +63,8 @@ def _link(path: str, **params: str) -> str:
 
     Hier und nicht in der Vorlage: die rechnet nichts.
     """
-    gesetzt = {name: wert for name, wert in params.items() if wert}
-    return f"{path}?{urlencode(gesetzt)}" if gesetzt else path
+    given = {name: value for name, value in params.items() if value}
+    return f"{path}?{urlencode(given)}" if given else path
 
 
 def asset_version() -> str:
@@ -100,7 +100,7 @@ def _sum_chars(text: str) -> int:
     return sum(ord(char) for char in text or "")
 
 
-def _sterne(value: float | None) -> str:
+def _stars(value: float | None) -> str:
     """Sterne so schreiben, wie man sie sagt.
 
     Die Spalte traegt seit Ticket 54 Nachkommastellen, weil fremde Stimmen sie
@@ -113,7 +113,7 @@ def _sterne(value: float | None) -> str:
 
 
 TEMPLATES.env.filters["sum_chars"] = _sum_chars
-TEMPLATES.env.filters["sterne"] = _sterne
+TEMPLATES.env.filters["stars"] = _stars
 
 #: Digest files are named by the Run that wrote them. Serving anything else
 #: from the data directory would turn a read-only page into a file browser.
@@ -145,11 +145,11 @@ class DigestFile:
         Datum des Berichts. Zwei aehnlich aussehende Daten, von denen nur eines
         jemanden interessiert. Die Dateizeit ist jetzt weg.
         """
-        stempel = self.name[len("digest-") : -len(".html")]
+        stamp = self.name[len("digest-") : -len(".html")]
         try:
-            if len(stempel) > len("2026-09-08"):
-                return f"{datetime.strptime(stempel, '%Y-%m-%d-%H%M'):%d.%m.%Y %H:%M}"
-            return f"{datetime.strptime(stempel, '%Y-%m-%d'):%d.%m.%Y}"
+            if len(stamp) > len("2026-09-08"):
+                return f"{datetime.strptime(stamp, '%Y-%m-%d-%H%M'):%d.%m.%Y %H:%M}"
+            return f"{datetime.strptime(stamp, '%Y-%m-%d'):%d.%m.%Y}"
         except ValueError:  # pragma: no cover - DIGEST_NAME laesst nichts anderes durch
             return self.name
 
@@ -413,8 +413,8 @@ def create_app() -> FastAPI:
                 "orders": sorting.WATCHLIST,
                 "sort": order.slug,
                 "links": {
-                    "alle": _link("/watchlist", sortiert=chosen),
-                    "unklar": _link("/watchlist", nur="unklar", sortiert=chosen),
+                    "all": _link("/watchlist", sortiert=chosen),
+                    "unsure": _link("/watchlist", nur="unklar", sortiert=chosen),
                 },
             },
         )
@@ -512,16 +512,16 @@ def create_app() -> FastAPI:
         vorbei sein.
         """
         rechecker.start(book_id)
-        return _zeile(request, book_id, back=back)
+        return _entry_row(request, book_id, back=back)
 
     @app.get("/watchlist/{book_id}/recheck")
     def watchlist_recheck_status(
         request: Request, book_id: int, back: str = "/watchlist"
     ) -> HTMLResponse:
         """Dasselbe Fragment, das der POST liefert — htmx fragt hier nach."""
-        return _zeile(request, book_id, back=back)
+        return _entry_row(request, book_id, back=back)
 
-    def _zeile(request: Request, book_id: int, back: str = "/watchlist") -> HTMLResponse:
+    def _entry_row(request: Request, book_id: int, back: str = "/watchlist") -> HTMLResponse:
         """Die eine Zeile, frisch gelesen, mit dem Stand ihres engen Laufs.
 
         Beide Routen liefern genau dieses Fragment, damit Knopf und Anzeige
@@ -658,7 +658,7 @@ def create_app() -> FastAPI:
         store = _store_for(paths.db_path())
         settings = load_settings()
         kind = str(RelationKind.WATCHING)
-        vorhanden = next(
+        existing = next(
             (
                 relation
                 for relation in store.relations_of(settings.slug, book_id)
@@ -666,7 +666,7 @@ def create_app() -> FastAPI:
             ),
             None,
         )
-        details = json.loads(vorhanden.details or "{}") if vorhanden else {}
+        details = json.loads(existing.details or "{}") if existing else {}
         details["known_missing"] = title
         store.set_relation_details(settings.slug, book_id, kind, details, now=datetime.now())
         return RedirectResponse("/watchlist", status_code=303)
@@ -790,14 +790,14 @@ def create_app() -> FastAPI:
         oder eine Zuordnung bestaetigt hat, steht auf der Buchseite.
         """
         rechecker.start(book_id)
-        return _buch_stand(request, book_id)
+        return _book_status(request, book_id)
 
     @app.get("/book/{book_id}/recheck")
     def book_recheck_status(request: Request, book_id: int) -> HTMLResponse:
         """Dasselbe Fragment, das der POST liefert — htmx fragt hier nach."""
-        return _buch_stand(request, book_id)
+        return _book_status(request, book_id)
 
-    def _buch_stand(request: Request, book_id: int) -> HTMLResponse:
+    def _book_status(request: Request, book_id: int) -> HTMLResponse:
         settings = load_settings()
         page = book.build(_store_for(paths.db_path()), settings, book_id)
         if page is None:
@@ -838,9 +838,9 @@ def create_app() -> FastAPI:
 
     # --- Nachschärfen (#51) --------------------------------------------------
 
-    def _sharpen(book_id: int, tun) -> RedirectResponse:
+    def _sharpen(book_id: int, action) -> RedirectResponse:
         try:
-            tun(_store_for(paths.db_path()), load_settings())
+            action(_store_for(paths.db_path()), load_settings())
         except intake.IntakeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return RedirectResponse(f"/book/{book_id}#sharpening", status_code=303)
@@ -869,14 +869,14 @@ def create_app() -> FastAPI:
         vorher niemand kennt. Die Arbeit selbst läuft im Threadpool wie in jeder
         anderen Route — sonst hielte der Zugriff auf SQLite alle Anfragen an.
         """
-        formular = await request.form()
-        umfaenge = {
-            str(f): str(formular.get(f"scope-{f}") or GENERAL)
-            for f in formular.getlist("family")
+        form_data = await request.form()
+        scopes = {
+            str(f): str(form_data.get(f"scope-{f}") or GENERAL)
+            for f in form_data.getlist("family")
         }
         return await run_in_threadpool(
             _sharpen, book_id, lambda store, settings: sharpening.add_counterweights(
-                store, settings, book_id, umfaenge, now=datetime.now()))
+                store, settings, book_id, scopes, now=datetime.now()))
 
     @app.post("/book/{book_id}/stars")
     def book_stars(book_id: int, stars: str = Form("")) -> RedirectResponse:
@@ -990,7 +990,7 @@ def create_app() -> FastAPI:
                 "chosen": chosen,
                 # Ein Filter wirft die Sortierung nicht weg und umgekehrt.
                 "links": {
-                    "alle": _link("/suggestions", sortiert=chosen),
+                    "all": _link("/suggestions", sortiert=chosen),
                     "profile_author": _link(
                         "/suggestions", anlass="profile_author", sortiert=chosen
                     ),
@@ -1125,13 +1125,13 @@ def create_app() -> FastAPI:
 
     identifier = Rechecker(work=_identify_work)
 
-    def _intake_jobs(eintraege) -> dict:
+    def _intake_jobs(entries) -> dict:
         """Der Stand je Eintrag — und wer noch keinen Steckbrief hat und nicht
         gefragt wird, wird jetzt gefragt. So holt die Seite nach einem Abbruch
         oder einem Neustart des Servers nach, was offen war. Ein Fehler wird
         nicht von selbst wiederholt; dafür steht "Nochmal" da."""
         jobs = {}
-        for e in eintraege:
+        for e in entries:
             if e.state != "asking":
                 continue
             job = identifier.state(("intake", e.id))
@@ -1310,10 +1310,10 @@ def create_app() -> FastAPI:
         angetippt ist (24.09.2026). Auch Gegengewichte werden hier nicht mehr
         gewählt — was auf Schritt 4 angetippt ist, wird übernommen.
         """
-        fassung = intake.adopt(
+        adopted = intake.adopt(
             _store_for(paths.db_path()), load_settings(), now=datetime.now(),
         )
-        return RedirectResponse("/profile" if fassung else "/intake", status_code=303)
+        return RedirectResponse("/profile" if adopted else "/intake", status_code=303)
 
     # --- Jetzt laufen (Ticket 10) -------------------------------------------
 
@@ -1372,15 +1372,15 @@ def create_app() -> FastAPI:
     # Bezeichner (ADR 22). Die drei Seiten, die jemand als Lesezeichen haben
     # kann, leiten dauerhaft weiter — mit ihrer Abfrage, damit Filter und
     # Sortierung mitkommen.
-    def _redirect_to(neu: str):
-        def umleitung(request: Request) -> RedirectResponse:
-            abfrage = request.url.query
-            return RedirectResponse(neu + (f"?{abfrage}" if abfrage else ""), status_code=301)
+    def _redirect_to(new: str):
+        def redirect(request: Request) -> RedirectResponse:
+            query = request.url.query
+            return RedirectResponse(new + (f"?{query}" if query else ""), status_code=301)
 
-        return umleitung
+        return redirect
 
-    for alt, neu in OLD_ADDRESSES.items():
-        app.add_api_route(alt, _redirect_to(neu), methods=["GET"], include_in_schema=False)
+    for old, new in OLD_ADDRESSES.items():
+        app.add_api_route(old, _redirect_to(new), methods=["GET"], include_in_schema=False)
 
     return app
 

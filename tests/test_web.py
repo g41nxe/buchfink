@@ -302,7 +302,7 @@ def test_the_interface_still_starts_without_a_usable_console(
     monkeypatch.setattr(sys, "stderr", OhneHandle())
     monkeypatch.setattr(sys, "stdout", OhneHandle())
 
-    importlib.import_module("ebook_watchlist.web.__main__")._sichere_ausgabe()
+    importlib.import_module("ebook_watchlist.web.__main__")._safe_output()
     print("eine Zeile, die sonst niemand liest", file=sys.stderr)
 
     assert "eine Zeile" in (data_dir / "web.log").read_text(encoding="utf-8")

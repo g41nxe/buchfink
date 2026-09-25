@@ -81,16 +81,16 @@ class Rechecker:
     def __init__(self, work: Callable[[Hashable], Report] | None = None) -> None:
         self._checks: dict[Hashable, Check] = {}
         self._guard = threading.Lock()
-        self._arbeit = work
+        self._task = work
 
     def start(self, key: Hashable, *, now: datetime | None = None) -> Check:
         """Anstossen, falls fuer diesen Schluessel nicht schon etwas laeuft."""
         now = now or datetime.now()
         with self._guard:
             self._forget_old(now)
-            laufend = self._checks.get(key)
-            if laufend is not None and laufend.busy:
-                return laufend
+            running = self._checks.get(key)
+            if running is not None and running.busy:
+                return running
             self._checks[key] = Check(key=key, started_at=now)
         threading.Thread(target=self._work, args=(key,), daemon=True).start()
         return self._checks[key]
@@ -103,17 +103,17 @@ class Rechecker:
     def _work(self, key: Hashable) -> None:
         # Erst hier nachgeschlagen, nicht beim Bauen: Tests ersetzen
         # ``check_one`` auf dem Modul, und das soll auch dann greifen.
-        arbeit = self._arbeit or check_one
+        task = self._task or check_one
         try:
-            report = arbeit(key)
+            report = task(key)
         except Exception as exc:  # noqa: BLE001 - ein Faden darf nichts mitreissen
             report = Report(trouble=f"{type(exc).__name__}: {exc}")
         with self._guard:
-            vorher = self._checks.get(key)
-            if vorher is not None:
+            previous = self._checks.get(key)
+            if previous is not None:
                 self._checks[key] = Check(
                     key=key,
-                    started_at=vorher.started_at,
+                    started_at=previous.started_at,
                     report=report,
                     finished_at=datetime.now(),
                 )

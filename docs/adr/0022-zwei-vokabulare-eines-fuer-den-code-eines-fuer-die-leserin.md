@@ -93,3 +93,17 @@ benennen, wie sie sind.
 > weiter (aus `app.py`s `_choosing`), und ihn samt allen `wahl.*`-Zugriffen zu
 > übersetzen ist eine eigene, größere Änderung über mehrere Dateien hinweg —
 > noch offen.
+
+> **Nachtrag vom 25.09.2026: die Vorlagen sind nachgezogen (#65).** Was oben
+> noch offen stand, ist umgesetzt: die Kontext-Schlüssel aus `app.py`, die
+> Makros samt Parametern, die Partial-Dateinamen (`_book_row.html`,
+> `_state_button.html`, …), die `{% set %}`-Locals und Schleifenvariablen
+> sowie die `data-*`-Marken, an denen die Tests abtasten, heißen englisch.
+>
+> Eine Grenze wurde dabei gezogen: **Leseformat ist kein Bezeichner.** Was in
+> der Adresse steht (`?anlass=`, `?nur=unklar`, `?sortiert=preis`), was ein
+> Formular als Wert schickt (`was=bestaetigen`), der Schlüssel im
+> Browserspeicher (`sortiert:/watchlist`), CSS-Klassen und `id`-Werte sind
+> Teil dessen, was die Leserin sieht oder als Lesezeichen behält, und
+> bleiben deutsch. Versteckte Formularfelder, die nur zwischen Vorlage und
+> Route reisen (`back`), sind dagegen Code.

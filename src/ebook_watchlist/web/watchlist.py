@@ -140,14 +140,14 @@ def source_groups(sources: Sequence[SourceState]) -> tuple[SourceGroup, ...]:
     Innerhalb der Art die gefundenen zuerst: sie faerben das Zeichen, sie
     tragen den Verweis, und sie stehen im Hinweis vorn.
     """
-    gruppen = []
-    for art in registry.CATEGORY_ORDER:
-        gleiche = [state for state in sources if state.category == art]
-        if not gleiche:
+    groups = []
+    for category in registry.CATEGORY_ORDER:
+        same_kind = [state for state in sources if state.category == category]
+        if not same_kind:
             continue
-        gleiche.sort(key=lambda state: state.outcome not in ("linked", "confirmed"))
-        gruppen.append(SourceGroup(art, tuple(gleiche)))
-    return tuple(gruppen)
+        same_kind.sort(key=lambda state: state.outcome not in ("linked", "confirmed"))
+        groups.append(SourceGroup(category, tuple(same_kind)))
+    return tuple(groups)
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,10 +233,10 @@ class Entry:
         seit es zwei Bibliotheken gibt, schrieb das "verliehen" in die Zeile,
         waehrend die andere es auslieh.
         """
-        gesehen = [o.availability for o in self.latest if o.availability is not None]
-        for rang in (Availability.AVAILABLE, Availability.UNAVAILABLE, Availability.UNKNOWN):
-            if rang in gesehen:
-                return rang
+        answers = [o.availability for o in self.latest if o.availability is not None]
+        for rank in (Availability.AVAILABLE, Availability.UNAVAILABLE, Availability.UNKNOWN):
+            if rank in answers:
+                return rank
         return None
 
     @property
@@ -253,10 +253,10 @@ class Entry:
 
     @property
     def seen(self) -> str | None:
-        neueste = self.newest
-        if neueste is None or neueste.observed_at is None:
+        newest = self.newest
+        if newest is None or newest.observed_at is None:
             return None
-        return neueste.observed_at.strftime("%d.%m. %H:%M")
+        return newest.observed_at.strftime("%d.%m. %H:%M")
 
     @property
     def candidates(self) -> tuple:
@@ -293,8 +293,8 @@ class Entry:
     @property
     def choice_source(self) -> str | None:
         """Welche Quelle fragt — die Entscheidung gilt fuer sie."""
-        zustand = self._asking
-        return zustand.name if zustand else None
+        state = self._asking
+        return state.name if state else None
 
     @property
     def choice_label(self) -> str | None:
@@ -304,8 +304,8 @@ class Entry:
         Shop richtig zugeordnet sein und in der Bibliothek offen. Ohne den
         Namen las sich die Frage, als stuende das Buch ueberhaupt in Zweifel.
         """
-        zustand = self._asking
-        return zustand.display if zustand else None
+        state = self._asking
+        return state.display if state else None
 
     @property
     def _asking(self) -> SourceState | None:
@@ -355,18 +355,18 @@ class Entry:
         return not self.sources
 
 
-def _candidates(details: dict, url: str | None, *, abgelehnt: bool) -> tuple:
+def _candidates(details: dict, url: str | None, *, rejected: bool) -> tuple:
     """Die Kandidaten aus einer ``book_source``-Zeile, geteilt in offen und
     abgelehnt."""
     from .assignments import Candidate, _cover_file
 
-    weg = set(details.get("rejected") or [])
-    roh_liste = details.get("candidates")
-    if not roh_liste and details.get("matched_title"):
+    rejected_urls = set(details.get("rejected") or [])
+    raw_list = details.get("candidates")
+    if not raw_list and details.get("matched_title"):
         # Rueckfall fuer Zeilen aus der Zeit vor der Kandidatenliste: sie
         # tragen nur den Sieger. Ohne das hoerten sie stillschweigend auf zu
         # fragen — der teuerste denkbare Weg, eine Entscheidung zu verlieren.
-        roh_liste = [
+        raw_list = [
             {
                 "title": details["matched_title"],
                 "author": details.get("matched_author"),
@@ -374,22 +374,22 @@ def _candidates(details: dict, url: str | None, *, abgelehnt: bool) -> tuple:
                 "cover_url": None,
             }
         ]
-    aus = []
-    for roh in roh_liste or []:
-        url = roh.get("url")
-        ist_weg = bool(url) and url in weg
-        if ist_weg is not abgelehnt:
+    out = []
+    for raw in raw_list or []:
+        url = raw.get("url")
+        is_rejected = bool(url) and url in rejected_urls
+        if is_rejected is not rejected:
             continue
-        aus.append(
+        out.append(
             Candidate(
-                title=roh.get("title") or "ohne Titel",
-                author=roh.get("author"),
+                title=raw.get("title") or "ohne Titel",
+                author=raw.get("author"),
                 url=url,
-                cover_file=_cover_file(roh.get("cover_url")),
-                rejected=ist_weg,
+                cover_file=_cover_file(raw.get("cover_url")),
+                rejected=is_rejected,
             )
         )
-    return tuple(aus)
+    return tuple(out)
 
 
 def _portrait_subjects(book, observations: Sequence[Observation]) -> list[str]:
@@ -425,18 +425,18 @@ def entries(
     # Wer nicht mehr beobachtet wird, steht nicht auf der Watchlist. Die
     # Beziehung bleibt trotzdem stehen — auf der Buchseite liest sie sich
     # danach als "Frueher: beobachtet" (ADR 18, Ticket 48).
-    abgeschlossen = {
+    closed = {
         row.book_id
         for kind in (RelationKind.OWNED, RelationKind.DISMISSED)
         for row in store.relations(profile_slug, kind=str(kind))
     }
-    relations = [row for row in relations if row.book_id not in abgeschlossen]
+    relations = [row for row in relations if row.book_id not in closed]
     book_ids = [relation.book_id for relation in relations]
     latest = store.latest_by_book(profile_slug, book_ids)
     # Drei Abfragen fuer die ganze Liste statt zwei je Zeile: neunzehn
     # Eintraege kosteten so 9 der 25 ms, die diese Funktion braucht.
-    buecher = store.books_by_id(book_ids)
-    quellen = store.book_sources_of(book_ids)
+    books = store.books_by_id(book_ids)
+    sources = store.book_sources_of(book_ids)
     # Das Urteil rechnet der Code aus dem Steckbrief (ADR 33, #48). Steckbriefe
     # hängen am *Fund* (ADR 18): an der ISBN, wo es eine gibt, sonst an der
     # Produktnummer, und ein Titel ohne Fund trägt seinen am Buch (#38). Ein
@@ -450,14 +450,14 @@ def entries(
             [
                 subject
                 for book_id in book_ids
-                if (book := buecher.get(book_id)) is not None
+                if (book := books.get(book_id)) is not None
                 for subject in _portrait_subjects(book, latest.get(book_id, ()))
             ],
         )
 
     rows = []
     for relation in relations:
-        book = buecher.get(relation.book_id)
+        book = books.get(relation.book_id)
         if book is None:  # pragma: no cover - nur bei geloeschtem Buch
             continue
         details = _details(relation)
@@ -471,12 +471,12 @@ def entries(
                 reason=_details(link).get("reason", ""),
                 category=registry.category(settings, link.source),
                 display=registry.label(settings, link.source),
-                candidates=_candidates(_details(link), link.url, abgelehnt=False),
-                rejected=_candidates(_details(link), link.url, abgelehnt=True),
+                candidates=_candidates(_details(link), link.url, rejected=False),
+                rejected=_candidates(_details(link), link.url, rejected=True),
             )
-            for link in quellen.get(book.id, ())
+            for link in sources.get(book.id, ())
         )
-        urteil = (
+        verdict = (
             judge.verdict_among(portraits, _portrait_subjects(book, latest.get(book.id, ())))
             if judge is not None
             else None
@@ -494,9 +494,9 @@ def entries(
                 sources=states,
                 latest=tuple(latest.get(book.id, ())),
                 known_missing=details.get("known_missing"),
-                stars=urteil.stars if urteil else None,
-                percent=urteil.percent if urteil else None,
-                pitch=(urteil.pitch or None) if urteil else None,
+                stars=verdict.stars if verdict else None,
+                percent=verdict.percent if verdict else None,
+                pitch=(verdict.pitch or None) if verdict else None,
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

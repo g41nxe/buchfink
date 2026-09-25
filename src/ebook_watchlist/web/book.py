@@ -153,8 +153,8 @@ class Sighting:
         if self.available_from:
             return f"frei ab {self.available_from}"
         if self.reservation_count:
-            eine = self.reservation_count == 1
-            return f"{self.reservation_count} Vormerkung{'' if eine else 'en'}"
+            single = self.reservation_count == 1
+            return f"{self.reservation_count} Vormerkung{'' if single else 'en'}"
         return None
 
 
@@ -293,14 +293,14 @@ class PortraitView:
 def _portrait_view(portrait: Portrait, vocabulary: Vocabulary, book) -> PortraitView:
     if not portrait.known:
         return PortraitView(known=False, violations=portrait.violations)
-    familien: dict[str, list[TraitView]] = {}
-    muster: dict[str, list[TraitView]] = {}
+    families: dict[str, list[TraitView]] = {}
+    patterns: dict[str, list[TraitView]] = {}
     for trait in portrait.traits:
         term = vocabulary.terms.get(trait.term)
         if term is None:  # pragma: no cover - ein Merkmal, das es nicht mehr gibt
             continue
-        ziel = muster if vocabulary.is_pattern(trait.term) else familien
-        ziel.setdefault(vocabulary.family_of(trait.term).name, []).append(
+        target = patterns if vocabulary.is_pattern(trait.term) else families
+        target.setdefault(vocabulary.family_of(trait.term).name, []).append(
             TraitView(term.name, trait.sentence, trait.evidence)
         )
     original = portrait.original_title
@@ -308,8 +308,8 @@ def _portrait_view(portrait: Portrait, vocabulary: Vocabulary, book) -> Portrait
         original = None
     return PortraitView(
         known=True,
-        families=tuple(FamilyView(name, tuple(traits)) for name, traits in familien.items()),
-        patterns=tuple(FamilyView(name, tuple(traits)) for name, traits in muster.items()),
+        families=tuple(FamilyView(name, tuple(traits)) for name, traits in families.items()),
+        patterns=tuple(FamilyView(name, tuple(traits)) for name, traits in patterns.items()),
         genre=portrait.genre,
         subgenre=portrait.subgenre,
         pitch=portrait.pitch,
@@ -334,21 +334,21 @@ def _fit_view(
     store: Store, settings: Settings, portrait: Portrait, vocabulary: Vocabulary
 ) -> FitView | None:
     """Ohne Profil in der Datenbank wird nicht geurteilt (ADR 33, Punkt 8)."""
-    profil = store.reading_profile(settings.slug)
-    if profil is None:
+    profile = store.reading_profile(settings.slug)
+    if profile is None:
         return None
     try:
-        gewichte = load_weights()
+        weights = load_weights()
     except (OSError, KeyError, ValueError, yaml.YAMLError):
         return None
-    ergebnis = fit(portrait, profil, vocabulary, gewichte)
-    if ergebnis is None:
+    result = fit(portrait, profile, vocabulary, weights)
+    if result is None:
         return None
     return FitView(
-        stars=ergebnis.stars,
-        percent=round(ergebnis.share * 100),
-        version=profil.version,
-        reasons=ergebnis.reasons,
+        stars=result.stars,
+        percent=round(result.share * 100),
+        version=profile.version,
+        reasons=result.reasons,
     )
 
 
@@ -386,9 +386,9 @@ class Page:
     @property
     def price(self) -> str | None:
         """Der zuletzt gesehene Preis, gleich von welcher Quelle."""
-        for sichtung in self.latest:
-            if sichtung.price:
-                return sichtung.price
+        for sighting in self.latest:
+            if sighting.price:
+                return sighting.price
         return None
 
     @property
@@ -398,11 +398,11 @@ class Page:
     @property
     def deal(self) -> bool:
         """Schnaeppchen — dieselbe Regel wie in den Listen."""
-        return any(sichtung.deal for sichtung in self.latest)
+        return any(sighting.deal for sighting in self.latest)
 
     @property
     def borrowable(self) -> bool:
-        return any(sichtung.availability == "ausleihbar" for sichtung in self.latest)
+        return any(sighting.availability == "ausleihbar" for sighting in self.latest)
 
     def latest_at(self, name: str) -> Sighting | None:
         """Die juengste Sichtung dieser Quelle, oder ``None``.
@@ -411,30 +411,30 @@ class Page:
         richtig, solange keine zwei Quellen dieselbe trugen — seit es zwei
         Bibliotheken gibt, beantwortete es die Frage einer anderen Quelle.
         """
-        for sichtung in self.latest:
-            if sichtung.name == name:
-                return sichtung
+        for sighting in self.latest:
+            if sighting.name == name:
+                return sighting
         return None
 
     @property
     def categories(self) -> tuple[Category, ...]:
         """Je Quellenart eine Kachel, mit allen Quellen dieser Art (#33)."""
-        arten = []
-        for art in registry.CATEGORY_ORDER:
-            quellen = [state for state in self.sources if state.category == art]
-            if not quellen:
+        categories = []
+        for category in registry.CATEGORY_ORDER:
+            sources = [state for state in self.sources if state.category == category]
+            if not sources:
                 continue
-            quellen.sort(key=lambda state: self._rank(art, state))
-            beste = quellen[0]
-            sichtung = self.latest_at(beste.name)
-            if self._rank(art, beste)[0] >= NOT_FOUND:
+            sources.sort(key=lambda state: self._rank(category, state))
+            best = sources[0]
+            sighting = self.latest_at(best.name)
+            if self._rank(category, best)[0] >= NOT_FOUND:
                 # Keine Quelle dieser Art kennt das Buch: die Kachel sagt das,
                 # ohne einen Namen zu nennen, den es nicht gibt. *Gefuehrt und
                 # gerade verliehen* gehoert nicht hierher — das heisst warten,
                 # nicht anderswo suchen.
-                beste, sichtung = None, None
-            arten.append(Category(art, beste, sichtung, tuple(quellen)))
-        return tuple(arten)
+                best, sighting = None, None
+            categories.append(Category(category, best, sighting, tuple(sources)))
+        return tuple(categories)
 
     def _rank(self, category: str, state: SourceState) -> tuple[int, int]:
         """Je kleiner, desto eher beantwortet diese Quelle die Frage der Art.
@@ -443,15 +443,15 @@ class Page:
         gefunden. Shop: der guenstigste Preis; ohne Preis ist der Fund nur ein
         Eintrag im Katalog und kommt dahinter.
         """
-        sichtung = self.latest_at(state.name)
-        gefunden = state.outcome in ("linked", "confirmed")
+        sighting = self.latest_at(state.name)
+        found = state.outcome in ("linked", "confirmed")
         if category == "library":
-            if sichtung and sichtung.availability == "ausleihbar":
+            if sighting and sighting.availability == "ausleihbar":
                 return (0, 0)
-            return (1 if gefunden else NOT_FOUND, 0)
-        if sichtung and sichtung.price_cents is not None:
-            return (0, sichtung.price_cents)
-        return (1 if gefunden else NOT_FOUND, 0)
+            return (1 if found else NOT_FOUND, 0)
+        if sighting and sighting.price_cents is not None:
+            return (0, sighting.price_cents)
+        return (1 if found else NOT_FOUND, 0)
 
     @property
     def my_stars(self) -> int | None:
@@ -594,14 +594,14 @@ def _latest_per_source(history: tuple[Sighting, ...]) -> tuple[Sighting, ...]:
     Der Kopf zeigt je Quelle eine Kachel; welche Zeile dafuer gilt, ist die
     neueste — nicht die erste, die zufaellig oben steht.
     """
-    neueste: dict[str, Sighting] = {}
-    for sichtung in history:
+    newest: dict[str, Sighting] = {}
+    for sighting in history:
         # Nach dem Namen, nicht nach der Beschriftung: zwei Bibliotheken tragen
         # dieselbe, und die eine verschwand still hinter der anderen.
-        vorher = neueste.get(sichtung.name)
-        if vorher is None or (sichtung.when or datetime.min) > (vorher.when or datetime.min):
-            neueste[sichtung.name] = sichtung
-    return tuple(neueste.values())
+        previous = newest.get(sighting.name)
+        if previous is None or (sighting.when or datetime.min) > (previous.when or datetime.min):
+            newest[sighting.name] = sighting
+    return tuple(newest.values())
 
 
 def build(store: Store, settings: Settings, book_id: int) -> Page | None:
@@ -660,16 +660,16 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
 
     # Ein unlesbares Vokabular kostet nur den Steckbrief, nicht die Seite.
     portrait = None
-    passung = None
+    fit_view = None
     try:
         vocabulary = load_vocabulary()
     except VocabularyError:
         vocabulary = None
     if vocabulary is not None:
-        gespeichert = _stored_portrait(store, book, fingerprint(vocabulary))
-        if gespeichert is not None:
-            portrait = _portrait_view(gespeichert, vocabulary, book)
-            passung = _fit_view(store, settings, gespeichert, vocabulary)
+        stored = _stored_portrait(store, book, fingerprint(vocabulary))
+        if stored is not None:
+            portrait = _portrait_view(stored, vocabulary, book)
+            fit_view = _fit_view(store, settings, stored, vocabulary)
 
     return Page(
         book_id=book.id,
@@ -694,7 +694,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         watching=str(RelationKind.WATCHING) in known
         and known[str(RelationKind.WATCHING)].active,
         portrait=portrait,
-        fit=passung,
+        fit=fit_view,
     )
 
 
@@ -708,17 +708,17 @@ def portrait_subject(book) -> str:
     return f"isbn:{book.isbn}" if book.isbn else book_subject(book.id)
 
 
-def _stored_portrait(store: Store, book, abdruck: str) -> Portrait | None:
+def _stored_portrait(store: Store, book, vocabulary_fingerprint: str) -> Portrait | None:
     """Der Steckbrief dieses Buchs, unter der ISBN oder unter dem Buch.
 
     Ein Watchlist-Titel bekommt seine ISBN oft erst, wenn ein Lauf ihn
     auflöst. Der Steckbrief von vorher liegt dann am Buch und gilt weiter;
     ihn neu anzulegen kostete einen Aufruf für dasselbe Ergebnis.
     """
-    gefunden = store.portrait(portrait_subject(book), abdruck)
-    if gefunden is None and book.isbn:
-        gefunden = store.portrait(book_subject(book.id), abdruck)
-    return gefunden
+    found = store.portrait(portrait_subject(book), vocabulary_fingerprint)
+    if found is None and book.isbn:
+        found = store.portrait(book_subject(book.id), vocabulary_fingerprint)
+    return found
 
 
 def portray(store: Store, settings: Settings, book_id: int, *, now: datetime) -> str:

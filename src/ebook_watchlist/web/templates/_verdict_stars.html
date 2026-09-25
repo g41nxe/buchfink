@@ -16,7 +16,7 @@
 {% if stars is not none %}
 <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
   <span class="flex items-center gap-0.5 text-gold"
-        title="{{ stars | sterne }} von 5 — aus deinem Leseprofil gerechnet">
+        title="{{ stars | stars }} von 5 — aus deinem Leseprofil gerechnet">
     {% for value in range(1, 6) %}
     <svg class="i" {% if value <= stars %}style="fill:currentColor"{% endif %}>
       <use href="#ic-star"/></svg>

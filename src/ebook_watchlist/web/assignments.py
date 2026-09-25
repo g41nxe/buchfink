@@ -80,11 +80,11 @@ class Pile:
 
     @property
     def open_count(self) -> int:
-        return sum(1 for frage in self.questions if frage.is_open)
+        return sum(1 for question in self.questions if question.is_open)
 
     @property
     def rejected_count(self) -> int:
-        return sum(len(frage.rejected) for frage in self.questions)
+        return sum(len(question.rejected) for question in self.questions)
 
     @property
     def is_empty(self) -> bool:
@@ -117,27 +117,27 @@ def _candidate(raw: dict, rejected: set[str]) -> Candidate:
 
 def open_questions(store: Store, settings: Settings) -> Pile:
     """Alles, was auf eine Entscheidung wartet."""
-    fragen: list[Question] = []
+    questions: list[Question] = []
     for row in store.unsure_links(settings.slug):
         details = _details(row)
         rejected = set(details.get("rejected") or [])
-        alle = [_candidate(raw, rejected) for raw in details.get("candidates") or []]
-        buch = store.book(row.book_id)
-        if buch is None:  # pragma: no cover - nur bei geloeschtem Buch
+        all_candidates = [_candidate(raw, rejected) for raw in details.get("candidates") or []]
+        book = store.book(row.book_id)
+        if book is None:  # pragma: no cover - nur bei geloeschtem Buch
             continue
-        fragen.append(
+        questions.append(
             Question(
                 book_id=row.book_id,
-                title=buch.title,
-                author=buch.author,
+                title=book.title,
+                author=book.author,
                 source=row.source,
                 source_label=registry.label(settings, row.source),
                 reason=details.get("reason") or "",
-                candidates=tuple(k for k in alle if not k.rejected),
-                rejected=tuple(k for k in alle if k.rejected),
+                candidates=tuple(c for c in all_candidates if not c.rejected),
+                rejected=tuple(c for c in all_candidates if c.rejected),
             )
         )
-    return Pile(questions=tuple(fragen))
+    return Pile(questions=tuple(questions))
 
 
 def confirm(store: Store, book_id: int, source: str, url: str, now) -> None:
@@ -153,11 +153,11 @@ def confirm(store: Store, book_id: int, source: str, url: str, now) -> None:
     Datei da ist.
     """
     row = store.get_book_source(book_id, source)
-    gewaehlt = next(
+    chosen = next(
         (
-            kandidat
-            for kandidat in (_details(row).get("candidates") or [] if row else [])
-            if kandidat.get("url") == url
+            candidate
+            for candidate in (_details(row).get("candidates") or [] if row else [])
+            if candidate.get("url") == url
         ),
         None,
     )
@@ -169,11 +169,11 @@ def confirm(store: Store, book_id: int, source: str, url: str, now) -> None:
         resolved_at=now,
         reason="von Hand bestätigt",
     )
-    buch = store.book(book_id)
-    if buch is not None and not buch.cover_file and gewaehlt:
-        datei = _cover_file(gewaehlt.get("cover_url"))
-        if datei:
-            store.set_cover(book_id, datei)
+    book = store.book(book_id)
+    if book is not None and not book.cover_file and chosen:
+        cover = _cover_file(chosen.get("cover_url"))
+        if cover:
+            store.set_cover(book_id, cover)
 
 
 def reject_all(store: Store, book_id: int, source: str, now) -> None:
@@ -187,7 +187,7 @@ def reject_all(store: Store, book_id: int, source: str, now) -> None:
     if row is None:
         return
     details = _details(row)
-    urls = [roh.get('url') for roh in details.get('candidates') or [] if roh.get('url')]
+    urls = [raw.get('url') for raw in details.get('candidates') or [] if raw.get('url')]
     if not urls and row.url:
         # Zeilen aus der Zeit vor der Kandidatenliste tragen nur den Sieger.
         urls = [row.url]
