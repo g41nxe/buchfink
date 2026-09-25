@@ -917,6 +917,19 @@ def create_app() -> FastAPI:
             _sharpen, book_id, lambda store, settings: sharpening.add_counterweights(
                 store, settings, book_id, scopes, now=datetime.now()))
 
+    @app.post("/book/{book_id}/sharpen/reasons")
+    async def sharpen_reasons(request: Request, book_id: int) -> RedirectResponse:
+        """Deine Sicht auf ein gelesenes Buch: was nicht stimmt, was fehlte (#79).
+
+        Asynchron nur, um die mehrfachen Felder zu lesen, wie beim Gegengewicht.
+        """
+        form_data = await request.form()
+        drop = [str(f) for f in form_data.getlist("drop")]
+        add = [str(f) for f in form_data.getlist("add")]
+        return await run_in_threadpool(
+            _sharpen, book_id, lambda store, settings: sharpening.set_reasons(
+                store, settings, book_id, drop, add, now=datetime.now()))
+
     @app.post("/book/{book_id}/stars")
     def book_stars(book_id: int, stars: str = Form("")) -> RedirectResponse:
         """Die eigenen Sterne der Leserin setzen — oder zurücknehmen.

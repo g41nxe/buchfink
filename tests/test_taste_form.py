@@ -181,6 +181,42 @@ def test_a_liked_story_pattern_lifts_the_book(wort, gewichte) -> None:
     )
 
 
+# --- die Gründe der Leserin (Z10) ----------------------------------------------------
+
+
+def test_what_the_reader_says_was_not_there_teaches_nothing(wort, gewichte) -> None:
+    """Der Schwarm: das Modell nennt ihn spannungsgeladen, die Leserin fand ihn
+    gemächlich. Ohne ihr Wort lehrte das enttäuschende Buch, Spannung abzulehnen,
+    die sie an einem gemochten Buch gelernt hat."""
+    spannend = ReadingProfile(facets=(), counterweights=(), liked=GETIPPT.liked)
+    gemocht = gelesen("Leichenblässe", 1, THRILLER, wort, gewichte)
+    schwarm = steckbrief("intensifying", "world_building", "thought_provoking")
+    wie_beschrieben = gelesen("Der Schwarm", -1, schwarm, wort, gewichte)
+    wie_erlebt = RatedBook("Der Schwarm", -1, wie_beschrieben.terms, None,
+                           dropped=("nerve_racking",))
+    buch = steckbrief("intensifying", "menacing")
+
+    ohne = urteil(buch, spannend, (gemocht, wie_beschrieben), wort, gewichte)
+    mit = urteil(buch, spannend, (gemocht, wie_erlebt), wort, gewichte)
+
+    assert mit.share > ohne.share
+
+
+def test_what_the_reader_adds_counts_against_like_a_defining_term(wort, gewichte) -> None:
+    gemocht = gelesen("Leichenblässe", 1, THRILLER, wort, gewichte)
+    schwarm = steckbrief("world_building", "thought_provoking")
+    ohne_grund = gelesen("Der Schwarm", -1, schwarm, wort, gewichte)
+    mit_grund = RatedBook("Der Schwarm", -1, ohne_grund.terms, None, added=("leisurely",))
+    buch = steckbrief("brooding", "gritty", "leisurely")
+    profil = ReadingProfile(facets=(), counterweights=(), liked=GETIPPT.liked)
+
+    ohne = urteil(buch, profil, (gemocht, ohne_grund), wort, gewichte)
+    mit = urteil(buch, profil, (gemocht, mit_grund), wort, gewichte)
+
+    assert mit.share < ohne.share
+    assert "dagegen: gemächlich" in [z.line for z in mit.reasons]
+
+
 # --- die Begründung -------------------------------------------------------------------
 
 

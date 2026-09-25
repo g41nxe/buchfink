@@ -138,6 +138,11 @@ TIERS: frozenset[str] = frozenset({"core", "extended"})
 #: die Konfiguration, und ein Import darf keine Namen erfinden.
 RESTRICTIONS: frozenset[str] = frozenset({"library", "shop"})
 
+#: Was die Leserin zu einem gelesenen Buch sagt, je eine Liste von Familien
+#: (#79): was fehlte (``add``), was für sie nicht stimmt (``drop``), und was
+#: sie nur an diesem Buch gestört hat (``here``, aus dem Nachschärfen).
+REASON_KINDS: tuple[str, ...] = ("add", "drop", "here")
+
 
 class ConfigurationError(Exception):
     """Ein Wert, den kein Handler bedient. Laut, nicht geduldet."""
@@ -167,11 +172,22 @@ def check_details(key: str, details: dict) -> dict:
     sind Tippfehler, die sich nur durch verändertes Verhalten bemerkbar machten
     — die teuerste Art, einen Fehler zu finden (ADR 18).
     """
-    unknown = set(details) - {"tier", "sources", "note", "restrict", "known_missing"}
+    unknown = set(details) - {"tier", "sources", "note", "restrict", "known_missing", "reasons"}
     if unknown:
         raise ConfigurationError(
             f"unbekannte Angaben zu {key!r}: {', '.join(sorted(unknown))} "
-            "(bekannt: known_missing, note, restrict, sources, tier)"
+            "(bekannt: known_missing, note, reasons, restrict, sources, tier)"
+        )
+    reasons = details.get("reasons")
+    if reasons is not None and not (
+        isinstance(reasons, dict)
+        and set(reasons) <= set(REASON_KINDS)
+        and all(
+            isinstance(v, list) and all(isinstance(f, str) for f in v) for v in reasons.values()
+        )
+    ):
+        raise ConfigurationError(
+            f"'reasons' bei {key!r} muss je {', '.join(REASON_KINDS)} eine Liste von Familien sein"
         )
     restrict = details.get("restrict")
     if restrict is not None and restrict not in RESTRICTIONS:

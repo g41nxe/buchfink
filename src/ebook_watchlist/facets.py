@@ -106,6 +106,8 @@ class Weights:
     #: Wie stark ein enttäuschendes Buch gegenüber einem durchschnittlichen
     #: gemochten wiegt (Rocchio, γ/β).
     rejection_ratio: float
+    #: Wie stark eine Familie wiegt, die die Leserin selbst zu einem Buch nennt.
+    reader_reason: float
     #: Wie viele Bücher das Getippte als Startwert wiegt.
     prior_books: float
     prior_liked: float
@@ -178,6 +180,7 @@ def load_weights(path: Path | None = None) -> Weights:
         marginal=float(in_book["rand"]),
         unweighted=float(in_book["ohne_angabe"]),
         rejection_ratio=float(section["ablehnung_verhaeltnis"]),
+        reader_reason=float(section["grund_der_leserin"]),
         prior_books=float(section["getipptes_wiegt_buecher"]),
         prior_liked=float(section["getippt"]),
         prior_boosted=float(section["verstaerkt"]),

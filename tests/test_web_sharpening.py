@@ -257,7 +257,8 @@ def test_a_counterweight_the_profile_already_has_is_not_offered(client, db, prof
 
     body = seite(client, b)
 
-    assert 'value="leisurely"' not in body.split("data-sharpening", 1)[1]
+    gegengewichte = body.split("data-sharpening", 1)[1].split("data-reasons", 1)[0]
+    assert 'value="leisurely"' not in gegengewichte
 
 
 def test_the_cause_names_the_book(client, db, profil) -> None:
@@ -349,3 +350,70 @@ def test_after_a_change_the_page_jumps_back_to_the_section(client, db, profil) -
 
     anker = antwort.headers["location"].split("#", 1)[1]
     assert f'id="{anker}"' in seite(client, b)
+
+
+# --- deine Sicht: was nicht stimmt, was fehlt (#79) ----------------------------------------
+
+
+def _gruende(db: Store, book_id: int, kind: str) -> dict:
+    (rel,) = [r for r in db.relations_of(slug(), book_id) if r.kind == kind]
+    return json.loads(rel.details or "{}").get("reasons", {})
+
+
+def test_a_rated_book_asks_whether_the_portrait_fits_her(client, db, profil) -> None:
+    b = buch(db, "Der Schwarm", ["intensifying", "world_building"], kind="disliked")
+
+    body = seite(client, b)
+
+    assert "data-reasons" in body
+    assert 'name="drop" value="nerve_racking"' in body
+    # Was der Steckbrief nicht nennt, lässt sich ergänzen; was er nennt, nicht noch einmal.
+    assert '<option value="leisurely">' in body
+    assert '<option value="nerve_racking">' not in body
+
+
+def test_her_reasons_are_kept_at_her_rating(client, db, profil) -> None:
+    b = buch(db, "Der Schwarm", ["intensifying", "world_building"], kind="disliked")
+
+    client.post(f"/book/{b}/sharpen/reasons",
+                data={"drop": ["nerve_racking"], "add": ["leisurely", "ensemble"]})
+
+    assert _gruende(db, b, "disliked") == {
+        "drop": ["nerve_racking"], "add": ["leisurely", "ensemble"],
+    }
+    # Das Profil bleibt, wie es ist: die Gründe gehören zum Buch.
+    assert db.reading_profile(slug()).version == 1
+    body = " ".join(seite(client, b).split())
+    assert 'name="add" value="leisurely" class="sr-only" checked' in body
+    assert 'name="drop" value="nerve_racking" class="sr-only" checked' in body
+
+
+def test_a_reason_must_belong_to_the_book_or_the_vocabulary(client, db, profil) -> None:
+    b = buch(db, "Der Schwarm", ["intensifying", "world_building"], kind="disliked")
+
+    fremd = client.post(f"/book/{b}/sharpen/reasons", data={"drop": ["leisurely"]})
+    erfunden = client.post(f"/book/{b}/sharpen/reasons", data={"add": ["gibtsnicht"]})
+
+    assert fremd.status_code == 400 and erfunden.status_code == 400
+    assert _gruende(db, b, "disliked") == {}
+
+
+def test_only_here_keeps_the_family_out_of_the_form(client, db, profil) -> None:
+    """„Nur bei diesem Buch" heißt: zählt nicht gegen andere — auch nicht beim Lernen."""
+    buch(db, "Otherland", ["world_building", "intricate", "ensemble", "leisurely"])
+    b = buch(db, "Herr der Ringe", ["world_building", "sweeping", "bittersweet", "descriptive"],
+             kind="disliked")
+
+    client.post(f"/book/{b}/sharpen/counterweight",
+                data={"family": ["big_world"], "scope-big_world": "here"})
+
+    assert _gruende(db, b, "disliked") == {"here": ["big_world"]}
+
+
+def test_each_family_can_be_added_once() -> None:
+    """Eine Familie mit Merkmalen aus zwei Dimensionen steht nur einmal zur Wahl."""
+    from ebook_watchlist.web.sharpening import family_choices
+
+    ids = [f for _, families in family_choices(load_vocabulary()) for f, _ in families]
+
+    assert len(ids) == len(set(ids))

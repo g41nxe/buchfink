@@ -18,12 +18,20 @@ trägt. Trifft es eine Facette ganz, bleibt die Facette, wie sie ist.
 Hinzugefügt wird nur über Bücher, nie über freie Eingabe. Jede Änderung ist
 eine neue Fassung mit dem Buch als Anlass; danach urteilt der Code neu, ohne
 Modell.
+
+Dazu, bei jedem gelesenen Buch, **deine Sicht** (#79): was der Steckbrief nennt,
+aber für die Leserin nicht stimmt, und was ihm fehlt. Das ist kein Eintrag ins
+Profil, sondern ihre Auskunft über dieses Buch; sie steht an ihrer Bewertung
+und geht der Beschreibung des Modells vor, wenn die Geschmacksform lernt. Auch
+das Ergänzen bleibt an ein Buch gebunden: es sagt, was *dieses* Buch für sie
+war.
 """
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
-from dataclasses import dataclass
+import json
+from collections.abc import Collection, Mapping, Sequence
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from ..config import Settings
@@ -44,7 +52,7 @@ from ..facets import (
     strength_level,
 )
 from ..portrait import VocabularyError, fingerprint, load_vocabulary
-from ..relations import RelationKind
+from ..relations import REASON_KINDS, RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait
 from .intake import Card, IntakeError, Pill, ShelfBook, defining_in, shelf_book
@@ -79,6 +87,14 @@ class Sharpening:
     kept: tuple[str, ...] = ()
     lost: tuple[Family, ...] = ()
     genre: str | None = None
+    #: Deine Sicht (#79): die Familien des Buchs, die sich abwählen lassen …
+    own: tuple[Family, ...] = ()
+    #: … welche davon für die Leserin nicht stimmen …
+    dropped: frozenset[str] = frozenset()
+    #: … was sie ergänzt hat …
+    added: tuple[Family, ...] = ()
+    #: … und was sich ergänzen ließe: je Dimension (Name, ((id, Name), …)).
+    choices: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = ()
 
 
 def carried_by(families: Collection[str], books: Collection[ShelfBook]) -> tuple[ShelfBook, ...]:
@@ -122,6 +138,14 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
             return Sharpening(kind, book.title, unknown=True)
         return Sharpening(kind, book.title, waiting=True)
 
+    return replace(
+        _by_kind(store, settings, profile, kind, book.title, shelf, vocabulary),
+        **_view_of_reasons(store, settings, book_id, kind, shelf, vocabulary),
+    )
+
+
+def _by_kind(store, settings, profile, kind, title, shelf, vocabulary) -> Sharpening:
+    """Was ein *Mag ich*- oder ein *Doof*-Buch am Profil ändern könnte."""
     if kind == DISLIKED:
         liked_books = liked_shelf(store, settings, vocabulary)
         full_matches = [f for f in profile.facets if set(f.families) <= set(shelf.families)]
@@ -134,7 +158,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
             )
 
         return Sharpening(
-            kind, book.title,
+            kind, title,
             kept=tuple(family_names(f.families, vocabulary) for f in full_matches),
             lost=tuple(
                 family_entry(f) for f in shelf.families if ((f,), None) not in existing_weights
@@ -163,10 +187,103 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
         )
 
     return Sharpening(
-        kind, book.title,
+        kind, title,
         cards=tuple(card(f) for f in rank),
         can_boost=len(boosted_ids) < MOST_BOOSTED,
     )
+
+
+def family_choices(vocabulary) -> tuple[tuple[str, tuple[tuple[str, str], ...]], ...]:
+    """Alle Familien des Vokabulars je Dimension, in der Reihenfolge der Datei.
+
+    Eine Familie steht einmal, unter der Dimension ihres ersten Merkmals —
+    *rasant* hat Merkmale im Tempo und in der Handlung.
+    """
+    by_dimension: dict[str, dict[str, str]] = {name: {} for name, _ in vocabulary.dimensions}
+    seen: set[str] = set()
+    for term in vocabulary.terms.values():
+        family = vocabulary.family_of(term.id)
+        if family.id in seen:
+            continue
+        seen.add(family.id)
+        dimension = vocabulary.terms[family.members[0]].dimension
+        by_dimension.setdefault(dimension, {})[family.id] = family.name
+    return tuple(
+        (name, tuple(sorted(families.items(), key=lambda kv: kv[1].casefold())))
+        for name, families in by_dimension.items()
+        if families
+    )
+
+
+def _reasons_of(store: Store, settings: Settings, book_id: int, kind: str) -> tuple[dict, dict]:
+    """Der Beutel an der Bewertung und die Gründe darin."""
+    relation = next(
+        (r for r in store.relations_of(settings.slug, book_id) if r.kind == kind and r.active),
+        None,
+    )
+    details = json.loads(relation.details or "{}") if relation is not None else {}
+    return details, dict(details.get("reasons") or {})
+
+
+def _view_of_reasons(store, settings, book_id, kind, shelf, vocabulary) -> dict:
+    _, reasons = _reasons_of(store, settings, book_id, kind)
+
+    def entry(f: str) -> Family:
+        return Family(f, family_name(f, vocabulary), is_pattern(f, vocabulary))
+
+    return {
+        "own": tuple(entry(f) for f in shelf.families),
+        "dropped": frozenset(reasons.get("drop", ())),
+        "added": tuple(entry(f) for f in reasons.get("add", ())),
+        "choices": tuple(
+            (name, tuple((f, n) for f, n in families if f not in shelf.families))
+            for name, families in family_choices(vocabulary)
+        ),
+    }
+
+
+def set_reasons(
+    store: Store,
+    settings: Settings,
+    book_id: int,
+    drop: Sequence[str],
+    add: Sequence[str],
+    *,
+    now: datetime,
+) -> None:
+    """Deine Sicht auf ein gelesenes Buch (#79): was nicht stimmt, was fehlte.
+
+    Ersetzt beides; was die Leserin beim Gegengewicht *nur hier* gewählt hat,
+    bleibt. Abwählen lässt sich nur, was der Steckbrief nennt; ergänzen nur,
+    was das Vokabular kennt und der Steckbrief nicht schon nennt.
+    """
+    kind = _kind(store, settings, book_id)
+    if kind is None:
+        raise IntakeError("Dieses Buch ist weder *Mag ich* noch *Doof*.")
+    shelf, vocabulary = _book(store, settings, book_id, kind)
+    drop = list(dict.fromkeys(f for f in drop if f))
+    add = list(dict.fromkeys(f for f in add if f))
+    known = {f for _, families in family_choices(vocabulary) for f, _ in families}
+    for f in drop:
+        if f not in shelf.families:
+            raise IntakeError(f"{f} trägt dieses Buch nicht.")
+    for f in add:
+        if f not in known:
+            raise IntakeError(f"{f} kennt das Vokabular nicht.")
+        if f in shelf.families:
+            raise IntakeError(f"{f} steht schon im Steckbrief.")
+    details, reasons = _reasons_of(store, settings, book_id, kind)
+    reasons.update({"drop": drop, "add": add})
+    _keep_reasons(store, settings, book_id, kind, details, reasons, now)
+
+
+def _keep_reasons(store, settings, book_id, kind, details, reasons, now) -> None:
+    kept = {k: reasons[k] for k in REASON_KINDS if reasons.get(k)}
+    if kept:
+        details["reasons"] = kept
+    else:
+        details.pop("reasons", None)
+    store.set_relation_details(settings.slug, book_id, kind, details, now=now)
 
 
 def _book(store: Store, settings: Settings, book_id: int, kind: str):
@@ -258,6 +375,7 @@ def add_counterweights(
     shelf, _ = _book(store, settings, book_id, DISLIKED)
     profile = store.reading_profile(settings.slug)
     new_weights = []
+    only_here = []
     for f, scope in scopes.items():
         if f not in shelf.families:
             raise IntakeError(f"{f} trägt dieses Buch nicht.")
@@ -267,6 +385,14 @@ def add_counterweights(
             raise IntakeError(str(exc)) from None
         if weight is not None:
             new_weights.append(weight)
+        else:
+            only_here.append(f)
+    if only_here:
+        # *Nur bei diesem Buch* zählt gegen nichts — auch nicht, wenn die
+        # Geschmacksform aus dem Buch lernt (#79). Das steht an der Bewertung.
+        details, reasons = _reasons_of(store, settings, book_id, DISLIKED)
+        reasons["here"] = list(dict.fromkeys([*reasons.get("here", ()), *only_here]))
+        _keep_reasons(store, settings, book_id, DISLIKED, details, reasons, now)
     counterweights, changed = merge_counterweights(profile.counterweights, new_weights)
     if not changed:
         return None

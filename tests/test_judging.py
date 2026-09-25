@@ -136,3 +136,50 @@ def test_the_test_profile_steers_the_stars_exactly(vocabulary, weights, stars) -
                     vocabulary, weights)
 
     assert verdict.stars == stars
+
+
+# --- die Form lernt aus den bewerteten Büchern (#79) ------------------------------------
+
+
+def _gelesen(store, vocabulary, titel: str, kind: str, *terms: str, isbn: str | None = None,
+             details: dict | None = None) -> int:
+    from datetime import datetime
+
+    now = datetime(2026, 9, 26, 12, 0)
+    book = store.find_or_create_book(isbn=isbn, title=titel, author="A", now=now)
+    subject = f"isbn:{isbn}" if isbn else f"book:{book.id}"
+    store.put_portrait(subject, portrait(vocabulary, *terms), now=now)
+    store.put_relation("test", book.id, kind, active=True, now=now, **(details or {}))
+    return book.id
+
+
+def test_the_judge_learns_from_the_rated_books(store, vocabulary) -> None:
+    """Ein gemochtes Buch hebt, was es trägt — auch was nicht angetippt ist."""
+    from datetime import datetime
+
+    store.put_reading_profile("test", PROFILE, cause="Test", now=datetime(2026, 9, 26, 12, 0))
+    buch = portrait(vocabulary, "brooding", "world_building", "thought_provoking")
+    vorher = load_judge(store, "test").verdict(buch)
+
+    _gelesen(store, vocabulary, "Otherland", "liked", "world_building", "thought_provoking",
+             isbn="9783000000001")
+    nachher = load_judge(store, "test").verdict(buch)
+
+    assert nachher.percent > vorher.percent
+
+
+def test_the_judge_reads_her_reasons_from_the_rating(store, vocabulary) -> None:
+    from datetime import datetime
+
+    from ebook_watchlist.judging import rated_books
+
+    store.put_reading_profile("test", PROFILE, cause="Test", now=datetime(2026, 9, 26, 12, 0))
+    _gelesen(store, vocabulary, "Der Schwarm", "disliked", "intensifying", "world_building",
+             details={"reasons": {"add": ["leisurely"], "drop": ["nerve_racking"],
+                                  "here": ["big_world"]}})
+
+    (schwarm,) = rated_books(store, "test", vocabulary, load_weights(), fingerprint(vocabulary))
+
+    assert schwarm.sign == -1
+    assert schwarm.added == ("leisurely",)
+    assert set(schwarm.dropped) == {"nerve_racking", "big_world"}

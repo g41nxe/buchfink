@@ -82,4 +82,44 @@
   <p class="text-soft">Nichts Neues — was dieses Buch trägt, zählt schon dagegen.</p>
   {% endif %}
   {% endif %}
+
+  {% if n.own %}
+  {# Deine Sicht (#79): was der Steckbrief nennt, aber für sie nicht stimmt,
+     und was ihm fehlt. Steht an ihrer Bewertung, nicht im Profil; die
+     Geschmacksform lernt daraus vor der Beschreibung des Modells. #}
+  {% set disliked = n.kind == "disliked" %}
+  <form method="post" action="{{ base }}/reasons" class="space-y-2 border-t border-hair pt-4"
+        data-reasons>
+    <p class="text-ink">Sieht das Modell dieses Buch anders als du?</p>
+    <p class="text-xs text-soft">Tipp an, was für dich nicht stimmt — es zählt dann nicht.</p>
+    <ul class="flex flex-wrap gap-2">
+      {% for f in n.own %}
+      <li>{{ choice_pill(f, "drop", gone=true, on=f.family_id in n.dropped) }}</li>
+      {% endfor %}
+    </ul>
+    <p class="pt-1 text-xs text-soft">
+      {{ "Was hat dich gestört, das hier fehlt?" if disliked
+         else "Was hat dir gefallen, das hier fehlt?" }}</p>
+    <div class="flex flex-wrap items-center gap-2">
+      {% for f in n.added %}{{ choice_pill(f, "add", gone=disliked, on=true) }}{% endfor %}
+      <select name="add" aria-label="Ergänzen"
+              class="h-7 rounded border border-rule bg-paper px-1 text-xs text-ink">
+        <option value="">ergänzen …</option>
+        {% for dimension, families in n.choices %}
+        <optgroup label="{{ dimension }}">
+          {% for id, name in families %}
+          {% if id not in n.added | map(attribute="family_id") %}
+          <option value="{{ id }}">{{ name }}</option>
+          {% endif %}
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit"
+            class="tun inline-flex h-8 items-center gap-1 rounded border border-rule px-3
+                   font-medium text-ink hover:border-accent hover:text-accent">
+      <svg class="i"><use href="#ic-check"/></svg>Übernehmen</button>
+  </form>
+  {% endif %}
 </div>

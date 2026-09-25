@@ -28,6 +28,9 @@ urteil_formueberdeckung:
   # Stärkere Ablehnung kostete gemochte Bücher (Otherland, OFFF) und hielt den
   # Schwarm trotzdem nicht: sein Steckbrief kennt die Gründe der Leserin nicht.
   ablehnung_verhaeltnis: 0.2
+  # Was die Leserin selbst zu einem gelesenen Buch sagt, das der Steckbrief
+  # nicht nennt (beim Schwarm *gemächlich*), wiegt wie ein prägendes Merkmal.
+  grund_der_leserin: 1.0
   # Das Getippte ist der Startwert der Form; es wiegt so viel wie zwei Bücher.
   getipptes_wiegt_buecher: 2.0
   getippt: 0.4

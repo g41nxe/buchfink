@@ -50,6 +50,12 @@ class RatedBook:
     #: Merkmal → Gewicht im Buch, aus dem Steckbrief (``book_terms``).
     terms: Mapping[str, float]
     genre: str | None = None
+    #: Familien, die das Buch für die Leserin trug, obwohl der Steckbrief sie
+    #: nicht nennt (Z10): beim Schwarm *gemächlich*.
+    added: tuple[str, ...] = ()
+    #: Familien, die nicht zählen: was sie anders erlebt hat (der Schwarm war
+    #: für sie nicht *spannungsgeladen*), oder was sie nur hier gestört hat.
+    dropped: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +129,8 @@ def learn(
     for book in rated:
         for term, w in book.terms.items():
             f = family_of(term)
+            if f in book.dropped:
+                continue  # das Buch war für sie nicht so (Z10)
             if book.sign > 0:
                 agree_family[f] += w
                 agree_term[term] += w
@@ -131,6 +139,13 @@ def learn(
                 # beschränkt; dann gilt die Regel, nicht die Form.
                 reject_family[f] = max(reject_family[f], w)
                 reject_term[term] = max(reject_term[term], w)
+        # Was sie selbst nennt, wiegt wie ein prägendes Merkmal; es gilt der
+        # Familie, weil sie in Familien spricht, nicht in Merkmalen.
+        for f in book.added:
+            if book.sign > 0:
+                agree_family[f] += weights.reader_reason
+            else:
+                reject_family[f] = max(reject_family[f], weights.reader_reason)
     lam = weights.rejection_ratio * n
     for f, w in reject_family.items():
         agree_family[f] -= lam * w
@@ -148,6 +163,14 @@ def learn(
         if not c.genre:
             for f in c.families:
                 prior[f] = -weights.prior_against
+    # Was sie selbst zu einem Buch nennt, ist eine Aussage wie ein Tipp: es
+    # startet wie ein angetipptes Merkmal oder Gegengewicht.
+    for book in rated:
+        for f in book.added:
+            if book.sign > 0:
+                prior[f] = max(prior.get(f, 0.0), weights.prior_liked)
+            else:
+                prior[f] = min(prior.get(f, 0.0), -weights.prior_against)
 
     k = weights.prior_books
     family = {

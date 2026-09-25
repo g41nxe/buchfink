@@ -481,6 +481,21 @@ thin Steckbrief stays careful. Deliberately asymmetric: a book is not expected
 to carry everything the reader likes. Rejection counts per disappointing book,
 the strongest one per term (MultiNeg), at a fixed ratio to agreement (Rocchio).
 
+### Reader's Reasons
+*deutsch: deine Sicht (Gründe der Leserin)*
+
+What the reader says about a book she has read and rated, where the Steckbrief
+sees it differently (#79): families the Steckbrief names that did not hold for
+her (*Der Schwarm* was not *spannungsgeladen* for her), families it misses
+(*gemächlich*), and families that bothered her only in this book (*nur hier*
+when she takes a Counterweight). Kept at her rating, not in the Reading
+Profile; the Taste Form learns from them before the model's description. A
+family she adds counts like a tapped one. Chosen from the vocabulary, never
+free text — the code decides, no model is asked.
+
+**Reader-facing name: *deine Sicht*** — the section asks "Sieht das Modell
+dieses Buch anders als du?"
+
 ### Portrayer
 *deutsch: Steckbrief-Ersteller*
 
