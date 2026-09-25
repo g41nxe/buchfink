@@ -421,10 +421,15 @@ Anlage (eng an wenigen Figuren gegenüber dem breiten Epos), nicht im Genre.
 | davon die sieben neuen | 2 von 7 | 6 von 7 | 6 von 7 |
 | *Der Schwarm* | 3★ 50 % | 4★ 62 % (ohne sich selbst) | 3★ 44 % |
 | Gegenproben unter 3★ | 5 von 5 | 4 von 5 | 4 von 5 |
-| Stichprobe ab 3★ (Tor) | 33 von 60 | 42 von 60 | 49 von 60 |
-| Stufenwechsel beim Ausdünnen | 29 % | 40 % | 51 % |
+| Stichprobe ab 3★ (Tor) | 30 von 53 | 35 von 53 | 42 von 53 |
+| Stufenwechsel beim Ausdünnen | 26 % | 37 % | 49 % |
 
 Einstellungen: γ/β = 0,33, Maximum je enttäuschendem Buch; Richtungen mit τ = 0,15.
+
+Korrektur: Die Stichprobe enthielt auch die bewerteten Bücher, deren Steckbrief an der
+ISBN hängt statt an der Buchnummer (zuerst zwei, mit den neuen Büchern sieben). Die
+Prototypen schließen jetzt alle Steckbriefe der bewerteten Bücher aus; die Zahlen oben
+sind ohne sie. Die Werte in Abschnitt 10 (55 Bücher) sind davon leicht betroffen.
 
 **Befund.**
 
@@ -449,5 +454,5 @@ Einstellungen: γ/β = 0,33, Maximum je enttäuschendem Buch; Richtungen mit τ 
 
 **Stand der Abwägung.** Die einzelne Form ist mit breiterem Spektrum der bessere
 Kompromiss: deutlich mehr eigene Bücher als heute, Gegenproben abgewiesen, weniger
-Rauschen als die Richtungen. Offen bleiben das Rauschen (40 % gegenüber 29 %) und die
+Rauschen als die Richtungen. Offen bleiben das Rauschen (37 % gegenüber 26 %) und die
 Ablehnung, die erst mit mehr enttäuschenden Büchern prüfbar ist.

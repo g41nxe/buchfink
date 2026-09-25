@@ -218,10 +218,15 @@ with store.session() as sess:
 latest = {r.subject: _portrait_of(r) for r in all_rows}
 
 
+own_subjects = set()  # die Steckbriefe der bewerteten Bücher: nicht in die Stichprobe
+
+
 def portrait_of(bid):
     b = store.book(bid)
-    for s in (f"book:{bid}", f"isbn:{b.isbn}" if b.isbn else None):
-        if s and s in latest and latest[s].known:
+    subjects = [f"book:{bid}"] + ([f"isbn:{b.isbn}"] if b.isbn else [])
+    own_subjects.update(subjects)
+    for s in subjects:
+        if s in latest and latest[s].known:
             return b.title, latest[s]
     return b.title, None
 
@@ -240,7 +245,11 @@ for kind, sign in (("liked", 1), ("disliked", -1)):
         rated_portraits[t] = p
 
 FULL = learn(P6, rated)
-sample = [p for s, p in latest.items() if p.known and not s.startswith(("intake:", "book:"))]
+sample = [
+    p
+    for s, p in latest.items()
+    if p.known and not s.startswith(("intake:", "book:")) and s not in own_subjects
+]
 
 
 def _probe(d):
