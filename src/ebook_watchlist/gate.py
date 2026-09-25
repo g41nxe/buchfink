@@ -19,6 +19,7 @@ from datetime import datetime
 
 from .facets import ReadingProfile, Weights
 from .judging import Verdict, judge, readers_verdict
+from .junk import is_short_story
 from .models import Delta, DeltaKind, MatchReason, Observation
 from .portrait import Portrait, PortrayalUnavailable, Vocabulary, fingerprint
 from .ratings import BY_READER, book_subject, subject_of
@@ -51,6 +52,9 @@ class GateReport:
     #: Es gibt kein Leseprofil, und der Lauf hatte Funde: nichts wurde
     #: geurteilt, und das soll dastehen (ADR 33, Punkt 8).
     no_profile: bool = False
+    #: Kurzgeschichten nach dem Umfang der Detailseite: nicht beschrieben,
+    #: nicht gezeigt, und der Bericht nennt ihre Zahl (#73).
+    short_stories: int = 0
     #: Das Urteil zu jedem durchgelassenen Fund, am Schlüssel der Beobachtung.
     #: Der Digest zeigt es: die Begründung ist der Grund, den ein Vorschlag
     #: mitbringt (ADR 19, Ticket 14).
@@ -134,6 +138,7 @@ def apply(
     report = GateReport(threshold=threshold)
     stamp = fingerprint(vocabulary)
     portraits: dict[tuple[str, str], Portrait] = {}
+    short: set[tuple[str, str]] = set()
     created: set[tuple[str, str]] = set()
     attempted: set[tuple[str, str]] = set()
 
@@ -169,6 +174,10 @@ def apply(
             # verschöbe sonst die Antworten gegen die Bücher.
             fuller = {o.key: o for o in evidence(wanted)}
             described = [fuller.get(o.key, o) for o in wanted]
+            # Erst jetzt ist der Umfang bekannt: eine Kurzgeschichte kostet
+            # keinen Steckbrief und wird nicht gezeigt (#73).
+            short = {o.key for o in described if is_short_story(o)}
+            described = [o for o in described if o.key not in short]
         # Alle auf einmal: der Steckbrief-Ersteller bündelt selbst (#66). Was er
         # nicht liefert — ein gescheitertes Bündel, ein ausgelassenes Buch —,
         # bleibt unbeschrieben und wird gezeigt.
@@ -189,6 +198,9 @@ def apply(
 
     kept: list[Delta] = []
     for delta in deltas:
+        if delta.current.key in short:
+            report.short_stories += 1
+            continue
         if delta.current.match_reason is MatchReason.WATCHLIST:
             # Von der Leserin selbst gewählt; sie gegen ihr eigenes Profil
             # abzulehnen wäre anmaßend.

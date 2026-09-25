@@ -222,3 +222,19 @@ def test_a_second_writer_waits_rather_than_giving_up(tmp_path: Path) -> None:
     with store.session() as session:
         timeout = session.connection().exec_driver_sql("PRAGMA busy_timeout").scalar()
     assert timeout >= 15000
+
+
+def test_an_observation_keeps_its_page_count(store) -> None:
+    """Der Umfang aus der Detailseite, für das Erkennen von Kurzgeschichten (#73)."""
+    from datetime import datetime
+
+    from ebook_watchlist.models import MatchReason, Observation
+
+    now = datetime(2026, 9, 26, 12, 0)
+    run_id = store.start_run("test", "cli", now)
+    store.append(run_id, "test", [Observation(
+        source="beam", source_item_id="7", title="Kurz", pages=48,
+        match_reason=MatchReason.GENRE_CATEGORY, observed_at=now)], now)
+
+    (found,) = store.latest_discoveries("test")
+    assert found.pages == 48

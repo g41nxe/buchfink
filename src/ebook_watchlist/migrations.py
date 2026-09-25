@@ -595,6 +595,14 @@ def _a_portrait_remembers_whether_a_text_went_along(connection: Connection) -> N
     add_column(connection, "portrait", "with_text", "INTEGER")
 
 
+def _an_observation_knows_its_page_count(connection: Connection) -> None:
+    """Der Umfang aus der Detailseite, für das Erkennen von Kurzgeschichten (#73).
+
+    Alte Zeilen bekommen keinen Wert: ohne Umfang gilt nichts als Kurzgeschichte.
+    """
+    add_column(connection, "observation", "pages", "INTEGER")
+
+
 def _the_old_machine_judgements_are_gone(connection: Connection) -> None:
     """Die Urteile des alten Sterne-Modells fallen weg (#52, ADR 33).
 
@@ -646,6 +654,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _a_judgement_shows_what_came_off,
     _the_old_machine_judgements_are_gone,
     _a_portrait_remembers_whether_a_text_went_along,
+    _an_observation_knows_its_page_count,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

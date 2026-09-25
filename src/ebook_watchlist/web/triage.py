@@ -21,7 +21,7 @@ from ..covers import CoverStore, file_name
 from ..deals import is_strong_deal
 from ..diff import worth_announcing
 from ..judging import load_judge
-from ..junk import is_junk
+from ..junk import is_junk, is_short_story
 from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
@@ -145,6 +145,8 @@ class Pile:
     #: Funde von einer Autorenschaft, die ihre Texte selbst als KI-erzeugt
     #: angibt (#31). Ausgeblendet wie die anderen, nicht verworfen.
     hidden_ai: int = 0
+    #: Kurzgeschichten nach dem Umfang der Detailseite (#73).
+    hidden_short: int = 0
 
     @property
     def is_empty(self) -> bool:
@@ -172,6 +174,7 @@ class Pile:
             (self.hidden_weak, self._below_threshold),
             (self.hidden_language, "in anderen Sprachen"),
             (self.hidden_ai, "KI-erzeugt"),
+            (self.hidden_short, "Kurzgeschichten" if self.hidden_short != 1 else "Kurzgeschichte"),
         )
         return tuple((count, word) for count, word in pairs if count)
 
@@ -269,6 +272,7 @@ def pending(
     hidden_weak = 0
     hidden_language = 0
     hidden_ai = 0
+    hidden_short = 0
     for observation in found:
         if (observation.source, observation.source_item_id) in decided_items:
             continue
@@ -276,6 +280,10 @@ def pending(
             continue
         if is_junk(observation):
             hidden_junk += 1
+            continue
+        # Wie ein Sammelband eine Frage der Form, nicht des Geschmacks (#73).
+        if is_short_story(observation):
+            hidden_short += 1
             continue
         # Vor der Preisregel und vor dem Urteil: ein Fund in fremder Sprache
         # ist kein Kandidat, gleich was er kostet oder wie er bewertet wurde.
@@ -321,6 +329,7 @@ def pending(
         hidden_weak=hidden_weak,
         hidden_language=hidden_language,
         hidden_ai=hidden_ai,
+        hidden_short=hidden_short,
         threshold=judge.threshold if judge else 3,
         # Nur, wenn es wirklich kein Profil gibt: ein unlesbares Vokabular ist
         # etwas anderes, und "erst die Erstaufnahme machen" wäre dann falsch.

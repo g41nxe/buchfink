@@ -495,3 +495,20 @@ def test_a_book_the_answer_leaves_out_is_shown_and_counted(store, vocabulary, we
     assert kept == [left_out]
     assert (report.held_back, report.unrated, report.rated) == (2, 1, 2)
     assert len(portrayer.calls) == 3  # ein Bündel, alle drei gefragt
+
+
+# --- Kurzgeschichten (#73) ------------------------------------------------------------
+
+
+def test_a_short_story_costs_no_portrait_and_is_held_back(store, vocabulary, weights) -> None:
+    """Die Detailseite nennt den Umfang; was darunter liegt, wird nicht beschrieben."""
+    from dataclasses import replace
+
+    fund = discovery(isbn="9783104911854")
+    portrayer = Portrayer(vocabulary, GOOD)
+
+    kept, report = run(store, vocabulary, weights, [first_seen(fund)], portrayer,
+                       evidence=lambda obs: [replace(o, pages=40) for o in obs])
+
+    assert kept == [] and portrayer.calls == []
+    assert report.short_stories == 1

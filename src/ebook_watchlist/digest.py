@@ -13,6 +13,7 @@ from datetime import datetime
 from .config import Settings
 from .deals import deal_flags
 from .judging import Verdict
+from .junk import SHORT_STORY_PAGES
 from .models import Attention, Delta, DeltaKind, MatchReason, SourceFailure
 from .reasons import why_shown
 
@@ -73,10 +74,15 @@ class GateNote:
     unrated: int = 0
     #: Es gibt noch kein Leseprofil: nichts wurde geurteilt (ADR 33, Punkt 8).
     no_profile: bool = False
+    #: Kurzgeschichten nach dem Umfang der Detailseite (#73): nicht gezeigt.
+    short_stories: int = 0
 
     @property
     def is_worth_saying(self) -> bool:
-        return bool(self.held_back or self.over_budget or self.unrated or self.no_profile)
+        return bool(
+            self.held_back or self.over_budget or self.unrated or self.no_profile
+            or self.short_stories
+        )
 
     @property
     def text(self) -> str:
@@ -101,6 +107,11 @@ class GateNote:
             parts.append(
                 "noch kein Leseprofil, Vorschläge unbewertet — "
                 "erst die Erstaufnahme machen"
+            )
+        if self.short_stories:
+            noun = "Kurzgeschichte" if self.short_stories == 1 else "Kurzgeschichten"
+            parts.append(
+                f"{self.short_stories} {noun} (unter {SHORT_STORY_PAGES} Seiten) nicht gezeigt"
             )
         return "Bewertungstor: " + ", ".join(parts)
 

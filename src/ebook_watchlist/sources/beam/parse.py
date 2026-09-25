@@ -230,6 +230,8 @@ class Detail:
     keywords: tuple[str, ...] = ()
     #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
     publisher: str | None = None
+    #: Der Umfang in Seiten (#73), aus der Angabe „Seitenzahl".
+    pages: int | None = None
 
 
 def _isbn_from_order_number(order_number: str | None) -> str | None:
@@ -296,7 +298,14 @@ def parse_detail(html: str) -> Detail:
         sample_url=sample_href if isinstance(sample_href, str) and sample_href else None,
         keywords=_keywords(page, leave_out=(author, title)),
         publisher=_fact(page, "Verlag"),
+        pages=_pages(_fact(page, "Seitenzahl")),
     )
+
+
+def _pages(value: str | None) -> int | None:
+    """„800" → 800; was keine Zahl ist, ist kein Umfang."""
+    digits = "".join(ch for ch in value or "" if ch.isdigit())
+    return int(digits) if digits else None
 
 
 def _fact(page, label: str) -> str | None:

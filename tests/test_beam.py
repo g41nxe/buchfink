@@ -317,3 +317,8 @@ def test_a_bundle_page_has_a_cover_too() -> None:
     assert parse.parse_detail(html).cover_url == (
         "https://www.beam-shop.de/media/image/d8/b8/01/9783641253226_600x600.jpg"
     )
+
+
+def test_the_detail_page_carries_the_page_count() -> None:
+    """Der Umfang, für das Erkennen von Kurzgeschichten (#73)."""
+    assert beam_detail("product-detail.html").pages == 800

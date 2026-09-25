@@ -1034,6 +1034,7 @@ def _run(
             over_budget=gate_report.over_budget,
             unrated=gate_report.unrated,
             no_profile=gate_report.no_profile,
+            short_stories=gate_report.short_stories,
         ),
     )
 

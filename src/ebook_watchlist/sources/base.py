@@ -57,6 +57,8 @@ class Item:
     keywords: tuple[str, ...] = ()
     #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
     publisher: str | None = None
+    #: Der Umfang in Seiten, wo die Quelle ihn nennt (#73).
+    pages: int | None = None
 
 
 @dataclass(slots=True)

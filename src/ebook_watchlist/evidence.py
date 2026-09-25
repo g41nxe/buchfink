@@ -110,9 +110,13 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             cover_url=item.cover_url or observation.cover_url,
             keywords=item.keywords,
             publisher=item.publisher,
+            pages=item.pages or observation.pages,
         )
         geholt[observation.key] = voller
-        if (voller.blurb, voller.cover_url) != (observation.blurb, observation.cover_url):
+        # Auch der Umfang kommt ins Journal: der Stapel liest die letzte
+        # Beobachtung und erkennt daran Kurzgeschichten (#73).
+        before = (observation.blurb, observation.cover_url, observation.pages)
+        if (voller.blurb, voller.cover_url, voller.pages) != before:
             frisch.append(replace(voller, observed_at=now))
 
     if frisch:

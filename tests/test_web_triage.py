@@ -906,3 +906,18 @@ def test_a_pile_with_an_unreadable_vocabulary_does_not_blame_the_missing_profile
 
     assert not pile.no_profile
     assert "data-no-profile" not in client.get("/suggestions").text
+
+
+def test_a_short_story_is_hidden_and_counted(client: TestClient, db: Store) -> None:
+    """Kurzgeschichten stehen nicht im Stapel; die Zeile darüber nennt ihre Zahl (#73)."""
+    from dataclasses import replace
+
+    fund = found(db, item_id="k", title="BattleTech - Onikuma")
+    db.append(db.start_run("test", "cli", NOW), "test", [replace(fund, pages=48,
+                                                                 observed_at=NOW)], NOW)
+
+    pile = view.pending(db, load_settings())
+
+    assert "BattleTech - Onikuma" not in [i.title for i in pile.items]
+    assert pile.hidden_short == 1
+    assert "1 Kurzgeschichte" in client.get("/suggestions").text

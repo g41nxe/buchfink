@@ -109,6 +109,8 @@ class ObservationRow(Base):
     #: Der Schnitt der Leserstimmen dieser Quelle und ihre Anzahl (Ticket 54).
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rating_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Der Umfang in Seiten, von der Detailseite (#73).
+    pages: Mapped[int | None] = mapped_column(Integer, nullable=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
 
     # Serves the max-id-per-item lookup that every diff starts with.
@@ -538,6 +540,7 @@ def _to_observation(row: ObservationRow) -> Observation:
         cover_url=row.cover_url,
         rating=row.rating,
         rating_votes=row.rating_votes,
+        pages=row.pages,
         observed_at=row.observed_at,
     )
 
@@ -2183,6 +2186,7 @@ class Store:
                     cover_url=obs.cover_url,
                     rating=obs.rating,
                     rating_votes=obs.rating_votes,
+                    pages=obs.pages,
                     subtitle=obs.subtitle,
                     isbn=obs.isbn,
                     series=obs.series,

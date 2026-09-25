@@ -216,3 +216,13 @@ def test_the_digest_says_when_there_is_no_profile_yet() -> None:
 
 def test_a_gate_note_about_nothing_stays_silent() -> None:
     assert build(gate=GateNote(threshold=3)).is_empty
+
+
+def test_the_digest_names_the_short_stories_it_left_out() -> None:
+    """Nichts verschwindet stumm (#73)."""
+    from ebook_watchlist.digest import GateNote
+
+    note = GateNote(short_stories=2)
+
+    assert note.is_worth_saying
+    assert "2 Kurzgeschichten (unter 80 Seiten) nicht gezeigt" in note.text

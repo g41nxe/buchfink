@@ -104,3 +104,33 @@ def test_a_watchlist_title_is_never_junk() -> None:
 
 def test_a_missing_price_is_not_the_same_as_free() -> None:
     assert not is_junk(shelf("Ein Titel", price=None))
+
+
+# --- Kurzgeschichten (#73) -----------------------------------------------------------
+
+
+def test_a_short_find_is_a_short_story() -> None:
+    from dataclasses import replace
+
+    from ebook_watchlist.junk import SHORT_STORY_PAGES, is_short_story
+
+    assert is_short_story(replace(shelf("BattleTech - Onikuma"), pages=SHORT_STORY_PAGES - 1))
+    assert not is_short_story(replace(shelf("Der Schwarm"), pages=SHORT_STORY_PAGES))
+
+
+def test_without_a_page_count_nothing_is_a_short_story() -> None:
+    from ebook_watchlist.junk import is_short_story
+
+    assert not is_short_story(shelf("BattleTech - Onikuma"))
+
+
+def test_a_short_title_she_chose_herself_stays() -> None:
+    """Ein Watchlist-Titel geht immer durch, wie bei den Sammelbänden."""
+    from dataclasses import replace
+
+    from ebook_watchlist.junk import is_short_story
+
+    selbst = Observation(source="beam", source_item_id="1", title="Kurz",
+                         match_reason=MatchReason.WATCHLIST, pages=40)
+    assert not is_short_story(selbst)
+    assert is_short_story(replace(by_author("Kurz"), pages=40))
