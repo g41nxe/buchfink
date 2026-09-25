@@ -49,9 +49,9 @@ PAR = dict(
     stars=((5, 0.7), (4, 0.55), (3, 0.4), (2, 0.2)),
     q=0.75,  # welches Quantil der Vorlieben als „voll gemocht" gilt
     muster_spinne=True,  # Erzählmuster als zweite Spinne (False: nur „bestes Muster")
-    alpha_p=1.0,
-    neg_max=False,
-    rocchio=None,  # γ/β; gesetzt ersetzt es lam (Literatur: 0,2 bis 0,33)  # Ablehnungen je Buch als Maximum statt als Summe  # Glättung der zweiten Spinne (ein Buch trägt 1–3 Muster)
+    alpha_p=1.0,  # Glättung der zweiten Spinne (ein Buch trägt 1–3 Muster)
+    neg_max=False,  # Ablehnungen je Buch als Maximum statt als Summe
+    rocchio=None,  # γ/β; gesetzt ersetzt es lam (Literatur: 0,2 bis 0,33)
 )
 if len(sys.argv) > 2:
     PAR.update(json.loads(sys.argv[2]))
