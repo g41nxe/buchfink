@@ -330,3 +330,71 @@ der Recherche, wo Nachbarn als alleiniges Urteil schwach abschnitten, bei vielen
 Textmerkmalen). Nächster Schritt: Richtungen als Prototyp (Gruppen aus den Büchern
 bilden, je Gruppe eine Form, das Maximum zählt), am selben Prüfstand, ohne
 Modellaufruf.
+
+## 10. Richtungen als Prototyp: Ergebnis (25.09.2026, spät)
+
+Vorbereitung: Für die 17 bewerteten Bücher der Leserin sind Klappentexte geholt (14 von
+17 über den Shop; *Yendi*, *Cupido*, *Otherland* und *Der Herr der Ringe* ohne Text),
+und alle 17 sind mit Klappentext und Schlagwörtern neu beschrieben, die drei
+Unbekannten einzeln nachgefragt. Alle 17 sind jetzt *bekannt*. Sicherung der
+Datenbank davor: `data/backups/snapshots-vor-klappentexten-2026-09-25.db`.
+
+Prototyp: `prototyp/richtungen.py`. Die gemochten Bücher werden nach gewichtetem
+Jaccard über Familien gruppiert (Average Linkage, Schwelle τ = 0,15); je Richtung
+eine Form nur aus Zustimmung; ein Buch zählt gegen die Richtung, die am besten passt.
+Abgelehnt wird über jedes enttäuschende Buch einzeln (MultiNeg): der Anteil des
+Buchs, der einem enttäuschenden Buch gleicht **und** in der gewählten Richtung als
+*Merkmal* nicht gemocht ist, senkt das Urteil (× 1 − 0,8 · Anteil).
+
+**Richtungen**, die der Prototyp findet: die düsteren Thriller (8 Bücher), *The
+Circle* mit *Auslöschung*, *Otherland* und *OFFF*, dazu *Yendi*, *Das Rosie-Projekt*
+und *Achtsam morden* je allein.
+
+| | heutige Rechnung (kennt das Buch selbst) | Richtungen (ohne das Buch selbst) |
+|---|---|---|
+| gemochte Bücher ab 3★ | 12 von 15 | 13 von 15 (*Yendi* 37 %, *OFFF* 39 %) |
+| *Der Schwarm* | 3★ 50 % | 3★ 48 % |
+| *Der Herr der Ringe* | 1★ 0 % | 1★ 13 % |
+| Tor (Stichprobe ab 3★) | 32 von 55 | 47 von 55 |
+| Zusammenhang mit der Länge | – | 0,21 |
+| Stufenwechsel beim Ausdünnen | 27 % | 48 % |
+
+Ein Fehler auf dem Weg: Die Ablehnung fiel für ein Merkmal, das die Richtung nicht
+kennt, auf dessen Familie zurück. *episch angelegt* galt damit als gemocht, weil
+*Weltenbau* (gleiche Familie *große Welt*) es ist; der Schwarm stand bei 63 %. Ohne
+diesen Rückfall sinkt er auf 48 %. Das Rocchio-Verhältnis (0,33 oder 0,43) ändert
+an den Richtungen nichts, weil sie nur aus Zustimmung lernen.
+
+**Befund.**
+
+1. Richtungen holen die Bücher zurück, die eine einzige Form verliert (*Otherland*,
+   *Auslöschung*, *Achtsam morden*, *Rosie*), ohne Zusammenhang mit der Länge des
+   Steckbriefs. Die Richtung ist also richtig gedacht.
+2. Sie lassen zu viel durch: 47 von 55 Büchern der Stichprobe kommen auf 3★ oder
+   mehr. Mit fünf Richtungen findet fast jedes Buch eine, die ungefähr passt. Das
+   widerspricht Z1 (*Passung statt Menge*) und der Regel *Qualität vor Masse*.
+   Einzelne Bücher als eigene Richtung wirken wie ein zu weites Netz.
+3. *Der Schwarm* wird nicht abgelehnt, und das liegt nicht an der Rechnung. Das
+   Modell beschreibt ihn als *spannungsgeladen* (prägend), *episch angelegt* (prägend),
+   *Weltenbau*, *große Ideen*, *Ungeheuer*, *Wettlauf gegen die Zeit*. Die Gründe der
+   Leserin (*gemächlich*, *wenig Spannung*, *zu viele Schauplätze ohne Zusammenhang*)
+   kommen im Steckbrief nicht vor; *spannungsgeladen* sagt das Gegenteil. Was das
+   Modell sieht, deckt sich mit *Otherland* und *Auslöschung*. Nur *episch angelegt*
+   unterscheidet ihn, und das allein trägt ein Drittel der Masse.
+4. Das Rauschen bleibt bei rund der Hälfte Stufenwechsel (Z7), doppelt so viel wie
+   heute.
+
+**Was daraus folgt.** Richtungen lösen Z10 (die eigenen Bücher erkennen), verlieren
+aber Z1 und Z7. Offen für die Entscheidung:
+
+- **Richtungen enger fassen**: eine Richtung erst ab zwei Büchern, Einzelbücher als
+  Beleg einer größeren Richtung statt als eigene; oder die Sterne je Richtung an
+  deren Stärke binden (eine Richtung aus einem Buch trägt höchstens 3★).
+- **Gründe der Leserin als Regel**: Wo das Modell ein enttäuschendes Buch anders
+  beschreibt als sie es erlebt hat, ist die Beschreibung der Engpass, nicht die
+  Rechnung. Ihre Gründe könnten als Gegengewicht mit Geltungsbereich gelten
+  (*episch angelegt* nur zusammen mit *gemächlich*), oder der Steckbrief fragt nach
+  Tempo und Zusammenhalt ausdrücklich.
+- **Tor neu setzen**: Mit Richtungen liegen die Werte anders; die Sternschwellen
+  müssten an der Stichprobe neu geeicht werden (mit .75/.62/.5/.25 kämen 39 von 55
+  durch, immer noch mehr als heute).
