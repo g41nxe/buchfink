@@ -14,6 +14,22 @@
 {{ undo_bar(undo.title, undo.done, "/watchlist/undo", fields) }}
 {% endif %}
 
+{# Ein eingetragener Titel, den es schon gab: kein neues Buch, und die Leserin
+   soll wissen, wie sie es sonst hält und dass es jetzt auch beobachtet wird. #}
+{% if existing %}
+<div role="status" class="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border
+                          border-rule bg-card px-4 py-2 text-sm">
+  {% if existing.already_watched %}
+  <span>„{{ existing.title }}" steht schon auf der Watchlist.</span>
+  {% else %}
+  <span>„{{ existing.title }}" gab es schon{% if existing.held_as %}
+    ({{ existing.held_as | join(", ") }}){% endif %} — jetzt ist es auch in Beobachtung.</span>
+  {% endif %}
+  <a href="/book/{{ existing.book_id }}"
+     class="tun text-accent underline underline-offset-2">zur Buchseite</a>
+</div>
+{% endif %}
+
 <h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Watchlist</h1>
 <p class="mb-6 max-w-xl text-sm text-soft">
   Titel, die du selbst benannt hast. Sie werden bei jedem Preis gemeldet — die

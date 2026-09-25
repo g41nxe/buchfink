@@ -264,7 +264,7 @@ def test_a_title_that_is_neither_cheap_nor_borrowable_stays_off_the_front(
 def test_at_most_five_offers_are_shown_cheapest_first(db: Store) -> None:
     now = datetime.now()
     for number in range(6):
-        book_id = watchlist.add(db, "test", title=f"Billig {number}", author=None, now=now)
+        book_id = watchlist.add(db, "test", title=f"Billig {number}", author=None, now=now).book_id
         run_id = db.start_run("test", "cli", now)
         db.append(
             run_id, "test",

@@ -17,7 +17,7 @@ from ..judging import load_judge
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
 from ..ratings import book_subject, subject_of
-from ..relations import DONE_LABELS, RelationKind, labelled_actions
+from ..relations import DONE_LABELS, RelationKind, label_of, labelled_actions
 from ..sources import registry
 from ..store import Store
 from . import sorting
@@ -519,19 +519,67 @@ def entries(
     return sorting.apply(sorting.WATCHLIST, rows, sort)
 
 
-def add(store: Store, profile_slug: str, *, title: str, author: str | None, now: datetime) -> int:
+@dataclass(frozen=True, slots=True)
+class Added:
+    """Was das Eintragen eines Titels bewirkt hat."""
+
+    book_id: int
+    #: Das Buch gab es schon, bevor der Titel eingetragen wurde — es ist dann
+    #: kein neues, und die Leserin soll es nicht dafür halten.
+    existed: bool
+    #: Es stand schon in Beobachtung: dann hat sich nichts geändert.
+    already_watched: bool
+
+
+def add(
+    store: Store, profile_slug: str, *, title: str, author: str | None, now: datetime
+) -> Added:
     """Ein Buch auf die Watchlist setzen.
 
     Aufgelöst wird hier **nicht**: die Weboberfläche scrapt nie (ADR 3). Sie
     schreibt die Beziehung, der nächste Lauf sucht das Buch bei den Quellen.
     Bis dahin steht der Eintrag als „noch nicht gesucht“ da — sichtbar, statt
     so zu tun, als sei schon etwas passiert.
+
+    Ein Buch, das es schon gibt, wird nicht doppelt angelegt (ADR 18) — die
+    Rückgabe sagt es, damit die Seite es der Leserin sagen kann.
     """
-    book = store.find_or_create_book(
-        isbn=None, title=title.strip(), author=(author or "").strip() or None, now=now
+    title, author = title.strip(), (author or "").strip() or None
+    known = store.find_book(isbn=None, title=title, author=author)
+    book = store.find_or_create_book(isbn=None, title=title, author=author, now=now)
+    watched = known is not None and any(
+        r.kind == str(RelationKind.WATCHING) and r.active
+        for r in store.relations_of(profile_slug, book.id)
     )
     store.put_relation(profile_slug, book.id, str(RelationKind.WATCHING), now=now)
-    return book.id
+    return Added(book.id, existed=known is not None, already_watched=watched)
+
+
+@dataclass(frozen=True, slots=True)
+class ExistingNotice:
+    """Der Hinweis über der Liste, wenn ein eingetragener Titel schon bekannt war."""
+
+    book_id: int
+    title: str
+    #: Wie die Leserin das Buch sonst hält („im Besitz“, „Mag ich“ …), ohne die
+    #: Beobachtung, die eben dazukam.
+    held_as: tuple[str, ...]
+    already_watched: bool
+
+
+def existing_notice(
+    store: Store, profile_slug: str, book_id: int | None, *, already_watched: bool
+) -> ExistingNotice | None:
+    """Nichts, wenn die Adresse etwas nennt, das es nicht gibt."""
+    book = store.book(book_id) if book_id is not None else None
+    if book is None:
+        return None
+    held_as = tuple(
+        label_of(r.kind)
+        for r in store.relations_of(profile_slug, book.id)
+        if r.active and r.kind != str(RelationKind.WATCHING)
+    )
+    return ExistingNotice(book.id, book.title, held_as, already_watched)
 
 
 @dataclass(frozen=True, slots=True)

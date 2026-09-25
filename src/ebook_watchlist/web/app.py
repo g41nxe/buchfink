@@ -388,6 +388,8 @@ def create_app() -> FastAPI:
         undo: int | None = None,
         kind: str = "",
         sortiert: str = "",
+        existing: int | None = None,
+        already: str = "",
     ) -> HTMLResponse:
         settings = load_settings()
         store = _store_for(paths.db_path())
@@ -410,6 +412,9 @@ def create_app() -> FastAPI:
                 "closings": watchlist.CLOSINGS,
                 "icons": symbols.RELATION_ICONS,
                 "undo": watchlist.undo_for(store, undo, kind) if undo else None,
+                "existing": watchlist.existing_notice(
+                    store, settings.slug, existing, already_watched=already == "1"
+                ),
                 "orders": sorting.WATCHLIST,
                 "sort": order.slug,
                 "links": {
@@ -426,10 +431,13 @@ def create_app() -> FastAPI:
         undo: int | None = None,
         kind: str = "",
         sortiert: str = "",
+        existing: int | None = None,
+        already: str = "",
     ) -> HTMLResponse:
         try:
             return _watchlist_page(
-                request, nur=nur, undo=undo, kind=kind, sortiert=sortiert
+                request, nur=nur, undo=undo, kind=kind, sortiert=sortiert,
+                existing=existing, already=already,
             )
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
@@ -448,18 +456,28 @@ def create_app() -> FastAPI:
         if not title.strip():
             return RedirectResponse("/watchlist", status_code=303)
         settings = load_settings()
-        book_id = watchlist.add(
+        added = watchlist.add(
             _store_for(paths.db_path()),
             settings.slug,
             title=title,
             author=author,
             now=datetime.now(),
         )
+        book_id = added.book_id
         rechecker.start(book_id)
         # Und gleich ein Steckbrief dazu (#38, #48): das Tor beschreibt nur
         # Funde, und ein Watchlist-Titel ist keiner. Er ruht auf Titel und
         # Autor:in, denn mehr gibt es in dieser Sekunde nicht.
         portrait_jobs.start(("book", book_id))
+        # Gab es das Buch schon, sagt die Liste es: sonst hält die Leserin es für
+        # neu und wundert sich, dass es zugleich im Besitz ist.
+        if added.existed:
+            target = _link(
+                "/watchlist",
+                existing=str(book_id),
+                already="1" if added.already_watched else "",
+            )
+            return RedirectResponse(target, status_code=303)
         return RedirectResponse("/watchlist", status_code=303)
 
     @app.post("/watchlist/{book_id}/active")

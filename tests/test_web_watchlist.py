@@ -80,6 +80,50 @@ def test_adding_the_same_book_twice_does_not_duplicate_it(
     assert [b.title for b in db.books()].count("Providence") == 1
 
 
+def test_a_new_title_says_nothing_about_existing(client: TestClient) -> None:
+    body = client.post(
+        "/watchlist/add", data={"title": "Providence", "author": "Max Barry"}
+    ).text
+
+    assert "gab es schon" not in body and "steht schon auf der Watchlist" not in body
+
+
+def test_a_book_that_already_exists_says_so_and_how_the_reader_holds_it(
+    client: TestClient, db: Store
+) -> None:
+    """Wer „Auslöschung" eintippt, das er schon besitzt, soll nicht glauben, es
+    sei neu — und nicht überrascht sein, dass es jetzt auch beobachtet wird."""
+    book = db.find_or_create_book(isbn=None, title="Auslöschung", author="Jeff VanderMeer",
+                                  now=NOW)
+    db.put_relation(load_settings().slug, book.id, str(RelationKind.OWNED), now=NOW)
+
+    body = client.post(
+        "/watchlist/add", data={"title": "auslöschung", "author": "Jeff VanderMeer"}
+    ).text
+
+    assert "gab es schon" in body and "im Besitz" in body
+    assert f'href="/book/{book.id}"' in body
+    assert [b.title for b in db.books()].count("Auslöschung") == 1
+
+
+def test_a_book_that_is_already_watched_says_nothing_changed(
+    client: TestClient, db: Store
+) -> None:
+    client.post("/watchlist/add", data={"title": "Providence", "author": "Max Barry"})
+
+    body = client.post(
+        "/watchlist/add", data={"title": "Providence", "author": "Max Barry"}
+    ).text
+
+    assert "steht schon auf der Watchlist" in body and "gab es schon" not in body
+
+
+def test_a_made_up_address_shows_no_notice(client: TestClient) -> None:
+    body = client.get("/watchlist?existing=99999").text
+
+    assert "gab es schon" not in body and "steht schon auf der Watchlist" not in body
+
+
 # --- pausieren und fortsetzen ----------------------------------------------
 
 
