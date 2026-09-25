@@ -1,0 +1,195 @@
+# Die Methode: Formüberdeckung
+
+Stand 25.09.2026, Entwurf. Diese Notiz fasst zusammen, was aus der Szenarienanalyse
+([urteil-szenarien.md](urteil-szenarien.md)), der Literatur
+([urteil-verfahren.md](urteil-verfahren.md)) und dem Gespräch mit der Leserin folgt,
+und beschreibt daraus eine Methode für das Urteil. Sie ist als Prototyp gerechnet und
+am Prüfstand gemessen, aber **noch nicht umgesetzt**; die Entscheidung dafür gehört in
+einen Nachtrag zu ADR 33.
+
+## 1. Die Idee in einem Bild
+
+Die Leserin und jedes Buch haben eine **Form** über denselben Achsen, den Merkmalen
+und Erzählmustern des Vokabulars, wie ein Spinnennetz:
+
+- **Die Form der Leserin** schlägt nach außen aus, wo sie etwas mag, nach innen, wo
+  sie etwas ablehnt, und bleibt in der Mitte, wo sie nichts gesagt hat. Wie weit sie
+  ausschlägt, lernt die Methode **aus ihren Büchern**; was sie antippt oder verstärkt,
+  ist der Startwert.
+- **Die Form des Buchs** schlägt so weit aus, wie das Modell ein Merkmal im Buch
+  gewichtet: prägend weit, deutlich mittel, am Rand kurz.
+- **Das Urteil** fragt: *Wie viel von der Form des Buchs liegt in deiner Form, und wie
+  viel in deinem Ablehnungsbereich?* Nicht umgekehrt: eine symmetrische Überdeckung
+  würde einen breiten Geschmack bestrafen, weil kein Buch alles tragen kann, was die
+  Leserin mag (gemessen: *Leichenblässe* käme auf 27 %).
+
+## 2. Was die Leserin angibt, und was nicht
+
+| Sie gibt an | Sie gibt nie an |
+|---|---|
+| *Mag ich* oder *Doof* zu einem Buch, gern eigene Sterne | wie stark ein Merkmal in einem Buch ist („Rätsel 50 %") |
+| bei einem gelesenen Buch optional **Gründe**, angetippt aus dem Vokabular („gemächlich", „großes Ensemble", „episch angelegt"), auch solche, die der Steckbrief nicht nennt, und was sie **anders erlebt** hat („wenig Spannung") | Zahlen, Gewichte, Schwellen |
+| was ihr besonders wichtig ist (verstärken, höchstens drei) | |
+| eine Ablehnung, die nur in einem Genre gilt (wie heute) | |
+
+## 3. Die Rechnung
+
+### 3.1 Die Form eines Buchs
+
+Für jedes Merkmal *t* des Steckbriefs das Gewicht im Buch: prägend 1,0, deutlich
+0,7, am Rand 0,4 (ohne Angabe 0,7). Erzählmuster zählen je Grundhandlung.
+
+Für ein Buch, das die Leserin gelesen und bewertet hat, gilt **ihre** Fassung: ihre
+Gründe kommen mit Gewicht 1,0 dazu, was sie anders erlebt hat, fällt weg (Z10). Der
+Steckbrief bleibt dabei unverändert; die Fassung der Leserin gilt nur für ihr Profil.
+
+### 3.2 Die Form der Leserin (gelernt)
+
+Für jede Familie *f* und jedes Merkmal *t*:
+
+1. **Belege aus Büchern**: `e = Σ_(gemocht) Gewicht − λ · Σ_(doof) Gewicht`, λ = 1,5
+   (ein enttäuschendes Buch wiegt 1,5-fach). Ein Gegengewicht, das die Leserin an
+   einem Buch auf ein Genre beschränkt hat, geht aus diesem Buch nicht als
+   allgemeine Ablehnung ein; ihre ausdrücklichen Gründe immer.
+2. **Startwert aus dem Getippten**: verstärkt +0,6, getippt +0,4, allgemeines
+   Gegengewicht −0,4, sonst 0.
+3. **Mischung**: `Familie = (e_f + k · Startwert) / (n + k)`, k = 2, n = Zahl der
+   gemochten Bücher. Wenige Bücher: der Startwert trägt; viele: die Bücher.
+4. **Einzelnes Merkmal**: `Merkmal = (e_t + n · Familie) / 2n`, also zur Hälfte zur
+   Familie hin geglättet. So kann *episch angelegt* abgelehnt sein, während
+   *Weltenbau* in derselben Familie neutral bleibt (Z11).
+5. **Skala**: geteilt durch das obere Viertel der Vorlieben (Quantil 0,75), auf −1 bis 1
+   begrenzt. Ein typisches Gemochtes zählt damit voll, nicht nur das Stärkste.
+
+Bekannt ist eine Familie, zu der es irgendeine Angabe gibt, aus Büchern, Getipptem oder
+Gegengewicht. Alles andere ist die Mitte des Netzes.
+
+### 3.3 Das Urteil über ein Buch
+
+1. **Merkmale, Anteil in deiner Form**: über die Merkmale des Buchs aus **bekannten**
+   Familien (Z2):
+   `A = (Σ Gewicht · Vorliebe⁺ − Σ Gewicht · Ablehnung + α·p₀) / (Σ Gewicht + α)`,
+   α = 4, p₀ = 0,2. Die Glättung zieht ein dünn beschriebenes Buch zur Mitte, statt
+   es kippen zu lassen (Z6).
+2. **Erzählmuster**: das **beste** gemochte Muster des Buchs zählt, `μ = 0,35 ×
+   Vorliebe`; ein abgelehntes Muster zieht `ν = 0,5 × Ablehnung` ab. Ein Muster ist so
+   gut wie drei (Z5).
+3. **Facette**: trägt das Buch eine Kombination ganz, gibt es einen Bonus β = 0,25.
+   Ihre Merkmale stecken schon im Anteil, sie zählen nicht doppelt.
+4. **Gegengewicht mit Genre** (Regel der Leserin): im Genre `× (1 − 0,5 × Gewicht im
+   Buch)`.
+
+`Übereinstimmung = [1 − (1 − A)·(1 − Muster)·(1 − Facette)] × Abzüge`
+
+**Sterne** wie heute: ab 0,2 zwei, ab 0,4 drei, ab 0,55 vier, ab 0,7 fünf; Vergleich mit
+Toleranz gegen Rundungsfehler. **Tor** ab drei Sternen. Kein Urteil wie heute, wenn das
+Buch unbekannt ist oder das Profil nichts weiß.
+
+### 3.4 Die Begründung
+
+Jede Zeile ist ein Teil der Rechnung: „passt zu dir: hart (prägend), gezeichnete Figur",
+„spricht dagegen: episch angelegt", „Geschichte: Rätsel", „trägt deine Kombination …".
+Das Spinnennetz zeigt dasselbe als Bild, auf der Profilseite deine Form, auf der
+Buchseite beide Formen übereinander.
+
+## 4. Gemessen am Prüfstand
+
+Prototyp mit der Einstellung aus 3.2 und 3.3, gegen die heutige Rechnung. Daten: deine
+Bücher mit Steckbrief (7 *Mag ich*, 2 *Doof*), 55 Stapelfunde, rund zwanzig synthetische
+Fälle. Keine Modellaufrufe.
+
+### 4.1 Deine Bücher
+
+*Ohne sich selbst* heißt: die Form wurde ohne dieses Buch gelernt, das Buch dann
+beurteilt, die ehrliche Probe, ob die Methode es erkennt.
+
+| Buch | heute | neu, ohne sich selbst | neu, mit sich selbst |
+|---|---|---|---|
+| Das Rosie-Projekt | 4★ 61 % | 4★ 61 % | |
+| Leopard | 5★ 87 % | 4★ 66 % | |
+| The Circle | 5★ 93 % | 3★ 50 % | |
+| Der Kruzifix-Killer | 5★ 95 % | 4★ 68 % | |
+| Leichenblässe | 5★ 93 % | 4★ 68 % | |
+| Sharp Objects | 5★ 93 % | 5★ 77 % | |
+| Auslöschung | 5★ 98 % | 3★ 48 % | |
+| **Der Schwarm** (Doof) | 5★ 92 % | 4★ 70 % | **2★ 39 %** |
+| Herr der Ringe (Doof) | 1★ 0 % | 1★ 2 % | 1★ 0 % |
+
+Alle sieben gemochten Bücher erreichen ohne sich selbst mindestens drei Sterne. Ein
+enttäuschendes Buch kann ohne sich selbst nicht abgelehnt werden (seine Ablehnung stammt
+nur aus ihm); die richtige Probe ist mit sich selbst (Z12): *Der Schwarm* fällt mit
+deinen Gründen unter das Tor, **knapp** (39 %).
+
+### 4.2 Szenarien (Auswahl)
+
+| Fall | heute | neu | Ziel |
+|---|---|---|---|
+| vier Merkmale, alle gemocht | 2★ 34 % | 3★ 47 % | Z1 ✓ |
+| acht Merkmale, vier gemocht | 2★ 34 % | 2★ 39 % | Z1 ✓ (die Hälfte ist die Hälfte) |
+| ein gemochtes Merkmal, vier andere | 1★ 10 % | 1★ 9 % | ✓ |
+| ein Muster + drei gemochte / drei Muster + dieselben | 56 % / 79 % | 55 % / 55 % | Z5 ✓ |
+| nur das Muster Rätsel, Merkmale neutral | 3★ 40 % | 3★ 41 % | ⚠ |
+| hart prägend / am Rand, sonst gleich | 27 % / 27 % | 35 % / 29 % | Z3 ✓ |
+| Facette + gemächlich prägend / am Rand | 56 % / 56 % | 34 % / 41 % | Z4 ✓ |
+| episch angelegt / Weltenbau (Science-Fiction) / Weltenbau (Fantasy), je + drei gemochte | 27 / 27 / 18 % | 31 / 37 / 24 % | Z11 ✓ |
+| eine Facette, sonst neutral | 5★ 86 % | 3★ 47 % | Doppelzählung weg ✓ |
+| dünn: zwei gemochte Merkmale und ein Muster | 5★ 91 % | 5★ 71 % | Z6 ✓ |
+
+### 4.3 Stichprobe und schmale Profile
+
+| | heute | neu |
+|---|---|---|
+| Stapelfunde durchs Tor (von 55) | 32 | 38 |
+| Korrelation mit der Zahl der Merkmale | 0,34 | 0,19 |
+| durchs Tor bei einem Profil aus 1 / 3 / 5 / 8 / 12 getippten Merkmalen, ohne Bücher | 0 / 0 / 5 / 6 / 8 | 1 / 4 / 10 / 17 / 45 |
+| Stufenwechsel, wenn 40 % der Merkmale fehlen | 27 % | **39 %** |
+
+## 5. Die Ziele, geprüft
+
+| Ziel | Stand |
+|---|---|
+| Z1 Passung statt Menge | ✓ Anteil in deiner Form; Länge kaum noch im Wert (0,19) |
+| Z2 unabhängig von der Profilgröße | ✓ schmale Profile finden Passendes; Unbekanntes zählt nicht |
+| Z3 Ausprägung zählt | ✓ Gewicht im Buch in jedem Beitrag |
+| Z4 Ablehnung nach Stärke | ✓ gelernt und nach Gewicht im Buch |
+| Z5 Muster als eigene Frage | ✓ bestes Muster zählt |
+| Z6 ehrlich bei dünner Beschreibung | ✓ Glättung zur Mitte |
+| **Z7 ruhig gegen Rauschen** | **✗ schlechter als heute** (39 % gegen 27 %): ein Anteil reagiert auf jedes Merkmal einer kurzen Beschreibung |
+| Z8 erklärbar, ohne Modell | ✓ jede Zeile ein Teil; Neuberechnung ohne Aufruf |
+| Z9 an deinen Büchern geprüft | ✓ 7 von 7 gemocht, 2 von 2 abgelehnt; ⚠ 38 statt 32 Funde durchs Tor |
+| Z10 deine Erfahrung geht vor | ✓ Gründe und Abweichungen gelten für dein Profil |
+| Z11 Ablehnung so fein wie nötig | ✓ Merkmal statt Familie |
+| Z12 Enttäuschendes prüft das Profil | ✓ als Probe rechenbar, knapp |
+
+## 6. Was offen ist
+
+1. **Z7, Rauschen.** Die Formel macht es schlimmer, nicht besser; lösen lässt es sich
+   nur an der Beschreibung. Erst messen (höchstens zehn Bücher, zwei- bis dreimal mit
+   derselben Anweisung, ein bis zwei Bündel), dann entscheiden: nur *prägende* und
+   *deutliche* Merkmale zählen, oder zweimal beschreiben und mitteln.
+2. **Wenige Bücher zum Lernen.** Nur 7 der 15 gemochten Bücher haben einen Steckbrief;
+   die übrigen acht (darunter Reihen) sollten zuerst beschrieben werden (ein Bündel).
+   Deine eigenen Bücher tragen das ganze Lernen, ihre Steckbriefe zählen deshalb
+   doppelt.
+3. **Eichung.** α, p₀, λ, μ, β und die Sternstufen sind an 9 Büchern und 55 Funden
+   eingestellt; *Der Schwarm* liegt einen Punkt unter dem Tor. Nachstellen, sobald mehr
+   eigene Urteile da sind; der Prüfstand bleibt als Test im Repo.
+4. **Mehr Funde durchs Tor** (38 statt 32): entweder so gewollt (die Funde sind schon
+   vorgefiltert und passen öfter), oder die Schwelle für drei Sterne leicht anheben
+   (bei 0,43 sind es 33).
+
+## 7. Was die Umsetzung braucht
+
+1. **Prüfstand** (vor allem anderen): die Szenarien und die Proben aus Abschnitt 4 als
+   Tests, dazu das Messskript; die heutige Rechnung bleibt darin als Vergleich.
+2. **Datenmodell**: Gründe und Abweichungen der Leserin je gelesenem Buch
+   (`book_relation.details`, keine neue Tabelle); Gegengewichte auch je Merkmal statt
+   nur je Familie.
+3. **Code**: eine Funktion, die die Form lernt (aus Profil, Relationen, Steckbriefen der
+   eigenen Bücher; bei jeder Profiländerung neu, zwischengespeichert), und eine, die
+   urteilt; `fit()` wird durch sie ersetzt, die Begründung aus ihren Teilen gebaut.
+   Neue Zahlen in `bewertungsschema.yaml`, ADR-33-Nachtrag.
+4. **Oberfläche**: beim *Doof* und *Mag ich* die Gründe aus dem ganzen Vokabular antippen
+   können (heute nur, was der Steckbrief nennt); das Spinnennetz auf Profil- und
+   Buchseite; beim Nachschärfen der Hinweis aus Z12.
+5. **Messung Z7** mit dem Modell, klein.

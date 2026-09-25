@@ -465,6 +465,26 @@ Discovery came in.
 
 **Reader-facing name: *Übereinstimmung*.**
 
+### Taste Form
+*deutsch: Geschmacksform*
+
+*Proposed, not yet in the code (docs/research/urteil-methode.md).* The reader's
+taste as a shape over the axes of the vocabulary (Appeal Terms and Story
+Patterns), like a spider graph: outward where she likes something, inward where
+she rejects it, at the centre where she has said nothing. How far it reaches is
+**learned from her books** (*Mag ich* and *Doof*, weighted by each term's weight
+in the book, and her own reasons for a book she has read), with what she tapped
+or boosted as the starting value. She never states a strength herself.
+
+### Form Overlap
+*deutsch: Formüberdeckung*
+
+*Proposed, not yet in the code.* The method that would replace today's Fit: how
+much of a book's shape — its terms, each as strong as the model weighs it in the
+book — lies inside the reader's Taste Form, less what lies in its rejecting part;
+the best liked Story Pattern and a full Facet add to it. Deliberately
+asymmetric: a book is not expected to carry everything the reader likes.
+
 ### Portrayer
 *deutsch: Steckbrief-Ersteller*
 
