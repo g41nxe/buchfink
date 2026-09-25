@@ -55,7 +55,9 @@ EVIDENCE = ("klappentext", "wissen")
 #: fragt das Modell, in diesen drei Wörtern antwortet es; gerechnet wird mit den
 #: englischen Namen.
 DEFINING, CLEAR, MARGINAL = "defining", "clear", "marginal"
-WEIGHT_WORDS = {"praegend": DEFINING, "deutlich": CLEAR, "rand": MARGINAL}
+#: „prägend“ mit Umlaut steht dabei, weil das Modell es so schreibt (sechs von 24
+#: Antworten am 25.09.2026), obwohl die Anweisung „praegend“ nennt.
+WEIGHT_WORDS = {"praegend": DEFINING, "prägend": DEFINING, "deutlich": CLEAR, "rand": MARGINAL}
 FEWEST, MOST = 4, 8
 MIN_DIMENSIONS, MOST_PER_DIMENSION = 3, 3
 FEWEST_PATTERNS, MOST_PATTERNS = 1, 3

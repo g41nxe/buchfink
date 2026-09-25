@@ -268,6 +268,18 @@ def test_an_unknown_weight_is_a_violation() -> None:
     assert bild.traits[0].weight is None
 
 
+def test_the_weight_with_an_umlaut_is_read_as_the_same_word() -> None:
+    """Gemessen am 25.09.2026: bei sechs von 24 Steckbriefen schrieb das Modell
+    „prägend“ statt „praegend“. Es gibt keine zweite Lesart, also wird es gelesen."""
+    merkmale = [{**m, "gewicht": "prägend"} if i == 0 else m
+                for i, m in enumerate(LEOPARD["merkmale"])]
+
+    bild = parse_answer(antwort(merkmale=merkmale), load_vocabulary())
+
+    assert bild.traits[0].weight == "defining"
+    assert bild.violations == ()
+
+
 def test_a_weight_on_a_pattern_is_ignored() -> None:
     muster = [{**LEOPARD["erzaehlmuster"][0], "gewicht": "praegend"}]
 

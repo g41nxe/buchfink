@@ -690,7 +690,7 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
 
     now = datetime.now()
     distribution: dict[int, int] = {}
-    violations = 0
+    violations = flawed = 0
     described = portrayer.portray_finds(finds)
     for observation in finds:
         portrait = described.get(observation.key)
@@ -699,6 +699,7 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
             continue
         store.put_portrait(subject_of(observation), portrait, now=now)
         violations += len(portrait.violations)
+        flawed += bool(portrait.violations)
         verdict = judge.verdict(portrait)
         if verdict is None:
             print(f"  unbekannt  {observation.title[:52]}")
@@ -711,6 +712,8 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
         # Ein fehlender Kurztext kostet den Steckbrief nichts, aber er wird
         # genannt: still fehlend hieße, eine Lücke auf der Seite nie zu bemerken.
         print(f"            {portrait.pitch or 'OHNE PITCH'}")
+        if portrait.violations:
+            print(f"            Regelverstoß: {'; '.join(portrait.violations)}")
 
     # Eine Bewertung, die nicht unterscheidet, ist wertlos — deshalb steht die
     # Verteilung da und nicht nur die Zahl der Steckbriefe.
@@ -718,6 +721,7 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
         f"{stars}★ ×{count}" for stars, count in sorted(distribution.items(), reverse=True)
     )
     print(f"\n  Verteilung: {summary or 'keine'}")
+    print(f"  Regelverstöße: {violations} in {flawed} von {len(described)} Steckbriefen")
 
     _fetch_suggestion_covers(store, settings, client)
     return EXIT_OK

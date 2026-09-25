@@ -315,7 +315,7 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
         traits = tuple(Trait(t, f"Satz zu {t}", "wissen") for t in ("quest", "adventure"))
         return {
             o.key: Portrait(known=True, fingerprint=fingerprint(vocabulary), pitch="Neu.",
-                            traits=traits)
+                            traits=traits, violations=("nur 2 Dimensionen statt mindestens drei",))
             for o in observations
         }
 
@@ -332,6 +332,10 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     assert store.portrait("item:beam:neu", fingerprint(vocabulary)) is not None
     out = capsys.readouterr().out
     assert "Fund neu" in out and "Neu." in out and "51 %" in out  # zwei Muster: 0,51
+    # #69: die Zahl der Regelverstöße steht neben der Verteilung der Sterne, und
+    # das Buch, das sie trägt, nennt sie.
+    assert "Regelverstöße: 1 in 1 von 1 Steckbriefen" in out
+    assert "nur 2 Dimensionen" in out
 
 
 @needs_vocabulary
