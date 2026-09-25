@@ -231,3 +231,59 @@ deinen Gründen unter das Tor, **knapp** (39 %).
    können (heute nur, was der Steckbrief nennt); das Spinnennetz auf Profil- und
    Buchseite; beim Nachschärfen der Hinweis aus Z12.
 5. **Messung Z7** mit dem Modell, klein.
+
+## 8. Review gegen die Recherche (25.09.2026)
+
+Die Methode gegen [urteil-verfahren.md](urteil-verfahren.md), Abschnitt für Abschnitt.
+
+**Wo sie der Literatur folgt**
+
+| Teil der Methode | Entspricht | Befund |
+|---|---|---|
+| Form aus Büchern, Getipptes als Startwert | Rocchio mit dem Profil als Ausgangsanfrage (3.1); Prior aus Nutzerangaben bei kleinen Mengen (Pazzani/Billsus 1997, 3.3) | ✓ der am besten belegte Teil |
+| Vorliebe × Gewicht im Buch, geteilt durch das Gewicht des Buchs | `cosine-tag` der Tagommenders, das gewichtete Mittel statt der Summe (Sen/Vig/Riedl 2009, 3.2) | ✓ die Mittel-Variante, die die Autoren selbst gegen die Längenschwäche anbieten |
+| Merkmal zur Familie hin geglättet, Muster zur Grundhandlung | hierarchischer Prior über Tags (Tag Genome, 3.2 und 3.7) | ✓ dort besser gemessen als ein gemeinsames oder getrennte Modelle |
+| Glättung zur Mitte bei dünner Beschreibung | Beta-/Bayes-Mittel (3.3/C3, 3.6/F2) | ✓ |
+| Facette als Bonus statt eigener Stufe | Noisy-OR verlangt keine Synergie; eine Facette ist eine (3.3/C2) | ✓ die Synergie steht jetzt als eigener Teil da |
+| Prüfung: jedes Buch ohne sich selbst | Stufe 0.2 der Recherche | ✓, bei 9 Büchern ohne statistische Aussage |
+
+**Wo sie abweicht, ohne Beleg**
+
+1. **Ablehnung wiegt 1,5-fach (λ).** Die Literatur setzt Ablehnung deutlich *schwächer*
+   als Zustimmung (Lehrbuch γ/β = 0,2, Salton/Buckley 0,33), weil positive Rückmeldung
+   mehr sagt. Unsere 1,5 stammt aus zwei enttäuschenden Büchern, eines davon mit deinen
+   ausdrücklichen Gründen. Zu prüfen, ob λ = 1 mit deinen Gründen genügt.
+2. **Mehrere Ablehnungen werden verschmolzen.** Die Form summiert die Belege aller
+   enttäuschenden Bücher. Die Literatur fand es besser, jedes negative Beispiel für
+   sich zu nehmen und das Maximum zu zählen (MultiNeg, Wang/Fang/Zhai 2008, 3.5). Bei
+   zwei Büchern ohne Wirkung, ab mehreren wichtig.
+3. **Seltenheit (IDF) fehlt.** Die Recherche empfahl sie als kleinen ersten Schritt
+   (3.1). Die gelernte Form ersetzt sie nicht: *nervenaufreibend* steckt in 48 % der
+   Funde und zählt voll. Der Prototyp V2 zeigte kaum Wirkung, die Stichprobe ist
+   klein; nachholen, wenn der Bestand wächst.
+4. **Dünne Beschreibung wird geglättet, nicht gekennzeichnet.** Die Recherche schlug
+   beides vor (Chow, 3.6/F1). Die Glättung verhindert das Kippen nach unten, sagt aber
+   nicht, dass das Urteil auf wenig ruht; ein Hinweis in der Begründung fehlt noch.
+
+**Was die Recherche empfahl und noch fehlt**
+
+- **Rauschen der Beschreibung messen** (3.8): ungelöst, und die Methode ist hier
+  empfindlicher als heute. Die einzige Stelle, an der ein Modell gefragt werden muss.
+- **Zufallsauswahl knapp unter dem Tor** (3.6/F3): ohne sie lernt die Form nie aus
+  Büchern, die das Tor zurückhält; sie sieht nur, was schon passiert ist.
+- **Nachbarbuch als Beleg** (3.5): „trägt, wie *Leichenblässe*", aus derselben Form
+  billig zu haben, als Erklärung, nicht als Urteil.
+
+**Weitere Wege?** Kein neues Verfahren: die Recherche schließt Kalibrierung, Bandits,
+Matrixfaktorisierung und Nachbarn als Urteil für eine Leserin aus, und die Methode
+deckt die belegten Bausteine schon ab. Lohnend sind vier kleine Proben am Prüfstand,
+jede ohne Modellaufruf außer der ersten:
+
+1. Rauschen messen (höchstens zehn Bücher, ein bis zwei Bündel) und danach *nur prägend
+   und deutlich* zählen als Gegenmittel prüfen.
+2. λ = 1 statt 1,5, und das Maximum je enttäuschendem Buch statt der Summe.
+3. IDF auf der Seite des Buchs (seltene Merkmale im Anteil stärker).
+4. Hinweis „dünn beschrieben" in der Begründung.
+
+Der größte Hebel ist aber kein Verfahren, sondern Daten: die acht gemochten Bücher ohne
+Steckbrief beschreiben lassen (ein Bündel), denn die Form lernt heute aus sieben.
