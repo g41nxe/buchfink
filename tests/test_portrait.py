@@ -45,13 +45,15 @@ LEOPARD = {
              "um einen Mörder mit einer Kugel voller Nadeln zu jagen.",
     "merkmale": [
         {"id": "brooding", "satz": "Harry Hole wird aus einer Opiumhöhle zurückgeholt.",
-         "beleg": "wissen"},
-        {"id": "violent", "satz": "Der Leopoldsapfel wird genau ausgemalt.", "beleg": "wissen"},
-        {"id": "flawed", "satz": "Er greift bei jedem Rückschlag zur Flasche.", "beleg": "wissen"},
+         "beleg": "wissen", "gewicht": "praegend"},
+        {"id": "violent", "satz": "Der Leopoldsapfel wird genau ausgemalt.", "beleg": "wissen",
+         "gewicht": "deutlich"},
+        {"id": "flawed", "satz": "Er greift bei jedem Rückschlag zur Flasche.", "beleg": "wissen",
+         "gewicht": "deutlich"},
         {"id": "intricate", "satz": "Mehrere Opfer, deren Verbindung sich spät zeigt.",
-         "beleg": "wissen"},
+         "beleg": "wissen", "gewicht": "rand"},
         {"id": "intensifying", "satz": "Nach der Rückkehr nach Oslo zieht es an.",
-         "beleg": "wissen"},
+         "beleg": "wissen", "gewicht": "rand"},
     ],
     "erzaehlmuster": [
         {"id": "pursuit", "satz": "Hole jagt einen Mörder, der ihm immer einen Schritt voraus ist.",
@@ -187,7 +189,7 @@ def test_a_good_answer_becomes_a_portrait() -> None:
     assert [t.term for t in bild.traits] == ["brooding", "violent", "flawed", "intricate",
                                             "intensifying", "pursuit"]
     assert bild.traits[0] == Trait("brooding", "Harry Hole wird aus einer Opiumhöhle "
-                                               "zurückgeholt.", "wissen")
+                                               "zurückgeholt.", "wissen", "defining")
     assert bild.violations == ()
     assert bild.fingerprint == fingerprint(wort)
 
@@ -233,6 +235,80 @@ def test_an_unknown_evidence_is_a_violation() -> None:
     bild = parse_answer(antwort(merkmale=merkmale), wort)
 
     assert any("vermutung" in v for v in bild.violations)
+
+
+def test_each_term_carries_the_weight_the_model_gave_it() -> None:
+    """#62: wie stark ein Merkmal in diesem Buch ist — nicht, ob es vorkommt.
+    Ein Erzählmuster trägt keines: es steht nur da, wenn es die Geschichte trägt."""
+    bild = parse_answer(antwort(), load_vocabulary())
+
+    assert [t.weight for t in bild.traits] == [
+        "defining", "clear", "clear", "marginal", "marginal", None
+    ]
+    assert bild.violations == ()
+
+
+def test_a_term_without_a_weight_is_a_violation_and_stays_unweighted() -> None:
+    merkmale = [{k: v for k, v in m.items() if k != "gewicht"} if i == 0 else m
+                for i, m in enumerate(LEOPARD["merkmale"])]
+
+    bild = parse_answer(antwort(merkmale=merkmale), load_vocabulary())
+
+    assert any("Gewicht" in v and "brooding" in v for v in bild.violations)
+    assert bild.traits[0].weight is None and bild.traits[0].term == "brooding"
+
+
+def test_an_unknown_weight_is_a_violation() -> None:
+    merkmale = [{**m, "gewicht": "riesig"} if i == 0 else m
+                for i, m in enumerate(LEOPARD["merkmale"])]
+
+    bild = parse_answer(antwort(merkmale=merkmale), load_vocabulary())
+
+    assert any("riesig" in v for v in bild.violations)
+    assert bild.traits[0].weight is None
+
+
+def test_a_weight_on_a_pattern_is_ignored() -> None:
+    muster = [{**LEOPARD["erzaehlmuster"][0], "gewicht": "praegend"}]
+
+    bild = parse_answer(antwort(erzaehlmuster=muster), load_vocabulary())
+
+    assert bild.traits[-1].term == "pursuit" and bild.traits[-1].weight is None
+    assert bild.violations == ()
+
+
+def test_evidence_from_a_sample_is_no_longer_valid() -> None:
+    """Seit #68 wird keine Leseprobe mehr mitgeschickt; wer sich darauf beruft,
+    hat sie erfunden (#69: bei „Auslöschung“ geschah es zweimal)."""
+    merkmale = [{**m, "beleg": "leseprobe"} if i == 0 else m
+                for i, m in enumerate(LEOPARD["merkmale"])]
+
+    bild = parse_answer(antwort(merkmale=merkmale), load_vocabulary())
+
+    assert any("leseprobe" in v for v in bild.violations)
+
+
+def test_the_instruction_asks_for_a_weight_and_no_longer_names_the_sample() -> None:
+    text = prompt("Leopard", "Jo Nesbø", None, load_vocabulary())
+
+    assert '"gewicht"' in text and "praegend" in text
+    assert "leseprobe" not in text.lower()
+
+
+def test_the_instruction_never_lets_a_blurb_make_a_book_unknown() -> None:
+    """#69: zwei von sieben Büchern kamen trotz ganzem Klappentext als „unbekannt“."""
+    text = prompt("Angst sei dein Begleiter", "Carla Cassidy", "Ein Klappentext.",
+                  load_vocabulary())
+
+    assert "nie auf false" in text
+
+
+def test_the_instruction_keeps_patterns_out_of_the_terms_and_trims_by_weight() -> None:
+    text = prompt("Leopard", "Jo Nesbø", None, load_vocabulary())
+
+    assert 'nie unter "merkmale"' in text
+    assert "geringsten Gewicht" in text
+    assert "180 Zeichen" in text
 
 
 def test_a_pitch_that_is_too_long_is_a_violation() -> None:

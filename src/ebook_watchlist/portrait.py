@@ -47,7 +47,15 @@ PATTERN_DIMENSION = "Erzählmuster"
 
 #: Worauf ein Merkmal beruhen darf. "wissen" ist erlaubt: bei der Erstaufnahme
 #: gibt es keine Vorgeschichte und damit oft keinen Klappentext (#44).
-EVIDENCE = ("klappentext", "leseprobe", "wissen")
+#: Seit #68 wird keine Leseprobe mehr mitgeschickt; wer sich auf sie beruft, hat
+#: sie erfunden (#69), also gilt sie nicht mehr als Beleg.
+EVIDENCE = ("klappentext", "wissen")
+#: Wie stark ein Merkmal dieses Buch prägt (#62): ohne es wäre es ein anderes
+#: Buch — es gehört klar dazu — es kommt vor, trägt aber nicht. Auf Deutsch
+#: fragt das Modell, in diesen drei Wörtern antwortet es; gerechnet wird mit den
+#: englischen Namen.
+DEFINING, CLEAR, MARGINAL = "defining", "clear", "marginal"
+WEIGHT_WORDS = {"praegend": DEFINING, "deutlich": CLEAR, "rand": MARGINAL}
 FEWEST, MOST = 4, 8
 MIN_DIMENSIONS, MOST_PER_DIMENSION = 3, 3
 FEWEST_PATTERNS, MOST_PATTERNS = 1, 3
@@ -161,6 +169,10 @@ class Trait:
     term: str
     sentence: str
     evidence: str
+    #: Wie stark es das Buch prägt (``DEFINING``, ``CLEAR``, ``MARGINAL``) — nur
+    #: bei einem Merkmal; ein Erzählmuster trägt keines, und wo das Modell keines
+    #: nannte, steht ``None`` (#62).
+    weight: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -298,7 +310,9 @@ Zuerst: Welches Buch ist gemeint? Nenne Titel und Autor so, wie das Buch
 wirklich heißt, und bei einer Übersetzung den Originaltitel. Ein Tippfehler im
 Namen oder ein deutscher Titel darf dich nicht irreführen. Kennst du das Buch
 nicht sicher und liegt kein Text bei, setze "bekannt" auf false und lass alles
-andere weg. Verwechsle es nicht mit einem ähnlich klingenden Buch.
+andere weg. Liegt ein Klappentext bei, setzt du "bekannt" nie auf false: dann
+beschreibst du das Buch nach dem, was dort steht, auch wenn du es nicht kennst.
+Verwechsle es nicht mit einem ähnlich klingenden Buch.
 
 Dann die Merkmale. Du wählst sie ausschließlich aus dem Vokabular unten und
 gibst ihre id an; neue erfindest du nicht. Eine Leserin wird später sehen,
@@ -309,14 +323,23 @@ deutlichsten prägen.
 Regeln:
 - Vier bis acht Merkmale, ohne die Erzählmuster.
 - Aus mindestens drei verschiedenen Dimensionen, höchstens drei aus derselben.
+  Zähle vor der Antwort nach: hat eine Dimension mehr als drei, lass das mit dem
+  geringsten Gewicht weg.
+- Erzählmuster gehören nie unter "merkmale", sondern nur unter "erzaehlmuster".
+  Was im Vokabular unter "Erzählmuster" steht, ist ein Muster, kein Merkmal.
 - Was auf fast jedes Buch seines Genres zutrifft, nimmst du nur, wenn es hier
   deutlich stärker ausgeprägt ist als üblich. Ein Thriller ist nicht schon
   deshalb spannungsgeladen, weil er ein Thriller ist.
 - Zu jedem Merkmal schreibst du einen Satz, der zeigt, wo es in DIESEM Buch
   steckt: eine Figur, eine Situation, eine Eigenart. Die Probe: Könnte derselbe
   Satz unter einem anderen Buch stehen, ist er falsch.
-- Zu jedem Merkmal nennst du, worauf es beruht: "klappentext", "leseprobe"
-  oder "wissen" (was du selbst über das Buch weißt).
+- Zu jedem Merkmal nennst du, worauf es beruht: "klappentext" (es steht im
+  Text, der beiliegt) oder "wissen" (was du selbst über das Buch weißt). Das
+  Wort genügt; zitiere keinen Satz.
+- Zu jedem Merkmal nennst du sein "gewicht" in diesem Buch: "praegend" (es
+  prägt das ganze Buch, ohne wäre es ein anderes), "deutlich" (es gehört klar
+  dazu) oder "rand" (es kommt vor, trägt aber nicht). Meist prägen nur zwei
+  oder drei das Buch; wer alles prägend nennt, unterscheidet nichts.
 - Nichts erfinden.
 
 Dann die Erzählmuster: was für eine Geschichte das Buch erzählt. Sie stehen
@@ -325,7 +348,8 @@ im Vokabular unter "Erzählmuster", jedes eingerückt unter seiner Grundhandlung
 - Das genaueste Muster, das zutrifft. Die Grundhandlung selbst vergibst du,
   wenn kein genaueres passt, oder zusätzlich, wenn sie das Buch als Ganzes
   trägt und das genauere Muster nur einen Teil davon.
-- Zu jedem Muster ein Satz und ein Beleg wie bei den Merkmalen.
+- Zu jedem Muster ein Satz und ein Beleg wie bei den Merkmalen. Ein Muster
+  hat kein Gewicht: es steht nur da, wenn es die Geschichte trägt.
 - Ein Muster, das selbst die Wendung ist — etwa eine Erzählstimme, die sich
   erst spät als unzuverlässig erweist —, vergibst du nicht.
 
@@ -342,7 +366,7 @@ Keine Spoiler — die Leserin hat das Buch womöglich noch vor sich:
 Nenne außerdem Genre und Untergenre auf Deutsch, so wie eine Buchhandlung das
 Buch einordnen würde.
 
-Und schreib den Pitch: ein bis zwei Sätze, höchstens 200 Zeichen. Zuerst, was
+Und schreib den Pitch: ein bis zwei Sätze, höchstens 180 Zeichen. Zuerst, was
 das Buch ist; dann, was es ausmacht. Wähle ein Bild, an dem dieses Buch hängt,
 statt es zusammenzufassen. Beschreiben, nicht loben.
 
@@ -357,7 +381,8 @@ statt es zusammenzufassen. Beschreiben, nicht loben.
 Antworte ausschließlich mit JSON in genau dieser Form:
 {{"bekannt": true, "titel": "...", "autor": "...", "originaltitel": "... oder null",
   "genre": "...", "untergenre": "...", "pitch": "...",
-  "merkmale": [{{"id": "...", "satz": "...", "beleg": "..."}}],
+  "merkmale": [{{"id": "...", "satz": "...", "beleg": "...",
+                "gewicht": "praegend, deutlich oder rand"}}],
   "erzaehlmuster": [{{"id": "...", "satz": "...", "beleg": "..."}}]}}
 """
 
@@ -466,7 +491,18 @@ def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
             beleg = str(eintrag.get("beleg") or "").strip()
             if beleg not in EVIDENCE:
                 verstoesse.append(f"ungültiger Beleg bei {term_id}: {beleg or '(keiner)'}")
-            traits.append(Trait(term_id, str(eintrag.get("satz") or "").strip(), beleg))
+            # Ein Gewicht trägt nur ein Merkmal; bei einem Muster wird es nicht
+            # gefragt und nicht gelesen (#62). Ein fehlendes oder fremdes Wort
+            # steht als Verstoß daneben, das Merkmal bleibt ohne Gewicht.
+            gewicht = None
+            if not vocabulary.is_pattern(term_id):
+                wort = str(eintrag.get("gewicht") or "").strip()
+                gewicht = WEIGHT_WORDS.get(wort)
+                if gewicht is None:
+                    verstoesse.append(f"ungültiges Gewicht bei {term_id}: {wort or '(keines)'}")
+            traits.append(
+                Trait(term_id, str(eintrag.get("satz") or "").strip(), beleg, gewicht)
+            )
 
     merkmale = [t for t in traits if not vocabulary.is_pattern(t.term)]
     muster = len(traits) - len(merkmale)

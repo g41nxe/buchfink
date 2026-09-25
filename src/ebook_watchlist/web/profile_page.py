@@ -237,6 +237,7 @@ def _facet_profile(store: Store, settings: Settings):
     # werden die gemochten Bücher, die die Facette heute tragen. Gespeichert
     # sind nur die Bücher, aus denen sie entstand — sie zählen, solange ihr
     # Steckbrief fehlt.
+    from .intake import defining_in
     from .sharpening import carried_by, liked_shelf
 
     shelf = liked_shelf(store, settings, vocabulary)
@@ -244,7 +245,7 @@ def _facet_profile(store: Store, settings: Settings):
     def facet_line(f) -> FacetLine:
         carriers = carried_by(f.families, shelf)
         titles = tuple(b.title for b in carriers) or f.books
-        word = strength(len(titles))
+        word = strength(len(titles), defining_in(f.families, carriers))
         return FacetLine(
             family_names(f.families, vocabulary), titles, strength=word,
             level=STRENGTHS.index(word) + 1,

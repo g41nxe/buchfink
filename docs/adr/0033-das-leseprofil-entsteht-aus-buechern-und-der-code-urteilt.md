@@ -252,3 +252,39 @@ Code.
 > zweite Steckbrief hat einen); sie stehen daneben und verwerfen nichts, und ihr
 > Senken ist ein eigenes Ticket (#69). Die Leseprobe wird nicht mehr geholt
 > (#68): der Steckbrief liest sie nicht, und die Funde im Stapel tragen keine.
+
+> **Nachtrag vom 25.09.2026: Der Steckbrief gewichtet jedes Merkmal (#62), und
+> die Anweisung ist geschärft (#69).** Jedes Merkmal trägt jetzt sein Gewicht in
+> diesem Buch: *prägend* (ohne es wäre es ein anderes Buch), *deutlich* oder
+> *am Rand*. Ein Erzählmuster trägt keines, denn es steht nur da, wenn es die
+> Geschichte als Ganzes trägt. **Das Gewicht steuert nur die Stärke, nicht das
+> Urteil:** die Stärke einer Familie oder Facette ist die Zahl der geliebten
+> Bücher, die sie tragen, und eine Stufe mehr, wenn sie in einem dieser Bücher
+> prägt (bei einer Kombination: alle ihre Familien zugleich), höchstens „sehr
+> stark". So steht ein einzelnes Buch, in dem etwas prägt, nicht mehr bei
+> „schwach". Die Rechnung des Urteils (0,8 je Facette, 0,1 je Merkmal, Tor ab
+> drei Sternen, Gegengewicht 0,35) bleibt, wie sie ist: sie ist an den echten
+> Büchern geeicht, und ein Gewicht darin würde jeden Prozentwert und die
+> Eichung neu öffnen. Das ist ein eigenes Ticket.
+>
+> Die Anweisung sagt jetzt ausdrücklich: liegt ein Klappentext bei, ist das Buch
+> nie „unbekannt"; der Beleg ist ein Wort (*klappentext* oder *wissen*), nie ein
+> Satz, und *leseprobe* gilt nicht mehr, weil keine mitgeschickt wird (bei
+> „Auslöschung" hatte das Modell sie zweimal erfunden); Erzählmuster gehören nie
+> unter die Merkmale; hat eine Dimension mehr als drei Merkmale, fällt das mit
+> dem geringsten Gewicht weg; der Pitch soll höchstens 180 Zeichen haben (geprüft
+> wird weiter gegen 200). Das ändert den Fingerabdruck: **alle 48 gespeicherten
+> Steckbriefe waren damit veraltet** und werden beim nächsten Gebrauch neu
+> angelegt.
+>
+> Gemessen an sieben echten Funden aus dem Stapel (Haiku, im Bündel, mit ganzem
+> Klappentext): alte Anweisung vier von sieben Steckbriefen mit Verstoß, neue
+> Anweisung einer von sieben, Sonnet keiner; kein Buch „unbekannt". Einzeln, an
+> neun Büchern mit ganzem Klappentext, darunter die beiden früheren
+> „unbekannt"-Fälle: alle neun bekannt, vier mit einem Verstoß (dreimal zu wenige
+> Dimensionen, zweimal ein zu langer Pitch, einmal mit 264 Zeichen). Sonnet
+> brauchte 148 statt 123 Sekunden je Bündel und senkt die Verstöße nur noch um
+> den einen; **Haiku bleibt der Standard**, Sonnet ist eine Einstellung
+> (`rating_model`). Die Gewichte verteilen sich brauchbar: rund ein Drittel der
+> Merkmale ist prägend, im Schnitt zwei je Buch.
+

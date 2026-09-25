@@ -41,12 +41,13 @@ from ..facets import (
     merge_counterweights,
     scoped_counterweight,
     strength,
+    strength_level,
 )
 from ..portrait import VocabularyError, fingerprint, load_vocabulary
 from ..relations import RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait
-from .intake import Card, IntakeError, Pill, ShelfBook, shelf_book
+from .intake import Card, IntakeError, Pill, ShelfBook, defining_in, shelf_book
 
 LIKED, DISLIKED = str(RelationKind.LIKED), str(RelationKind.DISLIKED)
 
@@ -144,7 +145,11 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
     liked_books = liked_shelf(store, settings, vocabulary)
     liked_ids = {g.family for g in profile.liked}
     boosted_ids = {g.family for g in profile.liked if g.boosted}
-    rank = sorted(shelf.families, key=lambda f: (-len(carried_by((f,), liked_books)),
+    def level(f: str) -> int:
+        carriers = carried_by((f,), liked_books)
+        return strength_level(len(carriers), defining_in((f,), carriers))
+
+    rank = sorted(shelf.families, key=lambda f: (-level(f), -len(carried_by((f,), liked_books)),
                                                   family_name(f, vocabulary).casefold()))
 
     def card(f: str) -> Card:
@@ -153,7 +158,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Sharpening | None:
             Pill(f, family_name(f, vocabulary), vocabulary.is_pattern(f), False, f in liked_ids,
                  boosted=f in boosted_ids),
             family_description(f, vocabulary),
-            strength(len(carriers)),
+            strength(len(carriers), defining_in((f,), carriers)),
             tuple((b.title, b.families[f]) for b in carriers),
         )
 

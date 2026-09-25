@@ -20,7 +20,7 @@ das Werkzeug unsichtbar die Facetten; bestätigt wird es als erste Fassung.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 
@@ -43,8 +43,12 @@ from ..facets import (
     merge_counterweights,
     scoped_counterweight,
     strength,
+    strength_level,
 )
 from ..portrait import (
+    CLEAR,
+    DEFINING,
+    MARGINAL,
     Portrait,
     PortrayalUnavailable,
     VocabularyError,
@@ -290,6 +294,20 @@ class ShelfBook:
     families: dict[str, str]
     #: Familie → das Merkmal, über das das Buch sie trägt.
     terms: dict[str, str] = field(default_factory=dict)
+    #: Familie → wie stark sie das Buch prägt (``DEFINING``, ``CLEAR``,
+    #: ``MARGINAL``), das stärkste ihrer Merkmale im Buch (#62). Eine Familie
+    #: ohne Gewicht — ein Muster, oder ein Steckbrief ohne — steht nicht darin.
+    weights: dict[str, str] = field(default_factory=dict)
+
+
+#: Wie schwer ein Gewicht wiegt, wenn eine Familie mehrere Merkmale im Buch trägt.
+_WEIGHT_RANK = {DEFINING: 3, CLEAR: 2, MARGINAL: 1}
+
+
+def defining_in(families: Collection[str], carriers: Iterable[ShelfBook]) -> bool:
+    """Prägt die Familie — bei einer Kombination: alle ihre Familien zugleich —
+    in mindestens einem dieser Bücher? Daraus folgt eine Stufe mehr Stärke (#62)."""
+    return any(all(b.weights.get(f) == DEFINING for f in families) for b in carriers)
 
 
 @dataclass(frozen=True, slots=True)
@@ -439,15 +457,20 @@ def shelf_book(store: Store, vocabulary, book_id: int) -> ShelfBook | None:
         return None
     families: dict[str, str] = {}
     terms: dict[str, str] = {}
+    weights: dict[str, str] = {}
     for trait in portrait.traits:
         if trait.term in vocabulary.terms:
             family = vocabulary.family_of(trait.term).id
             families.setdefault(family, trait.sentence)
             terms.setdefault(family, trait.term)
+            if trait.weight in _WEIGHT_RANK and _WEIGHT_RANK[trait.weight] > _WEIGHT_RANK.get(
+                weights.get(family), 0
+            ):
+                weights[family] = trait.weight
     # Fein genug für ein Gegengewicht mit Genre: "High Fantasy" statt
     # "Fantasy", sonst träfe es auch Grimdark (#44).
     genre = portrait.subgenre.split("/")[0].strip() if portrait.subgenre else portrait.genre
-    return ShelfBook(str(book.id), book.id, book.title, genre, families, terms)
+    return ShelfBook(str(book.id), book.id, book.title, genre, families, terms, weights)
 
 
 def _shelf_books(store: Store, settings: Settings, vocabulary, side: str) -> list[ShelfBook]:
@@ -511,12 +534,15 @@ def choosing(store: Store, settings: Settings) -> Choosing:
             loved_carriers.setdefault(f, []).append(b)
 
     # Bildschirm 3: alles, was die geliebten Bücher tragen, gerankt — nicht
-    # nach Büchern gruppiert. Gerankt wird vorerst nach der Zahl der Bücher;
-    # mit #62 kommt die Ausprägung im Buch dazu. Häufiges im neutralen
+    # nach Büchern gruppiert. Gerankt wird nach der Stärke (Zahl der Bücher, eine
+    # Stufe mehr bei prägend, #62), dann nach der Zahl. Häufiges im neutralen
     # Bestand steht hinten.
+    def level(f: str) -> int:
+        return strength_level(len(loved_carriers[f]), defining_in((f,), loved_carriers[f]))
+
     rank = sorted(
         loved_carriers,
-        key=lambda f: (-len(loved_carriers[f]), f in frequent,
+        key=lambda f: (-level(f), -len(loved_carriers[f]), f in frequent,
                        family_name(f, vocabulary).casefold()),
     )
 
@@ -524,7 +550,7 @@ def choosing(store: Store, settings: Settings) -> Choosing:
         return Card(
             pill(f, f in liked_ids),
             family_description(f, vocabulary),
-            strength(len(loved_carriers[f])),
+            strength(len(loved_carriers[f]), defining_in((f,), loved_carriers[f])),
             tuple((b.title, b.families[f]) for b in loved_carriers[f]),
         )
 
@@ -581,6 +607,7 @@ def _draft(vocabulary, liked, loved_carriers, lost_carriers, lost_scopes) -> Dra
         liked_terms, {f: [b.key for b in bs] for f, bs in loved_carriers.items()}
     )
     titles = {b.key: b.title for bs in loved_carriers.values() for b in bs}
+    shelf = {b.key: b for bs in loved_carriers.values() for b in bs}
     facet_cards = tuple(
         FacetCard(
             f.families,
@@ -588,7 +615,7 @@ def _draft(vocabulary, liked, loved_carriers, lost_carriers, lost_scopes) -> Dra
                 (family_name(x, vocabulary), family_description(x, vocabulary))
                 for x in f.families
             ),
-            strength(len(f.books)),
+            strength(len(f.books), defining_in(f.families, (shelf[k] for k in f.books))),
             tuple(titles[k] for k in f.books),
         )
         for f in facets

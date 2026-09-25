@@ -38,13 +38,16 @@ def slug() -> str:
 
 
 def buch(db: Store, titel: str, merkmale: list[str], kind: str | None = "liked",
-         untergenre: str | None = None) -> int:
-    """Ein Buch mit Steckbrief und, wenn gewünscht, als Mag ich oder Doof."""
+         untergenre: str | None = None, praegend: tuple[str, ...] = ()) -> int:
+    """Ein Buch mit Steckbrief und, wenn gewünscht, als Mag ich oder Doof.
+    ``praegend`` nennt die Merkmale, die das Buch prägen; alle anderen sind deutlich."""
     b = db.find_or_create_book(isbn=None, title=titel, author="A", now=NOW)
     bild = parse_answer(json.dumps({
         "bekannt": True, "titel": titel, "autor": "A", "genre": "Roman",
         "untergenre": untergenre, "pitch": "x",
-        "merkmale": [{"id": m, "satz": f"{m} bei {titel}.", "beleg": "wissen"} for m in merkmale],
+        "merkmale": [{"id": m, "satz": f"{m} bei {titel}.", "beleg": "wissen",
+                      "gewicht": "praegend" if m in praegend else "deutlich"}
+                     for m in merkmale],
         "erzaehlmuster": [{"id": "quest", "satz": "x", "beleg": "wissen"}],
     }), load_vocabulary())
     db.put_portrait(f"book:{b.id}", bild, now=NOW)
@@ -288,6 +291,30 @@ def test_the_profile_page_derives_the_strength_from_the_shelf(client, db, profil
     body = client.get("/profile").text.split("data-reading-profile", 1)[1]
 
     assert "mittel" in body and "Kruzifix Killer" in body
+
+
+def test_a_defining_book_lifts_the_strength_on_the_profile_page(client, db, profil) -> None:
+    """#62: dieselben zwei Bücher, aber in einem prägen beide Merkmale der Facette —
+    die Facette steht dann bei „stark“ statt bei „mittel“."""
+    buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"],
+         praegend=("violent", "brooding"))
+    buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
+
+    body = client.get("/profile").text.split("data-reading-profile", 1)[1]
+
+    assert "stark" in body.split("Erkannte Kombinationen", 1)[1].split("Zählt gegen", 1)[0]
+    assert "mittel" not in body.split("Erkannte Kombinationen", 1)[1].split("Zählt gegen", 1)[0]
+
+
+def test_a_facet_is_not_lifted_when_only_one_of_its_terms_is_defining(client, db, profil) -> None:
+    """Prägend muss die ganze Kombination sein, nicht eines ihrer Merkmale."""
+    buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"],
+         praegend=("violent",))
+    buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
+
+    body = client.get("/profile").text.split("data-reading-profile", 1)[1]
+
+    assert "mittel" in body.split("Erkannte Kombinationen", 1)[1].split("Zählt gegen", 1)[0]
 
 
 # --- Review: keine leere Vertröstung ---------------------------------------------

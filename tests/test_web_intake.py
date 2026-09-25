@@ -43,10 +43,14 @@ def _antwort(titel, autor, original=None, genre="Science-Fiction") -> str:
         "bekannt": True, "titel": titel, "autor": autor, "originaltitel": original,
         "genre": genre, "untergenre": None, "pitch": "Ein Buch.",
         "merkmale": [
-            {"id": "world_building", "satz": "Eine Welt aus Welten.", "beleg": "wissen"},
-            {"id": "intricate", "satz": "Viele Stränge.", "beleg": "wissen"},
-            {"id": "leisurely", "satz": "Nimmt sich Zeit.", "beleg": "wissen"},
-            {"id": "ensemble", "satz": "Eine Gruppe.", "beleg": "wissen"},
+            {"id": "world_building", "satz": "Eine Welt aus Welten.", "beleg": "wissen",
+             "gewicht": "praegend"},
+            {"id": "intricate", "satz": "Viele Stränge.", "beleg": "wissen",
+             "gewicht": "deutlich"},
+            {"id": "leisurely", "satz": "Nimmt sich Zeit.", "beleg": "wissen",
+             "gewicht": "deutlich"},
+            {"id": "ensemble", "satz": "Eine Gruppe.", "beleg": "wissen",
+             "gewicht": "rand"},
         ],
         "erzaehlmuster": [{"id": "quest", "satz": "Sie ziehen los.", "beleg": "wissen"}],
     }, ensure_ascii=False)
@@ -174,6 +178,20 @@ def test_yes_puts_the_book_on_the_shelf_with_its_portrait(client, db, modell) ->
     # Der Steckbrief ist mitgezogen: die Buchseite fragt nicht noch einmal.
     assert "Eine Welt aus Welten." in client.get(f"/book/{buch_id}").text
     assert modell.gefragt == ["Otherland"]
+
+
+def test_a_family_that_defines_its_only_book_is_not_called_weak(client, db, modell) -> None:
+    """#62: ein einziges geliebtes Buch, in dem „große Welt“ prägt, steht bei
+    „mittel“; „gemächlich“, im selben Buch nur deutlich, bleibt bei „schwach“."""
+    nennen(client, "Otherland")
+    client.post(f"/intake/entry/{_eintrag(db, 'Otherland').id}/confirm")
+
+    body = client.get("/intake/common").text
+
+    big_world = body.split('data-card="big_world"', 1)[1].split("data-card=", 1)[0]
+    leisurely = body.split('data-card="leisurely"', 1)[1].split("data-card=", 1)[0]
+    assert "mittel" in big_world and "schwach" not in big_world
+    assert "schwach" in leisurely
 
 
 def test_a_disappointing_book_lands_on_the_other_shelf(client, db, modell) -> None:

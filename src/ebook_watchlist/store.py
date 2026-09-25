@@ -596,7 +596,8 @@ def _portrait_of(row: PortraitRow) -> Portrait:
         subgenre=row.subgenre,
         pitch=row.pitch,
         traits=tuple(
-            Trait(t["term"], t["sentence"], t["evidence"]) for t in json.loads(row.traits)
+            Trait(t["term"], t["sentence"], t["evidence"], t.get("weight"))
+            for t in json.loads(row.traits)
         ),
         violations=tuple(json.loads(row.violations)),
     )
@@ -1633,7 +1634,12 @@ class Store:
                     pitch=portrait.pitch,
                     traits=json.dumps(
                         [
-                            {"term": t.term, "sentence": t.sentence, "evidence": t.evidence}
+                            {
+                                "term": t.term,
+                                "sentence": t.sentence,
+                                "evidence": t.evidence,
+                                "weight": t.weight,
+                            }
                             for t in portrait.traits
                         ],
                         ensure_ascii=False,

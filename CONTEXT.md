@@ -496,7 +496,11 @@ Rating is what a person or a reader-average says and is stored (ADR 17).
 What a model says about a book, **once** and independent of any reader: which
 book it is (title, author, and the original title of a translation), its genre
 and subgenre, its Appeal Terms — each with a sentence that could stand under no
-other book and the evidence it rests on — and the pitch (ADR 33).
+other book, the evidence it rests on (*klappentext* or *wissen*, never a
+sample the model was not given) and, for a term but not for a story pattern, its
+**weight** in this book: *prägend* (it makes the book what it is), *deutlich*
+(it clearly belongs) or *am Rand* (it occurs but does not carry) — and the pitch
+(ADR 33, #62).
 
 It is kept at the book's subject, the ISBN where there is one, append-only. The
 same book always has the same Steckbrief: a new one is asked for only when the
@@ -506,6 +510,17 @@ beside it rather than used to discard it. A book the model does not know gets a
 Steckbrief too — *unbekannt*, without terms — so it is not asked again.
 
 **Reader-facing name: *Steckbrief*.**
+
+### Strength
+*deutsch: Stärke*
+
+How firmly a Facet or an Appeal Family stands in the Reading Profile: *schwach*,
+*mittel*, *stark*, *sehr stark*. Derived every time, never stored (ADR 16): the
+number of loved books that carry it, one step more if it is *prägend* in at
+least one of them (for a Facet: all its families at once), at most *sehr stark*.
+So a single book in which a family defines the book is not called weak. It says
+how much the profile rests on something, not how much a book fits: the Fit is
+computed separately and does not use the weight (#62).
 
 ### Intake
 *deutsch: Erstaufnahme*

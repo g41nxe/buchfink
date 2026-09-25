@@ -482,6 +482,15 @@ def test_the_strength_is_a_scale() -> None:
     ]
 
 
+def test_a_defining_book_lifts_the_strength_by_one_step_up_to_the_top() -> None:
+    """#62: ein Buch, in dem die Facette prägt, soll nicht als „schwach“ dastehen."""
+    from ebook_watchlist.facets import strength
+
+    assert [strength(n, defining=True) for n in (1, 2, 3, 4, 7)] == [
+        "mittel", "stark", "sehr stark", "sehr stark", "sehr stark"
+    ]
+
+
 # --- Review: Genre als ganzes Wort, Fassungsnummern ohne Wettlauf -----------------
 
 

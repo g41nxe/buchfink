@@ -409,8 +409,16 @@ def _reasons(
 STRENGTHS = ("schwach", "mittel", "stark", "sehr stark")
 
 
-def strength(books: int) -> str:
-    return STRENGTHS[max(1, min(books, len(STRENGTHS))) - 1]
+def strength_level(books: int, defining: bool = False) -> int:
+    """Die Stufe von 1 (schwach) bis 4 (sehr stark): die Zahl der geliebten
+    Bücher, die eine Familie oder Facette tragen — und eine Stufe mehr, wenn sie
+    in einem dieser Bücher prägt (#62). Ein einziges Buch, in dem sie das Buch
+    ausmacht, soll nicht als „schwach" dastehen."""
+    return max(1, min(books + int(defining), len(STRENGTHS)))
+
+
+def strength(books: int, defining: bool = False) -> str:
+    return STRENGTHS[strength_level(books, defining) - 1]
 
 
 def derive_facets(
