@@ -49,7 +49,9 @@ PAR = dict(
     stars=((5, 0.7), (4, 0.55), (3, 0.4), (2, 0.2)),
     q=0.75,  # welches Quantil der Vorlieben als „voll gemocht" gilt
     muster_spinne=True,  # Erzählmuster als zweite Spinne (False: nur „bestes Muster")
-    alpha_p=1.0,  # Glättung der zweiten Spinne (ein Buch trägt 1–3 Muster)
+    alpha_p=1.0,
+    neg_max=False,
+    rocchio=None,  # γ/β; gesetzt ersetzt es lam (Literatur: 0,2 bis 0,33)  # Ablehnungen je Buch als Maximum statt als Summe  # Glättung der zweiten Spinne (ein Buch trägt 1–3 Muster)
 )
 if len(sys.argv) > 2:
     PAR.update(json.loads(sys.argv[2]))
@@ -105,14 +107,31 @@ def learn(profile, rated):
     limited = {(b, f) for c in genre_rules for b in c.books for f in c.families}
     n = max(1, sum(1 for r in rated if r.sign > 0))
     e_f, e_t = defaultdict(float), defaultdict(float)
+    # Ablehnung je Buch getrennt; zusammengeführt als Summe oder als Maximum
+    # (MultiNeg, Wang/Fang/Zhai 2008).
+    neg_f, neg_t = defaultdict(float), defaultdict(float)
     for r in rated:
         for key, w in r.effective().items():
             f = FAM.get(key, key)
             if r.sign < 0 and (r.title, f) in limited and key not in r.reasons_add:
                 continue  # an diesem Buch hat die Leserin die Ablehnung auf ein Genre beschränkt
-            s = w if r.sign > 0 else -PAR["lam"] * w
-            e_f[f] += s
-            e_t[key] += s
+            if r.sign > 0:
+                e_f[f] += w
+                e_t[key] += w
+            elif PAR["neg_max"]:
+                neg_f[f] = max(neg_f[f], w)
+                neg_t[key] = max(neg_t[key], w)
+            else:
+                neg_f[f] += w
+                neg_t[key] += w
+    # Rocchio-Verhältnis γ/β: Zustimmung und Ablehnung je über ihre Bücher gemittelt.
+    # Bei n gemochten und m enttäuschenden Büchern entspricht das λ = γ/β · n / m.
+    m = max(1, sum(1 for r in rated if r.sign < 0))
+    lam = PAR["rocchio"] * n / m if PAR["rocchio"] is not None else PAR["lam"]
+    for f, w in neg_f.items():
+        e_f[f] -= lam * w
+    for key, w in neg_t.items():
+        e_t[key] -= lam * w
     prior = {}
     for g in profile.liked:
         prior[g.family] = PAR["prior_boost"] if g.boosted else PAR["prior_tap"]
