@@ -29,7 +29,7 @@
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
-    x-data="{ belege: false }" data-karte="{{ p.family_id }}">
+    x-data="{ belege: false }" data-card="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
         hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
     <input type="hidden" name="side" value="loved">
@@ -37,7 +37,7 @@
     <input type="hidden" name="step" value="{{ step }}">
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
-            data-familie="{{ p.family_id }}"
+            data-family="{{ p.family_id }}"
             class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-accent' if p.on else 'text-ink' }}">
@@ -66,7 +66,7 @@
       <input type="hidden" name="family" value="{{ p.family_id }}">
       <input type="hidden" name="step" value="{{ step }}">
       <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
-      <button type="submit" data-verstaerken="{{ p.family_id }}"
+      <button type="submit" data-boost="{{ p.family_id }}"
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
               {% if not p.boosted and not can_boost %}disabled
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
@@ -99,12 +99,12 @@
 {% set base = "/book/" ~ book_id ~ "/sharpen" %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
-    x-data="{ belege: false }" data-karte="{{ p.family_id }}">
+    x-data="{ belege: false }" data-card="{{ p.family_id }}">
   <form method="post" action="{{ base }}/liked" class="flex-1">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
-            data-familie="{{ p.family_id }}"
+            data-family="{{ p.family_id }}"
             class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-accent' if p.on else 'text-ink' }}">
@@ -130,7 +130,7 @@
     <form method="post" action="{{ base }}/boost" class="ml-auto">
       <input type="hidden" name="family" value="{{ p.family_id }}">
       <input type="hidden" name="on" value="{{ '' if p.boosted else '1' }}">
-      <button type="submit" data-verstaerken="{{ p.family_id }}"
+      <button type="submit" data-boost="{{ p.family_id }}"
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
               {% if not p.boosted and not can_boost %}disabled
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
@@ -163,7 +163,7 @@
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-danger bg-danger/10' if p.on else 'border-rule bg-card hover:border-danger/60' }}"
-    x-data="{ belege: false }" data-karte="{{ p.family_id }}">
+    x-data="{ belege: false }" data-card="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
         hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
     <input type="hidden" name="side" value="lost">
@@ -171,7 +171,7 @@
     <input type="hidden" name="step" value="4">
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
-            data-familie="{{ p.family_id }}"
+            data-family="{{ p.family_id }}"
             class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-danger' if p.on else 'text-ink' }}">
@@ -197,7 +197,7 @@
   <form method="post" action="/intake/scope"
         hx-post="/intake/scope" hx-target="#choice" hx-swap="outerHTML"
         class="mx-4 mb-3 flex flex-col gap-2 rounded border border-rule
-               bg-paper px-3 py-2 text-xs" data-nachfrage="{{ p.family_id }}">
+               bg-paper px-3 py-2 text-xs" data-followup="{{ p.family_id }}">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <span class="text-soft">steckt auch in {{ title_row(k.also_in) }} —</span>
     {% set options = [("here", "nur bei diesen Büchern"), ("general", "auch bei anderen")] %}

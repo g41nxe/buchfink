@@ -11,7 +11,7 @@
 {% set d = choice.draft %}
 <aside class="rounded-lg border border-rule bg-card px-4 py-4
               {{ '' if confirmation else 'mt-8 lg:sticky lg:top-20 lg:mt-0' }}"
-       data-entwurf>
+       data-draft>
   <p class="mb-3 text-xs font-medium uppercase tracking-wide text-soft">
     {{ 'Dein Profil' if confirmation else 'Dein Profil entsteht' }}</p>
   {% if d.empty %}
@@ -46,7 +46,7 @@
     das alles davon trägt, passt besonders gut.</p>
   <ul class="space-y-2">
     {% for f in d.facets %}
-    <li class="rounded border border-accent/40 px-3 py-2" data-facette="{{ f.families | join(',') }}">
+    <li class="rounded border border-accent/40 px-3 py-2" data-facet="{{ f.families | join(',') }}">
       <ul class="space-y-1">
         {% for name, sentence in f.parts %}
         <li class="text-xs"><span class="font-semibold text-accent">{{ name }}</span>

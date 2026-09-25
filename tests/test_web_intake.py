@@ -92,7 +92,7 @@ def abwarten(client: TestClient) -> str:
     """Warten, bis kein Eintrag mehr sucht."""
     for _ in range(250):
         body = client.get("/intake").text
-        if 'data-zustand="asking"' not in body or "Nochmal" in body:
+        if 'data-state="asking"' not in body or "Nochmal" in body:
             return body
         threading.Event().wait(0.02)
     raise AssertionError("die Erstaufnahme wurde nicht fertig")
@@ -321,7 +321,7 @@ def tippen(client, familie, seite="loved", an=True, schritt=3) -> str:
 
 def _fragen(body: str) -> str:
     """Nur der Teil mit den Fragen, ohne das Profil daneben."""
-    return body.split("data-entwurf", 1)[0]
+    return body.split("data-draft", 1)[0]
 
 
 def test_screen_3_lists_everything_the_loved_books_carry_as_cards(client, buecher) -> None:
@@ -329,10 +329,10 @@ def test_screen_3_lists_everything_the_loved_books_carry_as_cards(client, bueche
     gruppiert (24.09.2026). Bücher stehen nur in den Belegen."""
     fragen = _fragen(client.get("/intake/common").text)
 
-    merkmale, muster = fragen.split('data-abschnitt="Erzählmuster"', 1)
+    merkmale, muster = fragen.split('data-section="Erzählmuster"', 1)
     for familie in ("harsh", "brooding", "atmospheric", "intricate"):
-        assert f'data-familie="{familie}"' in merkmale
-    assert 'data-familie="pursuit"' in muster and 'data-familie="quest"' in muster
+        assert f'data-family="{familie}"' in merkmale
+    assert 'data-family="pursuit"' in muster and 'data-family="quest"' in muster
     assert "Weil du" not in fragen
     assert "Kruzifix Killer" in fragen and "Satz zu violent." in fragen
 
@@ -341,14 +341,14 @@ def test_what_more_books_carry_ranks_higher(client, buecher) -> None:
     """Gerankt wird vorerst nach der Zahl der Bücher (#62 bringt die Ausprägung)."""
     fragen = _fragen(client.get("/intake/common").text)
 
-    assert fragen.index('data-familie="harsh"') < fragen.index('data-familie="intricate"')
+    assert fragen.index('data-family="harsh"') < fragen.index('data-family="intricate"')
 
 
 def test_a_tap_is_saved_and_the_profile_grows_below(client, db, buecher) -> None:
     tippen(client, "harsh")
     body = tippen(client, "brooding")
 
-    assert 'data-facette="brooding,harsh"' in body
+    assert 'data-facet="brooding,harsh"' in body
     assert {c.family_id for c in db.intake_choices(load_settings().slug)} == {"harsh", "brooding"}
 
 
@@ -357,8 +357,8 @@ def test_a_single_family_never_becomes_a_facet_on_its_own(client, buecher) -> No
     (#64) — allein zählt es nur als gemochtes Merkmal, nicht als Kombination."""
     body = tippen(client, "atmospheric")
 
-    entwurf = body.split("data-entwurf", 1)[1]
-    assert "data-facette" not in entwurf
+    entwurf = body.split("data-draft", 1)[1]
+    assert "data-facet" not in entwurf
 
 
 def test_boosting_needs_a_tap_first(client, buecher) -> None:
@@ -394,8 +394,8 @@ def test_a_boosted_family_shows_as_verstaerkt(client, buecher) -> None:
     tippen(client, "harsh")
     body = tippen(client, "harsh", seite="boost")
 
-    karte = body.split('data-karte="harsh"', 1)[1].split("</li>", 1)[0]
-    assert 'data-verstaerken="harsh"' in karte and "verstärkt" in karte
+    karte = body.split('data-card="harsh"', 1)[1].split("</li>", 1)[0]
+    assert 'data-boost="harsh"' in karte and "verstärkt" in karte
 
 
 def test_patterns_are_tappable_and_boostable_like_traits(client, buecher) -> None:
@@ -404,16 +404,16 @@ def test_patterns_are_tappable_and_boostable_like_traits(client, buecher) -> Non
     tippen(client, "pursuit")
     body = tippen(client, "pursuit", seite="boost")
 
-    karte = body.split('data-karte="pursuit"', 1)[1].split("</li>", 1)[0]
-    assert 'data-verstaerken="pursuit"' in karte and "verstärkt" in karte
+    karte = body.split('data-card="pursuit"', 1)[1].split("</li>", 1)[0]
+    assert 'data-boost="pursuit"' in karte and "verstärkt" in karte
     # Erzählmuster bilden nie eine Facette (#63).
-    assert "data-facette" not in body.split("data-entwurf", 1)[1]
+    assert "data-facet" not in body.split("data-draft", 1)[1]
 
 
 def test_a_lost_family_a_loved_book_also_carries_asks_how_far(client, buecher) -> None:
     body = tippen(client, "big_world", seite="lost", schritt=4)
 
-    assert 'data-nachfrage="big_world"' in body
+    assert 'data-followup="big_world"' in body
     assert "nur bei High Fantasy" in body
     # Voreingestellt nur bei diesen Büchern: es zählt noch gegen nichts.
     assert "Nur an den Büchern selbst gestört" in body
@@ -426,14 +426,14 @@ def test_with_the_genre_it_becomes_a_bundle(client, buecher) -> None:
                        data={"family": "big_world", "scope": "genre"},
                        headers=HX).text
 
-    entwurf = body.split("data-entwurf", 1)[1]
+    entwurf = body.split("data-draft", 1)[1]
     assert "große Welt" in entwurf and "nur bei High Fantasy" in entwurf
 
 
 def test_a_lost_family_no_loved_book_carries_counts_everywhere(client, buecher) -> None:
     body = tippen(client, "leisurely", seite="lost", schritt=4)
 
-    assert "data-nachfrage" not in body
+    assert "data-followup" not in body
     assert "gemächlich" in body.split("Zählt gegen ein Buch", 1)[1]
 
 
@@ -496,7 +496,7 @@ def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, b
 
     body = client.get("/profile").text
 
-    assert "Erstaufnahme beginnen" not in body and "data-leseprofil" in body
+    assert "Erstaufnahme beginnen" not in body and "data-reading-profile" in body
     # Jede Facette nennt ihre Merkmale mit dem Satz, was sie heißen — wie im Entwurf.
     from ebook_watchlist.portrait import load_vocabulary
 
@@ -518,7 +518,7 @@ def test_a_confirmed_book_can_be_removed_again(client, db, buecher) -> None:
     assert "Kruzifix Killer" not in client.get("/intake").text
     liked = [r.book_id for r in db.relations(load_settings().slug, kind=RelationKind.LIKED)]
     assert buecher["K"] not in liked
-    assert 'data-familie="flawed"' not in client.get("/intake/common").text
+    assert 'data-family="flawed"' not in client.get("/intake/common").text
 
 
 # --- Review ---------------------------------------------------------------------
@@ -537,7 +537,7 @@ def test_genre_scope_needs_a_genre(client, db, buecher) -> None:
                           headers=HX)
 
     assert antwort.status_code == 400
-    entwurf = client.get("/intake/lost").text.split("data-entwurf", 1)[1]
+    entwurf = client.get("/intake/lost").text.split("data-draft", 1)[1]
     assert "verschachtelt" not in entwurf.split("Zählt gegen ein Buch")[-1].split("Nur an")[0]
 
 

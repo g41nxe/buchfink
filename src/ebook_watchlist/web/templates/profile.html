@@ -14,7 +14,7 @@
    keines gibt: danach ändert es sich beim Nachschärfen, nicht durch eine
    zweite Erstaufnahme. #}
 {% if view.facet_profile is none %}
-<a href="/intake" data-erstaufnahme
+<a href="/intake" data-intake
    class="tun mb-6 flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/5
           px-5 py-4 hover:bg-accent/10">
   <svg class="i shrink-0 text-accent"><use href="#ic-heart"/></svg>
@@ -31,7 +31,7 @@
    lesen; abwählen und nachschärfen kommt mit #51. #}
 {% if view.facet_profile is not none %}
 {% from "_family_pill.html" import title_row %}
-<section class="mb-6 rounded-lg border border-rule bg-card px-5 py-4" data-leseprofil>
+<section class="mb-6 rounded-lg border border-rule bg-card px-5 py-4" data-reading-profile>
   <p class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
     <span class="font-semibold text-accent">Dein Leseprofil</span>
     <span class="text-xs text-soft">Fassung {{ view.facet_profile }}</span>

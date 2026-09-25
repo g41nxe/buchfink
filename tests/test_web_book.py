@@ -1069,7 +1069,7 @@ def test_without_a_profile_there_is_no_fit(
     view.portray(db, load_settings(), buch.id, now=NOW)
 
     assert view.build(db, load_settings(), buch.id).fit is None
-    assert "data-passung" not in client.get(f"/book/{buch.id}").text
+    assert "data-fit" not in client.get(f"/book/{buch.id}").text
 
 
 def test_without_a_portrait_there_is_no_fit(db: Store) -> None:

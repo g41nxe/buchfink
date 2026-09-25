@@ -869,7 +869,7 @@ def test_without_a_profile_nothing_is_judged_and_the_page_says_so(
     body = client.get("/suggestions").text
 
     assert pile.no_profile and all(i.stars is None for i in pile.items)
-    assert "data-ohne-profil" in body and "Erstaufnahme machen" in body
+    assert "data-no-profile" in body and "Erstaufnahme machen" in body
 
 
 @needs_vocabulary
@@ -879,7 +879,7 @@ def test_with_a_profile_the_page_does_not_send_her_back_to_the_intake(
     give_profile(db)
     found(db, title="Ein Fund")
 
-    assert "data-ohne-profil" not in client.get("/suggestions").text
+    assert "data-no-profile" not in client.get("/suggestions").text
 
 
 def test_the_hidden_count_names_the_threshold_of_the_scheme() -> None:
@@ -904,4 +904,4 @@ def test_a_pile_with_an_unreadable_vocabulary_does_not_blame_the_missing_profile
     pile = view.pending(db, load_settings())
 
     assert not pile.no_profile
-    assert "data-ohne-profil" not in client.get("/suggestions").text
+    assert "data-no-profile" not in client.get("/suggestions").text

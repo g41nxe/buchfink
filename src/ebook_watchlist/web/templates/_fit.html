@@ -4,7 +4,7 @@
 
    Erwartet: `fit` (eine `FitView`) oder nichts. #}
 {% if fit %}
-<div class="mt-4" data-passung>
+<div class="mt-4" data-fit>
   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
     <span class="flex items-center gap-0.5 text-gold"
           title="{{ fit.stars }} von 5 — aus deinem Leseprofil gerechnet">
@@ -32,7 +32,7 @@
       {{ line.text }}</li>
     {% else %}
     <li class="{% if not loop.first %}mt-3 {% endif %}flex flex-wrap items-center gap-x-2"
-        data-facette="{{ line.kind }}">
+        data-facet="{{ line.kind }}">
       {# Eine Form für alle drei: Marke mit Zeichen und Name, dahinter ein
          leises Wort. Was sie unterscheidet, sagen Farbe, Zeichen und Wort. #}
       {# Kombination, gemochtes Merkmal, Erzählmuster, Gegengewicht — eine

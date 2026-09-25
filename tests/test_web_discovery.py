@@ -102,7 +102,7 @@ def test_the_reasoning_is_readable_here_and_only_here(client: TestClient, db: St
 
     body = client.get("/discovery/beam/7").text
 
-    assert "data-passung" in body and "4 von 5" in body and "66" in body
+    assert "data-fit" in body and "4 von 5" in body and "66" in body
     assert "Satz zu quest" in body
     assert "Satz zu quest" not in client.get("/suggestions").text
 
@@ -114,7 +114,7 @@ def test_without_a_portrait_the_page_offers_to_make_one(client: TestClient, db: 
 
     assert "Noch kein Steckbrief." in body
     assert "/discovery/beam/7/portrait" in body
-    assert "data-passung" not in body
+    assert "data-fit" not in body
 
 
 def test_the_price_stands_in_the_tile_of_its_source(client: TestClient, db: Store) -> None:

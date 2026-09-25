@@ -74,7 +74,7 @@ def seite(client: TestClient, book_id: int) -> str:
 def test_without_a_profile_nothing_is_sharpened(client, db) -> None:
     b = buch(db, "Leopard", ["violent", "brooding", "flawed", "intricate"])
 
-    assert "data-nachschaerfen" not in seite(client, b)
+    assert "data-sharpening" not in seite(client, b)
 
 
 def test_dismissing_or_own_stars_do_not_sharpen(client, db, profil) -> None:
@@ -82,8 +82,8 @@ def test_dismissing_or_own_stars_do_not_sharpen(client, db, profil) -> None:
     nur_sterne = buch(db, "Nur Sterne", ["violent", "brooding"], kind=None)
     client.post(f"/book/{nur_sterne}/stars", data={"stars": "5"})
 
-    assert "data-nachschaerfen" not in seite(client, ausgeschlossen)
-    assert "data-nachschaerfen" not in seite(client, nur_sterne)
+    assert "data-sharpening" not in seite(client, ausgeschlossen)
+    assert "data-sharpening" not in seite(client, nur_sterne)
 
 
 def test_mag_ich_draws_the_portrait_it_needs(client, db, profil, monkeypatch) -> None:
@@ -101,7 +101,7 @@ def test_mag_ich_draws_the_portrait_it_needs(client, db, profil, monkeypatch) ->
 
     from test_web_book import steckbrief_abwarten
     body = steckbrief_abwarten(client, f"/book/{b}")
-    assert "data-nachschaerfen" in body
+    assert "data-sharpening" in body
 
 
 # --- gemocht ---------------------------------------------------------------------------
@@ -112,11 +112,11 @@ def test_a_liked_book_shows_its_own_families_as_cards(client, db, profil) -> Non
 
     body = seite(client, b)
 
-    karten = body.split("data-nachschaerfen", 1)[1]
+    karten = body.split("data-sharpening", 1)[1]
     for familie in ("harsh", "brooding", "fast", "antihero"):
-        assert f'data-karte="{familie}"' in karten
+        assert f'data-card="{familie}"' in karten
     # Schon gemocht: harsh und brooding stehen als angetippt (♥ ohne opacity-30).
-    assert 'aria-pressed="true"' in karten.split('data-karte="harsh"', 1)[1].split("</li>", 1)[0]
+    assert 'aria-pressed="true"' in karten.split('data-card="harsh"', 1)[1].split("</li>", 1)[0]
 
 
 def test_tapping_a_new_family_adds_it_and_rederives_facets(client, db, profil) -> None:
@@ -185,7 +185,7 @@ def test_a_family_this_book_does_not_carry_is_rejected(client, db, profil) -> No
 
 def test_the_code_judges_again_after_a_change(client, db, profil) -> None:
     b = buch(db, "Rosie", ["quirky", "funny", "likeable", "romantic"])
-    vorher = seite(client, b).split('data-passung', 1)[1].split("</div>", 1)[0]
+    vorher = seite(client, b).split('data-fit', 1)[1].split("</div>", 1)[0]
 
     client.post(f"/book/{b}/sharpen/liked", data={"family": "funny", "on": "1"})
     client.post(f"/book/{b}/sharpen/liked", data={"family": "likeable", "on": "1"})
@@ -254,7 +254,7 @@ def test_a_counterweight_the_profile_already_has_is_not_offered(client, db, prof
 
     body = seite(client, b)
 
-    assert 'value="leisurely"' not in body.split("data-nachschaerfen", 1)[1]
+    assert 'value="leisurely"' not in body.split("data-sharpening", 1)[1]
 
 
 def test_the_cause_names_the_book(client, db, profil) -> None:
@@ -285,7 +285,7 @@ def test_the_profile_page_derives_the_strength_from_the_shelf(client, db, profil
     buch(db, "Leichenblässe", ["violent", "brooding", "menacing", "atmospheric"])
     buch(db, "Kruzifix Killer", ["violent", "brooding", "fast_paced", "flawed"])
 
-    body = client.get("/profile").text.split("data-leseprofil", 1)[1]
+    body = client.get("/profile").text.split("data-reading-profile", 1)[1]
 
     assert "mittel" in body and "Kruzifix Killer" in body
 
@@ -298,7 +298,7 @@ def test_a_book_the_model_does_not_know_says_so_instead_of_waiting(client, db, p
     db.put_portrait(f"book:{b}", parse_answer('{"bekannt": false}', load_vocabulary()), now=NOW)
     db.put_relation(slug(), b, "liked", active=True, now=NOW)
 
-    body = seite(client, b).split("data-nachschaerfen", 1)[1]
+    body = seite(client, b).split("data-sharpening", 1)[1]
 
     assert "kennt dieses Buch nicht" in body and "Sobald der Steckbrief" not in body
 
@@ -309,7 +309,7 @@ def test_a_failed_portrait_says_why_sharpening_waits(client, db, profil) -> None
 
     client.post(f"/book/{b}/relation", data={"kind": "liked", "active": "1"})
     from test_web_book import steckbrief_abwarten
-    body = steckbrief_abwarten(client, f"/book/{b}").split("data-nachschaerfen", 1)[1]
+    body = steckbrief_abwarten(client, f"/book/{b}").split("data-sharpening", 1)[1]
 
     assert "Kein Weg zum Modell" in body and "Sobald der Steckbrief" not in body
 
