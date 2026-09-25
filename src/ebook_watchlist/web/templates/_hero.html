@@ -1,17 +1,19 @@
 {# Das Titelbild der Startseite, im Leerzustand wie am gewöhnlichen Tag.
 
-   Das Bild erzählt von links nach rechts — Regal, Sessel, Tisch mit der
-   Watchlist, Fink — und ein Band durch die Mitte nähme ihm Anfang und Ende.
+   Das Bild erzählt von links nach rechts — Regal mit dem Schriftzug „Buchfink"
+   aus Büchern, Sessel, Tisch mit der Watchlist, Fink — und ein Band durch die
+   Mitte nähme ihm Anfang und Ende.
    Beschnitten ist es trotzdem, aber oben: 3 zu 1 statt 2,36 zu 1, weil die
    Spalte seit #23 1024 statt 720 Pixel zeigt und das Bild damit 434 Pixel
    hoch geworden wäre — ein knappes Drittel der Startseite, bevor „Heute"
-   kommt. Weggefallen ist Fensterfläche über dem Sessel, keine Figur. Jetzt
-   sind es 341 Pixel auf dem Schreibtisch, 109 auf dem Telefon.
+   kommt. Weggefallen sind das oberste Regalbrett und die Fensterfläche über
+   dem Sessel, keine Figur und nicht der Schriftzug. Jetzt sind es 341 Pixel auf
+   dem Schreibtisch, 109 auf dem Telefon.
 
    Die Datei unter `assets/` ist die verkleinerte Fassung des Originals aus
-   `docs/bilder/`: 2048 Pixel breit, also das Doppelte der 1024, die die
-   Spalte zeigt, und damit auch auf einem dichten Bildschirm scharf. Aus 604
-   KB werden so 210. Wer das Bild tauscht, schneidet und verkleinert es dabei:
+   `docs/bilder/hero-mit-titel.jpg` (3172 mal 1344): 2048 Pixel breit, also das
+   Doppelte der 1024, die die Spalte zeigt, und damit auch auf einem dichten
+   Bildschirm scharf. Aus 2,2 MB werden so 197 KB. Wer das Bild tauscht, schneidet und verkleinert es dabei:
    `uv run --with pillow python -c "…"` — eine Abhängigkeit dafür trägt das
    Projekt nicht.
 
@@ -25,7 +27,7 @@
 #}
 {% macro hero() %}
 <div class="overflow-hidden rounded-lg border border-hair">
-  <img src="{{ url_for('static', path='hero-lesezimmer.jpg') }}?v={{ asset_version }}" alt=""
-       width="2048" height="683" class="block w-full">
+  <img src="{{ url_for('static', path='hero-mit-titel.jpg') }}?v={{ asset_version }}" alt=""
+       width="2048" height="682" class="block w-full">
 </div>
 {% endmacro %}

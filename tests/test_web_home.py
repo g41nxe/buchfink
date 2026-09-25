@@ -104,7 +104,7 @@ def test_the_empty_state_greets_with_the_hero(client: TestClient) -> None:
     dem ersten Lauf, keine Ablenkung, sobald echte Daten da sind."""
     body = client.get("/").text
 
-    assert "hero-lesezimmer.jpg" in body
+    assert "hero-mit-titel.jpg" in body
 
 
 def test_a_broken_configuration_is_reported_on_the_start_page_too(
