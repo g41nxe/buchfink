@@ -48,6 +48,8 @@ PAR = dict(
     reason_w=1.0,  # Gewicht eines Grundes, den die Leserin selbst nennt
     stars=((5, 0.7), (4, 0.55), (3, 0.4), (2, 0.2)),
     q=0.75,  # welches Quantil der Vorlieben als „voll gemocht" gilt
+    muster_spinne=True,  # Erzählmuster als zweite Spinne (False: nur „bestes Muster")
+    alpha_p=1.0,  # Glättung der zweiten Spinne (ein Buch trägt 1–3 Muster)
 )
 if len(sys.argv) > 2:
     PAR.update(json.loads(sys.argv[2]))
@@ -57,11 +59,13 @@ PAT = {f: is_pattern(f, V) for f in set(FAM.values())}
 
 
 def book_terms(p):
-    """Merkmal → Gewicht im Buch (Erzählmuster auf Familienebene)."""
+    """Merkmal → Gewicht im Buch. Erzählmuster je Grundhandlung, oder mit der
+    zweiten Spinne je Muster (Grundhandlung als Familie, wie bei den Merkmalen)."""
     out = {}
     for t in p.traits:
         if t.term in V.terms:
-            key = FAM[t.term] if PAT[FAM[t.term]] else t.term
+            spinne = PAR["muster_spinne"]
+            key = FAM[t.term] if PAT[FAM[t.term]] and not spinne else t.term
             out[key] = max(out.get(key, 0), PAR["w"].get(t.weight, 0.7))
     return out
 
@@ -148,9 +152,29 @@ def verdict(portrait, form, profile):
         inside += w * max(v, 0)
         outside += w * max(-v, 0)
     feat = (inside - outside + PAR["alpha"] * PAR["p0"]) / (mass + PAR["alpha"])
-    pats = [f for f in bt if PAT.get(f)]
-    pat_like = max([max(form.fam.get(f, 0), 0) for f in pats] + [0])
-    pat_dis = max([max(-form.fam.get(f, 0), 0) for f in pats] + [0])
+    if PAR["muster_spinne"]:
+        # Zweite Spinne: dieselbe Rechnung über die Erzählmuster. Ein Muster
+        # trägt kein Gewicht im Buch; es steht nur da, wenn es die Geschichte trägt.
+        p_in = p_out = p_mass = 0.0
+        for key in bt:
+            f = FAM.get(key, key)
+            if not PAT.get(f) or f not in form.known:
+                continue
+            v = form.term.get(key, form.fam.get(f, 0.0))
+            p_mass += 1.0
+            p_in += max(v, 0)
+            p_out += max(-v, 0)
+        # Weiß das Profil über keines der Muster etwas, sagt die zweite Spinne nichts.
+        pat = (
+            (p_in - p_out + PAR["alpha_p"] * PAR["p0"]) / (p_mass + PAR["alpha_p"])
+            if p_mass
+            else 0.0
+        )
+        pat_like, pat_dis = max(pat, 0), max(-pat, 0)
+    else:
+        pats = [f for f in bt if PAT.get(f)]
+        pat_like = max([max(form.fam.get(f, 0), 0) for f in pats] + [0])
+        pat_dis = max([max(-form.fam.get(f, 0), 0) for f in pats] + [0])
     share = 1 - (1 - max(feat, 0)) * (1 - PAR["mu"] * pat_like)
     fams = {FAM.get(k, k) for k in bt}
     if any(set(fc.families) <= fams for fc in profile.facets):

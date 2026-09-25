@@ -71,9 +71,12 @@ Gegengewicht. Alles andere ist die Mitte des Netzes.
    `A = (Σ Gewicht · Vorliebe⁺ − Σ Gewicht · Ablehnung + α·p₀) / (Σ Gewicht + α)`,
    α = 4, p₀ = 0,2. Die Glättung zieht ein dünn beschriebenes Buch zur Mitte, statt
    es kippen zu lassen (Z6).
-2. **Erzählmuster**: das **beste** gemochte Muster des Buchs zählt, `μ = 0,35 ×
-   Vorliebe`; ein abgelehntes Muster zieht `ν = 0,5 × Ablehnung` ab. Ein Muster ist so
-   gut wie drei (Z5).
+2. **Erzählmuster, die zweite Spinne** (Nachtrag, siehe 3.5): dieselbe Rechnung wie
+   für die Merkmale, über die Erzählmuster des Buchs aus bekannten Grundhandlungen,
+   jedes mit Gewicht 1 (ein Muster steht nur da, wenn es die Geschichte trägt), mit
+   eigener Glättung α_p = 1. Ein positiver Wert B hebt: `× (1 − 0,35·B)` im Produkt;
+   ein negativer zieht ab: `× (1 − 0,5·|B|)`. Weiß das Profil über keines der Muster
+   etwas, sagt die zweite Spinne nichts.
 3. **Facette**: trägt das Buch eine Kombination ganz, gibt es einen Bonus β = 0,25.
    Ihre Merkmale stecken schon im Anteil, sie zählen nicht doppelt.
 4. **Gegengewicht mit Genre** (Regel der Leserin): im Genre `× (1 − 0,5 × Gewicht im
@@ -84,6 +87,41 @@ Gegengewicht. Alles andere ist die Mitte des Netzes.
 **Sterne** wie heute: ab 0,2 zwei, ab 0,4 drei, ab 0,55 vier, ab 0,7 fünf; Vergleich mit
 Toleranz gegen Rundungsfehler. **Tor** ab drei Sternen. Kein Urteil wie heute, wenn das
 Buch unbekannt ist oder das Profil nichts weiß.
+
+### 3.5 Zwei Spinnen: wie es sich liest, was es erzählt
+
+Merkmale und Erzählmuster beantworten verschiedene Fragen und bekommen je ein eigenes
+Netz: die **erste Spinne** über die Merkmale (Stimmung, Figuren, Handlung, Tempo,
+Stil), die **zweite** über die Erzählmuster, jedes Muster mit seiner Grundhandlung als
+Familie. Beide werden gleich gelernt (aus deinen Büchern, das Getippte als
+Startwert) und gleich gelesen (Anteil des Buchs in deiner Form). Zwei statt eines
+Netzes, weil ein Buch vier bis acht Merkmale, aber nur ein bis drei Muster trägt: in
+einem gemeinsamen Netz entschieden die Merkmale fast allein.
+
+Die erste Fassung zählte nur das **beste** gemochte Muster. Die zweite Spinne kann mehr:
+
+- **Ablehnung innerhalb einer Grundhandlung.** Gelernt aus deinen Büchern: *Tiere als
+  Bedrohung* (aus *Der Schwarm*) −0,2, während die Grundhandlung *Katz und Maus* gemocht
+  bleibt (+0,2); *Erstkontakt* −0,23 und *die verborgene Welt nebenan* (aus
+  *Auslöschung*) +0,28, beide in *Erkenntnis*. Das ist Z11 für Muster.
+- **Ein Muster allein trägt nicht.** Ein Buch, dessen Merkmale neutral sind und das nur
+  ein gemochtes Muster trägt, liegt bei 28 % (vorher 41 %, also durchs Tor).
+- **Eins oder drei** bleibt fast gleich: ein gemochtes Muster und drei gemochte
+  Merkmale 46 %, drei Muster (davon eines gemocht) und dieselben Merkmale 44 %.
+
+Gemessen gegen die erste Fassung (bestes Muster):
+
+| | bestes Muster | zweite Spinne |
+|---|---|---|
+| *Der Schwarm* mit deinen Gründen | 2★ 39 % | **2★ 33 %** (mehr Abstand zum Tor) |
+| deine 7 gemochten Bücher, ohne sich selbst | 48 bis 77 % | 47 bis 72 %, alle mit mindestens drei Sternen |
+| Stapelfunde durchs Tor (von 55) | 38 | 37 |
+| schmale Profile (1 / 3 / 5 / 8 / 12 getippte Merkmale) | 1 / 4 / 10 / 17 / 45 | unverändert |
+| Stufenwechsel bei 40 % weniger Merkmalen | 39 % | 41 % |
+| Korrelation mit der Zahl der Merkmale | 0,19 | 0,23 |
+
+Die zweite Spinne ist im Prototyp die Voreinstellung (`muster_spinne`). Für die Anzeige
+heißt das: zwei Netze nebeneinander, *wie es sich liest* und *was es erzählt*.
 
 ### 3.4 Die Begründung
 
@@ -152,13 +190,13 @@ deinen Gründen unter das Tor, **knapp** (39 %).
 | Z2 unabhängig von der Profilgröße | ✓ schmale Profile finden Passendes; Unbekanntes zählt nicht |
 | Z3 Ausprägung zählt | ✓ Gewicht im Buch in jedem Beitrag |
 | Z4 Ablehnung nach Stärke | ✓ gelernt und nach Gewicht im Buch |
-| Z5 Muster als eigene Frage | ✓ bestes Muster zählt |
+| Z5 Muster als eigene Frage | ✓ eigene Spinne; ein gemochtes Muster ist so gut wie drei, ein Muster allein trägt nicht |
 | Z6 ehrlich bei dünner Beschreibung | ✓ Glättung zur Mitte |
 | **Z7 ruhig gegen Rauschen** | **✗ schlechter als heute** (39 % gegen 27 %): ein Anteil reagiert auf jedes Merkmal einer kurzen Beschreibung |
 | Z8 erklärbar, ohne Modell | ✓ jede Zeile ein Teil; Neuberechnung ohne Aufruf |
 | Z9 an deinen Büchern geprüft | ✓ 7 von 7 gemocht, 2 von 2 abgelehnt; ⚠ 38 statt 32 Funde durchs Tor |
 | Z10 deine Erfahrung geht vor | ✓ Gründe und Abweichungen gelten für dein Profil |
-| Z11 Ablehnung so fein wie nötig | ✓ Merkmal statt Familie |
+| Z11 Ablehnung so fein wie nötig | ✓ Merkmal statt Familie, ebenso Muster statt Grundhandlung |
 | Z12 Enttäuschendes prüft das Profil | ✓ als Probe rechenbar, knapp |
 
 ## 6. Was offen ist
