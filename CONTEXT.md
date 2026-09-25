@@ -499,6 +499,14 @@ free text — the code decides, no model is asked.
 **Reader-facing name: *deine Sicht*** — the section asks "Sieht das Modell
 dieses Buch anders als du?"
 
+### Owned Books
+*deutsch: Meine Bücher*
+
+Every book the reader keeps as *Hab ich* (`owned`), as one page (`/owned`,
+#71): cover, title, author, her own stars or else the Fit, searchable and
+sortable. Not *Bibliothek* — that word means the Library Sources (Onleihe,
+OverDrive).
+
 ### Portrayer
 *deutsch: Steckbrief-Ersteller*
 
