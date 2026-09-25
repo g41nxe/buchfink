@@ -141,6 +141,11 @@ for r in rated:
         )
     )
 out["eigene"] = rows
+out["gegenproben"] = [
+    (p.title[:24], f"{v0stars(v0(p))}★ {round(v0(p) * 100)} %", f"{stars(x)}★ {round(x * 100)} %")
+    for p in g["probes"]
+    if (x := judge_dirs(p, P6, full)) is not None
+]
 xs = [judge_dirs(p, P6, full) for p in sample]
 out["tor"] = {
     "heute": sum(1 for p in sample if (v0stars(v0(p)) or 0) >= 3),
@@ -161,5 +166,8 @@ out["stufenwechsel"] = f"{round(100 * ch / tot)} %"
 json.dump(out, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print("Richtungen:", out["richtungen"])
 for row in rows:
+    print("  |", " | ".join(row), "|")
+print("Gegenproben (heute | Richtungen):")
+for row in out["gegenproben"]:
     print("  |", " | ".join(row), "|")
 print("Tor", out["tor"], "| Länge", out["laenge"], "| Stufenwechsel", out["stufenwechsel"])

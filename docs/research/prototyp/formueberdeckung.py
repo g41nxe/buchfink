@@ -243,6 +243,21 @@ FULL = learn(P6, rated)
 sample = [p for s, p in latest.items() if p.known and not s.startswith(("intake:", "book:"))]
 
 
+def _probe(d):
+    d = {k: v for k, v in d.items() if k != "expect"}
+    return Portrait(**{**d, "traits": tuple(Trait(**t) for t in d["traits"]), "violations": ()})
+
+
+# Gegenproben: Bücher, die die Leserin nicht gelesen hat und nie lesen würde. Sie
+# liegen außerhalb der Datenbank (data/research/), damit sie in der App nicht zählen.
+PROBE_FILE = paths.db_path().parent / "research" / "gegenproben.json"
+probes = (
+    [_probe(d) for d in json.loads(PROBE_FILE.read_text(encoding="utf-8"))]
+    if PROBE_FILE.exists()
+    else []
+)
+
+
 def v0(p, prof=P6):
     r = fit(p, prof, V, W0)
     return None if r is None else r.share
@@ -283,6 +298,15 @@ out["mit_sich_selbst"] = [
         ),
     )
     for r in rated
+]
+
+out["gegenproben"] = [
+    (
+        p.title[:24],
+        fmt(v0(p), v0stars(v0(p))),
+        fmt(verdict(p, FULL, P6), stars(verdict(p, FULL, P6))),
+    )
+    for p in probes
 ]
 
 # 2. Stichprobe
@@ -449,7 +473,7 @@ out["terms_big_world"] = {
 
 json.dump(out, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 for k, v in out.items():
-    if k in ("loo", "scenarios", "mit_sich_selbst"):
+    if k in ("loo", "scenarios", "mit_sich_selbst", "gegenproben"):
         print(f"\n{k}:")
         for row in v:
             print("  |", " | ".join(row), "|")

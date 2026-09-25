@@ -398,3 +398,56 @@ aber Z1 und Z7. Offen für die Entscheidung:
 - **Tor neu setzen**: Mit Richtungen liegen die Werte anders; die Sternschwellen
   müssten an der Stichprobe neu geeicht werden (mit .75/.62/.5/.25 kämen 39 von 55
   durch, immer noch mehr als heute).
+
+## 11. Breiteres Spektrum und Gegenproben (25.09.2026, spät)
+
+Die Leserin hat sieben weitere gelesene Bücher als *Mag ich* genannt: *Die Tribute von
+Panem*, *Der Steppenwolf*, *Corpus Delicti*, *QualityLand*, *Der Hof*, *Der Junge im
+gestreiften Pyjama*, *Der Vorleser*. Sie stehen jetzt im Leseprofil (mit Klappentext
+aus dem Shop; bei Boyne der Text der englischen Ausgabe). Dazu fünf **Gegenproben**:
+Bücher, die sie nicht gelesen hat und nicht lesen würde: *Es* (King), *Die Säulen der
+Erde* (Follett), *Der Medicus* (Gordon), *Die Farben der Magie* (Pratchett), *Er ist
+wieder da* (Vermes). Die Gegenproben liegen in `data/research/gegenproben.json`,
+nicht in der Datenbank, damit sie in der App nicht mitzählen (etwa bei den häufigen
+Familien der Erstaufnahme). Beide Prototypen lesen sie von dort.
+
+Historisch ist kein Nein: *Der Junge im gestreiften Pyjama* und *Der Vorleser* sind
+gemocht, *Die Säulen der Erde* und *Der Medicus* nicht. Der Unterschied liegt in der
+Anlage (eng an wenigen Figuren gegenüber dem breiten Epos), nicht im Genre.
+
+| 22 gemochte, 2 enttäuschende, 5 Gegenproben | heute | eine Form | Richtungen |
+|---|---|---|---|
+| gemochte Bücher ab 3★ (neue Methoden ohne das Buch selbst) | 14 von 22 | 18 von 22 | 20 von 22 |
+| davon die sieben neuen | 2 von 7 | 6 von 7 | 6 von 7 |
+| *Der Schwarm* | 3★ 50 % | 4★ 62 % (ohne sich selbst) | 3★ 44 % |
+| Gegenproben unter 3★ | 5 von 5 | 4 von 5 | 4 von 5 |
+| Stichprobe ab 3★ (Tor) | 33 von 60 | 42 von 60 | 49 von 60 |
+| Stufenwechsel beim Ausdünnen | 29 % | 40 % | 51 % |
+
+Einstellungen: γ/β = 0,33, Maximum je enttäuschendem Buch; Richtungen mit τ = 0,15.
+
+**Befund.**
+
+1. **Die heutige Rechnung ist zu eng.** Von den sieben neuen Büchern erkennt sie nur
+   zwei (*Tribute von Panem*, *Der Hof*, beide nah an den Thrillern). *Corpus Delicti*,
+   *QualityLand*, *Der Steppenwolf*, *Der Vorleser* bekommen 2★, *Der Junge im
+   gestreiften Pyjama* 1★. Sie kennt die Richtung Thriller, sonst kaum etwas.
+2. **Eine Form reicht mit breiterem Spektrum weiter als gedacht.** Mit 22 gemochten
+   Büchern erkennt die einzelne Form 18, darunter *Yendi* und *Auslöschung*, die sie
+   mit 15 Büchern verlor. Mehr Bücher glätten die Mitte, statt sie zu verwischen.
+3. **Die Gegenproben halten.** Beide neuen Methoden geben vier von fünf unter 3★, obwohl
+   sie großzügiger sind als heute. Die Ausnahme ist *Er ist wieder da* (3★, 49 bis 52 %):
+   Satire, gegenwärtig, *große Ideen*, nah an *QualityLand*. Was sie dort unterscheidet
+   (Ton? Figur?), zeigt der Steckbrief nicht.
+4. **Richtungen** sortieren die neuen Bücher sinnvoll ein (*Corpus Delicti* und
+   *QualityLand* zu *The Circle*; *Steppenwolf*, *Vorleser*, *Der Junge im gestreiften
+   Pyjama* als eigene Richtung), lassen aber am meisten durch und rauschen am
+   stärksten.
+5. **Die Ablehnung hat keine Grundlage.** Mit zwei enttäuschenden Büchern lernt die
+   Form nichts gegen den Schwarm, wenn er selbst fehlt (62 %). Das ist jetzt die
+   größte Lücke: Es braucht mehr *Doof*-Bücher, mit einem Halbsatz, warum.
+
+**Stand der Abwägung.** Die einzelne Form ist mit breiterem Spektrum der bessere
+Kompromiss: deutlich mehr eigene Bücher als heute, Gegenproben abgewiesen, weniger
+Rauschen als die Richtungen. Offen bleiben das Rauschen (40 % gegenüber 29 %) und die
+Ablehnung, die erst mit mehr enttäuschenden Büchern prüfbar ist.
