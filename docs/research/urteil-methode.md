@@ -249,14 +249,20 @@ Die Methode gegen [urteil-verfahren.md](urteil-verfahren.md), Abschnitt für Abs
 
 **Wo sie abweicht, ohne Beleg**
 
-1. **Ablehnung wiegt 1,5-fach (λ).** Die Literatur setzt Ablehnung deutlich *schwächer*
-   als Zustimmung (Lehrbuch γ/β = 0,2, Salton/Buckley 0,33), weil positive Rückmeldung
-   mehr sagt. Unsere 1,5 stammt aus zwei enttäuschenden Büchern, eines davon mit deinen
-   ausdrücklichen Gründen. Zu prüfen, ob λ = 1 mit deinen Gründen genügt.
+1. **Ablehnung, richtig verglichen.** Die Literatur mittelt Zustimmung und Ablehnung
+   je über ihre Bücher (Rocchio: γ/β, Lehrbuch 0,2, Salton/Buckley 0,33 als besser
+   gemessen). Unser λ = 1,5 summiert statt zu mitteln; bei 7 gemochten und 2
+   enttäuschenden Büchern entspricht es γ/β = 1,5 · 2/7 ≈ 0,43, also knapp über der
+   Literatur, nicht weit darüber (Korrektur vom selben Abend). Der Prototyp nimmt die
+   Ablehnung jetzt wahlweise als Verhältnis (`rocchio`), damit sie mit der Zahl der
+   Bücher mitwandert. Gemessen: 0,43 hält *Der Schwarm* bei 33 %, 0,33 genau an der
+   Schwelle (40 %, 2 Sterne), 0,2 lässt ihn durch (49 %). Die gemochten Bücher bleiben
+   in allen drei Fällen über dem Tor.
 2. **Mehrere Ablehnungen werden verschmolzen.** Die Form summiert die Belege aller
    enttäuschenden Bücher. Die Literatur fand es besser, jedes negative Beispiel für
-   sich zu nehmen und das Maximum zu zählen (MultiNeg, Wang/Fang/Zhai 2008, 3.5). Bei
-   zwei Büchern ohne Wirkung, ab mehreren wichtig.
+   sich zu nehmen und das Maximum zu zählen (MultiNeg, Wang/Fang/Zhai 2008, 3.5).
+   Gemessen (`neg_max`): bei zwei Büchern ohne Wirkung, ab mehreren wichtig; kostet
+   nichts, also übernehmen.
 3. **Seltenheit (IDF) fehlt.** Die Recherche empfahl sie als kleinen ersten Schritt
    (3.1). Die gelernte Form ersetzt sie nicht: *nervenaufreibend* steckt in 48 % der
    Funde und zählt voll. Der Prototyp V2 zeigte kaum Wirkung, die Stichprobe ist
