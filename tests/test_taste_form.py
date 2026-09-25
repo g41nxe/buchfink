@@ -64,6 +64,15 @@ def test_a_book_the_model_does_not_know_gets_no_judgement(wort, gewichte) -> Non
     assert urteil(Portrait(known=False, fingerprint="x"), GETIPPT, (), wort, gewichte) is None
 
 
+def test_a_form_that_knows_only_story_patterns_does_not_judge(wort, gewichte) -> None:
+    """Ohne ein einziges gemochtes Merkmal lässt sich das Wesentliche nicht
+    beurteilen; zurückgehalten würde sonst jedes Buch (#78). Ein Fund ohne
+    Urteil bleibt sichtbar (ADR 7)."""
+    nur_muster = ReadingProfile(facets=(), counterweights=(), liked=(Liked("riddle"),))
+
+    assert urteil(steckbrief("brooding", "riddle"), nur_muster, (), wort, gewichte) is None
+
+
 def test_without_anything_liked_there_is_no_judgement(wort, gewichte) -> None:
     """Ohne Profil wird nicht geurteilt (ADR 33, Punkt 8)."""
     leer = ReadingProfile(facets=(), counterweights=())

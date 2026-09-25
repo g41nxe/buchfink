@@ -523,3 +523,25 @@ Ablehnung in Prozent.
    Gemächliches oder Romantisches. Drei Leserinnen haben fünf oder weniger
    Bücher, die sie nicht mögen; ihre Ablehnungswerte sind wacklig. Ein
    breiterer Pool kommt mit jedem neuen Steckbrief.
+
+## 14. Schmale Profile (#78, 26.09.2026)
+
+Mit der alten Rechnung hielt ein Profil aus wenigen Tipps jeden beschriebenen
+Fund zurück. Die Formüberdeckung misst den Anteil am bekannten Teil des Buchs;
+ein schmales Profil ist damit vorsichtig, blockiert aber nicht. Von 67 Büchern
+(Stichprobe und eigene) kommen ab 3★ durch:
+
+| Profil (nur Tipps, keine Bücher) | durchs Tor | höchste Übereinstimmung |
+|---|---|---|
+| ein Merkmal (*hart*) | 3 | 44 % |
+| zwei Merkmale | 14 | 52 % |
+| drei Merkmale | 18 | 52 % |
+| nur ein Erzählmuster | kein Urteil | – |
+
+Geprüft und verworfen: die Glättung nach dem ganzen Steckbrief statt nach dem
+bekannten Teil. Sie ließ bei drei Tipps 47 von 67 Büchern durch, zu großzügig
+für so wenig Auskunft; an der echten Leserin änderte sie nichts.
+
+Eine Form, die nur Erzählmuster mag, urteilt nicht mehr: Muster heben ein Buch
+nur an, ohne ein gemochtes Merkmal hielte das Tor jedes Buch zurück, und ein
+Fund ohne Urteil bleibt sichtbar (ADR 7).

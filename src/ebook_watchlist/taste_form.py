@@ -214,9 +214,13 @@ def overlap(
     """Wie gut das Buch passt — oder ``None``, wenn nicht geurteilt wird.
 
     Nicht geurteilt wird über ein Buch, das das Modell nicht kennt, und ohne
-    eine Form, die etwas weiß (ADR 33, Punkt 8).
+    eine Form, die etwas weiß (ADR 33, Punkt 8). Eine Form, die nur
+    Erzählmuster mag, weiß zu wenig: die Muster heben ein Buch nur an, und
+    ohne ein gemochtes Merkmal hielte das Tor jedes Buch zurück (#78).
     """
-    if not portrait.known or not any(v > 0 for v in form.family.values()):
+    if not portrait.known or not any(
+        v > 0 for f, v in form.family.items() if not is_pattern(f, vocabulary)
+    ):
         return None
     terms = book_terms(portrait, vocabulary, weights)
     inside = outside = mass = 0.0
