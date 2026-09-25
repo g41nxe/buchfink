@@ -28,6 +28,7 @@ from ..portrait import (
     VocabularyError,
     fingerprint,
     load_vocabulary,
+    worth_asking_again,
 )
 from ..portrayer import build_portrayer
 from ..ratings import (
@@ -742,7 +743,8 @@ def portray(store: Store, settings: Settings, book_id: int, *, now: datetime) ->
     except VocabularyError as exc:
         return str(exc)
     subject = portrait_subject(book)
-    if _stored_portrait(store, book, fingerprint(vocabulary)) is not None:
+    stored = _stored_portrait(store, book, fingerprint(vocabulary))
+    if stored is not None and not worth_asking_again(stored, text_now=bool(book.blurb)):
         return ""
 
     portrayer = build_portrayer(settings.rating_model, vocabulary)
@@ -820,7 +822,11 @@ def portray_observation(
     except VocabularyError as exc:
         return str(exc)
     subject = subject or subject_of(observation)
-    if store.portrait(subject, fingerprint(vocabulary)) is not None:
+    stored = store.portrait(subject, fingerprint(vocabulary))
+    # Ein Steckbrief, der steht, kostet nichts — auch ein „unbekannt“, das mit
+    # Text entstand. Nur ein „unbekannt“ ohne Text darf noch einmal, sobald einer
+    # da ist; ob er da ist, weiß erst die Detailseite (unten).
+    if stored is not None and (stored.known or stored.with_text):
         return ""
     portrayer = build_portrayer(settings.rating_model, vocabulary)
     if portrayer is None:
@@ -835,6 +841,10 @@ def portray_observation(
     thin = not observation.blurb or is_truncated(observation.blurb)
     if thin and blurb:
         observation = replace(observation, blurb=blurb)
+    if stored is not None and not worth_asking_again(
+        stored, text_now=bool(observation.blurb or observation.keywords)
+    ):
+        return ""
     try:
         portrait = portrayer.portray_find(observation)
     except PortrayalUnavailable as exc:

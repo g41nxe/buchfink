@@ -558,6 +558,69 @@ def test_a_batch_prompt_does_not_change_the_fingerprint() -> None:
     assert fingerprint(wort) == fingerprint(load_vocabulary())
 
 
+# --- „unbekannt" ohne Text ist keine endgültige Antwort ---------------------------
+
+
+class _Channel:
+    def __init__(self, answer: str) -> None:
+        self.answer = answer
+
+    def ask(self, text: str, max_tokens: int = 300) -> str:
+        return self.answer
+
+
+def test_a_portrait_notes_whether_a_text_went_along() -> None:
+    """Ein „unbekannt“ ohne Text sagt etwas über den fehlenden Text, nicht über das
+    Buch — das muss der Steckbrief festhalten, sonst bleibt es für immer."""
+    portrayer = Portrayer(_Channel(json.dumps({"bekannt": False})), load_vocabulary())
+
+    assert portrayer.portray("Auris", "Vincent Kliesch", None).with_text is False
+    assert portrayer.portray("Auris", "Vincent Kliesch", "Ein Klappentext.").with_text is True
+
+
+def test_a_batch_notes_it_per_book() -> None:
+    from datetime import datetime as _dt
+
+    from ebook_watchlist.models import MatchReason, Observation
+
+    def find(item: str, blurb: str | None) -> Observation:
+        return Observation(source="beam", source_item_id=item, title=f"Fund {item}",
+                           match_reason=MatchReason.GENRE_CATEGORY, blurb=blurb,
+                           observed_at=_dt(2026, 9, 25))
+
+    answer = json.dumps({"1": {"bekannt": False}, "2": {"bekannt": False}})
+    portrayer = Portrayer(_Channel(answer), load_vocabulary())
+
+    described = portrayer.portray_finds([find("a", "Mit Text."), find("b", None)])
+
+    assert described[("beam", "a")].with_text is True
+    assert described[("beam", "b")].with_text is False
+
+
+def test_the_note_is_kept_with_the_portrait(store: Store) -> None:
+    wort = load_vocabulary()
+    bild = Portrait(known=False, fingerprint=fingerprint(wort), with_text=False)
+
+    store.put_portrait("book:1", bild, now=NOW)
+
+    assert store.portrait("book:1", bild.fingerprint).with_text is False
+
+
+def test_only_an_unknown_book_described_without_text_is_asked_again_when_a_text_appears() -> None:
+    from ebook_watchlist.portrait import worth_asking_again
+
+    known = Portrait(known=True, fingerprint="x", with_text=False)
+    unknown_with = Portrait(known=False, fingerprint="x", with_text=True)
+    unknown_without = Portrait(known=False, fingerprint="x", with_text=False)
+    unknown_old = Portrait(known=False, fingerprint="x")  # Zeile aus der Zeit davor
+
+    assert not worth_asking_again(known, text_now=True)
+    assert not worth_asking_again(unknown_with, text_now=True)
+    assert not worth_asking_again(unknown_without, text_now=False)
+    assert worth_asking_again(unknown_without, text_now=True)
+    assert worth_asking_again(unknown_old, text_now=True)
+
+
 def test_a_batch_answer_becomes_one_portrait_per_number() -> None:
     wort = load_vocabulary()
     answer = json.dumps({"1": LEOPARD, "2": {"bekannt": False}})

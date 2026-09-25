@@ -327,7 +327,9 @@ class PortraitRow(Base):
     genre: Mapped[str | None] = mapped_column(String, nullable=True)
     subgenre: Mapped[str | None] = mapped_column(String, nullable=True)
     pitch: Mapped[str | None] = mapped_column(String, nullable=True)
-    #: JSON-Liste aus ``{"term", "sentence", "evidence"}``.
+    #: Ob beim Fragen ein Text beilag; ``NULL`` bei Zeilen aus der Zeit davor.
+    with_text: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    #: JSON-Liste aus ``{"term", "sentence", "evidence", "weight"}``.
     traits: Mapped[str] = mapped_column(String, default="[]")
     #: JSON-Liste der verletzten Regeln.
     violations: Mapped[str] = mapped_column(String, default="[]")
@@ -600,6 +602,7 @@ def _portrait_of(row: PortraitRow) -> Portrait:
             for t in json.loads(row.traits)
         ),
         violations=tuple(json.loads(row.violations)),
+        with_text=row.with_text,
     )
 
 
@@ -1645,6 +1648,7 @@ class Store:
                         ensure_ascii=False,
                     ),
                     violations=json.dumps(list(portrait.violations), ensure_ascii=False),
+                    with_text=portrait.with_text,
                 )
             )
             session.commit()

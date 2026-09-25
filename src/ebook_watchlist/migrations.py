@@ -587,6 +587,14 @@ def _a_judgement_shows_what_came_off(connection: Connection) -> None:
     add_column(connection, "rating", "model_stars", "FLOAT")
 
 
+def _a_portrait_remembers_whether_a_text_went_along(connection: Connection) -> None:
+    """Ein „unbekannt“ ohne Text darf noch einmal gefragt werden, sobald einer da ist.
+
+    Alte Zeilen bekommen keinen Wert (``NULL``): sie gelten als ohne Text beschrieben.
+    """
+    add_column(connection, "portrait", "with_text", "INTEGER")
+
+
 def _the_old_machine_judgements_are_gone(connection: Connection) -> None:
     """Die Urteile des alten Sterne-Modells fallen weg (#52, ADR 33).
 
@@ -637,6 +645,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _the_library_names_the_publisher,
     _a_judgement_shows_what_came_off,
     _the_old_machine_judgements_are_gone,
+    _a_portrait_remembers_whether_a_text_went_along,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

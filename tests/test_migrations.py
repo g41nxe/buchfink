@@ -31,7 +31,6 @@ def test_a_fresh_database_is_stamped_at_the_current_version(tmp_path: Path) -> N
     path = tmp_path / "s.db"
     Store(path)
 
-    from ebook_watchlist.migrations import SCHEMA_VERSION
 
     assert user_version(path) == SCHEMA_VERSION
 
@@ -431,7 +430,10 @@ def test_the_old_machine_judgements_are_deleted_and_hers_stay(tmp_path: Path) ->
     eigenen Sterne der Leserin und die fremden Stimmen bleiben."""
     path = tmp_path / "s.db"
     Store(path)  # legt das aktuelle Schema an
-    version = SCHEMA_VERSION
+    # Der Stand unmittelbar vor dieser Migration, unabhängig davon, wie viele danach kamen.
+    from ebook_watchlist.migrations import MIGRATIONS, _the_old_machine_judgements_are_gone
+
+    version = MIGRATIONS.index(_the_old_machine_judgements_are_gone) + 1
     with sqlite3.connect(path) as connection:
         connection.executescript(
             f"""

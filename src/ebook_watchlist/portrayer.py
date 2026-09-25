@@ -21,7 +21,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 import requests
@@ -240,7 +240,7 @@ class Portrayer:
     def portray(self, title: str, author: str | None, blurb: str | None) -> Portrait:
         """Einmal fragen, die Antwort lesen."""
         answer = self.channel.ask(prompt(title, author, blurb, self.vocabulary), MAX_TOKENS)
-        return parse_answer(answer, self.vocabulary)
+        return replace(parse_answer(answer, self.vocabulary), with_text=bool(blurb))
 
     @staticmethod
     def _book(observation: Observation) -> tuple[str, str | None, str | None]:
@@ -286,7 +286,10 @@ class Portrayer:
                     MAX_TOKENS * len(chunk),
                 )
                 for number, portrait in parse_many(answer, self.vocabulary, len(chunk)).items():
-                    results[chunk[number - 1].key] = portrait
+                    book = chunk[number - 1]
+                    results[book.key] = replace(
+                        portrait, with_text=bool(self._book(book)[2])
+                    )
             except PortrayalUnavailable:
                 continue
         return results

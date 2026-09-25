@@ -194,6 +194,24 @@ class Portrait:
     #: Welche Regeln die Antwort verletzt. Ein Verstoß verwirft nichts; er
     #: steht daneben, damit man ihn sieht.
     violations: tuple[str, ...] = ()
+    #: Ob beim Fragen ein Text (Klappentext, Schlagwörter) beilag. ``None`` bei
+    #: einer Zeile aus der Zeit davor. Ein „unbekannt“ ohne Text sagt etwas über
+    #: den fehlenden Text, nicht über das Buch (siehe ``worth_asking_again``).
+    with_text: bool | None = None
+
+
+def worth_asking_again(portrait: Portrait, *, text_now: bool) -> bool:
+    """Ob ein gespeicherter Steckbrief noch einmal gefragt werden darf.
+
+    Nur ein **unbekanntes** Buch, das ohne Text beschrieben wurde, und nur, wenn
+    jetzt einer da ist: ein Watchlist-Titel wird beim Anlegen mit Titel und
+    Autor:in allein gefragt, der Klappentext kommt erst mit dem ersten Lauf
+    (fünf Bücher am 25.09.2026). Ein „unbekannt“ mit Text bleibt stehen — ein
+    zweiter Versuch mit demselben Text brächte dasselbe und kostete einen
+    Aufruf. Eine Zeile aus der Zeit vor diesem Vermerk (``None``) gilt als ohne
+    Text beschrieben.
+    """
+    return not portrait.known and portrait.with_text is not True and text_now
 
 
 def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> Vocabulary:

@@ -948,6 +948,66 @@ def test_a_book_the_model_does_not_know_says_so(
     assert "kennt dieses Buch nicht" in body
 
 
+def _give_blurb(db: Store, book_id: int, blurb: str) -> None:
+    from ebook_watchlist.store import BookRow
+
+    with db.session() as session:
+        session.get(BookRow, book_id).blurb = blurb
+        session.commit()
+
+
+@needs_vocabulary
+def test_an_unknown_answer_without_text_is_asked_again_once_a_blurb_is_there(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ein Watchlist-Buch wird beim Anlegen nur mit Titel und Autor:in beschrieben.
+    Kommt später der Klappentext, darf „kennt das Modell nicht“ nicht für immer
+    stehen (fünf Bücher am 25.09.2026)."""
+    buch = db.books()[0]
+    _give_blurb(db, buch.id, "")  # kein Text
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker('{"bekannt": false}')))
+    assert "kennt dieses Buch nicht" in steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    _give_blurb(db, buch.id, "Ein Klappentext, der das Buch endlich beschreibt.")
+    fragt = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert len(fragt.asked) == 1 and "endlich beschreibt" in fragt.asked[0]
+    assert "kennt dieses Buch nicht" not in body and "Nordic Noir" in body
+
+
+@needs_vocabulary
+def test_an_unknown_answer_given_with_text_stays_and_costs_no_second_call(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buch = db.books()[0]
+    _give_blurb(db, buch.id, "Ein Redaktionsvorwort statt einer Inhaltsangabe.")
+    fragt = StubAsker('{"bekannt": false}')
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+
+    steckbrief_abwarten(client, f"/book/{buch.id}")
+    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert len(fragt.asked) == 1
+    assert "kennt dieses Buch nicht" in body
+
+
+@needs_vocabulary
+def test_an_unknown_answer_without_text_is_not_asked_again_while_there_is_still_no_text(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    buch = db.books()[0]
+    _give_blurb(db, buch.id, "")
+    fragt = StubAsker('{"bekannt": false}')
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+
+    steckbrief_abwarten(client, f"/book/{buch.id}")
+    steckbrief_abwarten(client, f"/book/{buch.id}")
+
+    assert len(fragt.asked) == 1
+
+
 @needs_vocabulary
 def test_without_a_model_nothing_changes_and_the_page_says_why(
     client: TestClient, db: Store
