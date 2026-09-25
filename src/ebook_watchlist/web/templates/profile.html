@@ -37,6 +37,18 @@
     <span class="text-xs text-soft">Fassung {{ view.facet_profile }}</span>
   </p>
 
+  {# Die Geschmacksform als Spinnen (#79): gelernt aus deinen Büchern, das
+     Getippte als Start. Darunter, was du angetippt hast. #}
+  {% if view.spiders %}
+  {% from "_spider.html" import spider, legend %}
+  <div class="mb-5">
+    <div class="grid gap-4 lg:grid-cols-2">
+      {% for s in view.spiders %}{{ spider(s) }}{% endfor %}
+    </div>
+    {{ legend() }}
+  </div>
+  {% endif %}
+
   {% if view.liked %}
   <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Gemocht</p>
   <ul class="mb-4 flex flex-wrap gap-1.5">

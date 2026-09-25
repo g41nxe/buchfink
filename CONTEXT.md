@@ -463,8 +463,11 @@ Discovery came in.
 
 *In the code since 26.09.2026 (`taste_form.py`, #79).* The reader's
 taste as a shape over the axes of the vocabulary (Appeal Terms and Story
-Patterns), like a spider graph: outward where she likes something, inward where
-she rejects it, at the centre where she has said nothing. How far it reaches is
+Patterns), like a spider graph (*Spinne*): on a dashed ring where she is
+indifferent, outward where she likes something, inward where she rejects it;
+a family she has said nothing about gets no axis. Drawn on the profile page as
+two spiders (Appeal Terms and Story Patterns, at most twelve axes each), and on
+a book page with the book laid over it on the same scale (`web/spider.py`). How far it reaches is
 **learned from her books** (*Mag ich* and *Doof*, weighted by each term's weight
 in the book, and her own reasons for a book she has read), with what she tapped
 or boosted as the starting value. She never states a strength herself.

@@ -43,6 +43,7 @@ from ..reasons import short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sources import build_sources, registry
 from ..store import Store
+from .spider import Spider, book_spiders
 from .watchlist import SourceState
 
 #: Die Reihenfolge, in der Urteile auf der Seite stehen: was ein Mensch gesagt
@@ -328,6 +329,8 @@ class FitView:
     #: Gegen welche Fassung des Leseprofils gerechnet wurde.
     version: int
     reasons: tuple[Reason, ...]
+    #: Das Buch über der Geschmacksform, Merkmale und Erzählmuster (#79).
+    spiders: tuple[Spider, ...] = ()
 
 
 def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
@@ -342,11 +345,17 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
     verdict = judge.verdict(portrait)
     if verdict is None or verdict.percent is None:
         return None
+    spiders = (
+        book_spiders(portrait, judge.form, judge.vocabulary, judge.weights)
+        if judge.form is not None
+        else ()
+    )
     return FitView(
         stars=verdict.stars,
         percent=verdict.percent,
         version=judge.profile.version,
         reasons=verdict.reasons,
+        spiders=tuple(s for s in spiders if s is not None),
     )
 
 

@@ -58,5 +58,16 @@
     {% endif %}
     {% endfor %}
   </ul>
+  {# Das Buch über deiner Geschmacksform (#79): wo es über die Form hinausragt,
+     ist es fremd; wo es in eine Einbuchtung ragt, spricht etwas dagegen. #}
+  {% if fit.spiders %}
+  {% from "_spider.html" import spider, legend %}
+  <div class="mt-4">
+    <div class="grid gap-4 lg:grid-cols-2">
+      {% for s in fit.spiders %}{{ spider(s) }}{% endfor %}
+    </div>
+    {{ legend(with_book=true, unknown=fit.spiders[0].unknown) }}
+  </div>
+  {% endif %}
 </div>
 {% endif %}

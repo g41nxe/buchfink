@@ -1,0 +1,96 @@
+{# Die Spinne (#79): die Geschmacksform als Netz, auf der Buchseite das Buch
+   darübergelegt. Wo was liegt, rechnet `web/spider.py`; hier steht nur, wie
+   es aussieht.
+
+   Der gestrichelte Ring heißt „egal": nach außen gemocht, nach innen
+   abgelehnt. Das Buch liegt auf derselben Skala. Eine Achse, die das Buch
+   trägt, ist fett beschriftet; eine abgelehnte rot.
+
+   `spider(s)` erwartet eine `Spider`.
+
+   Die Farbe einer Beschriftung setzt `_tone` zusammen; damit Tailwind die
+   Klassen baut, stehen sie hier ausgeschrieben: fill-danger fill-ink
+   fill-soft text-danger text-ink text-soft. #}
+{% macro _net(s) %}
+    {# Gitter: der Rand, der Ring für „egal", die Speichen. #}
+    <circle cx="{{ s.center }}" cy="{{ s.center }}" r="{{ s.radius }}"
+            class="fill-none stroke-rule" stroke-width="1"/>
+    <circle cx="{{ s.center }}" cy="{{ s.center }}" r="{{ s.neutral }}"
+            class="fill-none stroke-soft" stroke-width="1" stroke-dasharray="3 3"/>
+    {% for a in s.axes %}
+    <line x1="{{ s.center }}" y1="{{ s.center }}"
+          x2="{{ '%.1f' | format(a.tip[0]) }}" y2="{{ '%.1f' | format(a.tip[1]) }}"
+          class="stroke-hair" stroke-width="1"/>
+    {% endfor %}
+    <polygon points="{{ s.reader_points }}"
+             class="fill-accent/15 stroke-accent" stroke-width="1.5" stroke-linejoin="round"/>
+    {% if s.has_book %}
+    <polygon points="{{ s.book_points }}"
+             class="fill-amber/15 stroke-amber" stroke-width="1.5" stroke-linejoin="round"
+             stroke-dasharray="5 3"/>
+    {% endif %}
+    {% for a in s.axes %}
+    <circle cx="{{ '%.1f' | format(a.reader_point[0]) }}"
+            cy="{{ '%.1f' | format(a.reader_point[1]) }}" r="2.5"
+            class="{{ 'fill-danger' if a.value < 0 else 'fill-accent' }}"/>
+    {% endfor %}
+{% endmacro %}
+
+{% macro _tone(a) %}{{ 'danger' if a.value < 0 else 'ink' if a.book else 'soft' }}{% endmacro %}
+
+{% macro spider(s) %}
+{% set label %}{{ s.title }}: {% for a in s.axes %}{{ a.name }} {{ '%+.1f' | format(a.value) }}{% if a.book is not none %}, im Buch {{ '%.1f' | format(a.book) }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}{% endset %}
+<figure class="w-full max-w-md" data-spider="{{ s.title }}">
+  <figcaption class="mb-1 text-xs font-semibold uppercase tracking-wide text-soft">
+    {{ s.title }}</figcaption>
+  {# Breit: die Namen an den Achsen. #}
+  <svg viewBox="-70 22 440 256" class="h-auto w-full max-sm:hidden" role="img"
+       aria-label="{{ label }}">
+    {{ _net(s) }}
+    {% for a in s.axes %}
+    <text x="{{ '%.1f' | format(a.label_point[0]) }}" y="{{ '%.1f' | format(a.label_point[1]) }}"
+          text-anchor="{{ a.anchor }}" font-size="11"
+          class="fill-{{ _tone(a) }} {{ 'font-semibold' if a.book else '' }}">{{ a.name }}</text>
+    {% endfor %}
+  </svg>
+  {# Schmal: Nummern an den Achsen, die Namen darunter — sonst wären sie
+     kleiner als sieben Pixel. #}
+  <svg viewBox="18 18 264 264" class="mx-auto h-auto w-full max-w-72 sm:hidden" role="img"
+       aria-label="{{ label }}">
+    {{ _net(s) }}
+    {% for a in s.axes %}
+    <text x="{{ '%.1f' | format(a.number_point[0]) }}" y="{{ '%.1f' | format(a.number_point[1]) }}"
+          text-anchor="middle" font-size="16" aria-hidden="true"
+          class="fill-{{ _tone(a) }} {{ 'font-semibold' if a.book else '' }}">{{ loop.index }}</text>
+    {% endfor %}
+  </svg>
+  {# Auf schmalen Bildschirmen: die Namen zu den Nummern. #}
+  <ol class="mt-1 grid grid-cols-2 gap-x-3 text-xs sm:hidden">
+    {% for a in s.axes %}
+    <li class="text-{{ _tone(a) }}
+               {{ 'font-semibold' if a.book else '' }}">
+      <span class="tabular-nums">{{ loop.index }}</span> {{ a.name }}</li>
+    {% endfor %}
+  </ol>
+</figure>
+{% endmacro %}
+
+{% macro legend(with_book=false, unknown=0) %}
+<p class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft">
+  <span class="inline-flex items-center gap-1">
+    <span class="inline-block h-2.5 w-4 rounded-sm border border-accent bg-accent/15"></span>
+    deine Geschmacksform</span>
+  <span class="inline-flex items-center gap-1">
+    <span class="inline-block w-4 border-t border-dashed border-soft"></span>egal — innen
+    abgelehnt, außen gemocht</span>
+  {% if with_book %}
+  <span class="inline-flex items-center gap-1">
+    <span class="inline-block h-2.5 w-4 rounded-sm border border-dashed border-amber
+                 bg-amber/15"></span>dieses Buch</span>
+  {% endif %}
+  {% if unknown %}
+  <span>{{ unknown }} {{ "Merkmal" if unknown == 1 else "Merkmale" }} des Buchs kennt dein
+    Profil noch nicht — {{ "es zählt" if unknown == 1 else "sie zählen" }} nicht.</span>
+  {% endif %}
+</p>
+{% endmacro %}

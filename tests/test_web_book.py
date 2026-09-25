@@ -1211,6 +1211,8 @@ def test_the_fit_stands_under_the_judgement(
     assert "Übereinstimmung mit deinem Leseprofil" in body
     assert "hart · gezeichnete Figur" in body
     assert "Harry Hole wird zurückgeholt." in body
+    # Das Buch über der Geschmacksform (#79).
+    assert 'data-spider="Merkmale"' in body and "dieses Buch" in body
 
 
 def test_without_a_profile_there_is_no_fit(

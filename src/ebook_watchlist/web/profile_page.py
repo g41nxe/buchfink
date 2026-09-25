@@ -24,10 +24,12 @@ from ..facets import (
     load_weights,
     strength,
 )
+from ..judging import load_judge
 from ..portrait import VocabularyError, load_vocabulary
 from ..reasons import thema_name
 from ..relations import InterestKey, RelationKind, labelled
 from ..store import Store
+from .spider import Spider, reader_spiders
 
 #: Wie oft der lange Ausläufer gefegt wird — dieselbe Frist, die der Lauf
 #: benutzt. Hier nur zur Anzeige.
@@ -137,6 +139,8 @@ class Overview:
     counterweights: tuple[FacetLine, ...] = ()
     #: Die gemochten Merkmale und Erzählmuster, jedes für sich — verstärkt zuerst.
     liked: tuple[LikedLine, ...] = ()
+    #: Die Geschmacksform als Spinnen, Merkmale und Erzählmuster (#79).
+    spiders: tuple[Spider, ...] = ()
 
     @property
     def next_sweep(self) -> str:
@@ -203,6 +207,12 @@ def build(store: Store, settings: Settings) -> Overview:
         gate_stars = None
 
     facets, counterweights, liked = _facet_profile(store, settings)
+    judge = load_judge(store, settings.slug)
+    spiders = (
+        tuple(s for s in reader_spiders(judge.form, judge.vocabulary) if s is not None)
+        if judge is not None and judge.form is not None
+        else ()
+    )
 
     return Overview(
         authors=collect(InterestKey.AUTHOR),
@@ -221,6 +231,7 @@ def build(store: Store, settings: Settings) -> Overview:
         facets=facets,
         counterweights=counterweights,
         liked=liked,
+        spiders=spiders,
     )
 
 
