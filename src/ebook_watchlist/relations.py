@@ -130,7 +130,10 @@ class InterestKey(StrEnum):
     """
 
     AUTHOR = "author"
-    THEMA = "thema"
+    #: Der Wert ``"thema"`` steht so in der Datenbank (``interest.key``) und
+    #: bleibt ein Datenwert: der Name im Code folgt dem Glossar, der
+    #: gespeicherte Wert wird nicht migriert (ADR 22, Nachtrag vom 26.09.2026).
+    GENRE_CATEGORY = "thema"
 
 
 RELATION_KINDS: frozenset[str] = frozenset(kind.value for kind in RelationKind)

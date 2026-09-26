@@ -26,7 +26,7 @@ from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
 from ..ratings import subject_of
-from ..reasons import short_why, thema_name, why_shown
+from ..reasons import genre_category_name, short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
@@ -58,7 +58,7 @@ class Suggestion:
     url: str | None
     isbn: str | None
     price_cents: int | None
-    thema: str | None
+    genre_category: str | None
     reason: MatchReason
     deal: bool
     source_label: str
@@ -217,7 +217,7 @@ def _suggestion(
         url=observation.url,
         isbn=observation.isbn,
         price_cents=observation.price_cents,
-        thema=thema_name(observation.category),
+        genre_category=genre_category_name(observation.category),
         reason=observation.match_reason,
         deal=is_strong_deal(observation.price_cents, settings),
         source_label=registry.label(settings, observation.source),

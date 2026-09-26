@@ -971,7 +971,7 @@ def _run(
         sweep_extended=sweep_extended,
         interests={
             (row.key, row.value): row.id
-            for table in (configured.author_interests, configured.thema_interests)
+            for table in (configured.author_interests, configured.genre_category_interests)
             for row in table.values()
         },
         # Der Originaltitel einer uebersetzten Ausgabe, fuer Watchlist-Titel

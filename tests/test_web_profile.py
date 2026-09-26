@@ -31,7 +31,7 @@ def db(data_dir: Path) -> Store:
 def test_interests_are_grouped_by_kind(client: TestClient, db: Store) -> None:
     db.put_interest("test", str(InterestKey.AUTHOR), "Chris Carter", now=NOW, tier="core")
     db.put_interest(
-        "test", str(InterestKey.THEMA),
+        "test", str(InterestKey.GENRE_CATEGORY),
         "belletristik/krimi-thriller/psychothriller", now=NOW, tier="core",
     )
 
@@ -51,7 +51,7 @@ def test_a_theme_shows_its_readable_name_not_the_shop_path(
     client: TestClient, db: Store
 ) -> None:
     db.put_interest(
-        "test", str(InterestKey.THEMA),
+        "test", str(InterestKey.GENRE_CATEGORY),
         "belletristik/horror-mystery/horror-mystery-allgemein", now=NOW,
     )
     body = client.get("/profile").text

@@ -212,7 +212,9 @@ def sow(store: Store, settings: Settings, seed: Seed, watchlist: list[WatchlistE
         )
         report.interests += 1
     for category in seed.genre_categories:
-        store.put_interest(settings.slug, str(InterestKey.THEMA), category, now=at, tier="core")
+        store.put_interest(
+            settings.slug, str(InterestKey.GENRE_CATEGORY), category, now=at, tier="core"
+        )
         report.interests += 1
 
     report.books = len(store.books()) - before

@@ -386,7 +386,7 @@ def test_a_discovery_names_the_author_who_brought_it_in(
     assert "neu von Jo Nesbø, der du folgst" in body
 
 
-def test_a_discovery_from_a_thema_says_which(client: TestClient, db: Store) -> None:
+def test_a_discovery_from_a_genre_category_says_which(client: TestClient, db: Store) -> None:
     book = db.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
     discovery(
         db,

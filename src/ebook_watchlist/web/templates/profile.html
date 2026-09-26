@@ -207,11 +207,11 @@
 </ul>
 
 {{ section("Themen", "ic-tag") }}
-{% if not view.themen %}
+{% if not view.genre_categories %}
 <p class="py-2 text-sm text-soft italic">Keine hinterlegt.</p>
 {% endif %}
 <ul class="flex flex-wrap gap-2">
-  {% for interest in view.themen %}
+  {% for interest in view.genre_categories %}
   <li class="tun inline-flex h-7 items-center rounded-full border px-3 text-sm
              {{ 'border-rule text-soft line-through' if not interest.active
                 else 'border-amber/40 text-amber' }}"

@@ -22,7 +22,7 @@ from ..config import Settings
 from ..deals import is_strong_deal
 from ..portrait import VocabularyError, fingerprint, load_vocabulary
 from ..ratings import subject_of
-from ..reasons import thema_name
+from ..reasons import genre_category_name
 from ..sources import registry
 from ..store import Store
 from .book import (
@@ -65,7 +65,7 @@ class Page:
     #: Ob der Fund schon einen Steckbrief hat; sonst steht der Knopf dafür da.
     described: bool
     history: tuple[Sighting, ...]
-    thema: str | None
+    genre_category: str | None
     deal: bool
 
     @property
@@ -172,6 +172,6 @@ def build(store: Store, settings: Settings, source: str, item_id: str) -> Page |
         fit=fit,
         described=described,
         history=history,
-        thema=thema_name(newest.category),
+        genre_category=genre_category_name(newest.category),
         deal=is_strong_deal(newest.price_cents, settings),
     )

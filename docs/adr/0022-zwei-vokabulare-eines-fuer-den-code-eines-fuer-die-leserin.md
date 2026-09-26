@@ -107,3 +107,25 @@ benennen, wie sie sind.
 > Teil dessen, was die Leserin sieht oder als Lesezeichen behält, und
 > bleiben deutsch. Versteckte Formularfelder, die nur zwischen Vorlage und
 > Route reisen (`back`), sind dagegen Code.
+
+> **Nachtrag vom 26.09.2026: der Rest nach #65 (#70).** Die Kernmodule, die
+> Quellen-Parser und die Tests heißen jetzt englisch, bis in die lokale
+> Variable. Umbenannt wurde über den Tokenizer, Strings, Kommentare und
+> Docstrings blieben unberührt. Wo ein Bezeichner nach außen reicht, bleibt
+> der Wert, und nur der Name im Code wechselt:
+>
+> - **`THEMA` heißt `GENRE_CATEGORY`**, wie das Glossar es führt
+>   (`InterestKey.GENRE_CATEGORY`, `reasons.genre_category_name`,
+>   `Overview.genre_categories`, …). Der **gespeicherte Wert `"thema"`**
+>   in `interest.key` bleibt, wie er ist: ein Datenwert, kein Bezeichner. Eine
+>   angehängte Migration (ADR 16) wäre möglich, brächte der Leserin aber
+>   nichts und jeder Sicherung einen zweiten Schlüssel; sie unterbleibt.
+>   Das Wort, das die Leserin liest, heißt im Code `GENRE_CATEGORY_WORD` und
+>   lautet weiter „Thema".
+> - **Kommandozeilen-Optionen** (`--datei`, `--nur-bekannte`, `--anzahl`,
+>   `--fruehestens-nach`) sind Leseformat wie eine Adresse; sie bleiben und
+>   tragen ein englisches `dest`.
+> - **Schlüssel in Daten- und Config-Dateien** (`hinweis` in `owned.yaml`,
+>   `sterne_ab` im Bewertungsschema, die Vokabular-Dateien mit `merkmale`,
+>   `familien`, `beschreibung`, `muster`) bleiben deutsch, wie oben für
+>   Config- und Profildateien festgehalten.
