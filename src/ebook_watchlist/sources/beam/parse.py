@@ -310,15 +310,15 @@ def _pages(value: str | None) -> int | None:
 
 def _fact(page, label: str) -> str | None:
     """Ein Wert aus der Angabenliste der Detailseite, gesucht ueber seine Marke."""
-    for eintrag in page.select(sel.DETAIL_FACT):
-        marke = eintrag.select_one(sel.DETAIL_FACT_LABEL)
-        wert = eintrag.select_one(sel.DETAIL_FACT_VALUE)
-        if marke and wert and marke.get_text(strip=True) == label:
+    for entry in page.select(sel.DETAIL_FACT):
+        marker = entry.select_one(sel.DETAIL_FACT_LABEL)
+        value = entry.select_one(sel.DETAIL_FACT_VALUE)
+        if marker and value and marker.get_text(strip=True) == label:
             # Vor dem Namen steht ein Symbol als Ligatur ("find_in_page"):
             # Text fuer die Schrift, nicht fuer uns.
-            for symbol in wert.select(".material-icons"):
+            for symbol in value.select(".material-icons"):
                 symbol.decompose()
-            return wert.get_text(" ", strip=True) or None
+            return value.get_text(" ", strip=True) or None
     return None
 
 
@@ -332,9 +332,9 @@ def _keywords(page, *, leave_out) -> tuple[str, ...]:
     content = meta.get("content") if meta is not None else None
     if not isinstance(content, str):
         return ()
-    bekannt = {wort.casefold() for wort in leave_out if wort}
-    woerter = (wort.strip() for wort in content.split(","))
-    return tuple(dict.fromkeys(w for w in woerter if w and w.casefold() not in bekannt))
+    known = {word.casefold() for word in leave_out if word}
+    words = (word.strip() for word in content.split(","))
+    return tuple(dict.fromkeys(w for w in words if w and w.casefold() not in known))
 
 
 def _detail_cover(scope) -> str | None:
@@ -346,13 +346,13 @@ def _detail_cover(scope) -> str | None:
     *Wayward Pines-Trilogie* fehlte deshalb das Bild, obwohl drei auf der Seite
     standen. Dann gilt das erste: es ist der erste Band.
     """
-    gefunden = _cover_from(scope.select_one(sel.DETAIL_IMAGE))
-    if gefunden:
-        return gefunden
-    for bild in scope.select(sel.DETAIL_IMAGE_PLAIN):
-        adresse = bild.get("src")
-        if isinstance(adresse, str) and adresse.startswith("http"):
-            return adresse
+    found = _cover_from(scope.select_one(sel.DETAIL_IMAGE))
+    if found:
+        return found
+    for image in scope.select(sel.DETAIL_IMAGE_PLAIN):
+        address = image.get("src")
+        if isinstance(address, str) and address.startswith("http"):
+            return address
     return None
 
 
@@ -379,17 +379,17 @@ def _description(page) -> str | None:
     # pruefen reichte nicht: ein leerer ``--full``-Knoten haette den
     # Klappentext ganz verschluckt — und ein Buch ohne Klappentext wird von
     # ``_with_evidence`` bei **jedem** Lauf erneut geholt.
-    kandidaten = (
+    candidates = (
         node.select_one(sel.DETAIL_DESCRIPTION_FULL),
         node.select_one(sel.DETAIL_DESCRIPTION_PREVIEW),
         node,
     )
-    texte = (kandidat.get_text(" ", strip=True) for kandidat in kandidaten if kandidat is not None)
-    gewaehlt = next((text for text in texte if text), "")
+    texts = (c.get_text(" ", strip=True) for c in candidates if c is not None)
+    chosen = next((text for text in texts if text), "")
     # ``without_teaser`` faengt den Fall ab, dass der Shop die Klassen
     # umbenennt: dann steht wieder beides im Text, und der Schnitt am Knopf
     # ist zwar die schwaechere, aber immer noch verlustfreie Regel.
-    return without_teaser(gewaehlt) or None
+    return without_teaser(chosen) or None
 
 
 def total_pages(html: str) -> int | None:

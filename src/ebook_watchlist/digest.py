@@ -188,9 +188,9 @@ def _entry_for(
     # ein Schnäppchen noch ein Preissturz, sondern billiger als ihre
     # Einzelbände zusammen (ADR 24). Ohne diesen Satz stünde im Tagesbericht
     # ein Titel zu 19,99 € ohne erkennbaren Grund.
-    vorteil = advantage_of(current) if advantage_of else None
-    if vorteil is not None:
-        detail = f"{vorteil.summary} · {detail}"
+    advantage = advantage_of(current) if advantage_of else None
+    if advantage is not None:
+        detail = f"{advantage.summary} · {detail}"
 
     section = _SECTION_BY_REASON[current.match_reason]
     flags = deal_flags(current, previous, settings) if settings else ()

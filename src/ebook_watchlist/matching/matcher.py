@@ -194,12 +194,12 @@ class Resolution:
         if self.best is None:
             return ()
         if self.alternatives:
-            gleich = [self.best, *(s for s in self.alternatives if s is not self.best)]
-            return tuple(scored.candidate for scored in gleich[:MAX_CANDIDATES])
-        gleich = [self.best] + [
-            kandidat for kandidat in self.ranked[1:] if _is_tied(self.best, kandidat)
+            tied = [self.best, *(s for s in self.alternatives if s is not self.best)]
+            return tuple(scored.candidate for scored in tied[:MAX_CANDIDATES])
+        tied = [self.best] + [
+            candidate for candidate in self.ranked[1:] if _is_tied(self.best, candidate)
         ]
-        return tuple(scored.candidate for scored in gleich[:MAX_CANDIDATES])
+        return tuple(scored.candidate for scored in tied[:MAX_CANDIDATES])
 
 
 def _author_scores(
@@ -360,10 +360,10 @@ def authors_contradict(target: str | None, credited: str | None) -> bool:
         return False
     if author_matches(target, credited):
         return False
-    def tragende(raw: str) -> set[str]:
+    def load_bearing(raw: str) -> set[str]:
         return {token for person in normalize_authors(raw) for token in person.substantial.split()}
 
-    wanted, found = tragende(target), tragende(credited)
+    wanted, found = load_bearing(target), load_bearing(credited)
     if not wanted or not found:
         return False
     return wanted.isdisjoint(found)

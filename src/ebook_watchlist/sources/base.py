@@ -180,15 +180,15 @@ class RunContext:
             # sich nicht auf einen Betrag von vorgestern beziehen.
             candidates=[
                 {
-                    "title": kandidat.title,
-                    "author": kandidat.author,
-                    "url": str(kandidat.payload) if kandidat.payload else None,
-                    "cover_url": kandidat.cover_url,
+                    "title": candidate.title,
+                    "author": candidate.author,
+                    "url": str(candidate.payload) if candidate.payload else None,
+                    "cover_url": candidate.cover_url,
                     # Bestaetigt die Leserin diese Ausgabe, erbt die
                     # Zuordnung ihre Sprache (#77).
-                    "language": kandidat.language,
+                    "language": candidate.language,
                 }
-                for kandidat in resolution.indistinguishable
+                for candidate in resolution.indistinguishable
             ]
             or None,
         )

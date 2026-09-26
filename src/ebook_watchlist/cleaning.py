@@ -87,10 +87,10 @@ def without_teaser(blurb: str | None) -> str | None:
     """
     if not blurb:
         return None
-    treffer = _TEASER_CUT.search(blurb)
-    if treffer is None:
+    hit = _TEASER_CUT.search(blurb)
+    if hit is None:
         return blurb
-    rest = blurb[treffer.end() :].strip()
+    rest = blurb[hit.end() :].strip()
     if not rest:
         return blurb
     # Geschnitten wird nur, wenn der Rest den Anriss auch wirklich
@@ -99,8 +99,8 @@ def without_teaser(blurb: str | None) -> str | None:
     # anzeigen, was die Stadt verbirgt" wurde zu ", was die Stadt verbirgt".
     # Damit ist der Schnitt verlustfrei **von Bauart**, nicht nur an den 110
     # gemessenen Faellen.
-    anriss = _WHITESPACE.sub(" ", blurb[: treffer.start()]).strip().rstrip(". …")
-    if not _WHITESPACE.sub(" ", rest).startswith(anriss[:60]):
+    teaser = _WHITESPACE.sub(" ", blurb[: hit.start()]).strip().rstrip(". …")
+    if not _WHITESPACE.sub(" ", rest).startswith(teaser[:60]):
         return blurb
     return rest
 

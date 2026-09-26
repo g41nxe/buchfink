@@ -138,7 +138,7 @@ class Weights:
                 "marginal": self.marginal}.get(weight or "", self.unweighted)
 
     def stars(self, share: float) -> int:
-        return next((s for s, ab in self.stars_from if share >= ab - 1e-9), 1)
+        return next((s for s, threshold in self.stars_from if share >= threshold - 1e-9), 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,8 +167,8 @@ class Reason:
     @property
     def line(self) -> str:
         """Die Zeile als Text, ohne Bild."""
-        vorn = {"muster": "Erzählmuster: ", "dagegen": "dagegen: "}.get(self.kind, "")
-        return vorn + self.text + (" (verstärkt)" if self.boosted else "")
+        prefix = {"muster": "Erzählmuster: ", "dagegen": "dagegen: "}.get(self.kind, "")
+        return prefix + self.text + (" (verstärkt)" if self.boosted else "")
 
 
 def load_weights(path: Path | None = None) -> Weights:
@@ -176,7 +176,10 @@ def load_weights(path: Path | None = None) -> Weights:
     data = yaml.safe_load((path or SCHEME_PATH).read_text(encoding="utf-8"))
     section = data["urteil_formueberdeckung"]
     in_book = section["gewicht_im_buch"]
-    tiers = sorted(((int(s), float(ab)) for s, ab in section["sterne_ab"].items()), reverse=True)
+    tiers = sorted(
+        ((int(s), float(threshold)) for s, threshold in section["sterne_ab"].items()),
+        reverse=True,
+    )
     return Weights(
         defining=float(in_book["praegend"]),
         clear=float(in_book["deutlich"]),

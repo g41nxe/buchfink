@@ -91,11 +91,11 @@ def compare(
     advantage_of: AdvantageOf | None = None,
 ) -> list[Delta]:
     """Every change between two Observations of the same item, notifiable or not."""
-    vorteil = advantage_of(current) if advantage_of else None
+    advantage = advantage_of(current) if advantage_of else None
     if previous is None:
         # Nothing is lost by staying quiet: the Observation is stored either
         # way, so a book first seen at full price surfaces the day it drops.
-        if worth_announcing(current, settings, bundle_advantage=vorteil):
+        if worth_announcing(current, settings, bundle_advantage=advantage):
             return [Delta(DeltaKind.FIRST_SEEN, current, None)]
         return []
 
@@ -114,7 +114,7 @@ def compare(
             # was strict at the front door and open at the back: a shelf title
             # slipping from 11,99 € to 11,49 € would have been reported after
             # being kept quiet at 11,99 €.
-            if worth_announcing(current, settings, bundle_advantage=vorteil):
+            if worth_announcing(current, settings, bundle_advantage=advantage):
                 deltas.append(Delta(DeltaKind.PRICE_DROP, current, previous))
         elif current.price_cents > previous.price_cents:
             deltas.append(Delta(DeltaKind.PRICE_RISE, current, previous))

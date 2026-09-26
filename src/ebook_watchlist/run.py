@@ -103,6 +103,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--datei",
+        dest="file",
         type=Path,
         default=None,
         metavar="PFAD",
@@ -113,11 +114,13 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--nur-bekannte",
+        dest="known_only",
         action="store_true",
         help="für 'judge': das Modell nicht fragen — ein Titel ohne Steckbrief bleibt offen",
     )
     parser.add_argument(
         "--anzahl",
+        dest="count",
         type=int,
         default=10,
         metavar="N",
@@ -132,6 +135,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--fruehestens-nach",
+        dest="not_within_hours",
         type=float,
         default=None,
         metavar="STUNDEN",
@@ -247,17 +251,17 @@ def _ask_the_library(
     (#77): ein Budget je Lauf, nicht eines je Stelle.
     """
     rest = settings.dnb_budget - spent
-    offen = store.isbns_without_dnb(settings.slug, rest) if rest > 0 else []
-    if not offen:
+    pending = store.isbns_without_dnb(settings.slug, rest) if rest > 0 else []
+    if not pending:
         _series_from_dnb(store)
         return
 
-    bibliothek = Dnb(client=client)
+    library = Dnb(client=client)
     now = datetime.now()
-    gefunden = 0
-    for isbn in offen:
+    found = 0
+    for isbn in pending:
         try:
-            datensatz = bibliothek.about(isbn)
+            record = library.about(isbn)
         except RateLimited:
             # 429 heisst Halt, und zwar fuer alles Weitere.
             print("DNB: gedrosselt — Rest übersprungen", file=sys.stderr)
@@ -267,9 +271,9 @@ def _ask_the_library(
             continue
         # Auch das Schweigen wird festgehalten, sonst fragt der naechste Lauf
         # dieselbe ISBN erneut.
-        store.save_dnb(isbn, datensatz, now)
-        gefunden += 1 if datensatz else 0
-    print(f"DNB: {len(offen)} gefragt, {gefunden} beantwortet")
+        store.save_dnb(isbn, record, now)
+        found += 1 if record else 0
+    print(f"DNB: {len(pending)} gefragt, {found} beantwortet")
     _series_from_dnb(store)
 
 
@@ -279,8 +283,8 @@ def _series_from_dnb(store: Store) -> None:
     Was frueher von der DNB kam, hat vielleicht noch kein Buch erreicht — und
     ein Lauf ohne neue ISBN kehrt vorher zurueck. Kostet keine Anfrage (#10).
     """
-    if reihen := store.series_from_dnb():
-        print(f"DNB: {reihen} Reihen übernommen")
+    if series_count := store.series_from_dnb():
+        print(f"DNB: {series_count} Reihen übernommen")
 
 
 def _without_foreign_languages(store: Store, deltas, settings: Settings) -> list:
@@ -291,11 +295,11 @@ def _without_foreign_languages(store: Store, deltas, settings: Settings) -> list
     """
     from .language import is_foreign, language_finder
 
-    sprache_von = language_finder(store)
-    bleibt = [d for d in deltas if not is_foreign(d.current, settings, sprache_von)]
-    if weg := len(deltas) - len(bleibt):
-        print(f"Sprache: {weg} Funde in anderen Sprachen übergangen")
-    return bleibt
+    language_of = language_finder(store)
+    kept = [d for d in deltas if not is_foreign(d.current, settings, language_of)]
+    if gone := len(deltas) - len(kept):
+        print(f"Sprache: {gone} Funde in anderen Sprachen übergangen")
+    return kept
 
 
 def _without_ai_authors(store: Store, deltas) -> list:
@@ -307,13 +311,13 @@ def _without_ai_authors(store: Store, deltas) -> list:
     """
     from .authorship import ai_authors, is_ai_authored
 
-    autoren = ai_authors(store)
-    if not autoren:
+    authors = ai_authors(store)
+    if not authors:
         return list(deltas)
-    bleibt = [d for d in deltas if not is_ai_authored(d.current, autoren)]
-    if weg := len(deltas) - len(bleibt):
-        print(f"Autorenschaft: {weg} KI-erzeugte Funde uebergangen")
-    return bleibt
+    kept = [d for d in deltas if not is_ai_authored(d.current, authors)]
+    if gone := len(deltas) - len(kept):
+        print(f"Autorenschaft: {gone} KI-erzeugte Funde uebergangen")
+    return kept
 
 
 def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
@@ -436,11 +440,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "dismissals":
             return _dismissals(settings, sources)
         if args.command == "rate":
-            return _rate(settings, args.anzahl, sources, client)
+            return _rate(settings, args.count, sources, client)
         if args.command == "judge":
-            return _judge(settings, args.titles, args.datei, ask=not args.nur_bekannte)
-        if zu_frueh := _too_soon(settings, datetime.now(), _gap(args, settings)):
-            print(zu_frueh)
+            return _judge(settings, args.titles, args.file, ask=not args.known_only)
+        if too_soon := _too_soon(settings, datetime.now(), _gap(args, settings)):
+            print(too_soon)
             return EXIT_OK
         try:
             return _run(
@@ -475,12 +479,12 @@ def _gap(args, settings) -> float:
     ein Knopf, der den ganzen Tag ueber nichts tut, ist kaputt, egal wie gut
     der Grund ist. Ausdruecklich gesetzt gewinnt die Zahl in jedem Fall.
     """
-    if args.fruehestens_nach is not None:
-        return args.fruehestens_nach
+    if args.not_within_hours is not None:
+        return args.not_within_hours
     return settings.run_every_hours if args.trigger == "cron" else 0
 
 
-def _too_soon(settings, now: datetime, stunden: float) -> str:
+def _too_soon(settings, now: datetime, hours: float) -> str:
     """Ob seit dem letzten Rundgang zu wenig Zeit vergangen ist.
 
     Zurück kommt der Satz, der das erklärt — leer heißt: los.
@@ -494,9 +498,9 @@ def _too_soon(settings, now: datetime, stunden: float) -> str:
     taktet, tut ja nichts Falsches — er ist nur zu eifrig, und eine
     Fehlermeldung dafür machte aus jedem zweiten Cron-Lauf einen Alarm.
     """
-    if stunden <= 0:
+    if hours <= 0:
         return ""
-    letzter = next(
+    last = next(
         (
             run
             for run in Store(paths.db_path()).recent_runs(settings.slug, limit=20)
@@ -504,13 +508,13 @@ def _too_soon(settings, now: datetime, stunden: float) -> str:
         ),
         None,
     )
-    if letzter is None or letzter.started_at is None:
+    if last is None or last.started_at is None:
         return ""
-    if now - letzter.started_at >= timedelta(hours=stunden):
+    if now - last.started_at >= timedelta(hours=hours):
         return ""
     return (
-        f"Lauf übersprungen — der letzte ist von {letzter.started_at:%d.%m. %H:%M} "
-        f"und damit keine {stunden:g} Stunden her (--fruehestens-nach 0 läuft trotzdem)."
+        f"Lauf übersprungen — der letzte ist von {last.started_at:%d.%m. %H:%M} "
+        f"und damit keine {hours:g} Stunden her (--fruehestens-nach 0 läuft trotzdem)."
     )
 
 
@@ -578,7 +582,7 @@ def _record_foreign_ratings(store: Store, observations: Sequence[Observation]) -
     for observation in observations:
         if observation.rating is None or not observation.rating_votes:
             continue
-        stimmen = observation.rating_votes
+        votes = observation.rating_votes
         store.put_rating(
             subject_of(observation),
             stars=observation.rating,
@@ -589,11 +593,11 @@ def _record_foreign_ratings(store: Store, observations: Sequence[Observation]) -
             # vorher eine Grenze von zehn Stimmen: eine erfundene Zahl, und
             # damit genau das, was beim Grillen ausgeschlossen wurde.
             confidence="belegt",
-            reason=f"Durchschnitt der Leser:innen aus {stimmen} Stimmen",
+            reason=f"Durchschnitt der Leser:innen aus {votes} Stimmen",
             profile_version=0,
             now=now,
             origin=BY_ONLEIHE_READERS,
-            votes=stimmen,
+            votes=votes,
         )
 
 
@@ -617,29 +621,29 @@ def _fetch_suggestion_covers(
 
     covers = CoverStore(paths.covers_dir())
     keys = {item.key for item in triage.pending(store, settings, limit=10_000).items}
-    offen = [
+    pending = [
         observation.cover_url
         for observation in store.latest_discoveries(settings.slug)
         if f"{observation.source}:{observation.source_item_id}" in keys
         and observation.cover_url
     ]
-    if not offen:
+    if not pending:
         return
 
     # Nur, was noch nicht daliegt, kostet eine Anfrage — und nur das heißt "geholt".
-    fehlend = [url for url in dict.fromkeys(offen) if not covers.has(file_name(url))]
-    print(f"{len(fehlend)} von {len(set(offen))} Titelbildern fehlen …")
-    geholt = 0
-    for url in fehlend:
+    missing = [url for url in dict.fromkeys(pending) if not covers.has(file_name(url))]
+    print(f"{len(missing)} von {len(set(pending))} Titelbildern fehlen …")
+    fetched = 0
+    for url in missing:
         try:
             if covers.fetch(client, url):
-                geholt += 1
+                fetched += 1
         except RateLimited:
             print("Titelbilder: der Shop drosselt — Rest übersprungen", file=sys.stderr)
             return
         except Exception as exc:  # noqa: BLE001 - bewusst: ein Bild ist Beiwerk
             print(f"Titelbild: {type(exc).__name__}: {exc}", file=sys.stderr)
-    print(f"  {geholt} geholt")
+    print(f"  {fetched} geholt")
 
 
 def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int:
@@ -815,12 +819,12 @@ def _seed(settings, watchlist) -> int:
     zurück, was inzwischen woanders geändert wurde.
     """
     store = Store(paths.db_path())
-    saatgut = load_seed()
-    if saatgut.is_empty:
+    seed_data = load_seed()
+    if seed_data.is_empty:
         # Sonst stehen unten vier Nullen, und das sieht aus wie ein Fehler
         # statt wie eine fehlende Datei (#36).
         print(f"  seed.yaml nennt nichts ({paths.seed_path()}) — nur watchlist.yaml wird gelesen.")
-    report = sow(store, settings, saatgut, watchlist, owned=load_owned())
+    report = sow(store, settings, seed_data, watchlist, owned=load_owned())
 
     print(f"  {report.books:>4}  Bücher neu angelegt")
     print(f"  {report.relations:>4}  Beziehungen")
@@ -998,9 +1002,9 @@ def _run(
     }
     # Einmal gebaut, von Vergleich und Tagesbericht benutzt: sonst meldet der
     # Stapel einen Buendelvorteil, den der Tagesbericht nicht kennt.
-    buendelvorteil = advantage_finder(store, settings)
+    bundle_advantage = advantage_finder(store, settings)
     deltas = suppress_unseeded_interests(
-        compute_deltas(observations, previous, settings, buendelvorteil),
+        compute_deltas(observations, previous, settings, bundle_advantage),
         context.origin,
         seeded,
     )

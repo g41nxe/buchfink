@@ -76,13 +76,13 @@ class OnleiheSource(LibrarySource):
         seen = {o.source_item_id for o in observations}
         for onleihe_list in self.lists:
             html = self.client.get(urljoin(self.base, onleihe_list.path))
-            for fund in parse.parse_list(
+            for found_item in parse.parse_list(
                 html, onleihe_list, media=self.media, base=self.base, source=self.name
             ):
-                if fund.source_item_id in seen or context.is_dismissed(fund):
+                if found_item.source_item_id in seen or context.is_dismissed(found_item):
                     continue
-                seen.add(fund.source_item_id)
-                observations.append(fund)
+                seen.add(found_item.source_item_id)
+                observations.append(found_item)
         return observations
 
     def check(self, entry: WatchlistEntry) -> Observation | None:

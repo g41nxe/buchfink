@@ -32,20 +32,20 @@ def gather(store: Store, settings: Settings, observations, sources):
     """
     observations = _with_details(store, settings, observations, sources)
     dnb = store.dnb_facts(o.isbn for o in observations if o.isbn)
-    belegt = []
+    backed = []
     for observation in observations:
-        fakten = dnb.get(observation.isbn or "", Record())
-        belegt.append(
+        facts = dnb.get(observation.isbn or "", Record())
+        backed.append(
             replace(
                 observation,
-                keywords=tuple(dict.fromkeys((*observation.keywords, *fakten.keywords))),
-                original_title=fakten.original_title,
+                keywords=tuple(dict.fromkeys((*observation.keywords, *facts.keywords))),
+                original_title=facts.original_title,
                 # Die Detailseite zuerst: sie ist frisch geholt, die DNB hat
                 # zu einem neuen Fund vielleicht noch gar nicht geantwortet.
-                publisher=observation.publisher or fakten.publisher,
+                publisher=observation.publisher or facts.publisher,
             )
         )
-    return belegt
+    return backed
 
 
 def _with_details(store: Store, settings: Settings, observations, sources):
@@ -68,11 +68,11 @@ def _with_details(store: Store, settings: Settings, observations, sources):
     Klappentext oder Titelbild geaendert haben.
     """
     by_name = {source.name: source for source in sources}
-    offen = [o for o in observations if o.source in by_name]
-    if not offen:
+    pending = [o for o in observations if o.source in by_name]
+    if not pending:
         return observations
 
-    print(f"{len(offen)} Detailseiten holen …")
+    print(f"{len(pending)} Detailseiten holen …")
     now = datetime.now()
     # Als Eintrag, nicht als Rundgang: die Beobachtungen brauchen eine Zeile
     # im Journal, aber diese Zeile darf nicht als *der* letzte Lauf gelten.
@@ -81,9 +81,9 @@ def _with_details(store: Store, settings: Settings, observations, sources):
     # und die Startseite meldete "zuletzt geprueft … 0 Aenderungen"
     # (dieselbe Unterscheidung wie beim engen Lauf, Ticket 51).
     run_id = store.start_run(settings.slug, ENTRY_TRIGGER, now, pid=os.getpid())
-    geholt: dict[tuple[str, str], Observation] = {}
-    frisch: list[Observation] = []
-    for observation in offen:
+    fetched: dict[tuple[str, str], Observation] = {}
+    fresh: list[Observation] = []
+    for observation in pending:
         source = by_name.get(observation.source)
         if source is None:
             continue
@@ -104,7 +104,7 @@ def _with_details(store: Store, settings: Settings, observations, sources):
         # Die Detailseite traegt auch das groessere Titelbild (600x600 statt
         # 200x200 auf der Kachel). Sie ist schon geholt — es hier fallen zu
         # lassen hiesse, sie fuer dasselbe Bild ein zweites Mal zu holen.
-        voller = replace(
+        fuller = replace(
             observation,
             blurb=item.blurb or observation.blurb,
             cover_url=item.cover_url or observation.cover_url,
@@ -113,14 +113,14 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             pages=item.pages or observation.pages,
             sample_url=item.sample_url,
         )
-        geholt[observation.key] = voller
+        fetched[observation.key] = fuller
         # Auch der Umfang kommt ins Journal: der Stapel liest die letzte
         # Beobachtung und erkennt daran Kurzgeschichten (#73).
         before = (observation.blurb, observation.cover_url, observation.pages)
-        if (voller.blurb, voller.cover_url, voller.pages) != before:
-            frisch.append(replace(voller, observed_at=now))
+        if (fuller.blurb, fuller.cover_url, fuller.pages) != before:
+            fresh.append(replace(fuller, observed_at=now))
 
-    if frisch:
-        store.append(run_id, settings.slug, frisch, now)
+    if fresh:
+        store.append(run_id, settings.slug, fresh, now)
     store.finish_run(run_id, status="ok", delta_count=0, finished_at=datetime.now())
-    return [geholt.get(o.key, o) for o in observations]
+    return [fetched.get(o.key, o) for o in observations]

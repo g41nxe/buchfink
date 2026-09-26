@@ -75,9 +75,9 @@ def volume_titles(title: str | None) -> tuple[str, ...]:
     # "2 Gruselkrimis: Blutige Tränen / Tiberius Elroy" — die Ankündigung
     # gehoert nicht an den ersten Bandtitel.
     title = _COUNT_PREFIX.sub("", title, count=1)
-    teile = [teil.strip() for teil in _SLASH.split(title)]
-    if len(teile) < 2:
+    parts = [part.strip() for part in _SLASH.split(title)]
+    if len(parts) < 2:
         return ()
-    if any(len(teil) < _MIN_PART for teil in teile):
+    if any(len(part) < _MIN_PART for part in parts):
         return ()
-    return tuple(teile)
+    return tuple(parts)

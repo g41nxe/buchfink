@@ -115,7 +115,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
 
     run_id: int | None = None
     found: list[Observation] = []
-    stolperer: list[str] = []
+    stumbles: list[str] = []
 
     try:
         run_id = store.start_run(settings.slug, ENTRY_TRIGGER, now, pid=os.getpid())
@@ -138,7 +138,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
                 # Regel wie im grossen Lauf (ADR 7). Vorher brach der ganze
                 # enge Lauf ab, und eine hakende Onleihe verhinderte den
                 # Shop-Preis.
-                stolperer.append(f"{source.name}: {type(exc).__name__}")
+                stumbles.append(f"{source.name}: {type(exc).__name__}")
         store.append(run_id, settings.slug, found, now)
         # Erst die Geschichte, dann das Beiwerk — dieselbe Reihenfolge wie im
         # Rundgang. Vorher holte der enge Lauf gar kein Bild, und ein Buch, das
@@ -150,7 +150,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
         # und ohne Bilder stand sie bis zum naechsten Rundgang als Reihe
         # gezeichneter Ruecken da (Ticket 41).
         fetch_for_candidates(store, settings.slug, client)
-        return Report(observations=tuple(found), trouble="; ".join(stolperer))
+        return Report(observations=tuple(found), trouble="; ".join(stumbles))
     finally:
         # **Immer**, auch auf jedem Fehlerweg. Eine Zeile ohne Ende sieht fuer
         # `runs.py` aus wie ein laufender Lauf — und weil ihre Prozessnummer
@@ -159,7 +159,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
         if run_id is not None:
             store.finish_run(
                 run_id,
-                status="ok" if not stolperer else "failed",
+                status="ok" if not stumbles else "failed",
                 delta_count=len(found),
                 finished_at=datetime.now(),
             )

@@ -47,12 +47,12 @@ def title_id_from_url(url: str) -> str | None:
 def require_title_id(url: str) -> str:
     """Der Snapshot ist darauf geschluesselt, also darf nichts durchrutschen,
     dessen Identitaet wir nur raten koennten."""
-    kennung = title_id_from_url(url)
-    if kennung is None:
+    item_id = title_id_from_url(url)
+    if item_id is None:
         raise SourceStructureError(
             f"OverDrive: aus {url!r} laesst sich keine Titelnummer lesen — erwartet /media/<nummer>"
         )
-    return kennung
+    return item_id
 
 
 class OverdriveSource(LibrarySource):
@@ -88,13 +88,13 @@ class OverdriveSource(LibrarySource):
         seen = {o.source_item_id for o in observations}
         for collection in self.collections:
             text = self.client.get(self._url(sel.COLLECTION_PATH, collection=collection.id))
-            for fund in parse.parse_collection(
+            for found_item in parse.parse_collection(
                 parse.payload(text), collection, source=self.name
             ):
-                if fund.source_item_id in seen or context.is_dismissed(fund):
+                if found_item.source_item_id in seen or context.is_dismissed(found_item):
                     continue
-                seen.add(fund.source_item_id)
-                observations.append(fund)
+                seen.add(found_item.source_item_id)
+                observations.append(found_item)
         return observations
 
     # --- Pruefung ----------------------------------------------------------
@@ -110,9 +110,9 @@ class OverdriveSource(LibrarySource):
         if not link:
             return None
 
-        kennung = require_title_id(link)
+        item_id = require_title_id(link)
         try:
-            text = self.client.get(self._url(sel.TITLE_PATH, title_id=kennung))
+            text = self.client.get(self._url(sel.TITLE_PATH, title_id=item_id))
         except NotFound:
             # Der Titel hat den Katalog verlassen. Das ist eine Nachricht ueber
             # diesen einen Eintrag, keine kaputte Quelle — die uebrigen werden
@@ -122,7 +122,7 @@ class OverdriveSource(LibrarySource):
 
         return Observation(
             source=self.name,
-            source_item_id=kennung,
+            source_item_id=item_id,
             # Der Titel, wie *OverDrive* ihn nennt, nicht der von der Watchlist:
             # eine falsche Zuordnung muss im Tagesbericht sichtbar werden
             # (ADR 9). Hier ist das keine Feinheit — die deutsche Ausgabe heisst
@@ -136,7 +136,7 @@ class OverdriveSource(LibrarySource):
             reservation_count=detail.holds,
             cover_url=detail.cover_url,
             blurb=detail.blurb,
-            url=sel.TITLE_URL.format(title_id=kennung),
+            url=sel.TITLE_URL.format(title_id=item_id),
         )
 
     # --- Zuordnung (ADR 9) -------------------------------------------------
@@ -163,9 +163,9 @@ class OverdriveSource(LibrarySource):
         """
         if not entry.author:
             return entry.title
-        nachname = entry.author.split(",")[0].strip() if "," in entry.author else None
-        nachname = nachname or entry.author.split()[-1]
-        return f"{entry.title} {nachname}"
+        surname = entry.author.split(",")[0].strip() if "," in entry.author else None
+        surname = surname or entry.author.split()[-1]
+        return f"{entry.title} {surname}"
 
     def resolve(self, entry: WatchlistEntry) -> Resolution | None:
         return self._resolve(entry, any_language=False)
@@ -192,17 +192,17 @@ class OverdriveSource(LibrarySource):
         # vom Shop, nicht aus einer Bibliothekszuordnung. Sie kostet nichts —
         # sie steht in derselben Antwort, die wir ohnehin holen.
         query = Query(title=entry.title, author=entry.author, identifier=entry.isbn)
-        gesehen: list[Candidate] = []
+        seen: list[Candidate] = []
 
         for page in range(MAX_RESOLUTION_PAGES):
-            gefunden = parse.parse_search(
+            found = parse.parse_search(
                 self._search_page(self._query_for(entry), page, any_language=any_language)
             )
-            if gefunden is None:
+            if found is None:
                 # Kein Treffer — eine Antwort, keine Stoerung.
-                return None if page == 0 else match(query, gesehen)
+                return None if page == 0 else match(query, seen)
 
-            gesehen.extend(
+            seen.extend(
                 Candidate(
                     title=card.title,
                     author=card.author,
@@ -211,13 +211,13 @@ class OverdriveSource(LibrarySource):
                     language=card.language,
                     payload=sel.TITLE_URL.format(title_id=card.title_id),
                 )
-                for card in gefunden
+                for card in found
             )
-            resolution = match(query, gesehen)
-            if resolution.confidence is Confidence.AUTO_ACCEPT or len(gefunden) < sel.PER_PAGE:
+            resolution = match(query, seen)
+            if resolution.confidence is Confidence.AUTO_ACCEPT or len(found) < sel.PER_PAGE:
                 return resolution
 
-        return match(query, gesehen)
+        return match(query, seen)
 
     # --- Selbsttest --------------------------------------------------------
 

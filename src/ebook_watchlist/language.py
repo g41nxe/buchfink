@@ -105,17 +105,17 @@ def language_of_isbn(isbn: str) -> str | None:
     Zeichen, dann drei. Die zwei- und vierstelligen Gruppen dazwischen stehen
     nicht in der Tabelle, und was nicht darin steht, schweigt.
     """
-    ziffern = "".join(z for z in isbn if z.isdigit())
-    if len(ziffern) != 13 or not ziffern.startswith(("978", "979")):
+    digits = "".join(z for z in isbn if z.isdigit())
+    if len(digits) != 13 or not digits.startswith(("978", "979")):
         return None
-    rest = ziffern[3:]
+    rest = digits[3:]
     return GROUP_LANGUAGES.get(rest[:1]) or GROUP_LANGUAGES.get(rest[:3])
 
 
 def language_finder(store: Store) -> LanguageOf:
     """Einmal gelesen, fuer den ganzen Lauf oder die ganze Seite."""
-    sprachen = store.dnb_languages()
-    return sprachen.get
+    languages = store.dnb_languages()
+    return languages.get
 
 
 def is_foreign(observation: Observation, settings: Settings, language_of: LanguageOf) -> bool:
@@ -130,13 +130,13 @@ def is_foreign(observation: Observation, settings: Settings, language_of: Langua
     """
     if observation.match_reason is MatchReason.WATCHLIST or not observation.isbn:
         return False
-    sprache = language_of(observation.isbn)
-    if sprache is None:
+    language = language_of(observation.isbn)
+    if language is None:
         # Nur wo die DNB den Titel gar nicht kennt, spricht die Nummer selbst
         # (#32). Sagt die DNB "unbestimmt" oder "mehrsprachig", hat sie das
         # Buch immerhin in der Hand gehabt — dann gilt ihr Schweigen, nicht
         # die Herkunft des Verlags.
-        sprache = language_of_isbn(observation.isbn)
-    if sprache is None or sprache in NOT_A_LANGUAGE:
+        language = language_of_isbn(observation.isbn)
+    if language is None or language in NOT_A_LANGUAGE:
         return False
-    return sprache not in settings.languages
+    return language not in settings.languages

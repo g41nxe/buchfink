@@ -180,7 +180,7 @@ def sow(store: Store, settings: Settings, seed: Seed, watchlist: list[WatchlistE
         # Der ``hinweis`` betrifft die Identifikation, nicht das Urteil: er
         # bittet um Gegenprüfung, ob dieser Titel im Handel so heißt. Genau das
         # gehört an die Beziehung, wo die Leserin es beim Nachsehen findet.
-        details = {"note": entry.hinweis} if entry.hinweis else {}
+        details = {"note": entry.note} if entry.note else {}
         if _put_missing_relation(
             store, settings.slug, book.id, str(RelationKind.OWNED), now=at, **details
         ):

@@ -392,7 +392,7 @@ def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store)
         settings(),
         saat(),
         [],
-        owned=[OwnedBook(title="Off-Line", hinweis="Bitte gegenprüfen.")],
+        owned=[OwnedBook(title="Off-Line", note="Bitte gegenprüfen.")],
         now=NOW,
     )
     relation = store.relations("t", kind=str(RelationKind.OWNED))[0]

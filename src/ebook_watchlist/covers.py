@@ -84,20 +84,20 @@ def pixels(data: bytes) -> int | None:
         return int.from_bytes(data[16:20], "big") * int.from_bytes(data[20:24], "big")
     if not data.startswith(b"\xff\xd8"):
         return None
-    stelle = 2
-    while stelle + 9 <= len(data):
-        if data[stelle] != 0xFF:
+    pos = 2
+    while pos + 9 <= len(data):
+        if data[pos] != 0xFF:
             return None
-        marke = data[stelle + 1]
-        if marke == 0xFF:  # Fuellbyte vor einer Marke
-            stelle += 1
+        marker = data[pos + 1]
+        if marker == 0xFF:  # Fuellbyte vor einer Marke
+            pos += 1
             continue
-        laenge = int.from_bytes(data[stelle + 2 : stelle + 4], "big")
-        if marke in _SOF:
-            hoehe = int.from_bytes(data[stelle + 5 : stelle + 7], "big")
-            breite = int.from_bytes(data[stelle + 7 : stelle + 9], "big")
-            return breite * hoehe
-        stelle += 2 + laenge
+        length = int.from_bytes(data[pos + 2 : pos + 4], "big")
+        if marker in _SOF:
+            height = int.from_bytes(data[pos + 5 : pos + 7], "big")
+            width = int.from_bytes(data[pos + 7 : pos + 9], "big")
+            return width * height
+        pos += 2 + length
     return None
 
 
@@ -150,9 +150,9 @@ def _better(covers: CoverStore, name: str, *, than: str | None) -> bool:
     """
     if not than or not covers.has(than):
         return True
-    neu = pixels(covers.path(name).read_bytes())
-    alt = pixels(covers.path(than).read_bytes())
-    return neu is not None and (alt is None or neu > alt)
+    new = pixels(covers.path(name).read_bytes())
+    old = pixels(covers.path(than).read_bytes())
+    return new is not None and (old is None or new > old)
 
 
 def fetch_for_books(store: Store, client: HttpClient, observations: Sequence[Observation]) -> None:
@@ -224,28 +224,28 @@ def fetch_for_candidates(store: Store, profile_slug: str, client: HttpClient) ->
     dalag, kostet keine Anfrage — ``CoverStore.fetch`` sieht zuerst nach.
     """
     covers = CoverStore(paths.covers_dir())
-    offen: list[str] = []
+    pending: list[str] = []
     for row in store.unsure_links(profile_slug):
         try:
             details = json.loads(row.details or "{}")
         except ValueError:  # pragma: no cover - defekte Zeile
             continue
-        for kandidat in details.get("candidates") or []:
-            url = kandidat.get("cover_url")
+        for candidate in details.get("candidates") or []:
+            url = candidate.get("cover_url")
             if url and not covers.has(file_name(url)):
-                offen.append(url)
-    if not offen:
+                pending.append(url)
+    if not pending:
         return
 
-    print(f"{len(offen)} Titelbilder für offene Zuordnungen …")
-    geholt = 0
-    for url in dict.fromkeys(offen):
+    print(f"{len(pending)} Titelbilder für offene Zuordnungen …")
+    fetched = 0
+    for url in dict.fromkeys(pending):
         try:
             if covers.fetch(client, url):
-                geholt += 1
+                fetched += 1
         except RateLimited:
             print("Titelbilder: der Shop drosselt — Rest übersprungen", file=sys.stderr)
             return
         except Exception as exc:  # noqa: BLE001 - bewusst: ein Bild ist Beiwerk
             print(f"Titelbild: {type(exc).__name__}: {exc}", file=sys.stderr)
-    print(f"  {geholt} geholt")
+    print(f"  {fetched} geholt")

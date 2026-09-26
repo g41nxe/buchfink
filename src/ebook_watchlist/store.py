@@ -812,23 +812,23 @@ class Store:
         umgeschrieben.
         """
         with self.session() as session:
-            paare = session.execute(
+            pairs = session.execute(
                 select(BookSourceRow.source, BookSourceRow.source_item_id).where(
                     BookSourceRow.book_id == book_id,
                     BookSourceRow.source_item_id.is_not(None),
                 )
             ).all()
-            wege = [ObservationRow.book_id == book_id]
-            wege += [
+            clauses = [ObservationRow.book_id == book_id]
+            clauses += [
                 and_(
                     ObservationRow.source == source,
                     ObservationRow.source_item_id == item_id,
                 )
-                for source, item_id in paare
+                for source, item_id in pairs
             ]
             stmt = (
                 select(ObservationRow)
-                .where(ObservationRow.profile_slug == profile_slug, or_(*wege))
+                .where(ObservationRow.profile_slug == profile_slug, or_(*clauses))
                 .order_by(ObservationRow.id.desc())
                 .limit(limit)
             )
@@ -919,16 +919,16 @@ class Store:
             stmt = select(ObservationRow.title, ObservationRow.price_cents).where(
                 ObservationRow.id.in_(latest_ids)
             )
-            preise: dict[str, int] = {}
-            for titel, preis in session.execute(stmt):
-                if not titel or preis is None or preis <= 0:
+            prices: dict[str, int] = {}
+            for title, price in session.execute(stmt):
+                if not title or price is None or price <= 0:
                     continue
                 # Der guenstigste gewinnt: derselbe Titel kann als mehrere
                 # Ausgaben dastehen, und fuer den Vergleich zaehlt, was der
                 # Einzelband mindestens kostet.
-                if titel not in preise or preis < preise[titel]:
-                    preise[titel] = preis
-            return preise
+                if title not in prices or price < prices[title]:
+                    prices[title] = price
+            return prices
 
     # --- was die DNB weiss (Ticket 42) -------------------------------------
 
@@ -953,20 +953,20 @@ class Store:
         with self.session() as session:
             # Ein Nein bleibt ein Nein; ein Ja, das ein aelterer Parser las,
             # wird einmal neu gefragt (#17).
-            schon = select(DnbRecordRow.isbn).where(
+            already = select(DnbRecordRow.isbn).where(
                 or_(DnbRecordRow.found.is_(False), DnbRecordRow.reading >= DNB_READING)
             )
-            eigene = select(BookRow.isbn).where(BookRow.isbn.is_not(None))
-            erst_die_buecher = case((ObservationRow.isbn.in_(eigene), 0), else_=1)
+            own_isbns = select(BookRow.isbn).where(BookRow.isbn.is_not(None))
+            books_first = case((ObservationRow.isbn.in_(own_isbns), 0), else_=1)
             stmt = (
                 select(ObservationRow.isbn)
                 .where(
                     ObservationRow.profile_slug == profile_slug,
                     ObservationRow.isbn.is_not(None),
-                    ObservationRow.isbn.not_in(schon),
+                    ObservationRow.isbn.not_in(already),
                 )
                 .group_by(ObservationRow.isbn)
-                .order_by(erst_die_buecher, func.max(ObservationRow.id).desc())
+                .order_by(books_first, func.max(ObservationRow.id).desc())
                 .limit(limit)
             )
             return [isbn for (isbn,) in session.execute(stmt) if isbn]
@@ -978,26 +978,26 @@ class Store:
         fragte jeder Lauf dieselben neun von dreissig erneut.
         """
         with self.session() as session:
-            zeile = session.get(DnbRecordRow, isbn)
-            if zeile is None:
-                zeile = DnbRecordRow(isbn=isbn)
-                session.add(zeile)
-            zeile.checked_at = now
-            zeile.found = record is not None
+            row = session.get(DnbRecordRow, isbn)
+            if row is None:
+                row = DnbRecordRow(isbn=isbn)
+                session.add(row)
+            row.checked_at = now
+            row.found = record is not None
             if record is not None:
-                zeile.title = record.title
-                zeile.subtitle = record.subtitle
-                zeile.author = record.author
-                zeile.series = record.series
-                zeile.series_index = record.series_index
-                zeile.language = record.language
-                zeile.original_title = record.original_title
-                zeile.keywords = json.dumps(list(record.keywords), ensure_ascii=False)
-                zeile.publisher = record.publisher
-                for enthalten in record.contains:
-                    if session.get(DnbContainsRow, (isbn, enthalten)) is None:
-                        session.add(DnbContainsRow(isbn=isbn, contained=enthalten))
-            zeile.reading = DNB_READING
+                row.title = record.title
+                row.subtitle = record.subtitle
+                row.author = record.author
+                row.series = record.series
+                row.series_index = record.series_index
+                row.language = record.language
+                row.original_title = record.original_title
+                row.keywords = json.dumps(list(record.keywords), ensure_ascii=False)
+                row.publisher = record.publisher
+                for contained in record.contains:
+                    if session.get(DnbContainsRow, (isbn, contained)) is None:
+                        session.add(DnbContainsRow(isbn=isbn, contained=contained))
+            row.reading = DNB_READING
             session.commit()
 
     def dnb_facts(self, isbns: Iterable[str]) -> dict[str, Record]:
@@ -1007,26 +1007,26 @@ class Store:
         und Vergleichstiteln angibt, steht weder im Titel noch im Klappentext.
         Dazu der Verlag, als Rueckfall fuer den Abzug bei Selbstverlag (#28).
         """
-        gesucht = [isbn for isbn in isbns if isbn]
-        if not gesucht:
+        wanted = [isbn for isbn in isbns if isbn]
+        if not wanted:
             return {}
         with self.session() as session:
-            zeilen = session.execute(
+            rows = session.execute(
                 select(
                     DnbRecordRow.isbn,
                     DnbRecordRow.original_title,
                     DnbRecordRow.keywords,
                     DnbRecordRow.publisher,
-                ).where(DnbRecordRow.isbn.in_(gesucht), DnbRecordRow.found.is_(True))
+                ).where(DnbRecordRow.isbn.in_(wanted), DnbRecordRow.found.is_(True))
             )
-            fakten = {}
-            for isbn, original, schlagwoerter, verlag in zeilen:
-                woerter = tuple(json.loads(schlagwoerter)) if schlagwoerter else ()
-                if original or woerter or verlag:
-                    fakten[isbn] = Record(
-                        original_title=original, keywords=woerter, publisher=verlag
+            facts = {}
+            for isbn, original, subjects, publisher in rows:
+                words = tuple(json.loads(subjects)) if subjects else ()
+                if original or words or publisher:
+                    facts[isbn] = Record(
+                        original_title=original, keywords=words, publisher=publisher
                     )
-            return fakten
+            return facts
 
     def dnb_original_titles(self, isbns: Iterable[str]) -> dict[str, tuple[str, ...]]:
         """ISBN -> die Namen, die die DNB dem Buch gibt: Originaltitel und Titel.
@@ -1040,24 +1040,24 @@ class Store:
         ein aelterer Parser las, zaehlt als unbekannt — dieselbe Regel wie in
         :meth:`isbns_without_dnb`.
         """
-        gesucht = [isbn for isbn in isbns if isbn]
-        if not gesucht:
+        wanted = [isbn for isbn in isbns if isbn]
+        if not wanted:
             return {}
         with self.session() as session:
-            zeilen = session.execute(
+            rows = session.execute(
                 select(
                     DnbRecordRow.isbn,
                     DnbRecordRow.found,
                     DnbRecordRow.original_title,
                     DnbRecordRow.title,
                 ).where(
-                    DnbRecordRow.isbn.in_(gesucht),
+                    DnbRecordRow.isbn.in_(wanted),
                     or_(DnbRecordRow.found.is_(False), DnbRecordRow.reading >= DNB_READING),
                 )
             )
             return {
                 isbn: tuple(n for n in (original, title) if n) if found else ()
-                for isbn, found, original, title in zeilen
+                for isbn, found, original, title in rows
             }
 
     def dnb_languages(self) -> dict[str, str]:
@@ -1084,7 +1084,7 @@ class Store:
             stmt = select(ObservationRow.author, ObservationRow.blurb).where(
                 ObservationRow.author.is_not(None),
                 ObservationRow.blurb.is_not(None),
-                or_(*(ObservationRow.blurb.ilike(f"%{wort}%") for wort in needles)),
+                or_(*(ObservationRow.blurb.ilike(f"%{word}%") for word in needles)),
             # Dasselbe Buch wird taeglich neu gesehen, und der Klappentext
             # aendert sich dabei fast nie: von 720 Zeilen bleiben 150.
             ).distinct()
@@ -1116,13 +1116,13 @@ class Store:
             stmt = select(ObservationRow.isbn, ObservationRow.price_cents).where(
                 ObservationRow.id.in_(latest_ids)
             )
-            preise: dict[str, int] = {}
-            for isbn_wert, preis in session.execute(stmt):
-                if not isbn_wert or preis is None or preis <= 0:
+            prices: dict[str, int] = {}
+            for isbn_value, price in session.execute(stmt):
+                if not isbn_value or price is None or price <= 0:
                     continue
-                if isbn_wert not in preise or preis < preise[isbn_wert]:
-                    preise[isbn_wert] = preis
-            return preise
+                if isbn_value not in prices or price < prices[isbn_value]:
+                    prices[isbn_value] = price
+            return prices
 
     def decided_items(self, profile_slug: str) -> set[tuple[str, str]]:
         """``(Quelle, Item-Id)``, zu denen es schon ein Buch mit **aktiver**
@@ -1300,8 +1300,8 @@ class Store:
         Gibt zurueck, wie viele Buecher eine Reihe bekamen.
         """
         with self.session() as session:
-            gefuellt = 0
-            zeilen = session.execute(
+            filled = 0
+            rows = session.execute(
                 select(BookRow, DnbRecordRow)
                 .join(DnbRecordRow, DnbRecordRow.isbn == BookRow.isbn)
                 .where(
@@ -1310,12 +1310,12 @@ class Store:
                     DnbRecordRow.series.is_not(None),
                 )
             ).all()
-            for buch, datensatz in zeilen:
-                buch.series = datensatz.series
-                buch.series_index = datensatz.series_index
-                gefuellt += 1
+            for book, record in rows:
+                book.series = record.series
+                book.series_index = record.series_index
+                filled += 1
             session.commit()
-            return gefuellt
+            return filled
 
     def set_cover(self, book_id: int, file_name: str) -> None:
         with self.session() as session:
@@ -1426,7 +1426,7 @@ class Store:
         wanted = list(dict.fromkeys(book_ids))
         if not wanted:
             return {}
-        gefunden: dict[int, list[BookSourceRow]] = {book_id: [] for book_id in wanted}
+        found: dict[int, list[BookSourceRow]] = {book_id: [] for book_id in wanted}
         with self.session() as session:
             rows = list(
                 session.scalars(
@@ -1437,8 +1437,8 @@ class Store:
             )
             for row in rows:
                 session.expunge(row)
-                gefunden[row.book_id].append(row)
-            return gefunden
+                found[row.book_id].append(row)
+            return found
 
     def book_sources(self, book_id: int) -> list[BookSourceRow]:
         with self.session() as session:
@@ -1475,7 +1475,7 @@ class Store:
         das die Leserin gar nicht mehr beobachtet, ist keine Frage an sie.
         """
         with self.session() as session:
-            beobachtet = select(BookRelationRow.book_id).where(
+            observed = select(BookRelationRow.book_id).where(
                 BookRelationRow.profile_slug == profile_slug,
                 BookRelationRow.kind == str(RelationKind.WATCHING),
                 BookRelationRow.active.is_(True),
@@ -1483,7 +1483,7 @@ class Store:
             stmt = (
                 select(BookSourceRow)
                 .where(
-                    BookSourceRow.book_id.in_(beobachtet),
+                    BookSourceRow.book_id.in_(observed),
                     BookSourceRow.details.like('%"unsure"%'),
                 )
                 .order_by(BookSourceRow.book_id)
@@ -1512,11 +1512,11 @@ class Store:
             if row is None:
                 return
             details = json.loads(row.details or '{}')
-            abgelehnt = list(details.get('rejected') or [])
+            rejected = list(details.get('rejected') or [])
             for url in urls:
-                if url and url not in abgelehnt:
-                    abgelehnt.append(url)
-            details['rejected'] = abgelehnt
+                if url and url not in rejected:
+                    rejected.append(url)
+            details['rejected'] = rejected
             row.details = json.dumps(details, ensure_ascii=False)
             session.commit()
 
@@ -1744,12 +1744,12 @@ class Store:
         # der nächsten Nummer noch einmal versucht.
         for _ in range(_VERSION_ATTEMPTS):
             with self.session() as session:
-                letzte = session.scalar(
+                latest = session.scalar(
                     select(func.max(ReadingProfileRow.version)).where(
                         ReadingProfileRow.profile_slug == profile_slug
                     )
                 )
-                version = (letzte or 0) + 1
+                version = (latest or 0) + 1
                 session.add(
                     ReadingProfileRow(
                         profile_slug=profile_slug,
@@ -1840,15 +1840,15 @@ class Store:
     def update_intake_entry(self, entry_id: int, **fields: object) -> None:
         """Was die Leserin mit einem Eintrag getan hat: neu eingegeben,
         bestätigt, entfernt."""
-        erlaubt = {"typed_title", "typed_author", "status", "book_id"}
-        if not set(fields) <= erlaubt:
-            raise ValueError(f"nicht änderbar: {sorted(set(fields) - erlaubt)}")
+        allowed = {"typed_title", "typed_author", "status", "book_id"}
+        if not set(fields) <= allowed:
+            raise ValueError(f"nicht änderbar: {sorted(set(fields) - allowed)}")
         with self.session() as session:
             row = session.get(IntakeEntryRow, entry_id)
             if row is None:
                 raise KeyError(entry_id)
-            for name, wert in fields.items():
-                setattr(row, name, wert)
+            for name, value in fields.items():
+                setattr(row, name, value)
             session.commit()
 
     def set_intake_choice(
@@ -2180,16 +2180,16 @@ class Store:
         tragen ueberhaupt keinen Klappentext. Ein Vorrang fuer zwei Faelle waere
         geraten; gemessen wird er, wenn die Zahl nach dem naechsten Lauf steht.
         """
-        gefunden: dict[int, str] = {}
+        found: dict[int, str] = {}
         for observation in observations:
             if observation.book_id and observation.blurb:
-                vorher = gefunden.get(observation.book_id, "")
-                if len(observation.blurb) > len(vorher):
-                    gefunden[observation.book_id] = observation.blurb
-        if not gefunden:
+                before = found.get(observation.book_id, "")
+                if len(observation.blurb) > len(before):
+                    found[observation.book_id] = observation.blurb
+        if not found:
             return
         with self.session() as session:
-            for book_id, blurb in gefunden.items():
+            for book_id, blurb in found.items():
                 row = session.get(BookRow, book_id)
                 if row is not None and len(blurb) > len(row.blurb or ""):
                     row.blurb = blurb
