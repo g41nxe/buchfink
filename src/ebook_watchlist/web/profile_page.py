@@ -107,6 +107,8 @@ class FacetLine:
     genre: str | None = None
     #: Nur bei Facetten: je Merkmal sein Name und der Satz, was es heißt.
     parts: tuple[tuple[str, str], ...] = ()
+    #: Nur bei Gegengewichten: das Buch, an dem es sich zurücknehmen lässt (#51).
+    book_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +118,9 @@ class LikedLine:
     name: str
     pattern: bool
     boosted: bool
+    #: Ein gemochtes Buch, das es trägt: dort lässt es sich abwählen (#51). Die
+    #: Profilseite selbst bleibt zum Lesen.
+    book_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,12 +272,25 @@ def _facet_profile(store: Store, settings: Settings):
         )
 
     facets = tuple(facet_line(f) for f in profile.facets)
+    # Wo sich etwas ändern lässt: am Buch, nie hier (#51).
+    disliked_by_title = {}
+    for relation in store.relations(settings.slug, kind=str(RelationKind.DISLIKED)):
+        book = store.book(relation.book_id)
+        if book is not None:
+            disliked_by_title.setdefault(book.title, book.id)
     counterweights = tuple(
-        FacetLine(family_names(c.families, vocabulary), c.books, genre=c.genre)
+        FacetLine(
+            family_names(c.families, vocabulary), c.books, genre=c.genre,
+            book_id=next((disliked_by_title[t] for t in c.books if t in disliked_by_title),
+                         None),
+        )
         for c in profile.counterweights
     )
     liked = tuple(
-        LikedLine(family_name(g.family, vocabulary), is_pattern(g.family, vocabulary), g.boosted)
+        LikedLine(
+            family_name(g.family, vocabulary), is_pattern(g.family, vocabulary), g.boosted,
+            book_id=next((b.book_id for b in shelf if g.family in b.families), None),
+        )
         for g in sorted(profile.liked, key=lambda g: not g.boosted)
     )
     return facets, counterweights, liked

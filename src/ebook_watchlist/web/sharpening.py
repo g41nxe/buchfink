@@ -37,6 +37,7 @@ from .. import reader_reasons
 from ..config import Settings
 from ..facets import (
     MOST_BOOSTED,
+    Counterweight,
     Facet,
     Liked,
     ReadingProfile,
@@ -85,6 +86,8 @@ class Sharpening:
     can_boost: bool = True
     #: Doof, trifft aber eine Facette ganz: die bleibt.
     kept: tuple[str, ...] = ()
+    #: Bei *Doof*: was aus diesem Buch schon dagegen zählt — zum Abwählen (#51).
+    counted: tuple[Family, ...] = ()
     lost: tuple[Family, ...] = ()
     genre: str | None = None
     #: Deine Sicht (#79): die Familien des Buchs, die sich abwählen lassen …
@@ -164,6 +167,16 @@ def _by_kind(store, settings, profile, kind, title, shelf, vocabulary) -> Sharpe
                 family_entry(f) for f in shelf.families if ((f,), None) not in existing_weights
             ),
             genre=shelf.genre,
+            counted=tuple(
+                Family(
+                    ",".join(c.families),
+                    family_names(c.families, vocabulary)
+                    + (f" (nur bei {c.genre})" if c.genre else ""),
+                    False,
+                )
+                for c in profile.counterweights
+                if title in c.books
+            ),
         )
 
     liked_books = liked_shelf(store, settings, vocabulary)
@@ -353,6 +366,34 @@ def set_boosted(
     updated_liked = tuple(Liked(f, b) for f, b in boost.items())
     return store.put_reading_profile(
         settings.slug, ReadingProfile(profile.facets, profile.counterweights, updated_liked),
+        cause=f"Nachschärfen: {shelf.title}", now=now,
+    )
+
+
+def remove_counterweight(
+    store: Store, settings: Settings, book_id: int, family: str, *, now: datetime
+) -> int | None:
+    """Ein Gegengewicht aus diesem *Doof*-Buch zurücknehmen (#51).
+
+    Es verliert nur dieses Buch; trägt es noch ein anderes, bleibt es stehen.
+    ``family`` nennt die Familien des Bündels, mit Komma getrennt.
+    """
+    shelf, _ = _book(store, settings, book_id, DISLIKED)
+    profile = store.reading_profile(settings.slug)
+    families = tuple(family.split(","))
+    kept, changed = [], False
+    for c in profile.counterweights:
+        if c.families == families and shelf.title in c.books:
+            changed = True
+            rest = tuple(b for b in c.books if b != shelf.title)
+            if rest:
+                kept.append(Counterweight(c.families, c.genre, rest))
+            continue
+        kept.append(c)
+    if not changed:
+        return None
+    return store.put_reading_profile(
+        settings.slug, ReadingProfile(profile.facets, tuple(kept), profile.liked),
         cause=f"Nachschärfen: {shelf.title}", now=now,
     )
 

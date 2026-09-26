@@ -475,3 +475,65 @@ def test_a_broken_bag_does_not_break_sharpening(db, profil) -> None:
     from ebook_watchlist.web import sharpening
 
     assert sharpening.build(db, load_settings(), b).dropped == frozenset()
+
+
+# --- abwählen, was schon dagegen zählt (#51) ------------------------------------------------
+
+
+def test_a_disliked_book_shows_what_already_counts_against_and_takes_it_back(
+    client, db, profil
+) -> None:
+    b = buch(db, "Herr der Ringe", ["world_building", "leisurely", "bittersweet", "descriptive"],
+             kind="disliked")
+
+    body = seite(client, b)
+    assert 'data-counted="leisurely"' in body
+
+    client.post(f"/book/{b}/sharpen/counterweight/remove", data={"family": "leisurely"})
+
+    neu = db.reading_profile(slug())
+    assert neu.version == 2 and neu.counterweights == ()
+
+
+def test_taking_a_counterweight_back_names_the_book(client, db, profil) -> None:
+    from ebook_watchlist.store import ReadingProfileRow
+
+    b = buch(db, "Herr der Ringe", ["world_building", "leisurely", "bittersweet", "descriptive"],
+             kind="disliked")
+
+    client.post(f"/book/{b}/sharpen/counterweight/remove", data={"family": "leisurely"})
+
+    with db.session() as session:
+        anlass = session.query(ReadingProfileRow).order_by(ReadingProfileRow.id.desc()).first()
+        assert anlass.cause == "Nachschärfen: Herr der Ringe"
+
+
+def test_a_counterweight_of_another_book_stays(client, db, profil) -> None:
+    """Das Gegengewicht verliert nur dieses Buch; trägt es ein anderes, bleibt es."""
+    from ebook_watchlist.facets import Counterweight, ReadingProfile
+
+    db.put_reading_profile(slug(), ReadingProfile(
+        profil.facets,
+        (Counterweight(("leisurely",), books=("Herr der Ringe", "Der Schwarm")),),
+        profil.liked,
+    ), cause="Test", now=NOW)
+    b = buch(db, "Herr der Ringe", ["world_building", "leisurely", "bittersweet", "descriptive"],
+             kind="disliked")
+
+    client.post(f"/book/{b}/sharpen/counterweight/remove", data={"family": "leisurely"})
+
+    assert db.reading_profile(slug()).counterweights == (
+        Counterweight(("leisurely",), books=("Der Schwarm",)),)
+
+
+def test_the_profile_page_leads_to_where_things_are_changed(client, db, profil) -> None:
+    """Die Profilseite bleibt zum Lesen; jede Marke führt zum Buch, an dem sie
+    sich ändern lässt (#51)."""
+    gemocht = buch(db, "Leichenblässe", ["violent", "brooding", "menacing"])
+    doof = buch(db, "Herr der Ringe", ["world_building", "leisurely", "bittersweet",
+                                       "descriptive"], kind="disliked")
+
+    body = client.get("/profile").text
+
+    assert f'href="/book/{gemocht}#sharpening"' in body
+    assert f'href="/book/{doof}#sharpening"' in body

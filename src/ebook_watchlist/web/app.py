@@ -918,6 +918,12 @@ def create_app() -> FastAPI:
             _sharpen, book_id, lambda store, settings: sharpening.add_counterweights(
                 store, settings, book_id, scopes, now=datetime.now()))
 
+    @app.post("/book/{book_id}/sharpen/counterweight/remove")
+    def sharpen_counterweight_remove(book_id: int, family: str = Form(...)) -> RedirectResponse:
+        """Ein Gegengewicht aus diesem *Doof*-Buch zurücknehmen (#51)."""
+        return _sharpen(book_id, lambda store, settings: sharpening.remove_counterweight(
+            store, settings, book_id, family, now=datetime.now()))
+
     @app.post("/book/{book_id}/sharpen/reasons")
     async def sharpen_reasons(request: Request, book_id: int) -> RedirectResponse:
         """Deine Sicht auf ein gelesenes Buch: was nicht stimmt, was fehlte (#79).

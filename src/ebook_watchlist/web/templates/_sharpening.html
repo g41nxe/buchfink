@@ -49,6 +49,28 @@
   </ul>
 
   {% else %}
+  {% if n.counted %}
+  {# Was aus diesem Buch schon dagegen zählt, lässt sich hier zurücknehmen
+     (#51) — die Profilseite führt hierher, sie selbst bleibt zum Lesen. #}
+  <div class="space-y-1">
+    <p class="text-ink">Zählt aus diesem Buch schon dagegen:</p>
+    <ul class="flex flex-wrap gap-2">
+      {% for c in n.counted %}
+      <li class="inline-flex h-7 items-center gap-1 rounded-full border border-danger/40 pl-3
+                 pr-1 text-xs text-danger" data-counted="{{ c.family_id }}">
+        <svg class="i"><use href="#ic-ban"/></svg>{{ c.name }}
+        <form method="post" action="{{ base }}/counterweight/remove" class="contents">
+          <input type="hidden" name="family" value="{{ c.family_id }}">
+          <button type="submit" aria-label="{{ c.name }} zählt nicht mehr dagegen"
+                  title="zählt nicht mehr dagegen"
+                  class="tun inline-flex h-5 w-5 items-center justify-center rounded-full
+                         hover:bg-danger/15"><svg class="i"><use href="#ic-x"/></svg></button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
   {% for name in n.kept %}
   <p class="text-soft">Trifft deine Facette <span class="font-semibold text-accent">{{ name }}</span>
     ganz — die bleibt, wie sie ist.</p>

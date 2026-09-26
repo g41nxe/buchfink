@@ -53,11 +53,18 @@
   <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Gemocht</p>
   <ul class="mb-4 flex flex-wrap gap-1.5">
     {% for g in view.liked %}
-    <li class="inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs
-               {{ 'border-amber/60 text-amber' if g.boosted else 'border-accent/40 text-accent' }}">
+    <li>
+      {# Ein Link zum Buch, an dem es sich abwählen lässt (#51) — die Seite
+         selbst bleibt zum Lesen. #}
+      <a {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening"
+         title="beim Buch ändern"{% endif %}
+         class="inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs
+                {{ 'border-amber/60 text-amber' if g.boosted else 'border-accent/40 text-accent' }}
+                {{ 'hover:bg-hair' if g.book_id else '' }}">
       {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>
       {% else %}<svg class="i"><use href="#ic-heart"/></svg>{% endif %}
-      {{ g.name }}{% if g.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}</li>
+      {{ g.name }}{% if g.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}</a>
+    </li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -87,10 +94,14 @@
   <p class="mt-4 mb-2 text-xs font-medium uppercase tracking-wide text-soft">Zählt gegen ein Buch</p>
   <ul class="flex flex-wrap gap-2">
     {% for c in view.counterweights %}
-    <li class="inline-flex h-7 items-center gap-1 rounded-full border border-danger/40 px-3
-               text-xs text-danger">
+    <li>
+      <a {% if c.book_id %}href="/book/{{ c.book_id }}#sharpening"
+         title="beim Buch zurücknehmen"{% endif %}
+         class="inline-flex h-7 items-center gap-1 rounded-full border border-danger/40 px-3
+                text-xs text-danger {{ 'hover:bg-danger/10' if c.book_id else '' }}">
       <svg class="i"><use href="#ic-ban"/></svg>{{ c.name }}{% if c.genre %}
-      <span class="opacity-70">· nur bei {{ c.genre }}</span>{% endif %}</li>
+      <span class="opacity-70">· nur bei {{ c.genre }}</span>{% endif %}</a>
+    </li>
     {% endfor %}
   </ul>
   {% endif %}
