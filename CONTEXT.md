@@ -563,6 +563,19 @@ steps back. Two spiders: Appeal Terms and Story Patterns. Why bars and no outlin
 [docs/research/spinne-darstellung.md](docs/research/spinne-darstellung.md).
 **Reader-facing name: none** — the page calls the figure „Geschmacksform“.
 
+### Comparison
+*deutsch: Abgleich*
+
+What a book page shows under the verdict (`web/comparison.py`, 26.09.2026): an
+overview of the families the book carries, grouped by Dimension, sized by how
+strongly the book carries them and coloured by the reader's taste; a bridge from
+her strongest likes and dislikes to the book, which also shows what she likes and
+the book lacks; and, folded, how the Form Overlap comes about step by step
+(`Overlap.steps`, the same computation as the verdict). A family counts as liked
+or rejected from ±0.3; below that it is „fast egal“. **Reader-facing name: none**
+— the sections are titled by their questions („Wie viel von deinem Profil es
+abdeckt“, „Wie das Urteil entsteht“).
+
 ### Form Overlap
 *deutsch: Formüberdeckung*
 
