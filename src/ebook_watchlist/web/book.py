@@ -41,6 +41,7 @@ from ..ratings import (
 )
 from ..reasons import short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
+from ..sample import fetcher
 from ..sources import build_sources, registry
 from ..store import Store
 from .spider import Spider, book_spiders, unknown_families
@@ -820,6 +821,12 @@ def price_points(history: tuple[Sighting, ...]) -> list[Sighting]:
     return seen
 
 
+def sample_fetcher(settings: Settings):
+    """Der Holer für die Leseprobe als zweite Stufe (#76) — eine Stelle, damit
+    Tests ihn wie die Quellen ersetzen können."""
+    return fetcher(HttpClient(user_agent=build_user_agent(settings.contact)))
+
+
 def evidence_sources(settings: Settings, store: Store) -> list:
     """Die eingeschalteten Quellen, mit Kontaktadresse wie im Rundgang."""
     client = HttpClient(user_agent=build_user_agent(settings.contact))
@@ -855,10 +862,11 @@ def portray_observation(
         return str(exc)
     subject = subject or subject_of(observation)
     stored = store.portrait(subject, fingerprint(vocabulary))
-    # Ein Steckbrief, der steht, kostet nichts — auch ein „unbekannt“, das mit
-    # Text entstand. Nur ein „unbekannt“ ohne Text darf noch einmal, sobald einer
-    # da ist; ob er da ist, weiß erst die Detailseite (unten).
-    if stored is not None and not again and (stored.known or stored.with_text):
+    # Ein Steckbrief, der steht, kostet nichts — auch ein „unbekannt“, das schon
+    # mit der Leseprobe gefragt wurde. Ein „unbekannt“ ohne Text darf noch einmal,
+    # sobald einer da ist, eins mit Text einmal mit der Probe (#76); ob es sie
+    # gibt, weiß erst die Detailseite (unten).
+    if stored is not None and not again and (stored.known or stored.with_sample):
         return ""
     portrayer = build_portrayer(settings.rating_model, vocabulary)
     if portrayer is None:
@@ -866,6 +874,7 @@ def portray_observation(
             "Kein Weg zum Modell: weder ein API-Schlüssel in der Umgebung "
             "noch eine angemeldete Claude-Code-Installation."
         )
+    portrayer.samples = sample_fetcher(settings)
     if with_evidence:
         observation = gather_evidence(
             store, settings, [observation], evidence_sources(settings, store)
@@ -877,12 +886,21 @@ def portray_observation(
         stored is not None
         and not again
         and not worth_asking_again(
-            stored, text_now=bool(observation.blurb or observation.keywords)
+            stored,
+            text_now=bool(observation.blurb or observation.keywords),
+            sample_now=bool(observation.sample_url),
         )
     ):
         return ""
     try:
-        portrait = portrayer.portray_find(observation)
+        if stored is not None and not again and stored.with_text:
+            # Mit demselben Text noch einmal zu fragen brächte dasselbe: gleich
+            # die zweite Stufe.
+            portrait = portrayer.with_sample(observation, stored)
+            if portrait is stored:
+                return ""
+        else:
+            portrait = portrayer.portray_find(observation)
     except PortrayalUnavailable as exc:
         # Das Tor scheitert nie zu (ADR 7): der Grund wird genannt, das Buch
         # bleibt sichtbar und unbeschrieben.

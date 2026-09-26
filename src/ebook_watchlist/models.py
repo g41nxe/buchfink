@@ -109,6 +109,9 @@ class Observation:
     original_title: str | None = None
     #: Der Verlag, von der Detailseite oder aus der DNB (#28).
     publisher: str | None = None
+    #: Die Leseprobe als EPUB, wo die Detailseite eine verlinkt — nur für die
+    #: zweite Stufe, wenn ein Buch trotz Klappentext unbekannt bleibt (#76).
+    sample_url: str | None = None
 
     @property
     def key(self) -> tuple[str, str]:

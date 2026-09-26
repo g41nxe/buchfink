@@ -346,6 +346,13 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         else None
     )
 
+    if portrayer is not None:
+        # Die zweite Stufe (#76): unbekannt trotz Klappentext, dann einmal mit
+        # dem Anfang der Leseprobe, sofern der Shop eine verlinkt.
+        from .sample import fetcher
+
+        portrayer.samples = fetcher(HttpClient(user_agent=build_user_agent(settings.contact)))
+
     kept, report = gate.apply(
         deltas,
         store=store,

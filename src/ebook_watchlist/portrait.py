@@ -198,9 +198,12 @@ class Portrait:
     #: einer Zeile aus der Zeit davor. Ein „unbekannt“ ohne Text sagt etwas über
     #: den fehlenden Text, nicht über das Buch (siehe ``worth_asking_again``).
     with_text: bool | None = None
+    #: Ob beim Fragen der Anfang der Leseprobe beilag (#76): die zweite Stufe,
+    #: wenn ein Buch trotz Klappentext unbekannt blieb. Einmal, nie wieder.
+    with_sample: bool | None = None
 
 
-def worth_asking_again(portrait: Portrait, *, text_now: bool) -> bool:
+def worth_asking_again(portrait: Portrait, *, text_now: bool, sample_now: bool = False) -> bool:
     """Ob ein gespeicherter Steckbrief noch einmal gefragt werden darf.
 
     Nur ein **unbekanntes** Buch, das ohne Text beschrieben wurde, und nur, wenn
@@ -210,8 +213,15 @@ def worth_asking_again(portrait: Portrait, *, text_now: bool) -> bool:
     zweiter Versuch mit demselben Text brächte dasselbe und kostete einen
     Aufruf. Eine Zeile aus der Zeit vor diesem Vermerk (``None``) gilt als ohne
     Text beschrieben.
+
+    Mit Text unbekannt geblieben, darf es genau einmal noch mit der Leseprobe
+    gefragt werden, sobald eine da ist (#76).
     """
-    return not portrait.known and portrait.with_text is not True and text_now
+    if portrait.known:
+        return False
+    if portrait.with_text is not True:
+        return text_now
+    return portrait.with_sample is not True and sample_now
 
 
 def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> Vocabulary:
@@ -430,10 +440,29 @@ def fingerprint(vocabulary: Vocabulary) -> str:
 _FINGERPRINTS: dict[int, tuple[Vocabulary, str]] = {}
 
 
-def prompt(title: str, author: str | None, blurb: str | None, vocabulary: Vocabulary) -> str:
+#: Was mit der Leseprobe beiliegt (#76). Im Buchteil, nicht in der festen
+#: Anweisung: deren Fingerabdruck entscheidet, ob ein gespeicherter Steckbrief
+#: noch gilt, und eine Änderung dort machte jeden alt.
+SAMPLE_NOTE = (
+    "Leseprobe (der Anfang des Buchs; was du nur aus ihr weißt, belegst du mit "
+    '"leseprobe"; auch hier keine Spoiler): '
+)
+#: Womit ein Merkmal belegt sein darf, wenn eine Leseprobe beilag.
+EVIDENCE_WITH_SAMPLE = (*EVIDENCE, "leseprobe")
+
+
+def prompt(
+    title: str,
+    author: str | None,
+    blurb: str | None,
+    vocabulary: Vocabulary,
+    sample: str | None = None,
+) -> str:
     buch = [f"Titel: {title}", f"Autor: {author or '(nicht angegeben)'}"]
     if blurb:
         buch.append(f"Klappentext: {blurb}")
+    if sample:
+        buch.append(SAMPLE_NOTE + sample)
     return TEMPLATE.format(vokabular=vocabulary.prompt_text(), buch="\n".join(buch))
 
 
@@ -471,7 +500,9 @@ def _json_object(text: str):
             raise PortrayalUnavailable(f"Antwort ist kein gültiges JSON: {exc}") from exc
 
 
-def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
+def parse_answer(
+    text: str, vocabulary: Vocabulary, evidence: tuple[str, ...] = EVIDENCE
+) -> Portrait:
     """Die Antwort des Modells als Steckbrief, mit den Regeln daneben geprüft.
 
     Ein Merkmal außerhalb des Vokabulars wird nicht übernommen, sondern
@@ -509,7 +540,7 @@ def parse_answer(text: str, vocabulary: Vocabulary) -> Portrait:
             if vocabulary.is_pattern(term_id) != soll_muster:
                 verstoesse.append(f"in der falschen Liste: {term_id}")
             beleg = str(eintrag.get("beleg") or "").strip()
-            if beleg not in EVIDENCE:
+            if beleg not in evidence:
                 verstoesse.append(f"ungültiger Beleg bei {term_id}: {beleg or '(keiner)'}")
             # Ein Gewicht trägt nur ein Merkmal; bei einem Muster wird es nicht
             # gefragt und nicht gelesen (#62). Ein fehlendes oder fremdes Wort

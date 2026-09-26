@@ -111,6 +111,7 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             keywords=item.keywords,
             publisher=item.publisher,
             pages=item.pages or observation.pages,
+            sample_url=item.sample_url,
         )
         geholt[observation.key] = voller
         # Auch der Umfang kommt ins Journal: der Stapel liest die letzte

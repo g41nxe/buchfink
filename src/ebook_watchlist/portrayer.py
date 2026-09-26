@@ -20,7 +20,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
@@ -28,6 +28,8 @@ import requests
 
 from .models import Observation
 from .portrait import (
+    EVIDENCE,
+    EVIDENCE_WITH_SAMPLE,
     MAX_TOKENS,
     Portrait,
     PortrayalUnavailable,
@@ -236,11 +238,39 @@ class Portrayer:
     channel: Channel
     vocabulary: Vocabulary
     batch_size: int = BATCH_SIZE
+    #: Holt den Anfang einer Leseprobe zu ihrer Adresse, oder nichts (#76).
+    #: Ohne ihn gibt es keine zweite Stufe.
+    samples: Callable[[str], str | None] | None = None
 
-    def portray(self, title: str, author: str | None, blurb: str | None) -> Portrait:
+    def portray(
+        self, title: str, author: str | None, blurb: str | None, sample: str | None = None
+    ) -> Portrait:
         """Einmal fragen, die Antwort lesen."""
-        answer = self.channel.ask(prompt(title, author, blurb, self.vocabulary), MAX_TOKENS)
-        return replace(parse_answer(answer, self.vocabulary), with_text=bool(blurb))
+        answer = self.channel.ask(
+            prompt(title, author, blurb, self.vocabulary, sample), MAX_TOKENS
+        )
+        evidence = EVIDENCE_WITH_SAMPLE if sample else EVIDENCE
+        return replace(
+            parse_answer(answer, self.vocabulary, evidence),
+            with_text=bool(blurb),
+            with_sample=bool(sample) or None,
+        )
+
+    def with_sample(self, observation: Observation, portrait: Portrait) -> Portrait:
+        """Die zweite Stufe (#76): unbekannt trotz Text, und der Shop hat eine
+        Leseprobe — dann genau einmal noch mit ihrem Anfang fragen.
+
+        Ohne Probe, oder wenn sie sich nicht lesen lässt, bleibt es beim ersten
+        Steckbrief: nichts wird erfunden.
+        """
+        if portrait.known or not portrait.with_text or portrait.with_sample:
+            return portrait
+        if self.samples is None or not observation.sample_url:
+            return portrait
+        text = self.samples(observation.sample_url)
+        if not text:
+            return portrait
+        return self.portray(*self._book(observation), sample=text)
 
     @staticmethod
     def _book(observation: Observation) -> tuple[str, str | None, str | None]:
@@ -260,8 +290,8 @@ class Portrayer:
         return title, observation.author, blurb
 
     def portray_find(self, observation: Observation) -> Portrait:
-        """Einen Fund beschreiben (#48)."""
-        return self.portray(*self._book(observation))
+        """Einen Fund beschreiben (#48), wenn nötig mit der Leseprobe (#76)."""
+        return self.with_sample(observation, self.portray(*self._book(observation)))
 
     def portray_finds(
         self, observations: Sequence[Observation]
@@ -287,9 +317,11 @@ class Portrayer:
                 )
                 for number, portrait in parse_many(answer, self.vocabulary, len(chunk)).items():
                     book = chunk[number - 1]
-                    results[book.key] = replace(
-                        portrait, with_text=bool(self._book(book)[2])
-                    )
+                    portrait = replace(portrait, with_text=bool(self._book(book)[2]))
+                    try:
+                        results[book.key] = self.with_sample(book, portrait)
+                    except PortrayalUnavailable:
+                        results[book.key] = portrait
             except PortrayalUnavailable:
                 continue
         return results

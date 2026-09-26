@@ -355,3 +355,45 @@ def _stamp() -> str:
     from ebook_watchlist.portrait import fingerprint, load_vocabulary
 
     return fingerprint(load_vocabulary())
+
+
+def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
+    client: TestClient, db: Store, monkeypatch
+) -> None:
+    """Unbekannt trotz Klappentext: der Knopf fragt einmal mit der Leseprobe (#76)."""
+    import json as _json
+    from dataclasses import replace
+
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.portrait import Portrait, fingerprint, load_vocabulary
+    from ebook_watchlist.web import book as book_view
+
+    observation = fund(db)
+    give_profile(db)
+    wort = load_vocabulary()
+    db.put_portrait(subject_of(observation),
+                    Portrait(known=False, fingerprint=fingerprint(wort), with_text=True),
+                    now=datetime(2026, 9, 26, 12, 0))
+    gefragt = []
+
+    class Kanal:
+        def ask(self, text, max_tokens=2000):
+            gefragt.append(text)
+            return _json.dumps({"bekannt": True, "titel": "T", "autor": "A", "genre": "Horror",
+                                "untergenre": "x", "pitch": "Ein Pitch.",
+                                "merkmale": [{"id": "gritty", "satz": "S.", "beleg": "leseprobe",
+                                              "gewicht": "praegend"}], "erzaehlmuster": []})
+
+    monkeypatch.setattr(book_view, "build_portrayer", portrayer_via(Kanal()))
+    monkeypatch.setattr(book_view, "sample_fetcher", lambda settings: lambda url: "Der Anfang.")
+    monkeypatch.setattr(book_view, "gather_evidence",
+                        lambda store, settings, obs, sources: [
+                            replace(o, sample_url="https://x.invalid/p.epub") for o in obs])
+
+    fehler = book_view.portray_observation(db, load_settings(), observation,
+                                           now=datetime(2026, 9, 27))
+    assert fehler == ""
+
+    stored = db.portrait(subject_of(observation), fingerprint(wort))
+    assert stored.known and stored.with_sample
+    assert len(gefragt) == 1 and "Der Anfang." in gefragt[0]

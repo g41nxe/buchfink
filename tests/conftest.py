@@ -318,6 +318,8 @@ def keine_belege_von_draussen(monkeypatch: pytest.MonkeyPatch) -> None:
     from ebook_watchlist.web import book
 
     monkeypatch.setattr(book, "evidence_sources", lambda settings, store: [])
+    # Die Leseprobe als zweite Stufe (#76) holt in Tests nichts.
+    monkeypatch.setattr(book, "sample_fetcher", lambda settings: lambda url: None)
 
 
 @pytest.fixture(autouse=True)

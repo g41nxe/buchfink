@@ -649,3 +649,15 @@ def test_a_book_the_answer_skips_is_simply_missing() -> None:
 def test_an_answer_without_json_fails_the_batch_but_raises_cleanly() -> None:
     with pytest.raises(PortrayalUnavailable):
         parse_many("Dazu kann ich nichts sagen.", load_vocabulary(), 2)
+
+
+def test_an_unknown_book_is_asked_again_once_a_sample_is_there() -> None:
+    """Unbekannt trotz Text: einmal noch mit der Leseprobe, nie wieder danach (#76)."""
+    from ebook_watchlist.portrait import Portrait, worth_asking_again
+
+    mit_text = Portrait(known=False, fingerprint="x", with_text=True)
+    mit_probe = Portrait(known=False, fingerprint="x", with_text=True, with_sample=True)
+
+    assert worth_asking_again(mit_text, text_now=True, sample_now=True)
+    assert not worth_asking_again(mit_text, text_now=True, sample_now=False)
+    assert not worth_asking_again(mit_probe, text_now=True, sample_now=True)

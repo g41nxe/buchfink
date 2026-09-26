@@ -238,3 +238,15 @@ def test_an_observation_keeps_its_page_count(store) -> None:
 
     (found,) = store.latest_discoveries("test")
     assert found.pages == 48
+
+
+def test_a_portrait_remembers_whether_a_sample_went_along(store) -> None:
+    from datetime import datetime
+
+    from ebook_watchlist.portrait import Portrait
+
+    store.put_portrait("item:beam:697", Portrait(known=False, fingerprint="x", with_text=True,
+                                                 with_sample=True),
+                       now=datetime(2026, 9, 26, 12, 0))
+
+    assert store.portrait("item:beam:697", "x").with_sample is True

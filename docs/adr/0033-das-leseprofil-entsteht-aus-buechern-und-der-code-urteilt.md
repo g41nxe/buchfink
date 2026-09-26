@@ -318,3 +318,15 @@ Code.
 > nehmen. An synthetischen Leserinnen fiel mit MultiNeg die Ausbeute, je mehr
 > Bücher sie bewerteten: ein einziges enttäuschendes Buch lehnte jede Familie
 > voll ab, die es mit den gemochten teilt (Methode, Abschnitt 13).
+
+> **Nachtrag vom 26.09.2026: die Leseprobe als zweite Stufe (#76).** Kommt ein
+> Buch trotz Klappentext als „unbekannt" zurück und verlinkt der Shop eine
+> Leseprobe, fragt der `Portrayer` genau einmal mit ihrem Anfang nach (800
+> Wörter, rund 5 000 Zeichen). Die Probe steht im Buchteil der Anfrage, nicht in
+> der festen Anweisung: der Fingerabdruck bleibt, kein Steckbrief veraltet.
+> `leseprobe` gilt als Beleg nur, wenn eine beilag; der Steckbrief merkt sich
+> das (`with_sample`), damit nicht wieder gefragt wird. Gemessen an *Auris*: der
+> Prompt wächst um rund 1 350 Tokens (etwa ein Sechstel), 26 Sekunden, acht
+> Merkmale, beide Belegarten, kein Verstoß. Die unbekannten und dünnen Funde
+> im Stapel (*Maddrax 697*, *Gespenster-Krimi 209*) sind Hefte ohne Probe; für
+> sie ändert sich nichts. Eine Drosselung beim Holen stoppt nur die Proben.
