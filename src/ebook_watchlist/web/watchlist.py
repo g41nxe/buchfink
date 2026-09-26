@@ -14,6 +14,7 @@ from datetime import datetime
 from ..config import Settings
 from ..deals import is_strong_deal
 from ..judging import load_judge
+from ..language import is_other_language, language_name
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
 from ..ratings import book_subject, subject_of
@@ -74,6 +75,13 @@ class SourceState:
     #: es um Identitaet, nicht um ein Angebot (Ticket 41).
     candidates: tuple = ()
     rejected: tuple = ()
+    #: Die Sprache der angenommenen Ausgabe, wo die Quelle sie nennt (#77).
+    language: str | None = None
+
+    @property
+    def is_found(self) -> bool:
+        """Ob diese Quelle das Buch fuehrt — automatisch oder von Hand."""
+        return self.outcome in (LinkOutcome.LINKED, LinkOutcome.CONFIRMED)
 
     @property
     def is_question(self) -> bool:
@@ -191,6 +199,11 @@ class Entry:
     #: und der wird nur beim Anlegen gesetzt — ein Pausieren und Fortsetzen
     #: macht einen alten Eintrag also nicht zu einem neuen (#37).
     added_at: datetime | None = None
+    #: Welche Quelle das Buch in einer Sprache fuehrt, die keine des Profils
+    #: ist, als ``(Quelle, Sprache)`` — "OverDrive", "englisch" (#77). Ein
+    #: Watchlist-Titel wird auch ohne Sprachfilter gesucht, und "ausleihbar"
+    #: hiesse sonst stillschweigend: auf Deutsch.
+    other_languages: tuple[tuple[str, str], ...] = ()
 
     @property
     def is_bundle(self) -> bool:
@@ -488,6 +501,7 @@ def entries(
                 display=registry.label(settings, link.source),
                 candidates=_candidates(_details(link), link.url, rejected=False),
                 rejected=_candidates(_details(link), link.url, rejected=True),
+                language=_details(link).get("language"),
             )
             for link in sources.get(book.id, ())
         )
@@ -509,6 +523,11 @@ def entries(
                 sources=states,
                 latest=tuple(latest.get(book.id, ())),
                 known_missing=details.get("known_missing"),
+                other_languages=tuple(
+                    (state.display, language_name(state.language))
+                    for state in states
+                    if state.is_found and is_other_language(state.language, settings)
+                ),
                 stars=verdict.stars if verdict else None,
                 percent=verdict.percent if verdict else None,
                 pitch=(verdict.pitch or None) if verdict else None,

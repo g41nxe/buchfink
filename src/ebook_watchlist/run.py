@@ -37,6 +37,7 @@ from .diff import compute_deltas, keys_of, suppress_unseeded_interests
 from .digest import GateNote, build_digest
 from .dismissals import dismissed_books
 from .dismissals import resolve as resolve_dismissals
+from .dnb import Dnb, OriginalTitles
 from .evidence import gather as gather_evidence
 from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
@@ -225,7 +226,9 @@ def _cleaned(observation: Observation) -> Observation:
     return replace(observation, blurb=blurb)
 
 
-def _ask_the_library(store: Store, client: HttpClient, settings: Settings) -> None:
+def _ask_the_library(
+    store: Store, client: HttpClient, settings: Settings, *, spent: int = 0
+) -> None:
     """Die DNB nach dem fragen, was keine Quelle sagt (Ticket 42).
 
     Einmal je ISBN und höchstens ``dnb_budget`` je Lauf. Der Rückstand von
@@ -239,10 +242,12 @@ def _ask_the_library(store: Store, client: HttpClient, settings: Settings) -> No
 
     Läuft **hinter** dem Snapshot, wie die Titelbilder: eine unerreichbare
     Bibliothek darf keine Geschichte kosten.
-    """
-    from .dnb import Dnb
 
-    offen = store.isbns_without_dnb(settings.slug, settings.dnb_budget)
+    ``spent`` ist, was die Zuordnung der Watchlist-Titel schon gefragt hat
+    (#77): ein Budget je Lauf, nicht eines je Stelle.
+    """
+    rest = settings.dnb_budget - spent
+    offen = store.isbns_without_dnb(settings.slug, rest) if rest > 0 else []
     if not offen:
         _series_from_dnb(store)
         return
@@ -965,6 +970,12 @@ def _run(
             for table in (configured.author_interests, configured.thema_interests)
             for row in table.values()
         },
+        # Der Originaltitel einer uebersetzten Ausgabe, fuer Watchlist-Titel
+        # in der Originalsprache (#77) — aus demselben Budget wie das
+        # Nachschlagen hinter dem Snapshot.
+        original_titles=OriginalTitles(
+            store, Dnb(client=client), budget=settings.dnb_budget, now=started_at
+        ),
     )
     observations, failures = _collect(sources, settings, watchlist, context)
     failures = [*probe_failures, *failures]
@@ -1003,7 +1014,7 @@ def _run(
     fetch_for_books(store, client, observations)
     _record_foreign_ratings(store, observations)
     fetch_for_candidates(store, settings.slug, client)
-    _ask_the_library(store, client, settings)
+    _ask_the_library(store, client, settings, spent=context.original_titles.spent)
 
     # Hinter der DNB-Abfrage, denn erst jetzt ist die Sprache neuer Funde
     # bekannt — und vor dem Tor, damit ein fremdsprachiger Fund kein Urteil

@@ -348,6 +348,66 @@ def test_picking_a_candidate_records_that_a_human_decided(
     assert link.url == "https://beam.invalid/1"
 
 
+def test_an_edition_in_another_language_is_marked_on_the_row(
+    client: TestClient, db: Store
+) -> None:
+    """Abnahme #77: ein englischer Titel, den die Bibliothek nur auf Englisch
+    führt, wird gefunden — und als englisch gekennzeichnet. Sonst hielte die
+    Leserin „ausleihbar" für die deutsche Ausgabe."""
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "overdrive", outcome=str(LinkOutcome.LINKED), url="https://od.invalid/1",
+        resolved_at=NOW, language="eng",
+    )
+
+    body = client.get("/watchlist").text
+
+    assert "englisch" in body
+
+
+def test_a_german_edition_carries_no_language_mark(client: TestClient, db: Store) -> None:
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "overdrive", outcome=str(LinkOutcome.LINKED), url="https://od.invalid/1",
+        resolved_at=NOW, language="ger",
+    )
+
+    entry = view.entries(db, load_settings())[0]
+
+    assert entry.other_languages == ()
+
+
+def test_an_open_question_marks_no_language(db: Store) -> None:
+    """Gekennzeichnet wird die Ausgabe, die gilt — nicht eine, die zur Wahl steht."""
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "overdrive", outcome=str(LinkOutcome.UNSURE), url="https://od.invalid/1",
+        resolved_at=NOW, language="eng",
+    )
+
+    assert view.entries(db, load_settings())[0].other_languages == ()
+
+
+def test_confirming_an_english_candidate_keeps_its_language(
+    client: TestClient, db: Store
+) -> None:
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "overdrive", outcome=str(LinkOutcome.UNSURE), resolved_at=NOW,
+        candidates=[{"title": "Scythe", "author": "Neal Shusterman",
+                     "url": "https://od.invalid/1", "cover_url": None, "language": "eng"}],
+    )
+
+    client.post(
+        f"/watchlist/{book.id}/assign",
+        data={"source": "overdrive", "url": "https://od.invalid/1", "action": "confirm"},
+    )
+
+    details = db.get_book_source(book.id, "overdrive").details
+    assert '"outcome": "confirmed"' in details
+    assert '"language": "eng"' in details
+
+
 # --- die Zusammenstellung fuer sich ----------------------------------------
 
 

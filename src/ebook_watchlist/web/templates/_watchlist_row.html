@@ -30,6 +30,13 @@
     <span class="rounded bg-amber/15 px-1.5 py-0.5 text-xs font-medium text-amber"
           title="Mehrere Bände in einer Ausgabe">Sammelausgabe</span>
     {% endif %}
+    {# Ein Watchlist-Titel wird auch ohne Sprachfilter gesucht (#77). Führt
+       eine Quelle ihn nur in einer anderen Sprache, sagt es die Zeile —
+       „ausleihbar" hieße sonst stillschweigend: auf Deutsch. #}
+    {% for display, language in entry.other_languages %}
+    <span class="rounded bg-rule/40 px-1.5 py-0.5 text-xs font-medium text-soft"
+          title="Die Ausgabe bei {{ display }} ist {{ language }}">{{ language }}</span>
+    {% endfor %}
     {% endset %}
 
     {% set under_author %}

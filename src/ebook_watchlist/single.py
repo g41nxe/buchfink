@@ -33,6 +33,7 @@ from .config import Settings, WatchlistEntry, load_settings
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
 from .covers import fetch_for_books, fetch_for_candidates
+from .dnb import Dnb, OriginalTitles
 from .http import HttpClient, build_user_agent
 from .models import Observation
 from .sources import build_sources
@@ -118,7 +119,17 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
 
     try:
         run_id = store.start_run(settings.slug, ENTRY_TRIGGER, now, pid=os.getpid())
-        context = RunContext(profile_slug=settings.slug, store=store, now=now)
+        context = RunContext(
+            profile_slug=settings.slug,
+            store=store,
+            now=now,
+            # Wie im Rundgang: ein Titel in der Originalsprache findet die
+            # uebersetzte Ausgabe ueber die DNB (#77). Mit demselben Budget —
+            # der enge Lauf fragt ohnehin hoechstens die Karten eines Titels.
+            original_titles=OriginalTitles(
+                store, Dnb(client=client), budget=settings.dnb_budget, now=now
+            ),
+        )
         for source in enabled:
             try:
                 found.extend(source.watch([entry], context))

@@ -175,6 +175,112 @@ def test_the_query_carries_title_and_surname() -> None:
     assert params["language"] == "de"
 
 
+# --- Sprache bei einem benannten Titel (#77) --------------------------------
+
+
+class ScriptedClient:
+    """Antwortet der Reihe nach; die letzte Antwort gilt für alles Weitere."""
+
+    def __init__(self, *texts: str) -> None:
+        self.texts = list(texts)
+        self.requests: list[tuple[str, dict | None]] = []
+
+    def get(self, url: str, params: dict | None = None) -> str:
+        self.requests.append((url, params))
+        return self.texts.pop(0) if len(self.texts) > 1 else self.texts[0]
+
+
+def karte(title: str, author: str, isbn: str, title_id: str, language: str) -> dict:
+    """Eine Trefferkarte in der Gestalt der aufgezeichneten, mit anderen Werten.
+
+    Die Suche nach *Scythe* wurde am 25.09.2026 nur im Browser nachgestellt,
+    nicht aufgezeichnet — die Karte ist deshalb der aufgezeichneten nachgebaut
+    statt erfunden.
+    """
+    item = json.loads(fixture("search-hits.json"))["items"][0]
+    for format_ in item["formats"]:
+        if format_.get("isbn"):
+            format_["isbn"] = isbn
+    names = {"en": "English", "de": "German"}
+    return item | {
+        "id": title_id,
+        "title": title,
+        "sortTitle": title,
+        "firstCreatorName": author,
+        "languages": [{"id": language, "name": names.get(language, language)}],
+    }
+
+
+def antwort(*karten: dict) -> str:
+    return json.dumps({"items": list(karten), "totalItems": len(karten)})
+
+
+@pytest.fixture
+def context(store):
+    from datetime import datetime
+
+    from ebook_watchlist.sources.base import RunContext
+
+    return RunContext(profile_slug="test", store=store, now=datetime(2026, 9, 26, 6, 0))
+
+
+SCYTHE = WatchlistEntry(title="Scythe", author="Neal Shusterman")
+ENGLISCH = karte("Scythe", "Neal Shusterman", "9781442472426", "1911111", "en")
+
+
+def test_a_card_says_which_language_it_is_in() -> None:
+    gefunden = parse.parse_search(antwort(ENGLISCH))
+
+    assert gefunden[0].language == "eng"
+    # Die aufgezeichnete Karte ist deutsch.
+    assert parse.parse_search(fixture("search-hits.json"))[0].language == "ger"
+
+
+def test_a_named_title_is_searched_once_more_in_every_language(context) -> None:
+    """Abnahme: ein englischer Titel, den die Bibliothek nur auf Englisch
+    führt, wird gefunden. Der Sprachfilter ist für Funde richtig, für einen
+    Titel, den die Leserin selbst benannt hat, nicht (#10, #77)."""
+    quelle = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json"),
+                                                   antwort(ENGLISCH)))
+
+    linked = quelle.linked_entry(SCYTHE, context)
+
+    assert linked.resolved_links["overdrive"] == "https://voebb.overdrive.com/media/1911111"
+    deutsch, alle = (params for _, params in quelle.client.requests)
+    assert deutsch["language"] == "de"
+    assert "language" not in alle
+    # Das Format bleibt: ein Hörbuch ist auch in jeder Sprache kein E-Book.
+    assert alle["format"] == "ebook-epub-adobe"
+
+
+def test_the_language_of_an_accepted_edition_is_remembered(context) -> None:
+    """Die Kachel soll sagen können, dass die Ausgabe englisch ist."""
+    quelle = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json"),
+                                                   antwort(ENGLISCH)))
+
+    quelle.linked_entry(SCYTHE, context)
+
+    link = context.store.get_book_source(context.book_for(SCYTHE), "overdrive")
+    assert json.loads(link.details)["language"] == "eng"
+
+
+def test_a_german_find_needs_no_second_search(context) -> None:
+    """Deutsch zuerst, wie bisher — und wenn das reicht, bleibt es dabei."""
+    quelle = OverdriveSource(client=ScriptedClient(fixture("search-hits.json")))
+
+    quelle.linked_entry(WatchlistEntry(title="Der Zeitenläufer", author="Blake Crouch"), context)
+
+    assert len(quelle.client.requests) == 1
+
+
+def test_nothing_in_any_language_is_still_an_answer(context) -> None:
+    quelle = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json")))
+
+    assert quelle.linked_entry(SCYTHE, context) is None
+    link = context.store.get_book_source(context.book_for(SCYTHE), "overdrive")
+    assert json.loads(link.details)["outcome"] == "not_found"
+
+
 # --- Prüfung ----------------------------------------------------------------
 
 

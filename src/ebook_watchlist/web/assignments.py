@@ -168,6 +168,9 @@ def confirm(store: Store, book_id: int, source: str, url: str, now) -> None:
         url=url,
         resolved_at=now,
         reason="von Hand bestätigt",
+        # Die gewaehlte Ausgabe behaelt ihre Sprache: eine englische bleibt
+        # auf der Kachel als englisch gekennzeichnet (#77).
+        **({"language": chosen["language"]} if chosen and chosen.get("language") else {}),
     )
     book = store.book(book_id)
     if book is not None and not book.cover_file and chosen:

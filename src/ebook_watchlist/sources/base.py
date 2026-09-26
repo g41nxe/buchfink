@@ -16,7 +16,8 @@ from datetime import datetime, timedelta
 
 from ..config import Settings, WatchlistEntry
 from ..dismissals import Dismissed
-from ..matching import Confidence, Resolution
+from ..dnb import OriginalTitles
+from ..matching import Confidence, Query, Resolution, by_original_title
 from ..models import Attention, LinkOutcome, Observation
 from ..store import Store
 
@@ -94,6 +95,14 @@ class RunContext:
     #: deren Titel alle schon auf der Watchlist stehen, saet nie an und
     #: flutet beim naechsten Mal erneut.
     swept: set[tuple[str, int]] = field(default_factory=set)
+    #: Wo der Originaltitel einer uebersetzten Ausgabe nachzuschlagen ist
+    #: (#77). Der Lauf gibt eine mit, die die DNB fragen darf; ohne sie
+    #: antwortet nur, was schon in ``dnb_record`` steht — es wird dann keine
+    #: einzige Anfrage gestellt.
+    original_titles: OriginalTitles | None = None
+
+    def original_title_lookup(self) -> OriginalTitles:
+        return self.original_titles or OriginalTitles(self.store)
 
     def is_dismissed(self, observation: Observation) -> bool:
         """Whether this find is a book the reader has waved away for good.
@@ -154,6 +163,9 @@ class RunContext:
             url=str(accepted.payload) if accepted else None,
             resolved_at=self.now,
             reason=resolution.reason,
+            # In welcher Sprache die angenommene Ausgabe ist, wo die Quelle es
+            # sagt — die Kachel kennzeichnet eine fremdsprachige (#77).
+            **({"language": accepted.language} if accepted and accepted.language else {}),
             # Titel und Autor:in *so, wie diese Quelle sie schreibt* — daran
             # bleibt eine falsche automatische Zuordnung sichtbar (ADR 9).
             matched_title=best.candidate.title if best else None,
@@ -172,6 +184,9 @@ class RunContext:
                     "author": kandidat.author,
                     "url": str(kandidat.payload) if kandidat.payload else None,
                     "cover_url": kandidat.cover_url,
+                    # Bestaetigt die Leserin diese Ausgabe, erbt die
+                    # Zuordnung ihre Sprache (#77).
+                    "language": kandidat.language,
                 }
                 for kandidat in resolution.indistinguishable
             ]
@@ -241,6 +256,16 @@ class ResolvingSource(Source):
         """Search for ``entry``. ``None`` means a genuine "not in this catalogue"."""
         return None
 
+    def resolve_in_any_language(self, entry: WatchlistEntry) -> Resolution | None:
+        """Dieselbe Suche ohne Sprachfilter — fuer eine Quelle, die einen hat (#77).
+
+        Ein Watchlist-Titel ist nie fremd, gleich in welcher Sprache (#10).
+        Eine Quelle, die sonst nur deutsche Ausgaben sucht, sucht deshalb ein
+        zweites Mal, wenn die deutsche Suche nichts angenommen hat. Wer keinen
+        Filter hat, hat nichts nachzuholen.
+        """
+        return None
+
     def wants(self, entry: WatchlistEntry) -> bool:
         """Ob dieser Eintrag an dieser Art Quelle geprueft werden soll.
 
@@ -286,7 +311,7 @@ class ResolvingSource(Source):
         if still_valid:
             return None  # we looked recently and came up empty; don't ask again
 
-        resolution = self.resolve(entry)
+        resolution = self._resolved(entry, context)
         if resolution is None:
             # Not in the catalogue at all. Remember that, quietly.
             context.remember_absence(self.name, entry, "not in this catalogue")
@@ -305,6 +330,43 @@ class ResolvingSource(Source):
         return dataclasses.replace(
             entry, resolved_links={**entry.resolved_links, self.name: str(accepted.payload)}
         )
+
+    def _resolved(self, entry: WatchlistEntry, context: RunContext) -> Resolution | None:
+        """Die Zuordnung in drei Stufen, die billigste zuerst (#77).
+
+        1. Die Suche der Quelle, wie bisher — deutsch, wo sie filtert.
+        2. Bleibt der Titel unaufgeloest, der **Originaltitel** der Kandidaten
+           mit derselben Autor:in, aus der DNB. Das findet *Die Hueter des
+           Todes* zu *Scythe*. Stimmt der Titel schon, wird nichts gefragt.
+        3. Ist dann noch nichts angenommen, dieselbe Suche **ohne
+           Sprachfilter** — die englische Ausgabe, wenn die Bibliothek nur
+           die fuehrt.
+
+        Deutsch geht vor: eine uebersetzte Ausgabe, die ueber den Originaltitel
+        angenommen wird, beendet die Suche, bevor nach der englischen gefragt
+        wird.
+        """
+        resolution = self.resolve(entry)
+        if resolution is not None:
+            resolution = by_original_title(
+                Query(title=entry.title, author=entry.author, identifier=entry.isbn),
+                resolution,
+                context.original_title_lookup(),
+            )
+        if resolution is not None and resolution.accepted is not None:
+            return resolution
+
+        wider = self.resolve_in_any_language(entry)
+        if wider is None:
+            return resolution
+        if resolution is None or _certainty(wider) > _certainty(resolution):
+            return wider
+        return resolution
+
+
+def _certainty(resolution: Resolution) -> int:
+    """Angenommen vor Frage vor nichts — bei Gleichstand bleibt die erste Suche."""
+    return {Confidence.AUTO_ACCEPT: 2, Confidence.PROVISIONAL: 1}.get(resolution.confidence, 0)
 
 
 class LibrarySource(ResolvingSource):

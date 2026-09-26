@@ -55,3 +55,21 @@ translation drift.
 - False positives stay out of notifications (provisional until confirmed).
 - After first confirmation, a title's lookup is exact and cheap.
 - `rapidfuzz` is a dependency.
+
+## Nachtrag (#77): der Originaltitel
+
+*Scythe* von Neal Shusterman stand bei OverDrive und im Shop als *Die Hüter
+des Todes* im Ergebnis — Titelwert 29, kein Treffer, obwohl die Autorin bei
+allen fünf Karten stimmte. Die Autor:in bestätigt weiterhin nur einen Titel,
+der schon passt. Neu ist ein **zweiter Titel**, gegen den verglichen wird: der
+Originaltitel, den die DNB zur ISBN einer Übersetzung kennt
+(`matching.by_original_title`).
+
+- Gefragt wird nur für Einträge, die sonst unaufgelöst blieben, nur für
+  Karten mit bestätigt gleicher Autor:in und ISBN, und nie ohne Autor:in am
+  Eintrag. Ein Titel, der schon passt, kostet keine DNB-Anfrage.
+- Dieselben Schwellen wie beim Titel: ab 95 angenommen, zwischen 85 und 95
+  eine Frage. Zwei verschiedene ISBNs mit diesem Originaltitel sind immer eine
+  Frage; dieselbe ISBN auf zwei Karten ist ein Buch.
+- Eine Karte, die einen späteren Band nennt, wird nicht gefragt, und ein
+  Originaltitel, der nur die Reihe nennt, trifft den Bandtitel nicht.
