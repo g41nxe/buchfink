@@ -58,12 +58,14 @@
     {% endif %}
     {% endfor %}
   </ul>
-  {# Das Buch über deiner Geschmacksform (#79): wo es über die Form hinausragt,
-     ist es fremd; wo es in eine Einbuchtung ragt, spricht etwas dagegen. #}
+  {# Das Buch über deiner Geschmacksform (#79): seine Spur außen zeigt, was es
+     trägt; liegt sie an einem Balken nach innen, spricht das dagegen.
+     Untereinander, nicht nebeneinander: die Namen an 44 Speichen brauchen die
+     Breite (Recherche zur Spinne, 26.09.2026). #}
   {% if fit.spiders %}
   {% from "_spider.html" import spider, legend %}
   <div class="mt-4">
-    <div class="grid gap-4 lg:grid-cols-2">
+    <div class="grid gap-6">
       {% for s in fit.spiders %}{{ spider(s) }}{% endfor %}
     </div>
     {{ legend(with_book=true, unknown=fit.unknown) }}

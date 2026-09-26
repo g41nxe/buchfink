@@ -123,10 +123,10 @@
     {% endif %}
     {% endset %}
     {% call card("Geschmacksform", "ic-radar",
-                 sub="Gelernt aus deinen Büchern; was du angetippt hast, war der Anfang.",
+                 sub="Jede Familie an ihrem Platz, gelernt aus deinen Büchern.",
                  extra=switch) %}
       {% for s in view.spiders %}
-      <div x-show="spiderTab === {{ loop.index }}" {{ '' if loop.first else 'x-cloak' }}>{{ spider(s, caption=false, width="max-w-lg") }}</div>
+      <div x-show="spiderTab === {{ loop.index }}" {{ '' if loop.first else 'x-cloak' }}>{{ spider(s, caption=false) }}</div>
       {% endfor %}
       {{ legend(sides=true, classes="mt-3 border-t border-hair pt-3") }}
     {% endcall %}

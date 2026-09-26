@@ -530,15 +530,38 @@ Discovery came in.
 *deutsch: Geschmacksform*
 
 *In the code since 26.09.2026 (`taste_form.py`, #79).* The reader's
-taste as a shape over the axes of the vocabulary (Appeal Terms and Story
-Patterns), like a spider graph (*Spinne*): on a dashed ring where she is
-indifferent, outward where she likes something, inward where she rejects it;
-a family she has said nothing about gets no axis. Drawn on the profile page as
-two spiders (Appeal Terms and Story Patterns, at most twelve axes each), and on
-a book page with the book laid over it on the same scale (`web/spider.py`). How far it reaches is
+taste as a value per family of the vocabulary (Appeal Terms and Story
+Patterns), from −1 (rejected) through 0 (indifferent) to +1 (liked); a family she
+has said nothing about has no value, which is not the same as indifferent. Drawn
+as two **Spiders** (Appeal Terms and Story Patterns) on the profile page, and on
+a book page with the book laid over it. How far it reaches is
 **learned from her books** (*Mag ich* and *Doof*, weighted by each term's weight
 in the book, and her own reasons for a book she has read), with what she tapped
 or boosted as the starting value. She never states a strength herself.
+
+### Dimension
+*deutsch: Dimension*
+
+One of the five appeal factors the Appeal Terms are sorted into (pace,
+storyline, style, tone, characters; German: Tempo, Handlung, Stil, Stimmung,
+Figuren), each with the question the reader knows it by („wie es vorangeht“ …).
+In the code `Term.dimension` and `Vocabulary.dimensions`; the Story Patterns are a
+dimension of their own. An Appeal Family belongs to the dimension of its first
+member, though it may span two. **Reader-facing name: the dimension's own name**
+(„Tempo“).
+
+### Spider
+*deutsch: Spinne*
+
+The drawing of a Taste Form (`web/spider.py`, since 26.09.2026 complete): one
+sector per Dimension, one fixed place per family — known or not —, and a bar per
+family from a dashed ring (*egal*) outward where it is liked and inward where it
+is rejected. An empty place with a faint name means the form knows nothing yet;
+a dot on the ring means indifferent. On a book page the book is an amber track
+outside the rim, as long as the book carries the family; what it does not carry
+steps back. Two spiders: Appeal Terms and Story Patterns. Why bars and no outline:
+[docs/research/spinne-darstellung.md](docs/research/spinne-darstellung.md).
+**Reader-facing name: none** — the page calls the figure „Geschmacksform“.
 
 ### Form Overlap
 *deutsch: Formüberdeckung*

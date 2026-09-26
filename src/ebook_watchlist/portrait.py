@@ -98,6 +98,10 @@ class Family:
     members: tuple[str, ...]
     #: Was die Familie als Ganzes heißt — nicht nur eines ihrer Merkmale.
     description: str = ""
+    #: Der Name ihres Gegenteils (``gegenteil``), falls die Datei eines nennt —
+    #: oft ein Wort, das es als Merkmal nicht gibt. Die Spinne stellt echte
+    #: Paare nebeneinander; in den Fingerabdruck geht es nicht ein.
+    opposite: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -285,7 +289,9 @@ def _parse_vocabulary(
                 )
             assigned[term_id] = name
         description = str(entry.get("beschreibung", "")).strip()
-        families.append(Family(str(entry["id"]), name, members, description))
+        opposite = entry.get("gegenteil")
+        families.append(Family(str(entry["id"]), name, members, description,
+                               str(opposite).strip() if opposite else None))
 
     if patterns_text is not None:
         _load_patterns(patterns_text, patterns_name, terms, families, dimensions)
