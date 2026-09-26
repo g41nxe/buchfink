@@ -35,6 +35,9 @@ class Verdict:
     pitch: str | None = None
     #: Die Sterne stammen von der Leserin, nicht aus der Rechnung.
     by_reader: bool = False
+    #: So nah an der Schwelle, dass ein anderer Steckbrief das Buch auf die
+    #: andere Seite legen könnte (#81).
+    borderline: bool = False
 
     def withholds(self, threshold: int) -> bool:
         return self.stars < threshold
@@ -92,6 +95,7 @@ def judge(
         percent=round(result.share * 100),
         reasons=result.reasons,
         pitch=portrait.pitch,
+        borderline=weights.is_borderline(result.share),
     )
 
 

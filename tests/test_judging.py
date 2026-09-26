@@ -183,3 +183,32 @@ def test_the_judge_reads_her_reasons_from_the_rating(store, vocabulary) -> None:
     assert swarm.sign == -1
     assert swarm.added == ("leisurely",)
     assert set(swarm.dropped) == {"nerve_racking", "big_world"}
+
+
+# --- knapp an der Schwelle (#81) -----------------------------------------------------
+
+
+def test_a_verdict_close_to_the_gate_is_borderline() -> None:
+    """Ein Steckbrief streut um etwa 7 Punkte (Versuch zu #81): ein Urteil so nah
+    an der Schwelle kann mit einem anderen Steckbrief auf der anderen Seite
+    liegen. Das wird gesagt, nicht versteckt."""
+    from ebook_watchlist.facets import load_weights
+
+    weights = load_weights()
+
+    assert weights.is_borderline(0.41) and weights.is_borderline(0.35)
+    assert not weights.is_borderline(0.50) and not weights.is_borderline(0.30)
+
+
+def test_the_verdict_says_whether_it_is_borderline() -> None:
+    from conftest import STAR_TERMS, judging_profile
+    from ebook_watchlist.facets import load_weights
+    from ebook_watchlist.judging import judge
+    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+
+    vocabulary, weights = load_vocabulary(), load_weights()
+    for stars in (1, 3, 5):
+        portrait = Portrait(known=True, fingerprint=fingerprint(vocabulary), traits=tuple(
+            Trait(t, "S.", "wissen") for t in STAR_TERMS[stars]))
+        v = judge(portrait, judging_profile(), vocabulary, weights)
+        assert v.borderline == weights.is_borderline(v.percent / 100)

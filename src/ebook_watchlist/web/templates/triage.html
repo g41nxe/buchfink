@@ -152,7 +152,7 @@
     {% endset %}
 
     {% set figures %}
-    {{ verdict_stars(item.stars, item.percent) }}
+    {{ verdict_stars(item.stars, item.percent, item.borderline) }}
     {# Der Buendelvorteil ist ein eigener Grund, hier zu stehen — weder
        Schnaeppchen noch Preissturz, sondern billiger als die Einzelbaende
        zusammen (ADR 24). #}

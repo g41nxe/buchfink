@@ -99,6 +99,8 @@ class Suggestion:
     observed_at: datetime | None = None
     #: Aus einer Liste der Bibliothek („Lucky Day"), nicht aus einem Thema.
     from_list: bool = False
+    #: Das Urteil liegt knapp an der Schwelle (#81).
+    borderline: bool = False
 
     @property
     def is_bundle(self) -> bool:
@@ -244,6 +246,7 @@ def _suggestion(
         borrowable=observation.availability is Availability.AVAILABLE,
         observed_at=observation.observed_at,
         from_list=is_library_list(observation),
+        borderline=bool(verdict and verdict.borderline),
     )
 
 

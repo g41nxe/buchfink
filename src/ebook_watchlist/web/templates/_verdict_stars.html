@@ -12,7 +12,7 @@
    Ohne Urteil steht hier nichts — null Sterne wären eine Aussage,
    „noch nicht bewertet" ist keine.
 #}
-{% macro verdict_stars(stars, percent=none) %}
+{% macro verdict_stars(stars, percent=none, borderline=false) %}
 {% if stars is not none %}
 <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
   <span class="flex items-center gap-0.5 text-gold"
@@ -27,6 +27,12 @@
   {% if percent is not none %}
   <span class="text-xs tabular-nums text-soft"
         title="Übereinstimmung mit deinem Leseprofil">{{ percent }} %</span>
+  {% endif %}
+  {# Nah an der Schwelle: ein anderer Steckbrief könnte das Buch auf die andere
+     Seite legen — gesagt statt gemittelt (#81). #}
+  {% if borderline %}
+  <span class="rounded bg-amber/15 px-1 text-xs text-amber"
+        title="Knapp an der Schwelle: ein neuer Steckbrief könnte das Buch darüber oder darunter legen">knapp</span>
   {% endif %}
 </span>
 {% endif %}

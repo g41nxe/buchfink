@@ -132,6 +132,8 @@ class Weights:
     stars_from: tuple[tuple[int, float], ...]
     #: Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19).
     gate_stars: int
+    #: So weit um die Schwelle gilt ein Urteil als knapp (#81).
+    borderline: float = 0.0
 
     def trait_weight(self, weight: str | None) -> float:
         return {"defining": self.defining, "clear": self.clear,
@@ -139,6 +141,12 @@ class Weights:
 
     def stars(self, share: float) -> int:
         return next((s for s, threshold in self.stars_from if share >= threshold - 1e-9), 1)
+
+    def is_borderline(self, share: float) -> bool:
+        """Liegt das Urteil so nah an der Schwelle des Stapels, dass ein anderer
+        Steckbrief es auf die andere Seite legen könnte? (#81)"""
+        gate = dict(self.stars_from).get(self.gate_stars)
+        return gate is not None and abs(share - gate) < self.borderline
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +211,7 @@ def load_weights(path: Path | None = None) -> Weights:
         genre_counterweight=float(section["gegengewicht_mit_genre"]),
         stars_from=tuple(tiers),
         gate_stars=int(section["tor_ab_sternen"]),
+        borderline=float(section.get("knapp_um", 0.0)),
     )
 
 

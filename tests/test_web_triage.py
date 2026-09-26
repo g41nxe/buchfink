@@ -1044,3 +1044,14 @@ def test_the_find_page_does_not_show_a_library_list_as_a_genre(
 
     assert "Lucky Day" in body and "bg-amber/15 text-amber\">Lucky Day" not in body
     assert 'href="#ic-lib"/></svg>Lucky Day' in body
+
+
+def test_a_borderline_verdict_says_knapp() -> None:
+    """Ein Urteil nah an der Schwelle trägt „knapp“ (#81) — wo immer Sterne stehen."""
+    from ebook_watchlist.web.app import TEMPLATES
+
+    render = TEMPLATES.env.from_string(
+        '{% from "_verdict_stars.html" import verdict_stars %}'
+        "{{ verdict_stars(3, 41, borderline=b) }}").render
+
+    assert "knapp" in render(b=True) and "knapp" not in render(b=False)

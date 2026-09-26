@@ -63,6 +63,12 @@ urteil_formueberdeckung:
   # Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19,
   # #48). Ein Fund ohne Urteil wird nie zurückgehalten.
   tor_ab_sternen: 3
+  # So weit streut ein einzelner Steckbrief um das Urteil (Versuch zu #81:
+  # sieben Bücher, je sechs Steckbriefe aus demselben Text). Ein Urteil so nah
+  # an der Schwelle heißt „knapp“: ein anderer Steckbrief könnte es auf die
+  # andere Seite legen. Mehrere Steckbriefe helfen kaum (25 → 21 % auf der
+  # falschen Seite bei dreifachen Kosten); deshalb wird es gesagt, nicht gemittelt.
+  knapp_um: 0.07
   # Ab welcher Übereinstimmung wie viele Sterne; darunter einer.
   sterne_ab:
     5: 0.7

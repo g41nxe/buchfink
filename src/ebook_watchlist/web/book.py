@@ -339,6 +339,8 @@ class FitView:
     unknown: int = 0
     #: Überblick, Brücke und Wasserfall (26.09.2026).
     comparison: Comparison | None = None
+    #: Knapp an der Schwelle des Stapels (#81).
+    borderline: bool = False
 
 
 def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
@@ -370,6 +372,7 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
             else 0
         ),
         comparison=compare(portrait, judge),
+        borderline=verdict.borderline,
     )
 
 

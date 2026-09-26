@@ -19,7 +19,17 @@
     <span class="rounded bg-hair px-1.5 py-0.5 text-xs tabular-nums text-soft"
           title="gegen Fassung {{ fit.version }} deines Leseprofils"
           >{{ fit.percent }}&nbsp;%</span>
+    {% if fit.borderline %}
+    <span class="rounded bg-amber/15 px-1.5 py-0.5 text-xs text-amber">knapp</span>
+    {% endif %}
   </div>
+  {% if fit.borderline %}
+  {# Gemessen (#81): ein Steckbrief streut um etwa sieben Punkte. Mehrere zu
+     mitteln half kaum; also wird es gesagt. #}
+  <p class="mt-1 max-w-prose text-xs text-soft">Knapp an der Schwelle des Stapels: Das Modell
+    beschreibt dasselbe Buch nicht jedes Mal gleich, und ein neuer Steckbrief könnte es
+    darüber oder darunter legen.</p>
+  {% endif %}
   {# Was das Buch ist, in der Farbe deines Geschmacks (26.09.2026). #}
   {% if fit.comparison %}
   {% from "_comparison.html" import summary, overview, bridge, waterfall %}

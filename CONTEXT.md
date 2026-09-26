@@ -563,6 +563,17 @@ steps back. Two spiders: Appeal Terms and Story Patterns. Why bars and no outlin
 [docs/research/spinne-darstellung.md](docs/research/spinne-darstellung.md).
 **Reader-facing name: none** — the page calls the figure „Geschmacksform“.
 
+### Borderline
+*deutsch: knapp*
+
+A verdict whose Form Overlap lies within `knapp_um` (0.07) of the gate's
+threshold (`Weights.is_borderline`, `Verdict.borderline`). A single Portrait
+scatters by about seven points; for the same book another Portrait may land on
+the other side of the gate (#81: 25 % of single Portraits near the threshold do).
+Describing a book three times and averaging only lowered that to 21 % at three
+times the cost, so the tool says it instead: the stack and the book page mark
+such a verdict „knapp“. **Reader-facing name: knapp.**
+
 ### Comparison
 *deutsch: Abgleich*
 

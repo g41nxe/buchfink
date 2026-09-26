@@ -233,7 +233,7 @@
          Spalte darueber schon sagte, sie solle ueberall dasselbe sagen — und
          der Hinweis auf die Gewissheit waere prompt an dieser einen Stelle
          gefehlt. #}
-      {% set figures %}{{ verdict_stars(item.stars, item.percent) }}{% endset %}
+      {% set figures %}{{ verdict_stars(item.stars, item.percent, item.borderline) }}{% endset %}
 
       {% set row_actions %}
       {# Ein Klick, keine Nachfrage — die Beziehung laesst sich stilllegen
