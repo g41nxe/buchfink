@@ -999,7 +999,7 @@ def _run(
     # deswegen nicht vertraut. Vorher genuegte "irgendeine Quelle", und die
     # zweite Quelle haette dieselbe Backlist noch einmal gemeldet.
     seeded = {
-        interest_id
+        (source_name, interest_id)
         for source_name, interest_id in context.swept
         if store.is_interest_seeded(interest_id, source_name)
     }

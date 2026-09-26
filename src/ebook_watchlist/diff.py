@@ -146,7 +146,7 @@ def keys_of(observations: Iterable[Observation]) -> list[tuple[str, str]]:
 def suppress_unseeded_interests(
     deltas: Sequence[Delta],
     origin: Mapping[tuple[str, str], int],
-    seeded: Container[int],
+    seeded: Container[tuple[str, int]],
 ) -> list[Delta]:
     """Erstsichtungen aus einem Interesse verschlucken, das noch nie gefegt wurde.
 
@@ -159,6 +159,10 @@ def suppress_unseeded_interests(
 
     Ein Fund ohne bekannte Herkunft wird durchgelassen: das ist ein
     Watchlist-Treffer, und der hat keine Aussaat.
+
+    ``seeded`` hält Paare aus Quelle und Interesse: angesät ist je Quelle. Mit
+    der Nummer allein galt ein Thema, das beam kannte, auch bei OverDrive als
+    angesät — und dessen erster Durchgang flutete den Tagesbericht (#74).
     """
     return [
         delta
@@ -166,5 +170,5 @@ def suppress_unseeded_interests(
         if delta.kind is not DeltaKind.FIRST_SEEN
         or delta.current.match_reason not in DISCOVERY_REASONS
         or origin.get(delta.current.key) is None
-        or origin[delta.current.key] in seeded
+        or (delta.current.source, origin[delta.current.key]) in seeded
     ]

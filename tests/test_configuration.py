@@ -146,7 +146,7 @@ def test_a_second_author_no_longer_floods(store: Store) -> None:
     deltas = [first_seen(carter), first_seen(nesbo)]
 
     # Nur Interesse 1 wurde schon einmal gefegt.
-    kept = suppress_unseeded_interests(deltas, origin, seeded={1})
+    kept = suppress_unseeded_interests(deltas, origin, seeded={("beam", 1)})
 
     assert [delta.current.source_item_id for delta in kept] == ["a"]
 

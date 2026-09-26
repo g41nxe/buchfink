@@ -82,14 +82,16 @@ def why_shown(observation: Observation) -> str:
         return f"neu von {author}, der du folgst"
 
     category_name = genre_category_name(observation.category)
-    if category_name and _is_library(observation.source):
+    library = _is_library(observation.source)
+    free = observation.availability is Availability.AVAILABLE
+    if category_name and library and "/" not in (observation.category or ""):
         # Eine Sammlung der Bibliothek ist kein Regal im Shop: was darin steht,
-        # lässt sich gleich leihen (#74) — wenn ein Exemplar frei ist.
-        if observation.availability is Availability.AVAILABLE:
-            return f"sofort ausleihbar aus „{category_name}“"
-        return f"aus „{category_name}“"
+        # lässt sich gleich leihen (#74) — wenn ein Exemplar frei ist. Eine
+        # Sammlung trägt einen Namen, ein Thema der Leserin einen Shop-Pfad.
+        return f"sofort ausleihbar aus „{category_name}“" if free else f"aus „{category_name}“"
     if category_name:
-        return f"neu im {GENRE_CATEGORY_WORD} {category_name}"
+        found = f"neu im {GENRE_CATEGORY_WORD} {category_name}"
+        return f"{found}, sofort ausleihbar" if library and free else found
     return f"neu in einem {GENRE_CATEGORY_WORD}, dem du folgst"
 
 

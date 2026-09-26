@@ -125,7 +125,7 @@ def test_a_shelf_being_followed_for_the_first_time_is_seeded_quietly() -> None:
     origin = {observation.key: 7 for observation in observations}
 
     assert suppress_unseeded_interests(deltas, origin, seeded=set()) == []
-    assert suppress_unseeded_interests(deltas, origin, seeded={7}) == deltas
+    assert suppress_unseeded_interests(deltas, origin, seeded={("beam", 7)}) == deltas
 
 
 def test_seeding_only_silences_first_sightings_not_real_changes() -> None:
@@ -152,7 +152,22 @@ def test_each_interest_is_seeded_on_its_own() -> None:
     origin = {observation.key: 7 for observation in observations}
 
     # Ein *anderes* Interesse ist angesät — dieses hier nicht.
-    assert suppress_unseeded_interests(deltas, origin, seeded={8}) == []
+    assert suppress_unseeded_interests(deltas, origin, seeded={("beam", 8)}) == []
+
+
+def test_an_interest_seeded_at_one_source_is_not_seeded_at_another() -> None:
+    """Der Lauf vom 26.09.2026: „Psychothriller" war bei beam angesät, und der
+    erste Durchgang bei OverDrive meldete darum neunzehn Funde, statt still zu säen."""
+    at_beam = _bargains(source().by_category(SPACE_OPERA))
+    at_overdrive = [replace(o, source="overdrive") for o in at_beam]
+    beam_deltas = compute_deltas(at_beam, {}, PROFILE)
+    overdrive_deltas = compute_deltas(at_overdrive, {}, PROFILE)
+    assert beam_deltas
+    origin = {o.key: 7 for o in [*at_beam, *at_overdrive]}
+    seeded = {("beam", 7)}
+
+    assert suppress_unseeded_interests(beam_deltas, origin, seeded) == beam_deltas
+    assert suppress_unseeded_interests(overdrive_deltas, origin, seeded) == []
 
 
 def test_suggestions_land_in_their_own_section_never_among_real_hits() -> None:

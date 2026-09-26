@@ -105,6 +105,25 @@ def test_a_collection_find_without_free_copies_does_not_promise_them() -> None:
     assert why_shown(fund) == "aus „Lucky Day“"
 
 
+def test_a_library_find_by_genre_category_names_the_genre_not_a_collection() -> None:
+    """Ein Neuzugang im Thema der Leserin ist keine Sammlung namens
+    „Psychothriller“ (Lauf vom 26.09.2026): das Thema, und dass er frei ist."""
+    from dataclasses import replace
+
+    from ebook_watchlist.models import Availability, MatchReason, Observation
+    from ebook_watchlist.reasons import why_shown
+
+    fund = Observation(source="overdrive", source_item_id="1", title="T",
+                       match_reason=MatchReason.GENRE_CATEGORY,
+                       category="belletristik/krimi-thriller/psychothriller",
+                       availability=Availability.AVAILABLE)
+
+    assert why_shown(fund) == "neu im Thema Psychothriller, sofort ausleihbar"
+    assert why_shown(replace(fund, availability=Availability.UNAVAILABLE)) == (
+        "neu im Thema Psychothriller"
+    )
+
+
 def test_a_library_is_known_by_its_kind_not_its_name(monkeypatch) -> None:
     """Eine Onleihe namens „voebb" ist eine Bibliothek (Review)."""
     from ebook_watchlist import reasons
