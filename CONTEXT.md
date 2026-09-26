@@ -160,6 +160,19 @@ carries it: *Scythe* has none, but its DNB title reads „Scythe – Die Hüter 
 Todes". Resolution therefore compares the typed title with every name the DNB
 gives the book, and with each part of a title split at a dash or colon.
 
+### Mid-Series Volume
+*deutsch: Folgeband*
+
+A Discovery that is volume two or later of a series (`series.MidSeries`): the
+DNB names the volume for its ISBN, the title names it with a word („Band 2"),
+or the subtitle ends in a number („Bobby Dollar 2"). A bare number at the end of
+a title does not count — *Station 11* is a standalone. Not suggested, like a
+short story or a book in another language: the reader does not start in the
+middle of a series. Two exceptions, both from the old reading profile: an author
+she follows, and a series she already has a book of. Filtered before the Gate,
+so it costs no Portrait, and counted on the Suggestion Pile as „mitten in einer
+Reihe". A Watchlist Entry is never one.
+
 ### Library Collection
 *deutsch: Sammlung*
 

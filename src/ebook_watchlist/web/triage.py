@@ -28,6 +28,7 @@ from ..models import Availability, MatchReason, Observation
 from ..ratings import subject_of
 from ..reasons import genre_category_name, short_why, source_kinds, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
+from ..series import mid_series_finder
 from ..sources import registry
 from ..store import Store
 from . import sorting
@@ -145,6 +146,8 @@ class Pile:
     #: Funde von einer Autorenschaft, die ihre Texte selbst als KI-erzeugt
     #: angibt (#31). Ausgeblendet wie die anderen, nicht verworfen.
     hidden_ai: int = 0
+    #: Folgebände einer Reihe, die die Leserin nicht verfolgt (`series`).
+    hidden_series: int = 0
     #: Kurzgeschichten nach dem Umfang der Detailseite (#73).
     hidden_short: int = 0
 
@@ -174,6 +177,7 @@ class Pile:
             (self.hidden_weak, self._below_threshold),
             (self.hidden_language, "in anderen Sprachen"),
             (self.hidden_ai, "KI-erzeugt"),
+            (self.hidden_series, "mitten in einer Reihe"),
             (self.hidden_short, "Kurzgeschichten" if self.hidden_short != 1 else "Kurzgeschichte"),
         )
         return tuple((count, word) for count, word in pairs if count)
@@ -309,6 +313,7 @@ def pending(
     covers = CoverStore(paths.covers_dir())
     language_of = language_finder(store)
     ai_author_names = ai_authors(store)
+    mid_series = mid_series_finder(store, settings.slug)
 
     items: list[Suggestion] = []
     hidden_junk = 0
@@ -317,6 +322,7 @@ def pending(
     hidden_language = 0
     hidden_ai = 0
     hidden_short = 0
+    hidden_series = 0
     now = datetime.now()
     library_sources = {name for name, kind in source_kinds().items() if kind == "library"}
     for observation in found:
@@ -340,6 +346,10 @@ def pending(
         # einer Maschine schreiben laesst, ist kein Kandidat (#31).
         if is_ai_authored(observation, ai_author_names):
             hidden_ai += 1
+            continue
+        # Nicht mitten in einer Reihe anfangen — dieselbe Regel wie im Lauf.
+        if mid_series(observation):
+            hidden_series += 1
             continue
         # Dieselbe Regel wie im Digest, aus einer Stelle: was dich nie
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
@@ -379,6 +389,7 @@ def pending(
         hidden_language=hidden_language,
         hidden_ai=hidden_ai,
         hidden_short=hidden_short,
+        hidden_series=hidden_series,
         threshold=judge.threshold if judge else 3,
         # Nur, wenn es wirklich kein Profil gibt: ein unlesbares Vokabular ist
         # etwas anderes, und "erst die Erstaufnahme machen" wäre dann falsch.

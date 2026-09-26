@@ -984,3 +984,16 @@ def test_one_book_at_two_sources_is_one_suggestion(db: Store) -> None:
         ("overdrive", "Broken House--Düstere Ahnung")
     ]
     assert pile.total == 1
+
+
+def test_a_later_volume_leaves_the_pile_and_is_counted(db: Store) -> None:
+    """Nicht mitten in einer Reihe anfangen — außer bei einer Autorin, der die
+    Leserin folgt."""
+    found(db, item_id="a", title="Shadow. Band 2", author="Jemand Anderes")
+    found(db, item_id="b", title="Otherland. Band 2", author="Tad Williams")
+    db.put_interest("test", "author", "Tad Williams", now=NOW)
+
+    pile = view.pending(db, load_settings())
+
+    assert [s.title for s in pile.items] == ["Otherland. Band 2"]
+    assert (1, "mitten in einer Reihe") in pile.hidden

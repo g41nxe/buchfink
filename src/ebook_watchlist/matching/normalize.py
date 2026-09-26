@@ -160,6 +160,17 @@ def volume_of(title: str) -> int | None:
     return number
 
 
+def named_volume(title: str) -> int | None:
+    """Die Bandnummer nur, wenn ein Wort sie nennt („Band 2", „Teil 3").
+
+    Strenger als :func:`volume_of`: dort genügt eine kleine Zahl am Ende, und
+    „Station 11" wäre Band 11. Für den Abgleich zweier Titel ist das harmlos,
+    für die Reihenregel nicht — sie blendet aus.
+    """
+    hit = _VOLUME_WORD.search(fold(title))
+    return int(hit.group(1)) if hit else None
+
+
 def volumes_conflict(left: str, right: str) -> bool:
     """Nennen beide Seiten einen Band, und einen verschiedenen?
 

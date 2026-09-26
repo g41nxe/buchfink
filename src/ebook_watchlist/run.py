@@ -320,6 +320,21 @@ def _without_ai_authors(store: Store, deltas) -> list:
     return kept
 
 
+def _without_mid_series(store: Store, profile_slug: str, deltas) -> list:
+    """Ein Folgeband einer Reihe, die die Leserin nicht verfolgt, fällt weg.
+
+    Vor dem Tor wie Sprache und Autorschaft: das ist eine Frage des Einstiegs,
+    nicht des Geschmacks, und kostet darum keinen Steckbrief (`series`).
+    """
+    from .series import mid_series_finder
+
+    mid_series = mid_series_finder(store, profile_slug)
+    kept = [d for d in deltas if not mid_series(d.current)]
+    if gone := len(deltas) - len(kept):
+        print(f"Reihen: {gone} Folgebände übergangen")
+    return kept
+
+
 def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
     """Entdeckungen gegen das Leseprofil prüfen (ADR 19, ADR 33, #48).
 
@@ -1028,6 +1043,7 @@ def _run(
     # kostet (#10).
     deltas = _without_foreign_languages(store, deltas, settings)
     deltas = _without_ai_authors(store, deltas)
+    deltas = _without_mid_series(store, settings.slug, deltas)
 
     # Das Tor sitzt hinter dem Snapshot: ein Ausfall kostet ein Urteil, nie
     # Geschichte. Und hinter der Preisregel: ein Buch zu bewerten, das ohnehin

@@ -592,6 +592,31 @@ def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
     assert kept == [human_book, own]
 
 
+def test_a_later_volume_costs_no_portrait(data_dir) -> None:
+    """Nicht mitten in einer Reihe anfangen: ein Folgeband fällt vor dem Tor
+    weg — außer bei einer Autorin, der die Leserin folgt."""
+    from ebook_watchlist import paths
+    from ebook_watchlist import run as run_module
+    from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
+    from ebook_watchlist.store import Store
+
+    store = Store(paths.db_path())
+    store.put_interest("test", "author", "Tad Williams", now=datetime(2026, 9, 26))
+
+    def new(number: str, title: str, author: str) -> Delta:
+        return Delta(kind=DeltaKind.FIRST_SEEN, previous=None, current=Observation(
+            source="beam", source_item_id=number, title=title, author=author,
+            match_reason=MatchReason.GENRE_CATEGORY))
+
+    later = new("1", "Shadow. Band 2", "Jemand Anderes")
+    first = new("2", "Shadow. Band 1", "Jemand Anderes")
+    followed = new("3", "Otherland. Band 2", "Tad Williams")
+
+    kept = run_module._without_mid_series(store, "test", [later, first, followed])
+
+    assert kept == [first, followed]
+
+
 # --- das Tor im Lauf urteilt im Code (#48) ---------------------------------
 
 

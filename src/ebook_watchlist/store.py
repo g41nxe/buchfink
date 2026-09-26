@@ -1097,6 +1097,17 @@ class Store:
                 for isbn, found, original, title, index in rows
             }
 
+    def dnb_series(self) -> dict[str, tuple[str | None, str | None]]:
+        """ISBN -> (Reihe, Band), wo die DNB einen Band nennt — für die
+        Reihenregel (`series.MidSeries`)."""
+        with self.session() as session:
+            rows = session.execute(
+                select(DnbRecordRow.isbn, DnbRecordRow.series, DnbRecordRow.series_index).where(
+                    DnbRecordRow.found.is_(True), DnbRecordRow.series_index.is_not(None)
+                )
+            )
+            return {isbn: (series, index) for isbn, series, index in rows}
+
     def dnb_languages(self) -> dict[str, str]:
         """ISBN -> Sprache, fuer jede ISBN, zu der die DNB eine nennt (#10)."""
         with self.session() as session:
