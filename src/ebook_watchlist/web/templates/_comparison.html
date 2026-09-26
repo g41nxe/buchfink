@@ -21,8 +21,11 @@
 {% set _word = {"for": "magst du", "against": "lehnst du ab",
                 "indifferent": "ist dir fast egal", "unknown": "kennt dein Profil noch nicht"} %}
 
-{% macro summary(c) %}
+{% macro summary(c, combos=()) %}
 <p class="text-sm" data-comparison-summary>
+  {% if combos %}Trifft deine Kombination
+  {% for name in combos %}<b class="font-semibold text-accent">{{ name }}</b>{% if not loop.last %}, {% endif %}{% endfor %}.
+  {% endif %}
   {% if c.strongest %}Am stärksten prägt das Buch
   {% for p in c.strongest %}<b class="font-semibold">{{ p.name }}</b>
   <span class="text-soft">({{ _word[p.side] }})</span>{% if not loop.last %} und {% endif %}{% endfor %}.
@@ -42,7 +45,7 @@
       {% for p in g.pills %}
       <span class="inline-flex items-center rounded-full ring-1 ring-inset
                    {{ _pill_size[p.weight_word] }} {{ _pill_tone[p.side] }}"
-            title="{{ p.weight_word }} im Buch · {{ _word[p.side] }}">{{ p.name }}{% if p.side == "unknown" %}<span class="ml-1 opacity-60">?</span>{% endif %}</span>
+            title="{{ p.weight_word }} im Buch · {{ _word[p.side] }}{% if p.sentence %} — {{ p.sentence }}{% endif %}">{{ p.name }}{% if p.side == "unknown" %}<span class="ml-1 opacity-60">?</span>{% endif %}</span>
       {% endfor %}
     </div>
   </div>
@@ -61,7 +64,19 @@
 {% macro bridge(b) %}
 {% set rows = [b.mine | length, b.book | length] | max %}
 {% set lx, rx = 168, 318 %}
-<svg viewBox="0 0 480 {{ rows * 26 + 34 }}" class="h-auto w-full max-w-xl" role="img"
+<ul class="space-y-1 text-sm sm:hidden" data-bridge-list>
+  {% for m in b.mine %}
+  <li class="flex items-center gap-2">
+    <span class="inline-block h-2 w-8 shrink-0 rounded-sm {{ 'bg-accent' if m.value > 0 else 'bg-danger' }}"
+          style="opacity: {{ 1 if m.hit else 0.35 }}"></span>
+    <span class="{{ 'text-ink' if m.hit else 'text-soft' }}">{{ m.name }}</span>
+    <span class="ml-auto text-xs {{ 'text-accent' if m.hit and m.value > 0 else 'text-danger' if m.hit else 'text-soft' }}">
+      {{ ('im Buch' if m.value > 0 else 'im Buch — dagegen') if m.hit
+         else ('fehlt' if m.value > 0 else 'nicht im Buch') }}</span>
+  </li>
+  {% endfor %}
+</ul>
+<svg viewBox="0 0 480 {{ rows * 26 + 34 }}" class="hidden h-auto w-full max-w-xl sm:block" role="img"
      aria-label="Deine stärksten Vorlieben und was davon im Buch steht" data-bridge>
   <text x="{{ lx }}" y="14" text-anchor="end" font-size="11" letter-spacing="0.5"
         class="fill-soft uppercase">dein Geschmack</text>
@@ -104,34 +119,35 @@
 {% endmacro %}
 
 {# Wie die Prozentzahl entsteht: jede Zeile hebt oder senkt, die letzte ist
-   genau die Zahl oben — aus denselben Schritten wie das Urteil. #}
+   genau die Zahl oben — aus denselben Schritten wie das Urteil. Als HTML, nicht
+   als Zeichnung: so passt es sich dem Telefon an und die Schrift bleibt groß. #}
 {% macro waterfall(c, stars) %}
-{% set left, right = 170, 450 %}
-{% set scale = right - left %}
-{% set h = (c.waterfall | length + 1) * 22 + 34 %}
-<svg viewBox="0 0 480 {{ h }}" class="h-auto w-full max-w-xl" role="img"
-     aria-label="Wie die Übereinstimmung entsteht" data-waterfall>
-  {% for pct in (0, 25, 50, 75, 100) %}
-  {% set x = left + scale * pct / 100 %}
-  <line x1="{{ x }}" y1="8" x2="{{ x }}" y2="{{ h - 18 }}" class="stroke-hair"/>
-  <text x="{{ x }}" y="{{ h - 4 }}" text-anchor="middle" font-size="11" class="fill-soft">{{ pct }} %</text>
-  {% endfor %}
+<div class="max-w-xl text-xs" data-waterfall>
   {% for row in c.waterfall %}
-  {% set y = 12 + loop.index0 * 22 %}
-  {% set x0 = left + scale * ([row.start, row.end] | min) %}
-  {% set x1 = left + scale * ([row.start, row.end] | max) %}
-  {% set tone = 'fill-soft' if row.kind in ('baseline', 'pattern_baseline')
-                else ('fill-accent' if row.delta >= 0 else 'fill-danger') %}
-  <text x="{{ left - 8 }}" y="{{ y + 12 }}" text-anchor="end" font-size="12" class="fill-ink">{{ row.label }}</text>
-  <rect x="{{ '%.1f' | format(x0) }}" y="{{ y + 2 }}" width="{{ '%.1f' | format([x1 - x0, 1.5] | max) }}"
-        height="14" rx="2" class="{{ tone }}" opacity="0.85"/>
-  <text x="{{ '%.1f' | format(x1 + 4) }}" y="{{ y + 13 }}" font-size="11" class="fill-soft">{{ '%+.0f' | format(row.delta * 100) }}</text>
+  {% set lo = [row.start, row.end] | min %}
+  {% set width = (row.end - row.start) | abs %}
+  {% set tone = 'bg-soft/60' if row.kind in ('baseline', 'pattern_baseline')
+                else ('bg-accent' if row.delta >= 0 else 'bg-danger') %}
+  <div class="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_2.5rem] items-center gap-2 py-0.5">
+    <span class="truncate text-right text-ink">{{ row.label }}</span>
+    <span class="relative h-3.5 rounded-sm bg-hair/50">
+      <span class="absolute inset-y-0 rounded-sm {{ tone }}"
+            style="left: {{ '%.1f' | format(lo * 100) }}%; width: {{ '%.1f' | format([width * 100, 0.6] | max) }}%"></span>
+    </span>
+    <span class="tabular-nums text-soft">{{ '%+.0f' | format(row.delta * 100) }}</span>
+  </div>
   {% endfor %}
-  {% set y = 12 + (c.waterfall | length) * 22 %}
-  <text x="{{ left - 8 }}" y="{{ y + 12 }}" text-anchor="end" font-size="12" font-weight="600"
-        class="fill-ink">Übereinstimmung</text>
-  <rect x="{{ left }}" y="{{ y + 2 }}" width="{{ '%.1f' | format(scale * c.share) }}" height="14" rx="2" class="fill-gold"/>
-  <text x="{{ '%.1f' | format(left + scale * c.share + 4) }}" y="{{ y + 13 }}" font-size="12" font-weight="600"
-        class="fill-ink">{{ '%.0f' | format(c.share * 100) }} % · {{ stars }} ★</text>
-</svg>
+  <div class="mt-1 grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_2.5rem] items-center gap-2 border-t border-hair pt-1.5">
+    <span class="text-right font-semibold text-ink">Übereinstimmung</span>
+    <span class="relative h-3.5 rounded-sm bg-hair/50">
+      <span class="absolute inset-y-0 left-0 rounded-sm bg-gold" style="width: {{ '%.1f' | format(c.share * 100) }}%"></span>
+    </span>
+    <span class="font-semibold tabular-nums text-ink">{{ '%.0f' | format(c.share * 100) }} %</span>
+  </div>
+  <div class="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_2.5rem] gap-2 text-soft">
+    <span></span>
+    <span class="flex justify-between"><span>0 %</span><span>50 %</span><span>100 %</span></span>
+    <span></span>
+  </div>
+</div>
 {% endmacro %}

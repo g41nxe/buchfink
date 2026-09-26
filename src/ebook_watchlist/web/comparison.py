@@ -55,6 +55,9 @@ class Pill:
     value: float | None
     #: ``for``, ``against``, ``indifferent`` oder ``unknown``.
     side: str
+    #: Der Satz aus dem Steckbrief, woran man es am Buch sieht — seit der
+    #: Steckbrief als eigener Abschnitt weg ist, trägt ihn die Pille.
+    sentence: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +138,10 @@ def _pills(portrait: Portrait, judge: Judge) -> list[Pill]:
     v, form = judge.vocabulary, judge.form
     carried: dict[str, float] = {}
     values: dict[str, float] = {}
+    sentences: dict[str, str] = {}
+    for trait in portrait.traits:
+        if trait.term in v.terms and trait.sentence:
+            sentences.setdefault(v.family_of(trait.term).id, trait.sentence)
     for term, weight in book_terms(portrait, v, judge.weights).items():
         f = v.family_of(term).id
         carried[f] = max(carried.get(f, 0.0), weight)
@@ -143,7 +150,8 @@ def _pills(portrait: Portrait, judge: Judge) -> list[Pill]:
             if abs(value) >= abs(values.get(f, 0.0)):
                 values[f] = value
     return [
-        Pill(f, family_name(f, v), w, _weight_word(w, judge), values.get(f), _side(values.get(f)))
+        Pill(f, family_name(f, v), w, _weight_word(w, judge), values.get(f), _side(values.get(f)),
+             sentences.get(f, ""))
         for f, w in carried.items()
     ]
 

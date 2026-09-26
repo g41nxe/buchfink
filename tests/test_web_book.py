@@ -1216,6 +1216,13 @@ def test_the_fit_stands_under_the_judgement(
     # Der Abgleich: Überblick, Brücke, Wasserfall (26.09.2026).
     assert "data-overview" in body and "data-bridge" in body
     assert "Wie das Urteil entsteht" in body and "data-waterfall" in body
+    # Design-Review (26.09.2026): kein eigener Steckbrief-Abschnitt mehr, der Knopf
+    # „neu beschreiben“ steht an der Bewertung, der Abgleich ist ein Abschnitt
+    # mit Umschalter statt aufklappbarer Dreiecke.
+    assert "data-story-patterns" not in body and "Abgleich mit deinem Profil" in body
+    rating = body.split("Bewertung", 1)[1].split("Deine Sterne", 1)[0]
+    assert f'/book/{book.id}/portrait?again=1' in rating
+    assert "<details" not in body.split("data-comparison", 1)[1].split("Beobachtungen", 1)[0]
     # Ein Umschalter wie auf der Profilseite, eine Spinne zur Zeit (26.09.2026) —
     # sobald die Form auch Erzählmuster kennt.
     from dataclasses import replace
