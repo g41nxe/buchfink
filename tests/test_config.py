@@ -206,7 +206,7 @@ def test_a_language_is_a_dnb_code(data_dir: Path) -> None:
 
 #: Zwei namenlose Bibliotheken neben der Onleihe: beide fallen auf die Art
 #: zurueck und heissen damit "Bibliothek".
-GLEICHNAMIG = """
+SAME_NAME = """
 slug: test
 name: T
 sources:
@@ -222,7 +222,7 @@ def test_two_sources_with_the_same_name_fail_loudly(data_dir: Path) -> None:
     """Eine Kollision, die niemand bemerkt, ist die teuerste (#14): zwei Zeilen
     "Bibliothek" in den Quellen, und welche welche ist, steht nirgends. Der
     Fehler steckt in der Datei, also faellt er beim Lesen auf."""
-    (data_dir / "settings.yaml").write_text(GLEICHNAMIG, encoding="utf-8")
+    (data_dir / "settings.yaml").write_text(SAME_NAME, encoding="utf-8")
 
     with pytest.raises(ConfigError, match="Bibliothek"):
         load_settings()
@@ -231,10 +231,10 @@ def test_two_sources_with_the_same_name_fail_loudly(data_dir: Path) -> None:
 def test_a_second_source_with_its_own_name_is_fine(data_dir: Path) -> None:
     """Wer der zweiten einen Namen gibt, loest den Widerspruch auf."""
     (data_dir / "settings.yaml").write_text(
-        GLEICHNAMIG.replace("  hamburg:", "  hamburg:\n    name: Buecherhallen"),
+        SAME_NAME.replace("  hamburg:", "  hamburg:\n    name: Buecherhallen"),
         encoding="utf-8",
     )
 
-    profil = load_settings()
+    profile = load_settings()
 
-    assert set(profil.sources) == {"onleihe", "voebb", "hamburg"}
+    assert set(profile.sources) == {"onleihe", "voebb", "hamburg"}

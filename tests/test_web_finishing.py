@@ -33,81 +33,81 @@ def client(data_dir: Path) -> TestClient:
     return TestClient(create_app(), raise_server_exceptions=False, follow_redirects=True)
 
 
-def beobachtet(db: Store, titel: str = "Kugelblitz") -> int:
+def observed(db: Store, title: str = "Kugelblitz") -> int:
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title=titel, author="Cixin Liu", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
-    return buch.id
+    book = db.find_or_create_book(isbn=None, title=title, author="Cixin Liu", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
+    return book.id
 
 
-def titel(db: Store) -> list[str]:
+def title(db: Store) -> list[str]:
     return [e.title for e in watchlist.entries(db, load_settings())]
 
 
-def arten(db: Store, buch_id: int) -> dict[str, bool]:
+def kinds(db: Store, book_id: int) -> dict[str, bool]:
     return {
-        row.kind: row.active for row in db.relations_of(load_settings().slug, buch_id)
+        row.kind: row.active for row in db.relations_of(load_settings().slug, book_id)
     }
 
 
 def test_buying_it_ends_the_watching(client: TestClient, db: Store) -> None:
-    buch_id = beobachtet(db)
+    book_id = observed(db)
 
-    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "owned"})
+    client.post(f"/watchlist/{book_id}/finish", data={"kind": "owned"})
 
-    zustand = arten(db, buch_id)
-    assert zustand["owned"] is True
-    assert zustand["watching"] is False
+    state = kinds(db, book_id)
+    assert state["owned"] is True
+    assert state["watching"] is False
 
 
 def test_what_is_finished_leaves_the_list(client: TestClient, db: Store) -> None:
     """Die Watchlist zeigt, was beobachtet wird."""
-    buch_id = beobachtet(db)
-    assert "Kugelblitz" in titel(db)
+    book_id = observed(db)
+    assert "Kugelblitz" in title(db)
 
-    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "owned"})
+    client.post(f"/watchlist/{book_id}/finish", data={"kind": "owned"})
 
-    assert "Kugelblitz" not in titel(db)
+    assert "Kugelblitz" not in title(db)
 
 
 def test_no_longer_interested_works_the_same_way(client: TestClient, db: Store) -> None:
-    buch_id = beobachtet(db)
+    book_id = observed(db)
 
-    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "dismissed"})
+    client.post(f"/watchlist/{book_id}/finish", data={"kind": "dismissed"})
 
-    assert arten(db, buch_id)["dismissed"] is True
-    assert "Kugelblitz" not in titel(db)
+    assert kinds(db, book_id)["dismissed"] is True
+    assert "Kugelblitz" not in title(db)
 
 
 def test_the_history_survives(client: TestClient, db: Store) -> None:
     """Stillgelegt, nicht gelöscht: dass ein Buch einmal beobachtet wurde, ist
     selbst eine Auskunft (ADR 18)."""
-    buch_id = beobachtet(db)
+    book_id = observed(db)
 
-    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "owned"})
+    client.post(f"/watchlist/{book_id}/finish", data={"kind": "owned"})
 
-    assert arten(db, buch_id)["watching"] is False
-    assert arten(db, buch_id)["owned"] is True
+    assert kinds(db, book_id)["watching"] is False
+    assert kinds(db, book_id)["owned"] is True
 
 
 def test_a_kind_that_is_not_an_ending_changes_nothing(client: TestClient, db: Store) -> None:
     """Nur `owned` und `dismissed` schließen ab. „gefiel mir" beendet keine
     Beobachtung — sonst verschwände ein Buch, weil man es gelobt hat."""
-    buch_id = beobachtet(db)
+    book_id = observed(db)
 
-    client.post(f"/watchlist/{buch_id}/finish", data={"kind": "liked"})
+    client.post(f"/watchlist/{book_id}/finish", data={"kind": "liked"})
 
-    assert arten(db, buch_id)["watching"] is True
-    assert "Kugelblitz" in titel(db)
+    assert kinds(db, book_id)["watching"] is True
+    assert "Kugelblitz" in title(db)
 
 
 def test_a_paused_entry_still_shows(client: TestClient, db: Store) -> None:
     """Nicht geprüft ist nicht dasselbe wie abgeschlossen."""
-    buch_id = beobachtet(db)
+    book_id = observed(db)
 
-    client.post(f"/watchlist/{buch_id}/active", data={"active": "0"})
+    client.post(f"/watchlist/{book_id}/active", data={"active": "0"})
 
-    assert "Kugelblitz" in titel(db)
+    assert "Kugelblitz" in title(db)
 
 
 def test_the_row_menu_holds_the_endings_not_the_setting(
@@ -115,7 +115,7 @@ def test_the_row_menu_holds_the_endings_not_the_setting(
 ) -> None:
     """„Prüfen bei" ist eine Einstellung und steht seit Ticket 48 auf der
     Buchseite; in der Zeile blieben die Abschlüsse."""
-    beobachtet(db)
+    observed(db)
 
     body = client.get("/watchlist").text
 
@@ -126,18 +126,18 @@ def test_the_row_menu_holds_the_endings_not_the_setting(
 
 
 def test_the_book_page_holds_the_setting(client: TestClient, db: Store) -> None:
-    buch_id = beobachtet(db)
+    book_id = observed(db)
 
-    body = client.get(f"/book/{buch_id}").text
+    body = client.get(f"/book/{book_id}").text
 
     assert "Prüfen bei" in body
-    assert f"/book/{buch_id}/restrict" in body
+    assert f"/book/{book_id}/restrict" in body
 
 
 def test_a_book_nobody_watches_is_not_asked_where_to_check(
     client: TestClient, db: Store
 ) -> None:
     """Ohne Beobachtung gibt es nichts zu prüfen — die Frage wäre gegenstandslos."""
-    buch = db.find_or_create_book(isbn=None, title="Nur gefunden", author="Wer", now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Nur gefunden", author="Wer", now=NOW)
 
-    assert "Prüfen bei" not in client.get(f"/book/{buch.id}").text
+    assert "Prüfen bei" not in client.get(f"/book/{book.id}").text

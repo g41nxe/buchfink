@@ -26,10 +26,10 @@ VOEBB = Path(__file__).parent / "fixtures" / "onleihe"
 
 def test_the_order_number_carries_the_isbn() -> None:
     tiles = beam_tiles("search-hits.html")
-    krieg = next(tile for tile in tiles if tile.product_id == "606983")
+    war = next(tile for tile in tiles if tile.product_id == "606983")
 
-    assert krieg.order_number == "SW9783104911854450914"
-    assert krieg.isbn == "9783104911854"
+    assert war.order_number == "SW9783104911854450914"
+    assert war.isbn == "9783104911854"
 
 
 def test_most_but_not_all_tiles_carry_one() -> None:

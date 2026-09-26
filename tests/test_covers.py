@@ -49,12 +49,12 @@ def test_every_tile_carries_a_cover() -> None:
 def test_the_address_comes_from_the_srcset_not_the_placeholder_pixel() -> None:
     """Das Theme laedt die Bilder nach; im ``src`` steht nur ein Pixel."""
     tiles = beam_tiles("search-hits.html")
-    krieg = next(tile for tile in tiles if tile.product_id == "606983")
+    war = next(tile for tile in tiles if tile.product_id == "606983")
 
-    assert krieg.cover_url == (
+    assert war.cover_url == (
         "https://www.beam-shop.de/media/image/5b/f2/e2/9783104911854_200x200.jpg"
     )
-    assert "pixel.jpg" not in (krieg.cover_url or "")
+    assert "pixel.jpg" not in (war.cover_url or "")
 
 
 def test_the_detail_page_offers_the_larger_one() -> None:
@@ -187,7 +187,7 @@ def test_the_cover_address_survives_the_snapshot(tmp_path: Path, monkeypatch) ->
 
     monkeypatch.setenv("EBW_DATA_DIR", str(tmp_path))
     store = Store(paths.db_path())
-    beobachtung = Observation(
+    observation = Observation(
         source="beam",
         source_item_id="1",
         title="Ein Fund",
@@ -195,11 +195,11 @@ def test_the_cover_address_survives_the_snapshot(tmp_path: Path, monkeypatch) ->
         cover_url="https://beam.invalid/media/9783104911854_200x200.jpg",
     )
     run = store.start_run("t", "cli", NOW)
-    store.append(run, "t", [beobachtung], NOW)
+    store.append(run, "t", [observation], NOW)
 
-    zurueck = store.latest_observations("t", [("beam", "1")])[("beam", "1")]
+    back = store.latest_observations("t", [("beam", "1")])[("beam", "1")]
 
-    assert zurueck.cover_url == beobachtung.cover_url
+    assert back.cover_url == observation.cover_url
 
 
 def test_the_same_image_is_one_file_for_a_find_and_for_a_book(tmp_path: Path) -> None:
@@ -209,10 +209,10 @@ def test_the_same_image_is_one_file_for_a_find_and_for_a_book(tmp_path: Path) ->
     client = StubClient()
     url = "https://example.invalid/9783104911854_200x200.jpg"
 
-    als_vorschlag = store.fetch(client, url)  # noch keine book-Zeile
-    als_buch = store.fetch(client, url)  # jetzt beobachtet
+    as_suggestion = store.fetch(client, url)  # noch keine book-Zeile
+    as_book = store.fetch(client, url)  # jetzt beobachtet
 
-    assert als_vorschlag == als_buch
+    assert as_suggestion == as_book
     assert len(client.calls) == 1
 
 
@@ -231,7 +231,7 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
 
     store, settings = Store(paths.db_path()), load_settings()
 
-    def fund(item_id: str) -> Observation:
+    def discovery(item_id: str) -> Observation:
         return Observation(
             source="beam",
             source_item_id=item_id,
@@ -244,7 +244,7 @@ def test_only_the_pile_costs_an_image(data_dir: Path) -> None:
         )
 
     run_id = store.start_run(settings.slug, "cli", NOW)
-    store.append(run_id, settings.slug, [fund("bleibt"), fund("faellt")], NOW)
+    store.append(run_id, settings.slug, [discovery("bleibt"), discovery("faellt")], NOW)
     give_profile(store)
     describe(store, "item:beam:faellt", 1, "")
 
@@ -263,7 +263,7 @@ def test_a_suggestion_without_an_address_costs_nothing(data_dir: Path) -> None:
     from ebook_watchlist.store import Store
 
     store, settings = Store(paths.db_path()), load_settings()
-    ohne = Observation(
+    without = Observation(
         source="beam",
         source_item_id="1",
         title="Ohne Bild",
@@ -273,7 +273,7 @@ def test_a_suggestion_without_an_address_costs_nothing(data_dir: Path) -> None:
         blurb="Ein Schiff, allein im Dunkeln.",
     )
     run_id = store.start_run(settings.slug, "cli", NOW)
-    store.append(run_id, settings.slug, [ohne], NOW)
+    store.append(run_id, settings.slug, [without], NOW)
 
     client = StubClient()
     _fetch_suggestion_covers(store, settings, client)
@@ -294,7 +294,7 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
     store = Store(paths.db_path())
     settings = load_settings()
 
-    beobachtung = Observation(
+    observation = Observation(
         source="beam",
         source_item_id="7",
         title="Ein Fund",
@@ -303,7 +303,7 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
         cover_url="https://beam.invalid/klein_200x200.jpg",
     )
 
-    class Quelle:
+    class Source:
         name = "beam"
 
         def item(self, source_item_id: str) -> Item:
@@ -314,11 +314,11 @@ def test_the_detail_page_cover_is_kept_when_the_blurb_is_fetched(data_dir: Path)
                 cover_url="https://beam.invalid/gross_600x600.jpg",
             )
 
-    zurueck = _with_evidence(store, settings, [beobachtung], [Quelle()])
+    back = _with_evidence(store, settings, [observation], [Source()])
 
-    assert zurueck[0].cover_url == "https://beam.invalid/gross_600x600.jpg"
-    gespeichert = store.latest_observations(settings.slug, [("beam", "7")])[("beam", "7")]
-    assert gespeichert.cover_url == "https://beam.invalid/gross_600x600.jpg"
+    assert back[0].cover_url == "https://beam.invalid/gross_600x600.jpg"
+    stored = store.latest_observations(settings.slug, [("beam", "7")])[("beam", "7")]
+    assert stored.cover_url == "https://beam.invalid/gross_600x600.jpg"
 
 
 def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> None:
@@ -334,10 +334,10 @@ def test_the_candidates_of_an_open_choice_get_their_images(data_dir: Path) -> No
     from ebook_watchlist.store import Store
 
     store, settings = Store(paths.db_path()), load_settings()
-    buch = store.find_or_create_book(isbn=None, title="Dark Matter", author="Blake Crouch", now=NOW)
-    store.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    book = store.find_or_create_book(isbn=None, title="Dark Matter", author="Blake Crouch", now=NOW)
+    store.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
     store.put_book_source(
-        buch.id,
+        book.id,
         "beam",
         outcome=str(LinkOutcome.UNSURE),
         url=None,
@@ -371,10 +371,10 @@ def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
     covers.directory.mkdir(parents=True, exist_ok=True)
     covers.path(file_name(url)).write_bytes(b"x" * 5000)
 
-    buch = store.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    store.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    book = store.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
+    store.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
     store.put_book_source(
-        buch.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
+        book.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
         reason="unklar",
         candidates=[{"title": "Egal", "author": "Wer", "url": "https://x/1", "cover_url": url}],
     )
@@ -388,14 +388,14 @@ def test_an_image_already_on_disk_costs_no_request(data_dir: Path) -> None:
 # --- ein besseres Bild ersetzt ein schlechteres (#10) -----------------------
 
 
-def jpeg(breite: int, hoehe: int) -> bytes:
+def jpeg(width: int, height: int) -> bytes:
     """Ein JPEG-Kopf mit SOF0 — mehr liest ``pixels`` nicht."""
-    sof = b"\xff\xc0\x00\x11\x08" + hoehe.to_bytes(2, "big") + breite.to_bytes(2, "big")
+    sof = b"\xff\xc0\x00\x11\x08" + height.to_bytes(2, "big") + width.to_bytes(2, "big")
     return b"\xff\xd8" + b"\xff\xe0\x00\x04ab" + sof + b"\x03" + b"x" * MIN_BYTES
 
 
-def png(breite: int, hoehe: int) -> bytes:
-    ihdr = breite.to_bytes(4, "big") + hoehe.to_bytes(4, "big") + b"\x08\x02\x00\x00\x00"
+def png(width: int, height: int) -> bytes:
+    ihdr = width.to_bytes(4, "big") + height.to_bytes(4, "big") + b"\x08\x02\x00\x00\x00"
     return b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + ihdr + b"x" * MIN_BYTES
 
 
@@ -410,16 +410,16 @@ def test_the_size_is_read_from_the_header() -> None:
 class ByAddress:
     """Liefert je Adresse ein anderes Bild und zaehlt mit."""
 
-    def __init__(self, bilder: dict[str, bytes]) -> None:
-        self.bilder = bilder
+    def __init__(self, images: dict[str, bytes]) -> None:
+        self.images = images
         self.calls: list[str] = []
 
     def get_bytes(self, url: str) -> bytes:
         self.calls.append(url)
-        return self.bilder[url]
+        return self.images[url]
 
 
-def _gesehen(book_id: int, url: str):
+def _seen(book_id: int, url: str):
     from ebook_watchlist.models import MatchReason, Observation
 
     return Observation(source="beam", source_item_id=str(book_id), title="Egal",
@@ -427,7 +427,7 @@ def _gesehen(book_id: int, url: str):
 
 
 @pytest.fixture
-def buchlager(tmp_path: Path, monkeypatch):
+def book_store(tmp_path: Path, monkeypatch):
     from ebook_watchlist import paths
     from ebook_watchlist.store import Store
 
@@ -435,64 +435,64 @@ def buchlager(tmp_path: Path, monkeypatch):
     return Store(paths.db_path())
 
 
-def test_a_larger_cover_replaces_a_smaller_one(buchlager) -> None:
+def test_a_larger_cover_replaces_a_smaller_one(book_store) -> None:
     """Das erste Bild gewann bisher fuer immer: *Dark Matter* sass auf einer
     Kachel von 134x200 fest, obwohl Shop und OverDrive groessere liefern."""
     from ebook_watchlist.covers import fetch_for_books
 
-    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
-    klein, gross = "https://example.invalid/klein.jpg", "https://example.invalid/gross.jpg"
-    client = ByAddress({klein: jpeg(134, 200), gross: jpeg(600, 600)})
+    book = book_store.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    small, large = "https://example.invalid/klein.jpg", "https://example.invalid/gross.jpg"
+    client = ByAddress({small: jpeg(134, 200), large: jpeg(600, 600)})
 
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, klein)])
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, gross)])
+    fetch_for_books(book_store, client, [_seen(book.id, small)])
+    fetch_for_books(book_store, client, [_seen(book.id, large)])
 
-    assert buchlager.book(buch.id).cover_file == file_name(gross)
+    assert book_store.book(book.id).cover_file == file_name(large)
 
 
-def test_a_smaller_cover_does_not_replace_a_larger_one(buchlager) -> None:
+def test_a_smaller_cover_does_not_replace_a_larger_one(book_store) -> None:
     from ebook_watchlist.covers import fetch_for_books
 
-    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
-    klein, gross = "https://example.invalid/klein.jpg", "https://example.invalid/gross.jpg"
-    client = ByAddress({klein: jpeg(134, 200), gross: jpeg(600, 600)})
+    book = book_store.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    small, large = "https://example.invalid/klein.jpg", "https://example.invalid/gross.jpg"
+    client = ByAddress({small: jpeg(134, 200), large: jpeg(600, 600)})
 
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, gross)])
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, klein)])
+    fetch_for_books(book_store, client, [_seen(book.id, large)])
+    fetch_for_books(book_store, client, [_seen(book.id, small)])
 
-    assert buchlager.book(buch.id).cover_file == file_name(gross)
+    assert book_store.book(book.id).cover_file == file_name(large)
 
 
-def test_the_same_address_costs_nothing(buchlager) -> None:
+def test_the_same_address_costs_nothing(book_store) -> None:
     """Dieselbe Adresse ist dasselbe Bild — kein Abruf, kein Vergleich."""
     from ebook_watchlist.covers import fetch_for_books
 
-    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
-    adresse = "https://example.invalid/eins.jpg"
-    client = ByAddress({adresse: jpeg(600, 600)})
+    book = book_store.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    address = "https://example.invalid/eins.jpg"
+    client = ByAddress({address: jpeg(600, 600)})
 
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, adresse)])
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, adresse)])
+    fetch_for_books(book_store, client, [_seen(book.id, address)])
+    fetch_for_books(book_store, client, [_seen(book.id, address)])
 
-    assert client.calls == [adresse]
+    assert client.calls == [address]
 
 
-def test_every_source_gets_its_chance_not_only_the_first(buchlager) -> None:
+def test_every_source_gets_its_chance_not_only_the_first(book_store) -> None:
     """Je Lauf zaehlte nur die erste Beobachtung eines Buchs. Bei *Dark
     Matter* kommt OverDrive mit einem kleinen Bild vor dem Shop mit 600x600 —
     das kleine wurde verworfen, das grosse nie gefragt."""
     from ebook_watchlist.covers import fetch_for_books
 
-    buch = buchlager.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
-    alt, klein, gross = ("https://example.invalid/kachel.jpg",
+    book = book_store.find_or_create_book(isbn=None, title="Dark Matter", now=NOW)
+    old, small, large = ("https://example.invalid/kachel.jpg",
                          "https://example.invalid/overdrive.jpg",
                          "https://example.invalid/detail.jpg")
-    client = ByAddress({alt: jpeg(134, 200), klein: jpeg(100, 150), gross: jpeg(600, 600)})
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, alt)])
+    client = ByAddress({old: jpeg(134, 200), small: jpeg(100, 150), large: jpeg(600, 600)})
+    fetch_for_books(book_store, client, [_seen(book.id, old)])
 
-    fetch_for_books(buchlager, client, [_gesehen(buch.id, klein), _gesehen(buch.id, gross)])
+    fetch_for_books(book_store, client, [_seen(book.id, small), _seen(book.id, large)])
 
-    assert buchlager.book(buch.id).cover_file == file_name(gross)
+    assert book_store.book(book.id).cover_file == file_name(large)
 
 
 def test_the_narrow_run_fetches_the_candidate_images_too(
@@ -504,22 +504,22 @@ def test_the_narrow_run_fetches_the_candidate_images_too(
     from ebook_watchlist import single
     from ebook_watchlist.config import WatchlistEntry
 
-    geholt: list[str] = []
+    fetched: list[str] = []
     monkeypatch.setattr(
         single, "_entry_for", lambda *a, **k: WatchlistEntry(title="Egal", author="Wer")
     )
 
-    class Quelle:
+    class Source:
         name = "beam"
 
         def watch(self, entries, context):
             return []
 
-    monkeypatch.setattr(single, "build_sources", lambda settings, client: [Quelle()])
+    monkeypatch.setattr(single, "build_sources", lambda settings, client: [Source()])
     monkeypatch.setattr(
-        single, "fetch_for_candidates", lambda store, slug, client: geholt.append(slug)
+        single, "fetch_for_candidates", lambda store, slug, client: fetched.append(slug)
     )
 
     single.check_one(1)
 
-    assert geholt == ["test"]
+    assert fetched == ["test"]

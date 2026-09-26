@@ -28,13 +28,13 @@ def test_every_button_reads_the_same_word() -> None:
     )
     from ebook_watchlist.web import book, profile_page, triage, watchlist
 
-    for schluessel, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS):
+    for key, word in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS):
         # Von der Watchlist nehmen ist keine Art, sein Wort steht daneben (#72).
-        erwartet = REMOVED_ACTION if schluessel == REMOVED else (
-            ACTION_LABELS[RelationKind(schluessel)])
-        assert wort == erwartet
-    for schluessel, name in profile_page._RELATION_LABELS:
-        assert name == RELATION_LABELS[RelationKind(schluessel)]
+        expected = REMOVED_ACTION if key == REMOVED else (
+            ACTION_LABELS[RelationKind(key)])
+        assert word == expected
+    for key, name in profile_page._RELATION_LABELS:
+        assert name == RELATION_LABELS[RelationKind(key)]
 
 
 def test_every_kind_has_a_name() -> None:
@@ -59,16 +59,16 @@ def test_a_state_name_that_is_no_action_word_never_reaches_a_button() -> None:
     from ebook_watchlist.relations import ACTION_LABELS, RELATION_LABELS
     from ebook_watchlist.web import book, triage, watchlist
 
-    nur_zustand = set(RELATION_LABELS.values()) - set(ACTION_LABELS.values())
-    auf_knoepfen = {wort for _, wort in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS)}
-    assert not nur_zustand & auf_knoepfen
+    state_only = set(RELATION_LABELS.values()) - set(ACTION_LABELS.values())
+    on_buttons = {word for _, word in (*book.KINDS, *triage.ACTIONS, *watchlist.CLOSINGS)}
+    assert not state_only & on_buttons
 
 
 def test_no_two_names_differ_only_by_a_negation() -> None:
     """„Mag ich" und „Mag ich nicht" sahen beim Ueberfliegen gleich aus."""
     from ebook_watchlist.relations import ACTION_LABELS, RELATION_LABELS
 
-    for liste in (RELATION_LABELS, ACTION_LABELS):
-        namen = list(liste.values())
-        for name in namen:
-            assert f"{name} nicht" not in namen
+    for listing in (RELATION_LABELS, ACTION_LABELS):
+        names = list(listing.values())
+        for name in names:
+            assert f"{name} nicht" not in names

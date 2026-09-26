@@ -160,17 +160,17 @@ def test_a_run_fetches_the_images_of_its_own_pile(
     danach ohne Bild da, bis zufaellig jemand den Rueckstand beurteilte. Im
     echten Stapel hatten deshalb neun von sechsundzwanzig Funden keins, und
     alle neun stammten aus demselben Lauf."""
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
 
-    gerufen: list[str] = []
+    called: list[str] = []
     monkeypatch.setattr(
-        run_modul,
+        run_module,
         "_fetch_suggestion_covers",
-        lambda store, settings, client: gerufen.append(settings.slug),
+        lambda store, settings, client: called.append(settings.slug),
     )
 
     assert main([]) == EXIT_OK
-    assert gerufen == ["test"]
+    assert called == ["test"]
 
 
 def test_run_journal_records_every_run(data_dir: Path) -> None:
@@ -195,20 +195,20 @@ def test_the_gate_gets_the_sources_from_the_run(
     faellt sie beim naechsten Umbau weg, urteilt das Tor stillschweigend
     wieder auf dem Anriss."""
     from ebook_watchlist import gate
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
 
-    gereicht: list[bool] = []
-    echtes_tor = gate.apply
+    handed: list[bool] = []
+    real_gate = gate.apply
 
-    def beobachtet(deltas, **kwargs):
-        gereicht.append(kwargs.get("evidence") is not None)
-        return echtes_tor(deltas, **kwargs)
+    def observed(deltas, **kwargs):
+        handed.append(kwargs.get("evidence") is not None)
+        return real_gate(deltas, **kwargs)
 
-    monkeypatch.setattr(run_modul.gate, "apply", beobachtet)
-    monkeypatch.setattr(run_modul, "build_portrayer", portrayer_via(object()))
+    monkeypatch.setattr(run_module.gate, "apply", observed)
+    monkeypatch.setattr(run_module, "build_portrayer", portrayer_via(object()))
 
     assert main([]) == EXIT_OK
-    assert gereicht == [True]
+    assert handed == [True]
 
 
 def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
@@ -230,9 +230,9 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
     from ebook_watchlist.store import ENTRY_TRIGGER, Store
 
     store, settings = Store(paths.db_path()), load_settings()
-    rundgang = store.start_run(settings.slug, "cli", datetime.now())
-    store.finish_run(rundgang, status="ok", delta_count=3, finished_at=datetime.now())
-    angerissen = Observation(
+    sweep = store.start_run(settings.slug, "cli", datetime.now())
+    store.finish_run(sweep, status="ok", delta_count=3, finished_at=datetime.now())
+    teased = Observation(
         source="fake",
         source_item_id="fake-2",
         title="Der Schwarm",
@@ -241,12 +241,12 @@ def test_reloading_a_blurb_does_not_look_like_a_run(data_dir: Path) -> None:
         blurb="Manche Menschen haben Geheimnisse…",
     )
 
-    quelle = FakeSource(data_dir / "fake-source.yaml")
-    _with_evidence(store, settings, [angerissen], [quelle])
+    source = FakeSource(data_dir / "fake-source.yaml")
+    _with_evidence(store, settings, [teased], [source])
 
-    laeufe = store.recent_runs(settings.slug)
-    assert laeufe[0].id == rundgang, "das Nachladen gilt als letzter Lauf"
-    assert all(lauf.trigger != ENTRY_TRIGGER for lauf in laeufe)
+    runs = store.recent_runs(settings.slug)
+    assert runs[0].id == sweep, "das Nachladen gilt als letzter Lauf"
+    assert all(run.trigger != ENTRY_TRIGGER for run in runs)
 
 
 def test_a_second_digest_on_the_same_day_does_not_erase_the_first(data_dir: Path) -> None:
@@ -291,7 +291,7 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     now = datetime(2026, 9, 5, 9, 0)
     store = Store(paths.db_path())
 
-    def fund(item_id: str) -> Observation:
+    def discovery(item_id: str) -> Observation:
         return Observation(
             source="beam",
             source_item_id=item_id,
@@ -304,7 +304,7 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
         )
 
     run_id = store.start_run("test", "cli", now)
-    store.append(run_id, "test", [fund("alt"), fund("neu")], now)
+    store.append(run_id, "test", [discovery("alt"), discovery("neu")], now)
     give_profile(store)
     describe(store, "item:beam:alt", 4, "Kurz und gut.")
     vocabulary = load_vocabulary()
@@ -420,24 +420,24 @@ def test_a_cron_run_right_after_another_is_skipped(
     ruft bei jedem Start. Fuenf Neubauten an einem Nachmittag ergaben fuenf
     volle Laeufe gegen die echten Quellen in 25 Minuten."""
     assert main(["--trigger", "cron"]) == EXIT_OK
-    vorher = len(Store(paths.db_path()).recent_runs("test"))
+    before = len(Store(paths.db_path()).recent_runs("test"))
 
     assert main(["--trigger", "cron"]) == EXIT_OK
 
     assert "übersprungen" in capsys.readouterr().out
     # Kein zweiter Eintrag im Journal: ein uebersprungener Lauf ist keiner.
-    assert len(Store(paths.db_path()).recent_runs("test")) == vorher
+    assert len(Store(paths.db_path()).recent_runs("test")) == before
 
 
 def test_the_reader_is_not_held_back(data_dir: Path) -> None:
     """Die Grenze gilt der Maschine. Wer tippt oder drueckt, hat sich
     entschieden — ein Knopf, der den ganzen Tag nichts tut, ist kaputt."""
     assert main(["--trigger", "cron"]) == EXIT_OK
-    vorher = len(Store(paths.db_path()).recent_runs("test"))
+    before = len(Store(paths.db_path()).recent_runs("test"))
 
     assert main(["--trigger", "ui"]) == EXIT_OK
 
-    assert len(Store(paths.db_path()).recent_runs("test")) > vorher
+    assert len(Store(paths.db_path()).recent_runs("test")) > before
 
 
 def test_the_cadence_from_the_profile_is_what_counts(data_dir: Path) -> None:
@@ -445,31 +445,31 @@ def test_the_cadence_from_the_profile_is_what_counts(data_dir: Path) -> None:
     Abstand entscheidet je nach Profil verschieden."""
     store = Store(paths.db_path())
     store.start_run("test", "cron", datetime.now() - timedelta(hours=2))
-    vorher = len(store.recent_runs("test"))
+    before = len(store.recent_runs("test"))
 
     # Voreinstellung sind 20 Stunden; zwei sind zu wenig.
     assert main(["--trigger", "cron"]) == EXIT_OK
-    assert len(Store(paths.db_path()).recent_runs("test")) == vorher
+    assert len(Store(paths.db_path()).recent_runs("test")) == before
 
-    profil = (data_dir / "settings.yaml").read_text(encoding="utf-8")
+    profile = (data_dir / "settings.yaml").read_text(encoding="utf-8")
     (data_dir / "settings.yaml").write_text(
-        profil + "\nrun_every_hours: 1\n", encoding="utf-8"
+        profile + "\nrun_every_hours: 1\n", encoding="utf-8"
     )
 
     assert main(["--trigger", "cron"]) == EXIT_OK
-    assert len(Store(paths.db_path()).recent_runs("test")) > vorher
+    assert len(Store(paths.db_path()).recent_runs("test")) > before
 
 
 def test_the_gap_can_be_named_and_switched_off(data_dir: Path) -> None:
     assert main(["--trigger", "cron"]) == EXIT_OK
-    vorher = len(Store(paths.db_path()).recent_runs("test"))
+    before = len(Store(paths.db_path()).recent_runs("test"))
 
     # Ausdruecklich gesetzt gewinnt die Zahl — in beide Richtungen.
     assert main(["--trigger", "ui", "--fruehestens-nach", "20"]) == EXIT_OK
-    assert len(Store(paths.db_path()).recent_runs("test")) == vorher
+    assert len(Store(paths.db_path()).recent_runs("test")) == before
 
     assert main(["--trigger", "cron", "--fruehestens-nach", "0"]) == EXIT_OK
-    assert len(Store(paths.db_path()).recent_runs("test")) > vorher
+    assert len(Store(paths.db_path()).recent_runs("test")) > before
 
 
 def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> None:
@@ -479,7 +479,7 @@ def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> No
     from datetime import datetime
 
     from ebook_watchlist import paths
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
     from ebook_watchlist.dnb import Record
     from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
@@ -489,16 +489,16 @@ def test_a_find_in_another_language_never_reaches_the_gate(data_dir: Path) -> No
     store = Store(paths.db_path())
     store.save_dnb("9780000000001", Record(title="A Book", language="eng"), now)
 
-    def neu(nummer: str, grund: MatchReason) -> Delta:
+    def new(number: str, reason: MatchReason) -> Delta:
         return Delta(kind=DeltaKind.FIRST_SEEN, previous=None, current=Observation(
-            source="beam", source_item_id=nummer, title="A Book", match_reason=grund,
+            source="beam", source_item_id=number, title="A Book", match_reason=reason,
             isbn="9780000000001"))
 
-    fund, gewollt = neu("1", MatchReason.GENRE_CATEGORY), neu("2", MatchReason.WATCHLIST)
+    discovery, wanted = new("1", MatchReason.GENRE_CATEGORY), new("2", MatchReason.WATCHLIST)
 
-    bleibt = run_modul._without_foreign_languages(store, [fund, gewollt], load_settings())
+    kept = run_module._without_foreign_languages(store, [discovery, wanted], load_settings())
 
-    assert bleibt == [gewollt]
+    assert kept == [wanted]
 
 
 def test_the_portrayer_gets_keywords_and_original_title_but_no_sample(data_dir: Path) -> None:
@@ -526,7 +526,7 @@ def test_the_portrayer_gets_keywords_and_original_title_but_no_sample(data_dir: 
         def get_bytes(self, url: str) -> bytes:  # pragma: no cover - darf nie gerufen werden
             raise AssertionError(f"die Leseprobe wird nicht mehr geholt: {url}")
 
-    class Quelle:
+    class Source:
         name = "beam"
         client = Client()
 
@@ -539,7 +539,7 @@ def test_the_portrayer_gets_keywords_and_original_title_but_no_sample(data_dir: 
                 keywords=("Space Opera", "Dune"),
             )
 
-    fund = Observation(
+    discovery = Observation(
         source="beam",
         source_item_id="7",
         title="Der Zeitenläufer",
@@ -548,10 +548,10 @@ def test_the_portrayer_gets_keywords_and_original_title_but_no_sample(data_dir: 
         blurb="Der ganze Klappentext.",
     )
 
-    (belegt,) = _with_evidence(store, settings, [fund], [Quelle()])
+    (backed,) = _with_evidence(store, settings, [discovery], [Source()])
 
-    assert belegt.keywords == ("Space Opera", "Dune", "Quantenphysik")
-    assert belegt.original_title == "Dark Matter"
+    assert backed.keywords == ("Space Opera", "Dune", "Quantenphysik")
+    assert backed.original_title == "Dark Matter"
 
 
 def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
@@ -563,7 +563,7 @@ def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
     from datetime import datetime
 
     from ebook_watchlist import paths
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
     from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
     from ebook_watchlist.store import Store
 
@@ -576,20 +576,20 @@ def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
         match_reason=MatchReason.GENRE_CATEGORY,
         blurb="Matze K. ist ein deutscher KI-Autor.")], now)
 
-    def neu(nummer: str, autor: str, grund: MatchReason) -> Delta:
+    def new(number: str, author: str, reason: MatchReason) -> Delta:
         return Delta(kind=DeltaKind.FIRST_SEEN, previous=None, current=Observation(
-            source="beam", source_item_id=nummer, title=f"Buch {nummer}", author=autor,
-            match_reason=grund, blurb="Ein kurzer Teaser."))
+            source="beam", source_item_id=number, title=f"Buch {number}", author=author,
+            match_reason=reason, blurb="Ein kurzer Teaser."))
 
-    ki = neu("1", "Matze K", MatchReason.GENRE_CATEGORY)
-    echt = neu("2", "Wer Auch Immer", MatchReason.GENRE_CATEGORY)
-    eigener = neu("3", "Matze K", MatchReason.WATCHLIST)
+    ai_book = new("1", "Matze K", MatchReason.GENRE_CATEGORY)
+    human_book = new("2", "Wer Auch Immer", MatchReason.GENRE_CATEGORY)
+    own = new("3", "Matze K", MatchReason.WATCHLIST)
 
-    bleibt = run_modul._without_ai_authors(store, [ki, echt, eigener])
+    kept = run_module._without_ai_authors(store, [ai_book, human_book, own])
 
     # Der Titel ohne eigene Selbstauskunft faellt ueber die Autorenschaft weg;
     # was die Leserin selbst benannt hat, bleibt.
-    assert bleibt == [echt, eigener]
+    assert kept == [human_book, own]
 
 
 # --- das Tor im Lauf urteilt im Code (#48) ---------------------------------
@@ -643,7 +643,7 @@ def _profile(store):
 def test_the_run_judges_finds_from_the_profile_in_the_database(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
     from ebook_watchlist.portrait import load_vocabulary
 
@@ -655,13 +655,13 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
         vocabulary, {"Fund 1": ("brooding", "gritty"), "Fund 2": ("leisurely", "lyrical")}
     )
     monkeypatch.setattr(
-        run_modul, "build_portrayer",
+        run_module, "build_portrayer",
         lambda model=None, vocabulary=None: SimpleNamespace(
             portray_finds=lambda observations: {o.key: portrayer(o) for o in observations}
         ),
     )
 
-    kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
+    kept, report = run_module._apply_gate(store, [good, poor], settings, datetime.now())
 
     assert kept == [good]
     assert (report.held_back, report.rated, report.threshold) == (1, 2, 3)
@@ -672,17 +672,17 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
 def test_the_run_without_a_profile_judges_nothing_and_asks_nobody(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
 
     def never(model=None, vocabulary=None):
         raise AssertionError("ohne Profil braucht es keinen Steckbrief-Ersteller")
 
-    monkeypatch.setattr(run_modul, "build_portrayer", never)
+    monkeypatch.setattr(run_module, "build_portrayer", never)
     store, settings = Store(paths.db_path()), load_settings()
     deltas = list(_finds())
 
-    kept, report = run_modul._apply_gate(store, deltas, settings, datetime.now())
+    kept, report = run_module._apply_gate(store, deltas, settings, datetime.now())
 
     assert kept == deltas and report.no_profile
 
@@ -691,7 +691,7 @@ def test_the_run_without_a_profile_judges_nothing_and_asks_nobody(
 def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from ebook_watchlist import run as run_modul
+    from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
     from ebook_watchlist.portrait import load_vocabulary
     from ebook_watchlist.ratings import subject_of
@@ -704,9 +704,9 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
                                         "Fund 2": ("leisurely", "lyrical")})
     store.put_portrait(subject_of(poor.current), described(poor.current),
                        now=datetime.now())
-    monkeypatch.setattr(run_modul, "build_portrayer", lambda model=None, vocabulary=None: None)
+    monkeypatch.setattr(run_module, "build_portrayer", lambda model=None, vocabulary=None: None)
 
-    kept, report = run_modul._apply_gate(store, [good, poor], settings, datetime.now())
+    kept, report = run_module._apply_gate(store, [good, poor], settings, datetime.now())
 
     assert kept == [good]
     assert (report.held_back, report.unrated) == (1, 1)

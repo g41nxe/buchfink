@@ -475,7 +475,7 @@ class SecondTry:
         return KNOWN if "Leseprobe" in text else '{"bekannt": false}'
 
 
-def _mit_probe(url: str | None = "https://beam.invalid/probe.epub") -> Observation:
+def _with_sample(url: str | None = "https://beam.invalid/probe.epub") -> Observation:
     return Observation(
         source="beam", source_item_id="697", title="Maddrax 697", author="Wer",
         match_reason=MatchReason.GENRE_CATEGORY, blurb="Ein Vorwort der Redaktion.",
@@ -488,7 +488,7 @@ def test_unknown_despite_a_blurb_asks_once_more_with_the_sample() -> None:
     channel = SecondTry()
     portrayer = Portrayer(channel, load_vocabulary(), samples=lambda url: "Es war staubig.")
 
-    portrait = portrayer.portray_finds([_mit_probe()])[_mit_probe().key]
+    portrait = portrayer.portray_finds([_with_sample()])[_with_sample().key]
 
     assert portrait.known and portrait.with_sample
     assert len(channel.asked) == 2
@@ -502,7 +502,7 @@ def test_without_a_sample_the_book_stays_unknown_and_is_asked_once() -> None:
     channel = SecondTry()
     portrayer = Portrayer(channel, load_vocabulary(), samples=lambda url: "Es war staubig.")
 
-    portrait = portrayer.portray_finds([_mit_probe(url=None)])[_mit_probe().key]
+    portrait = portrayer.portray_finds([_with_sample(url=None)])[_with_sample().key]
 
     assert not portrait.known and len(channel.asked) == 1
 
@@ -512,7 +512,7 @@ def test_a_sample_that_cannot_be_read_invents_nothing() -> None:
     channel = SecondTry()
     portrayer = Portrayer(channel, load_vocabulary(), samples=lambda url: None)
 
-    portrait = portrayer.portray_finds([_mit_probe()])[_mit_probe().key]
+    portrait = portrayer.portray_finds([_with_sample()])[_with_sample().key]
 
     assert not portrait.known and len(channel.asked) == 1
 

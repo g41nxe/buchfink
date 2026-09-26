@@ -26,21 +26,21 @@ def db(data_dir: Path) -> Store:
     return Store(paths.db_path())
 
 
-def besitz(db: Store, titel: str, autor: str, *, wann: datetime = NOW) -> int:
-    book = db.find_or_create_book(isbn=None, title=titel, author=autor, now=wann)
-    db.put_relation("test", book.id, str(RelationKind.OWNED), now=wann)
+def owned(db: Store, title: str, author: str, *, when: datetime = NOW) -> int:
+    book = db.find_or_create_book(isbn=None, title=title, author=author, now=when)
+    db.put_relation("test", book.id, str(RelationKind.OWNED), now=when)
     return book.id
 
 
 def test_the_page_lists_what_she_owns_and_nothing_else(client, db) -> None:
-    b = besitz(db, "Leopard", "Jo Nesbø")
-    beobachtet = db.books()[0]
+    b = owned(db, "Leopard", "Jo Nesbø")
+    observed = db.books()[0]
 
     body = client.get("/owned").text
 
     assert "Meine Bücher" in body
     assert f'href="/book/{b}"' in body and "Leopard" in body
-    assert f'href="/book/{beobachtet.id}"' not in body
+    assert f'href="/book/{observed.id}"' not in body
 
 
 def test_what_is_marked_on_the_watchlist_appears_and_undo_takes_it_away(client, db) -> None:
@@ -55,19 +55,19 @@ def test_what_is_marked_on_the_watchlist_appears_and_undo_takes_it_away(client, 
 
 
 def test_the_list_sorts_by_title_by_default_and_by_author_on_request(client, db) -> None:
-    besitz(db, "Zebra", "Anna A")
-    besitz(db, "Apfel", "Zoe Z")
+    owned(db, "Zebra", "Anna A")
+    owned(db, "Apfel", "Zoe Z")
 
-    nach_titel = client.get("/owned").text
-    nach_autor = client.get("/owned?sortiert=autor").text
+    by_title = client.get("/owned").text
+    by_author = client.get("/owned?sortiert=autor").text
 
-    assert nach_titel.index("Apfel") < nach_titel.index("Zebra")
-    assert nach_autor.index("Zebra") < nach_autor.index("Apfel")
+    assert by_title.index("Apfel") < by_title.index("Zebra")
+    assert by_author.index("Zebra") < by_author.index("Apfel")
 
 
 def test_the_newest_mark_comes_first_on_request(client, db) -> None:
-    besitz(db, "Alt", "A", wann=datetime(2026, 1, 1))
-    besitz(db, "Neu", "B", wann=datetime(2026, 9, 1))
+    owned(db, "Alt", "A", when=datetime(2026, 1, 1))
+    owned(db, "Neu", "B", when=datetime(2026, 9, 1))
 
     body = client.get("/owned?sortiert=neu").text
 
@@ -75,7 +75,7 @@ def test_the_newest_mark_comes_first_on_request(client, db) -> None:
 
 
 def test_each_row_can_be_found_by_the_search(client, db) -> None:
-    besitz(db, "Leopard", "Jo Nesbø")
+    owned(db, "Leopard", "Jo Nesbø")
 
     body = client.get("/owned").text
 
@@ -84,7 +84,7 @@ def test_each_row_can_be_found_by_the_search(client, db) -> None:
 
 
 def test_her_own_stars_stand_in_the_row(client, db) -> None:
-    b = besitz(db, "Leopard", "Jo Nesbø")
+    b = owned(db, "Leopard", "Jo Nesbø")
     from ebook_watchlist.ratings import BY_READER, book_subject
 
     db.put_rating(book_subject(b), stars=4, confidence="belegt", reason="",
@@ -96,7 +96,7 @@ def test_her_own_stars_stand_in_the_row(client, db) -> None:
 
 
 def test_the_profile_page_leads_to_the_whole_list(client, db) -> None:
-    besitz(db, "Leopard", "Jo Nesbø")
+    owned(db, "Leopard", "Jo Nesbø")
 
     assert 'href="/owned"' in client.get("/profile").text
 

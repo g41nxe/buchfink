@@ -85,8 +85,8 @@ def test_a_library_collection_keeps_its_name_and_says_it_can_be_borrowed() -> No
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.reasons import short_why, why_shown
 
-    fund = Observation(source="overdrive", source_item_id="1", title="Der Hausmann",
+    discovery = Observation(source="overdrive", source_item_id="1", title="Der Hausmann",
                        match_reason=MatchReason.GENRE_CATEGORY, category="Lucky Day")
 
-    assert short_why(fund) == "Lucky Day"
-    assert why_shown(fund) == "sofort ausleihbar aus „Lucky Day“"
+    assert short_why(discovery) == "Lucky Day"
+    assert why_shown(discovery) == "sofort ausleihbar aus „Lucky Day“"

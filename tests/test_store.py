@@ -123,12 +123,12 @@ def test_every_discovery_comes_back_not_the_newest_five_hundred(tmp_path: Path) 
         [
             Observation(
                 source="beam",
-                source_item_id=str(nummer),
-                title=f"Fund {nummer}",
+                source_item_id=str(number),
+                title=f"Fund {number}",
                 match_reason=MatchReason.GENRE_CATEGORY,
                 price_cents=399,
             )
-            for nummer in range(600)
+            for number in range(600)
         ],
         NOW,
     )

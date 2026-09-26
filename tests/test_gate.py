@@ -504,10 +504,10 @@ def test_a_short_story_costs_no_portrait_and_is_held_back(store, vocabulary, wei
     """Die Detailseite nennt den Umfang; was darunter liegt, wird nicht beschrieben."""
     from dataclasses import replace
 
-    fund = discovery(isbn="9783104911854")
+    found_item = discovery(isbn="9783104911854")
     portrayer = Portrayer(vocabulary, GOOD)
 
-    kept, report = run(store, vocabulary, weights, [first_seen(fund)], portrayer,
+    kept, report = run(store, vocabulary, weights, [first_seen(found_item)], portrayer,
                        evidence=lambda obs: [replace(o, pages=40) for o in obs])
 
     assert kept == [] and portrayer.calls == []

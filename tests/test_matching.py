@@ -214,8 +214,8 @@ def test_only_the_indistinguishable_candidates_are_offered() -> None:
         ],
     )
 
-    titel = [kandidat.title for kandidat in resolution.indistinguishable]
-    assert titel == ["Der Kruzifix-Killer"]
+    title = [candidate.title for candidate in resolution.indistinguishable]
+    assert title == ["Der Kruzifix-Killer"]
 
 
 def test_a_genuine_tie_offers_both() -> None:
@@ -253,12 +253,12 @@ def test_a_contradicting_author_loses_against_the_right_one() -> None:
     Shop trafen drei fremde Bücher den Titel exakt, und das richtige war das
     einzige mit übereinstimmender Autor:in — und verlor (ADR 23, Nachtrag)."""
     query = Query(title="Dark Matter", author="Blake Crouch")
-    fremd = score(query, Candidate(title="Dark Matter", author="Kim Mannix"))
-    richtig = score(query, Candidate(title="Dark Matter. Der Zeitenläufer", author="Crouch, Blake"))
+    stranger = score(query, Candidate(title="Dark Matter", author="Kim Mannix"))
+    right = score(query, Candidate(title="Dark Matter. Der Zeitenläufer", author="Crouch, Blake"))
 
-    assert fremd.author_conflict
-    assert not richtig.author_conflict
-    assert richtig.sort_key < fremd.sort_key
+    assert stranger.author_conflict
+    assert not right.author_conflict
+    assert right.sort_key < stranger.sort_key
 
 
 def test_the_wrong_author_is_not_offered_as_an_equal_choice() -> None:
@@ -382,26 +382,26 @@ def test_an_exact_title_without_an_author_still_beats_a_contained_one() -> None:
     fehlende Autorfeld einen exakten Titel hinter einen bloß enthaltenen
     sortiert."""
     query = Query(title="Kugelblitz", author="Cixin Liu")
-    exakt = score(query, Candidate(title="Kugelblitz", author=None))
-    enthalten = score(query, Candidate(title="Kugelblitz und Donner", author="Liu, Cixin"))
+    exact = score(query, Candidate(title="Kugelblitz", author=None))
+    contained = score(query, Candidate(title="Kugelblitz und Donner", author="Liu, Cixin"))
 
-    assert exakt.sort_key < enthalten.sort_key
+    assert exact.sort_key < contained.sort_key
 
 
 def test_the_reason_says_which_of_the_two_it_was() -> None:
     """„Nennt niemanden" und „nennt jemand anderen" sind zwei verschiedene
     Auskünfte."""
-    ohne = match(
+    without = match(
         Query(title="Autorität", author="VanderMeer"),
         [Candidate(title="Neue Autorität – Das Handbuch", author=None)],
     )
-    falsch = match(
+    wrong = match(
         Query(title="Dark Matter", author="Blake Crouch"),
         [Candidate(title="Dark Matter and Dark Energy", author="Brian Clegg")],
     )
 
-    assert "keine Autor:in" in ohne.reason
-    assert "andere Autor:in" in falsch.reason
+    assert "keine Autor:in" in without.reason
+    assert "andere Autor:in" in wrong.reason
 
 
 def test_every_signal_that_decides_also_sorts() -> None:
@@ -425,18 +425,18 @@ def test_every_signal_that_decides_also_sorts() -> None:
 
     from ebook_watchlist.matching import matcher
 
-    quelle = inspect.getsource(matcher)
-    schluessel = re.search(r"def sort_key\(self\).*?\n        \)\n", quelle, re.S)
-    assert schluessel is not None, "sort_key nicht gefunden — der Test misst nichts"
+    source = inspect.getsource(matcher)
+    key = re.search(r"def sort_key\(self\).*?\n        \)\n", source, re.S)
+    assert key is not None, "sort_key nicht gefunden — der Test misst nichts"
 
-    ohne_wirkung = [
-        feld.name
-        for feld in dataclasses.fields(matcher.Scored)
-        if feld.name != "candidate" and f"self.{feld.name}" not in schluessel.group(0)
+    without_effect = [
+        field.name
+        for field in dataclasses.fields(matcher.Scored)
+        if field.name != "candidate" and f"self.{field.name}" not in key.group(0)
     ]
 
-    assert not ohne_wirkung, (
-        f"Diese Signale entscheiden mit, sortieren aber nicht: {ohne_wirkung}. "
+    assert not without_effect, (
+        f"Diese Signale entscheiden mit, sortieren aber nicht: {without_effect}. "
         "Bei zwei sonst gleichen Kandidaten entscheidet damit die Reihenfolge "
         "der Quelle — siehe Ticket 45, 53 und den Review zu 54."
     )
@@ -447,14 +447,14 @@ def test_a_contradicting_identifier_loses_the_place_not_only_the_confidence() ->
     die Sicherheitsstufe. Ein Kandidat mit *falscher* ISBN gewann deshalb gegen
     einen ohne Widerspruch, wenn er im Shop zufällig zuerst stand."""
     query = Query(title="Der Schwarm", author="Frank Schätzing", identifier="9783462033748")
-    widerspricht = Candidate(
+    contradicts = Candidate(
         title="Der Schwarm", author="Frank Schätzing", identifier="9780000000001"
     )
-    unauffaellig = Candidate(title="Der Schwarm - Roman", author="Frank Schätzing")
+    inconspicuous = Candidate(title="Der Schwarm - Roman", author="Frank Schätzing")
 
-    resolution = match(query, [widerspricht, unauffaellig])
+    resolution = match(query, [contradicts, inconspicuous])
 
-    assert resolution.ranked[0].candidate is unauffaellig
+    assert resolution.ranked[0].candidate is inconspicuous
 
 
 # --- ein fehlendes Autorfeld ist kein Widerspruch (#20) ---------------------
@@ -465,40 +465,40 @@ def test_a_find_without_an_author_is_taken_on_an_exact_title() -> None:
     obwohl der Titel exakt stimmte: das Paket nennt im Shop keine Autorin, und
     "nennt niemanden" zaehlte wie "nennt jemand anderen". Haette der Eintrag
     keine Autorin gehabt, waere es angenommen worden."""
-    ergebnis = match(
+    result = match(
         Query(title="Wayward Pines-Trilogie", author="Blake Crouch"),
         [Candidate(title="Wayward Pines-Trilogie", author=None),
          Candidate(title="Wayward Pines", author="Blake Crouch")],
     )
 
-    assert ergebnis.confidence is Confidence.AUTO_ACCEPT
+    assert result.confidence is Confidence.AUTO_ACCEPT
 
 
 def test_a_different_author_is_still_a_contradiction() -> None:
-    ergebnis = match(
+    result = match(
         Query(title="Wayward Pines-Trilogie", author="Blake Crouch"),
         [Candidate(title="Wayward Pines-Trilogie", author="Jemand Anderes")],
     )
 
-    assert ergebnis.confidence is not Confidence.AUTO_ACCEPT
+    assert result.confidence is not Confidence.AUTO_ACCEPT
 
 
-@pytest.mark.parametrize("autorin", ["Richard K. Morgan", None])
-def test_a_one_word_title_is_asked_about(autorin: str | None) -> None:
+@pytest.mark.parametrize("author", ["Richard K. Morgan", None])
+def test_a_one_word_title_is_asked_about(author: str | None) -> None:
     """Einwortige Titel sind genau die, bei denen eine zufaellige
     Namensgleichheit plausibel ist — ohne Autorin am Treffer wird dort
     weiter gefragt. Das gilt auch fuer einen Eintrag ohne Autorin, der das
     Risiko vorher ungeschuetzt trug. Gezaehlt wird nach der Normalisierung:
     "Der Morgen" ist ein Wort, "Der" macht nichts unverwechselbar."""
-    for titel in ("Profit", "Der Morgen"):
-        ergebnis = match(Query(title=titel, author=autorin),
-                         [Candidate(title=titel, author=None)])
+    for title in ("Profit", "Der Morgen"):
+        result = match(Query(title=title, author=author),
+                         [Candidate(title=title, author=None)])
 
-        assert ergebnis.confidence is Confidence.PROVISIONAL, titel
+        assert result.confidence is Confidence.PROVISIONAL, title
 
 
 def test_an_entry_without_an_author_still_takes_a_distinct_title() -> None:
-    ergebnis = match(Query(title="Dark Matter"),
+    result = match(Query(title="Dark Matter"),
                      [Candidate(title="Dark Matter", author=None)])
 
-    assert ergebnis.confidence is Confidence.AUTO_ACCEPT
+    assert result.confidence is Confidence.AUTO_ACCEPT

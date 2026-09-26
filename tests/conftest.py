@@ -236,7 +236,7 @@ def describe(db, subject: str, stars: int, pitch: str | None = "Ein Buch.") -> N
 
 
 @pytest.fixture(autouse=True)
-def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+def no_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     """Kein Test greift nach draußen — außer den ausdrücklich als ``live``
     markierten.
 
@@ -254,22 +254,22 @@ def kein_netz(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -
     if request.node.get_closest_marker("live"):
         return
 
-    echt = socket.socket.connect
+    real = socket.socket.connect
 
-    def nur_hierhin(self: socket.socket, adresse: object, *rest: object) -> object:
-        host = adresse[0] if isinstance(adresse, tuple) else ""
+    def only_here(self: socket.socket, address: object, *rest: object) -> object:
+        host = address[0] if isinstance(address, tuple) else ""
         if host in ("127.0.0.1", "::1", "localhost", ""):
-            return echt(self, adresse, *rest)
+            return real(self, address, *rest)
         raise RuntimeError(
             f"Dieser Test wollte zu {host!r}. Entweder fehlt eine Attrappe, "
             "oder er gehoert mit @pytest.mark.live markiert."
         )
 
-    monkeypatch.setattr(socket.socket, "connect", nur_hierhin)
+    monkeypatch.setattr(socket.socket, "connect", only_here)
 
 
 @pytest.fixture(autouse=True)
-def kein_portrayer(monkeypatch: pytest.MonkeyPatch) -> None:
+def no_portrayer(monkeypatch: pytest.MonkeyPatch) -> None:
     """Kein Test ruft das Modell.
 
     Die Socket-Sperre oben reicht dafuer nicht: ohne API-Schluessel laeuft der
@@ -294,10 +294,10 @@ def kein_portrayer(monkeypatch: pytest.MonkeyPatch) -> None:
     from ebook_watchlist import portrayer, run  # noqa: F401 - laden, damit sie erfasst werden
     from ebook_watchlist.web import book, intake  # noqa: F401
 
-    echt = portrayer.build_portrayer
-    for name, modul in list(sys.modules.items()):
-        if name.startswith("ebook_watchlist") and getattr(modul, "build_portrayer", None) is echt:
-            monkeypatch.setattr(modul, "build_portrayer", lambda model=None, vocabulary=None: None)
+    real = portrayer.build_portrayer
+    for name, module in list(sys.modules.items()):
+        if name.startswith("ebook_watchlist") and getattr(module, "build_portrayer", None) is real:
+            monkeypatch.setattr(module, "build_portrayer", lambda model=None, vocabulary=None: None)
 
 
 def portrayer_via(channel):
@@ -312,7 +312,7 @@ def portrayer_via(channel):
 
 
 @pytest.fixture(autouse=True)
-def keine_belege_von_draussen(monkeypatch: pytest.MonkeyPatch) -> None:
+def no_outside_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
     """Der Knopf "neu beurteilen" holt Detailseite und Leseprobe (#17). In
     Tests ohne Quellen — wer sie prüfen will, setzt seine eigenen ein."""
     from ebook_watchlist.web import book
@@ -323,7 +323,7 @@ def keine_belege_von_draussen(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def kein_enger_lauf(monkeypatch: pytest.MonkeyPatch) -> None:
+def no_narrow_run(monkeypatch: pytest.MonkeyPatch) -> None:
     """Der enge Lauf aus Ticket 51 tut in Tests nichts.
 
     Er laeuft in einem ``daemon``-Faden, und der ueberlebt den Test, der ihn

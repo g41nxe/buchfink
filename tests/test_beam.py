@@ -79,7 +79,7 @@ def test_the_title_excludes_the_subtitle() -> None:
     assert starwars.subtitle and "Jubiläum" in starwars.subtitle
 
 
-def test_the_leading_von_is_stripped_from_the_author() -> None:
+def test_the_leading_name_particle_is_stripped_from_the_author() -> None:
     tiles = beam_tiles("category-new-arrivals.html")
     starwars = next(tile for tile in tiles if tile.product_id == "1278797")
     assert starwars.author == "Zahn, Timothy"
@@ -138,13 +138,13 @@ def test_the_shops_keywords_leave_out_author_and_title() -> None:
     """Die Schlagwörter nennen Motive und Vergleichstitel ("Dune", "The
     Expanse"). Autor und Titel stehen auch darin, und die weiß der Bewerter
     schon (#17)."""
-    schlagwoerter = beam_detail("product-detail.html").keywords
+    keywords = beam_detail("product-detail.html").keywords
 
-    assert "Space Opera" in schlagwoerter
-    assert "The Expanse" in schlagwoerter
-    assert "John Scalzi" not in schlagwoerter
-    assert "Krieg der Klone" not in schlagwoerter
-    assert len(schlagwoerter) == len(set(schlagwoerter))
+    assert "Space Opera" in keywords
+    assert "The Expanse" in keywords
+    assert "John Scalzi" not in keywords
+    assert "Krieg der Klone" not in keywords
+    assert len(keywords) == len(set(keywords))
 
 
 def test_the_detail_page_names_the_publisher() -> None:

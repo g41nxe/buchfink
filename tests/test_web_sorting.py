@@ -17,7 +17,7 @@ from ebook_watchlist.web import sorting
 
 
 @dataclass(frozen=True)
-class Zeile:
+class Row:
     """Genau die Felder, die ein Schlüssel anfasst."""
 
     title: str
@@ -30,7 +30,7 @@ class Zeile:
     reason: str = "genre_category"
 
 
-def namen(orders, rows, slug):
+def names(orders, rows, slug):
     return [row.title for row in sorting.apply(orders, rows, slug)]
 
 
@@ -48,17 +48,17 @@ def test_an_unknown_key_falls_back_instead_of_failing():
 
 def test_the_default_stays_out_of_the_address():
     """Sonst hängt `?sortiert=offen` an jedem Verweis der Seite."""
-    ordnung, in_der_adresse = sorting.chosen(sorting.WATCHLIST, None)
+    order, in_the_address = sorting.chosen(sorting.WATCHLIST, None)
 
-    assert ordnung is sorting.WATCHLIST[0]
-    assert in_der_adresse == ""
+    assert order is sorting.WATCHLIST[0]
+    assert in_the_address == ""
 
 
 def test_a_chosen_key_belongs_in_the_address():
-    ordnung, in_der_adresse = sorting.chosen(sorting.WATCHLIST, "preis")
+    order, in_the_address = sorting.chosen(sorting.WATCHLIST, "preis")
 
-    assert ordnung.slug == "preis"
-    assert in_der_adresse == "preis"
+    assert order.slug == "preis"
+    assert in_the_address == "preis"
 
 
 def test_both_lists_name_price_and_availability_alike():
@@ -80,11 +80,11 @@ def test_every_key_has_its_own_slug():
 
 def test_the_default_puts_open_assignments_first_then_the_title():
     rows = [
-        Zeile("Zenit"),
-        Zeile("Anfang"),
-        Zeile("Mitte", needs_attention=True),
+        Row("Zenit"),
+        Row("Anfang"),
+        Row("Mitte", needs_attention=True),
     ]
-    assert namen(sorting.WATCHLIST, rows, "offen") == ["Mitte", "Anfang", "Zenit"]
+    assert names(sorting.WATCHLIST, rows, "offen") == ["Mitte", "Anfang", "Zenit"]
 
 
 def test_sorting_by_price_ignores_that_something_is_open():
@@ -95,11 +95,11 @@ def test_sorting_by_price_ignores_that_something_is_open():
     und filtert auf ihn.
     """
     rows = [
-        Zeile("Teuer", price_cents=1999),
-        Zeile("Offen und teuer", needs_attention=True, price_cents=2999),
-        Zeile("Billig", price_cents=199),
+        Row("Teuer", price_cents=1999),
+        Row("Offen und teuer", needs_attention=True, price_cents=2999),
+        Row("Billig", price_cents=199),
     ]
-    assert namen(sorting.WATCHLIST, rows, "preis") == [
+    assert names(sorting.WATCHLIST, rows, "preis") == [
         "Billig",
         "Teuer",
         "Offen und teuer",
@@ -112,22 +112,22 @@ def test_a_title_without_a_price_goes_last_not_first():
     Eine Bibliothek nennt keinen; mit 0 Cent stünde sie vor jedem Schnäppchen
     und behauptete etwas, das niemand gesagt hat.
     """
-    rows = [Zeile("Ohne"), Zeile("Mit", price_cents=499)]
-    assert namen(sorting.WATCHLIST, rows, "preis") == ["Mit", "Ohne"]
+    rows = [Row("Ohne"), Row("Mit", price_cents=499)]
+    assert names(sorting.WATCHLIST, rows, "preis") == ["Mit", "Ohne"]
 
 
 def test_borrowable_titles_come_first():
-    rows = [Zeile("Verliehen"), Zeile("Frei", borrowable=True)]
-    assert namen(sorting.WATCHLIST, rows, "frei") == ["Frei", "Verliehen"]
+    rows = [Row("Verliehen"), Row("Frei", borrowable=True)]
+    assert names(sorting.WATCHLIST, rows, "frei") == ["Frei", "Verliehen"]
 
 
 def test_the_newest_addition_is_on_top():
     rows = [
-        Zeile("Alt", added_at=datetime(2026, 1, 1)),
-        Zeile("Neu", added_at=datetime(2026, 9, 1)),
-        Zeile("Mittel", added_at=datetime(2026, 5, 1)),
+        Row("Alt", added_at=datetime(2026, 1, 1)),
+        Row("Neu", added_at=datetime(2026, 9, 1)),
+        Row("Mittel", added_at=datetime(2026, 5, 1)),
     ]
-    assert namen(sorting.WATCHLIST, rows, "neu") == ["Neu", "Mittel", "Alt"]
+    assert names(sorting.WATCHLIST, rows, "neu") == ["Neu", "Mittel", "Alt"]
 
 
 def test_a_row_without_a_timestamp_goes_last_not_first():
@@ -137,15 +137,15 @@ def test_a_row_without_a_timestamp_goes_last_not_first():
     Ende der Reihe, je nachdem wie man den fehlenden Wert ersetzt — und das
     ist genau die Sorte Zufall, die das Ticket beenden soll.
     """
-    rows = [Zeile("Ohne"), Zeile("Mit", added_at=datetime(2026, 1, 1))]
-    assert namen(sorting.WATCHLIST, rows, "neu") == ["Mit", "Ohne"]
+    rows = [Row("Ohne"), Row("Mit", added_at=datetime(2026, 1, 1))]
+    assert names(sorting.WATCHLIST, rows, "neu") == ["Mit", "Ohne"]
 
 
 def test_the_title_breaks_every_tie():
     """Darum gibt es "Titel" nicht als eigene Wahl."""
     for slug in (order.slug for order in sorting.WATCHLIST):
-        rows = [Zeile("beta"), Zeile("Alpha")]
-        assert namen(sorting.WATCHLIST, rows, slug) == ["Alpha", "beta"]
+        rows = [Row("beta"), Row("Alpha")]
+        assert names(sorting.WATCHLIST, rows, slug) == ["Alpha", "beta"]
 
 
 # --- Vorschläge --------------------------------------------------------
@@ -155,12 +155,12 @@ def test_the_stack_shows_the_best_match_first_and_the_unjudged_last():
     """Die Zahl ordnet, die Sterne fassen zusammen (ADR 33): zwei Bücher mit
     denselben fünf Sternen stehen nach ihrer Prozentzahl."""
     rows = [
-        Zeile("Ohne Urteil"),
-        Zeile("Drei", percent=51),
-        Zeile("Fuenf tiefer", percent=82),
-        Zeile("Fuenf hoeher", percent=97),
+        Row("Ohne Urteil"),
+        Row("Drei", percent=51),
+        Row("Fuenf tiefer", percent=82),
+        Row("Fuenf hoeher", percent=97),
     ]
-    assert namen(sorting.SUGGESTIONS, rows, "sterne") == [
+    assert names(sorting.SUGGESTIONS, rows, "sterne") == [
         "Fuenf hoeher",
         "Fuenf tiefer",
         "Drei",
@@ -170,21 +170,21 @@ def test_the_stack_shows_the_best_match_first_and_the_unjudged_last():
 
 def test_the_author_channel_comes_before_the_shelf():
     rows = [
-        Zeile("Thema", reason="genre_category"),
-        Zeile("Autorin", reason="profile_author"),
+        Row("Thema", reason="genre_category"),
+        Row("Autorin", reason="profile_author"),
     ]
-    assert namen(sorting.SUGGESTIONS, rows, "anlass") == ["Autorin", "Thema"]
+    assert names(sorting.SUGGESTIONS, rows, "anlass") == ["Autorin", "Thema"]
 
 
 def test_the_last_seen_find_is_on_top():
     rows = [
-        Zeile("Gestern", observed_at=datetime(2026, 9, 21)),
-        Zeile("Heute", observed_at=datetime(2026, 9, 22)),
+        Row("Gestern", observed_at=datetime(2026, 9, 21)),
+        Row("Heute", observed_at=datetime(2026, 9, 22)),
     ]
-    assert namen(sorting.SUGGESTIONS, rows, "neu") == ["Heute", "Gestern"]
+    assert names(sorting.SUGGESTIONS, rows, "neu") == ["Heute", "Gestern"]
 
 
 @pytest.mark.parametrize("slug", [order.slug for order in sorting.SUGGESTIONS])
 def test_every_suggestion_key_survives_an_empty_row(slug):
     """Kein Schlüssel darf an einem Fund scheitern, der nichts weiß."""
-    assert namen(sorting.SUGGESTIONS, [Zeile("Leer")], slug) == ["Leer"]
+    assert names(sorting.SUGGESTIONS, [Row("Leer")], slug) == ["Leer"]
