@@ -466,7 +466,7 @@ def test_the_head_carries_price_and_availability(client: TestClient, db: Store) 
 
     head = body[: body.find("Bewertung")]
     assert "2,99" in head
-    assert "kachelbild" in head
+    assert "tile-image" in head
 
 
 def test_the_blurb_lives_on_the_book_not_in_every_observation(db: Store) -> None:

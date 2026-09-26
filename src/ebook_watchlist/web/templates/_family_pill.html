@@ -29,7 +29,7 @@
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
-    x-data="{ belege: false }" data-card="{{ p.family_id }}">
+    x-data="{ showEvidence: false }" data-card="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
         hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
     <input type="hidden" name="side" value="loved">
@@ -38,7 +38,7 @@
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-family="{{ p.family_id }}"
-            class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
+            class="tap flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-accent' if p.on else 'text-ink' }}">
         <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-heart"/></svg>
@@ -56,7 +56,7 @@
     </button>
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
-    <button type="button" @click="belege = !belege"
+    <button type="button" @click="showEvidence = !showEvidence"
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
     {% if p.on %}
@@ -70,7 +70,7 @@
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
               {% if not p.boosted and not can_boost %}disabled
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
-              class="tun inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
+              class="tap inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
                      {{ 'border-amber bg-amber/10 text-amber' if p.boosted
                         else 'border-rule text-soft hover:border-amber hover:text-amber' }}">
@@ -79,7 +79,7 @@
     </form>
     {% endif %}
   </div>
-  <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
     {% for title, sentence in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
@@ -99,13 +99,13 @@
 {% set base = "/book/" ~ book_id ~ "/sharpen" %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-accent bg-accent/10' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
-    x-data="{ belege: false }" data-card="{{ p.family_id }}">
+    x-data="{ showEvidence: false }" data-card="{{ p.family_id }}">
   <form method="post" action="{{ base }}/liked" class="flex-1">
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-family="{{ p.family_id }}"
-            class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
+            class="tap flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-accent' if p.on else 'text-ink' }}">
         <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-heart"/></svg>
@@ -123,7 +123,7 @@
     </button>
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
-    <button type="button" @click="belege = !belege"
+    <button type="button" @click="showEvidence = !showEvidence"
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
     {% if p.on %}
@@ -134,7 +134,7 @@
               aria-pressed="{{ 'true' if p.boosted else 'false' }}"
               {% if not p.boosted and not can_boost %}disabled
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
-              class="tun inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
+              class="tap inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
                      {{ 'border-amber bg-amber/10 text-amber' if p.boosted
                         else 'border-rule text-soft hover:border-amber hover:text-amber' }}">
@@ -143,7 +143,7 @@
     </form>
     {% endif %}
   </div>
-  <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
     {% for title, sentence in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
@@ -163,7 +163,7 @@
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
            {{ 'border-danger bg-danger/10' if p.on else 'border-rule bg-card hover:border-danger/60' }}"
-    x-data="{ belege: false }" data-card="{{ p.family_id }}">
+    x-data="{ showEvidence: false }" data-card="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
         hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
     <input type="hidden" name="side" value="lost">
@@ -172,7 +172,7 @@
     <input type="hidden" name="on" value="{{ '' if p.on else '1' }}">
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-family="{{ p.family_id }}"
-            class="tun flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
+            class="tap flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
       <span class="flex items-center gap-1.5 text-sm font-semibold
                    {{ 'text-danger' if p.on else 'text-ink' }}">
         <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-ban"/></svg>
@@ -184,11 +184,11 @@
     </button>
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
-    <button type="button" @click="belege = !belege"
+    <button type="button" @click="showEvidence = !showEvidence"
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
   </div>
-  <ul x-show="belege" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
     {% for title, sentence in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
@@ -205,7 +205,7 @@
     {% for value, text in options %}
     <button type="submit" name="scope" value="{{ value }}"
             aria-pressed="{{ 'true' if k.scope == value else 'false' }}"
-            class="tun flex w-full items-center justify-center rounded border px-2.5 py-1.5 text-center
+            class="tap flex w-full items-center justify-center rounded border px-2.5 py-1.5 text-center
                    {{ 'border-ink bg-hair text-ink' if k.scope == value
                       else 'border-rule text-soft hover:text-ink' }}">{{ text }}</button>
     {% endfor %}

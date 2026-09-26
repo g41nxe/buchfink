@@ -41,7 +41,7 @@
      der Startseite plötzlich auf die Watchlist. #}
   {% set recheck %}type="button"
     hx-post="/watchlist/{{ entry.book_id }}/recheck?back={{ back }}"
-    hx-target="#eintrag-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
+    hx-target="#entry-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
   {{ icon_button("jetzt nachsehen", "ic-refresh", attrs=recheck) }}
 
   <form method="post" action="/watchlist/{{ entry.book_id }}/active"

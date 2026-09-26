@@ -12,7 +12,7 @@
 {% from "_family_pill.html" import title_row, sharpening_card %}
 {% set base = "/book/" ~ book_id ~ "/sharpen" %}
 {% macro choice_pill(f, name, gone=false, on=false) %}
-<label class="pille tun inline-flex h-7 cursor-pointer items-center gap-1 rounded border
+<label class="pill tap inline-flex h-7 cursor-pointer items-center gap-1 rounded border
               border-rule px-3 text-xs text-soft transition sm:rounded-full
               {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
                  if gone else
@@ -63,7 +63,7 @@
           <input type="hidden" name="family" value="{{ c.family_id }}">
           <button type="submit" aria-label="{{ c.name }} zählt nicht mehr dagegen"
                   title="zählt nicht mehr dagegen"
-                  class="tun inline-flex h-5 w-5 items-center justify-center rounded-full
+                  class="tap inline-flex h-5 w-5 items-center justify-center rounded-full
                          hover:bg-danger/15"><svg class="i"><use href="#ic-x"/></svg></button>
         </form>
       </li>
@@ -96,7 +96,7 @@
       {% endfor %}
     </ul>
     <button type="submit"
-            class="tun inline-flex h-8 items-center gap-1 rounded border border-danger
+            class="tap inline-flex h-8 items-center gap-1 rounded border border-danger
                    bg-danger/10 px-3 font-medium text-danger hover:bg-danger/20">
       <svg class="i"><use href="#ic-ban"/></svg>Als Gegengewicht übernehmen</button>
   </form>
@@ -139,7 +139,7 @@
       </select>
     </div>
     <button type="submit"
-            class="tun inline-flex h-8 items-center gap-1 rounded border border-rule px-3
+            class="tap inline-flex h-8 items-center gap-1 rounded border border-rule px-3
                    font-medium text-ink hover:border-accent hover:text-accent">
       <svg class="i"><use href="#ic-check"/></svg>Übernehmen</button>
   </form>

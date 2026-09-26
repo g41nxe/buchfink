@@ -26,7 +26,7 @@
     ({{ existing.held_as | join(", ") }}){% endif %} — jetzt ist es auch in Beobachtung.</span>
   {% endif %}
   <a href="/book/{{ existing.book_id }}"
-     class="tun text-accent underline underline-offset-2">zur Buchseite</a>
+     class="tap text-accent underline underline-offset-2">zur Buchseite</a>
 </div>
 {% endif %}
 
@@ -58,7 +58,7 @@
      Hinweis auf der Schriftlinie des Knopfes statt auf seiner Mitte. #}
   <div class="flex items-center gap-3">
     <button type="submit"
-            class="rounded border border-accent bg-accent/10 tun inline-flex h-9 items-center justify-center px-3 text-sm font-medium
+            class="rounded border border-accent bg-accent/10 tap inline-flex h-9 items-center justify-center px-3 text-sm font-medium
                    text-accent hover:bg-accent/20">Anlegen</button>
     <span class="text-xs text-soft">wird sofort gesucht</span>
   </div>
@@ -76,7 +76,7 @@
     {%- if open_choices == 1 %} Zuordnung braucht{% else %} Zuordnungen brauchen{% endif %}
     deine Entscheidung</span>
   <a href="{{ links.all if only_unsure else links.unsure }}"
-     class="ml-auto tun inline-flex h-7 items-center rounded border border-rule bg-card px-2.5 text-xs font-medium
+     class="ml-auto tap inline-flex h-7 items-center rounded border border-rule bg-card px-2.5 text-xs font-medium
             hover:border-accent hover:text-accent">
     {{ 'alle zeigen' if only_unsure else 'nur diese zeigen' }}</a>
 </div>
@@ -92,7 +92,7 @@
    Zuordnungen mittendrin. Verloren gehen sie nicht — die Leiste darüber nennt
    ihre Zahl und filtert mit einem Klick auf genau sie (#37). #}
 {% set sort_fields %}
-{% if only_unsure %}<input type="hidden" name="nur" value="unklar">{% endif %}
+{% if only_unsure %}<input type="hidden" name="only" value="unsure">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
   {{ sort_select(orders, sort, "/watchlist", sort_fields) }}

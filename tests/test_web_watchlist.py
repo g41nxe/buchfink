@@ -641,21 +641,21 @@ def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
     new = view.add(db, "test", title="Eben erst", author=None, now=datetime(2026, 9, 1))
     assert old != new
 
-    body = client.get("/watchlist?sortiert=neu").text
+    body = client.get("/watchlist?sort=new").text
 
     assert body.index("Eben erst") < body.index("Zuerst da")
 
 
 def test_the_chosen_order_is_the_one_the_field_shows(client: TestClient) -> None:
     """Sonst sortiert die Seite nach dem einen und behauptet das andere."""
-    body = client.get("/watchlist?sortiert=preis").text
-    assert 'value="preis" selected' in body
+    body = client.get("/watchlist?sort=price").text
+    assert 'value="price" selected' in body
 
 
 def test_an_unknown_order_falls_back_instead_of_failing(client: TestClient) -> None:
     """Ein Tippfehler in der Adresse ist kein Grund, die Liste zu verweigern
     (ADR 7)."""
-    response = client.get("/watchlist?sortiert=gibtsnicht")
+    response = client.get("/watchlist?sort=gibtsnicht")
 
     assert response.status_code == 200
     assert f'value="{sorting.WATCHLIST[0].slug}" selected' in response.text
@@ -671,16 +671,41 @@ def test_the_filter_for_open_assignments_keeps_the_order(
         matched_title="Irgendwas", url="https://beam.invalid/1",
     )
 
-    body = client.get("/watchlist?sortiert=preis").text
+    body = client.get("/watchlist?sort=price").text
 
-    assert "nur=unklar" in body
-    assert "sortiert=preis" in body
+    assert "only=unsure" in body
+    assert "sort=price" in body
+
+
+def test_an_old_address_keeps_its_order_and_filter(client: TestClient, db: Store) -> None:
+    """Wer `?sortiert=preis` oder `?nur=unklar` als Lesezeichen hat, landet
+    weiter in derselben Liste (#70)."""
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "beam", outcome=str(LinkOutcome.UNSURE), resolved_at=NOW,
+        matched_title="Irgendwas", url="https://beam.invalid/1",
+    )
+
+    body = client.get("/watchlist?sortiert=preis&nur=unklar").text
+
+    assert 'value="price" selected' in body
+    assert 'name="only" value="unsure"' in body
+    assert "sort=price" in body
+
+
+def test_the_remembered_order_moves_from_the_old_key(client: TestClient) -> None:
+    """Der Browser merkte sich die Wahl bis #70 unter `sortiert:…`; der
+    neue Schlüssel liest ihn einmal und übernimmt ihn."""
+    body = client.get("/watchlist").text
+
+    assert '"sort:/watchlist"' in body
+    assert '"sortiert:/watchlist"' in body
 
 
 def test_the_default_order_stays_out_of_the_links(client: TestClient) -> None:
-    """`?sortiert=offen` an jedem Verweis waere Laerm: die Voreinstellung gilt
+    """`?sort=open` an jedem Verweis waere Laerm: die Voreinstellung gilt
     ohnehin."""
-    assert "sortiert=offen" not in client.get("/watchlist").text
+    assert "sort=open" not in client.get("/watchlist").text
 
 
 # --- von der Watchlist nehmen, ohne Urteil (#72) ------------------------------------------
@@ -693,7 +718,7 @@ def test_removing_takes_the_entry_off_without_saying_anything_about_the_book(
 
     body = client.post(f"/watchlist/{book.id}/finish", data={"kind": "removed"}).text
 
-    assert f'id="eintrag-{book.id}"' not in body
+    assert f'id="entry-{book.id}"' not in body
     assert "von der Watchlist genommen" in body and "Rückgängig" in body
     kinds = {r.kind: r for r in db.relations_of("test", book.id)}
     # Kein Besitz, kein Ausschließen, kein Urteil: es darf wieder vorgeschlagen werden.
@@ -707,7 +732,7 @@ def test_a_removed_entry_comes_back_with_undo(client: TestClient, db: Store) -> 
 
     client.post("/watchlist/undo", data={"book_id": str(book.id), "kind": "removed"})
 
-    assert f'id="eintrag-{book.id}"' in client.get("/watchlist").text
+    assert f'id="entry-{book.id}"' in client.get("/watchlist").text
 
 
 def test_a_removed_entry_is_not_a_paused_one(client: TestClient, db: Store) -> None:
@@ -722,8 +747,8 @@ def test_a_removed_entry_is_not_a_paused_one(client: TestClient, db: Store) -> N
 
     body = client.get("/watchlist").text
 
-    assert f'id="eintrag-{paused.id}"' in body
-    assert f'id="eintrag-{removed.id}"' not in body
+    assert f'id="entry-{paused.id}"' in body
+    assert f'id="entry-{removed.id}"' not in body
 
 
 def test_watching_again_brings_a_removed_book_back(client: TestClient, db: Store) -> None:
@@ -732,7 +757,7 @@ def test_watching_again_brings_a_removed_book_back(client: TestClient, db: Store
 
     client.post(f"/watchlist/{book.id}/active", data={"active": "1"})
 
-    assert f'id="eintrag-{book.id}"' in client.get("/watchlist").text
+    assert f'id="entry-{book.id}"' in client.get("/watchlist").text
 
 
 def test_the_row_offers_to_take_the_entry_off_the_list(client: TestClient, db: Store) -> None:

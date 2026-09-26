@@ -62,11 +62,11 @@ def test_every_candidate_is_offered_not_just_the_winner(client: TestClient, db: 
     Sieger, obwohl `Resolution.ranked` die übrigen kannte."""
     unsure(db, ("Red Rising", "https://beam.invalid/1"), ("Red Rising - Asche", "https://beam.invalid/2"))
 
-    body = client.get("/watchlist?nur=unklar").text
+    body = client.get("/watchlist?only=unsure").text
 
     assert "Red Rising - Asche" in body
     # Ein Formular je Eintrag, eine Karte je Kandidat.
-    assert body.count('class="wahl"') == 2
+    assert body.count('class="pick"') == 2
 
 
 def test_confirming_says_a_human_decided(client: TestClient, db: Store) -> None:
@@ -137,7 +137,7 @@ def test_a_book_no_longer_watched_is_no_longer_a_question(db: Store) -> None:
 
 
 def test_an_empty_pile_says_so(client: TestClient, db: Store) -> None:
-    assert "Nichts offen" in client.get("/watchlist?nur=unklar").text
+    assert "Nichts offen" in client.get("/watchlist?only=unsure").text
 
 
 def test_a_bundle_candidate_is_marked_as_one(client: TestClient, db: Store) -> None:
@@ -149,7 +149,7 @@ def test_a_bundle_candidate_is_marked_as_one(client: TestClient, db: Store) -> N
         ("Der Kruzifix-Killer / Der Vollstrecker", "https://beam.invalid/2"),
     )
 
-    body = client.get("/watchlist?nur=unklar").text
+    body = client.get("/watchlist?only=unsure").text
 
     assert "2 Bände" in body
 
@@ -172,7 +172,7 @@ def test_an_old_row_without_a_candidate_list_still_asks(client: TestClient, db: 
         reason="zwei Kandidaten sind gleich gut",
     )
 
-    body = client.get("/watchlist?nur=unklar").text
+    body = client.get("/watchlist?only=unsure").text
 
     assert "Red Rising - Asche zu Asche" in body
     assert "https://beam.invalid/alt" in body
@@ -256,14 +256,16 @@ def test_the_last_decision_does_not_land_on_an_empty_filter(
 
     response = client.post(
         f"/watchlist/{book_id}/assign",
-        data={"source": "beam", "action": "none", "back": "/watchlist?nur=unklar"},
+        data={"source": "beam", "action": "none", "back": "/watchlist?only=unsure"},
         follow_redirects=False,
     )
 
     assert response.headers["location"] == "/watchlist"
 
 
-def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store) -> None:
+def test_an_old_way_back_leads_to_the_new_filter(client: TestClient, db: Store) -> None:
+    """Eine Seite, die noch mit `?nur=unklar` offen war, schickt den alten
+    Rücksprung (#70)."""
     settings = load_settings()
     first = unsure(db, ("Red Rising", "https://beam.invalid/1"))
     second = db.find_or_create_book(isbn=None, title="Noch eins", author="Wer", now=NOW)
@@ -281,4 +283,25 @@ def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store)
         follow_redirects=False,
     )
 
-    assert response.headers["location"] == "/watchlist?nur=unklar"
+    assert response.headers["location"] == "/watchlist?only=unsure"
+
+
+def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store) -> None:
+    settings = load_settings()
+    first = unsure(db, ("Red Rising", "https://beam.invalid/1"))
+    second = db.find_or_create_book(isbn=None, title="Noch eins", author="Wer", now=NOW)
+    db.put_relation(settings.slug, second.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_book_source(
+        second.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
+        reason="unklar",
+        candidates=[{"title": "Noch eins", "author": "Wer", "url": "https://x/9",
+                     "cover_url": None}],
+    )
+
+    response = client.post(
+        f"/watchlist/{first}/assign",
+        data={"source": "beam", "action": "none", "back": "/watchlist?only=unsure"},
+        follow_redirects=False,
+    )
+
+    assert response.headers["location"] == "/watchlist?only=unsure"

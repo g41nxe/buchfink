@@ -124,7 +124,7 @@ def test_the_price_stands_in_the_tile_of_its_source(client: TestClient, db: Stor
         put_discovery(db, price=price, when=NOW - timedelta(days=days))
 
     body = client.get("/discovery/beam/7").text
-    tile = body[body.index("kachel-klickbar") :]
+    tile = body[body.index("tile-clickable") :]
     tile = tile[: tile.index("</a>")]
 
     assert "9,99 €" in tile
@@ -219,7 +219,7 @@ def test_deciding_here_leads_to_the_new_book(client: TestClient, db: Store) -> N
 
     response = client.post(
         "/suggestions/decide",
-        data={"kind": "watching", "keys": ["beam:7"], "back": "buch"},
+        data={"kind": "watching", "keys": ["beam:7"], "back": "book"},
     )
 
     book_id = db.book_by_source_item("beam", "7")

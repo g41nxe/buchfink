@@ -47,7 +47,7 @@ def test_an_unknown_key_falls_back_instead_of_failing():
 
 
 def test_the_default_stays_out_of_the_address():
-    """Sonst hängt `?sortiert=offen` an jedem Verweis der Seite."""
+    """Sonst hängt `?sort=open` an jedem Verweis der Seite."""
     order, in_the_address = sorting.chosen(sorting.WATCHLIST, None)
 
     assert order is sorting.WATCHLIST[0]
@@ -55,18 +55,33 @@ def test_the_default_stays_out_of_the_address():
 
 
 def test_a_chosen_key_belongs_in_the_address():
-    order, in_the_address = sorting.chosen(sorting.WATCHLIST, "preis")
+    order, in_the_address = sorting.chosen(sorting.WATCHLIST, "price")
 
-    assert order.slug == "preis"
-    assert in_the_address == "preis"
+    assert order.slug == "price"
+    assert in_the_address == "price"
 
 
 def test_both_lists_name_price_and_availability_alike():
     """Was gleich heißt, soll gleich heißen — in beiden Listen."""
     watchlist = {order.slug: order.label for order in sorting.WATCHLIST}
     suggestions = {order.slug: order.label for order in sorting.SUGGESTIONS}
-    for slug in ("preis", "frei"):
+    for slug in ("price", "free"):
         assert watchlist[slug] == suggestions[slug]
+
+
+def test_an_old_german_key_still_leads_to_its_order():
+    """Eine Adresse als Lesezeichen oder ein gemerkter Wert von vor #70
+    (`?sortiert=preis`) führt weiter zur selben Reihenfolge."""
+    assert sorting.resolve(sorting.WATCHLIST, "preis").slug == "price"
+    assert sorting.resolve(sorting.WATCHLIST, "offen") is sorting.WATCHLIST[0]
+    assert sorting.resolve(sorting.SUGGESTIONS, "anlass").slug == "reason"
+    assert sorting.resolve(sorting.OWNED, "autor").slug == "author"
+
+
+def test_every_old_key_names_a_current_one():
+    current = {order.slug for orders in (sorting.WATCHLIST, sorting.SUGGESTIONS,
+                                         sorting.OWNED) for order in orders}
+    assert set(sorting.OLD_SLUGS.values()) <= current
 
 
 def test_every_key_has_its_own_slug():
@@ -84,7 +99,7 @@ def test_the_default_puts_open_assignments_first_then_the_title():
         Row("Anfang"),
         Row("Mitte", needs_attention=True),
     ]
-    assert names(sorting.WATCHLIST, rows, "offen") == ["Mitte", "Anfang", "Zenit"]
+    assert names(sorting.WATCHLIST, rows, "open") == ["Mitte", "Anfang", "Zenit"]
 
 
 def test_sorting_by_price_ignores_that_something_is_open():
@@ -99,7 +114,7 @@ def test_sorting_by_price_ignores_that_something_is_open():
         Row("Offen und teuer", needs_attention=True, price_cents=2999),
         Row("Billig", price_cents=199),
     ]
-    assert names(sorting.WATCHLIST, rows, "preis") == [
+    assert names(sorting.WATCHLIST, rows, "price") == [
         "Billig",
         "Teuer",
         "Offen und teuer",
@@ -113,12 +128,12 @@ def test_a_title_without_a_price_goes_last_not_first():
     und behauptete etwas, das niemand gesagt hat.
     """
     rows = [Row("Ohne"), Row("Mit", price_cents=499)]
-    assert names(sorting.WATCHLIST, rows, "preis") == ["Mit", "Ohne"]
+    assert names(sorting.WATCHLIST, rows, "price") == ["Mit", "Ohne"]
 
 
 def test_borrowable_titles_come_first():
     rows = [Row("Verliehen"), Row("Frei", borrowable=True)]
-    assert names(sorting.WATCHLIST, rows, "frei") == ["Frei", "Verliehen"]
+    assert names(sorting.WATCHLIST, rows, "free") == ["Frei", "Verliehen"]
 
 
 def test_the_newest_addition_is_on_top():
@@ -127,7 +142,7 @@ def test_the_newest_addition_is_on_top():
         Row("Neu", added_at=datetime(2026, 9, 1)),
         Row("Mittel", added_at=datetime(2026, 5, 1)),
     ]
-    assert names(sorting.WATCHLIST, rows, "neu") == ["Neu", "Mittel", "Alt"]
+    assert names(sorting.WATCHLIST, rows, "new") == ["Neu", "Mittel", "Alt"]
 
 
 def test_a_row_without_a_timestamp_goes_last_not_first():
@@ -138,7 +153,7 @@ def test_a_row_without_a_timestamp_goes_last_not_first():
     ist genau die Sorte Zufall, die das Ticket beenden soll.
     """
     rows = [Row("Ohne"), Row("Mit", added_at=datetime(2026, 1, 1))]
-    assert names(sorting.WATCHLIST, rows, "neu") == ["Mit", "Ohne"]
+    assert names(sorting.WATCHLIST, rows, "new") == ["Mit", "Ohne"]
 
 
 def test_the_title_breaks_every_tie():
@@ -160,7 +175,7 @@ def test_the_stack_shows_the_best_match_first_and_the_unjudged_last():
         Row("Fuenf tiefer", percent=82),
         Row("Fuenf hoeher", percent=97),
     ]
-    assert names(sorting.SUGGESTIONS, rows, "sterne") == [
+    assert names(sorting.SUGGESTIONS, rows, "stars") == [
         "Fuenf hoeher",
         "Fuenf tiefer",
         "Drei",
@@ -173,7 +188,7 @@ def test_the_author_channel_comes_before_the_shelf():
         Row("Thema", reason="genre_category"),
         Row("Autorin", reason="profile_author"),
     ]
-    assert names(sorting.SUGGESTIONS, rows, "anlass") == ["Autorin", "Thema"]
+    assert names(sorting.SUGGESTIONS, rows, "reason") == ["Autorin", "Thema"]
 
 
 def test_the_last_seen_find_is_on_top():
@@ -181,7 +196,7 @@ def test_the_last_seen_find_is_on_top():
         Row("Gestern", observed_at=datetime(2026, 9, 21)),
         Row("Heute", observed_at=datetime(2026, 9, 22)),
     ]
-    assert names(sorting.SUGGESTIONS, rows, "neu") == ["Heute", "Gestern"]
+    assert names(sorting.SUGGESTIONS, rows, "new") == ["Heute", "Gestern"]
 
 
 @pytest.mark.parametrize("slug", [order.slug for order in sorting.SUGGESTIONS])

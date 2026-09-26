@@ -122,9 +122,29 @@ benennen, wie sie sind.
 >   nichts und jeder Sicherung einen zweiten Schlüssel; sie unterbleibt.
 >   Das Wort, das die Leserin liest, heißt im Code `GENRE_CATEGORY_WORD` und
 >   lautet weiter „Thema".
+> - **Das Leseformat der Oberfläche ist jetzt englisch** und nimmt damit die
+>   Grenze vom 25.09. zurück, soweit sie das Leseformat deutsch hielt: in der
+>   Adresse `?sort=price`, `?only=unsure`, `/?undo_discovery=…&discovery_kind=…`
+>   (die Schlüssel `open`, `free`, `price`, `new`, `stars`, `reason`, `title`,
+>   `author`), im Browserspeicher `sort:/watchlist`, in den Vorlagen die
+>   `id`-Werte (`entry-…`, `portrait-status`, `book-status-…`, `rename`,
+>   `intake-next`, `run-slot`), die CSS-Klassen (`pill`, `tap`, `pick`,
+>   `strip`, `tile-image`, `blurb-box`, `when-open`, …) und die
+>   Alpine-Zustände. Was die Leserin *liest* — Beschriftungen, Knopfwörter —
+>   bleibt deutsch.
+>
+>   Was jemand als Lesezeichen haben kann, gilt weiter: `?sortiert=…` mit den
+>   alten Schlüsseln (`sorting.OLD_SLUGS`), `?nur=unklar`, `?anlass=` (#57),
+>   `/?rueckgaengig=…&art=…`. Im Code heißen diese alten Parameter englisch
+>   (`old_sort`, `old_only`, …); der deutsche Name steht nur noch als Alias.
+>   Der Browser liest den alten Speicherschlüssel `sortiert:…` einmal,
+>   übersetzt den Wert und zieht ihn um. Auch ein Formular, das noch mit dem
+>   alten Rücksprung (`/watchlist?nur=unklar`, `back=buch`) offen war, kommt
+>   an.
 > - **Kommandozeilen-Optionen** (`--datei`, `--nur-bekannte`, `--anzahl`,
->   `--fruehestens-nach`) sind Leseformat wie eine Adresse; sie bleiben und
->   tragen ein englisches `dest`.
+>   `--fruehestens-nach`) sind Leseformat wie eine Adresse, stehen aber in
+>   Cron-Einträgen, im Skill `buch-bewerten` und in `docs/betrieb.md`; sie
+>   bleiben und tragen ein englisches `dest`.
 > - **Schlüssel in Daten- und Config-Dateien** (`hinweis` in `owned.yaml`,
 >   `sterne_ab` im Bewertungsschema, die Vokabular-Dateien mit `merkmale`,
 >   `familien`, `beschreibung`, `muster`) bleiben deutsch, wie oben für

@@ -108,16 +108,16 @@
    ein (weder Suche noch Zuordnung noch Bewertung), und sie kommt aus
    `notes:` in der Watchlist-Datei. Ein Feld, das sie ueberschreibt, liesse
    Datei und Datenbank auseinanderlaufen — fuer nichts. #}
-<details id="berichtigen" class="mt-2">
+<details id="rename" class="mt-2">
   {# Der Aufklapper ist sein eigener Schliesser: offen sagt dieselbe Zeile
      "Abbrechen" mit einem X. Ein zweiter Knopf daneben waere ein zweiter Ort
      fuer dieselbe Handlung — und neben "Speichern" sieht Verwerfen aus wie
      eine Alternative dazu, was es nicht ist. #}
   <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded py-1
                   text-xs text-soft hover:text-ink hover:underline underline-offset-2">
-    <span class="wenn-zu inline-flex items-center gap-1.5">
+    <span class="when-closed inline-flex items-center gap-1.5">
       <svg class="i"><use href="#ic-doc"/></svg>Titel und Autor:in ändern</span>
-    <span class="wenn-auf inline-flex items-center gap-1.5">
+    <span class="when-open inline-flex items-center gap-1.5">
       <svg class="i"><use href="#ic-x"/></svg>Abbrechen</span>
   </summary>
   <form method="post" action="/book/{{ page.book_id }}/edit"
@@ -136,7 +136,7 @@
                     outline-none focus:border-accent">
     </label>
     <button type="submit"
-            class="tun rounded border border-accent bg-accent/10 tun inline-flex h-9 items-center justify-center px-3 text-sm
+            class="tap rounded border border-accent bg-accent/10 tap inline-flex h-9 items-center justify-center px-3 text-sm
                    font-medium text-accent hover:bg-accent/25">Speichern</button>
     <p class="w-full text-xs text-soft">
       Ein geänderter Titel wirft die Zuordnungen weg und wird sofort neu gesucht.</p>
@@ -332,7 +332,7 @@
   <span class="ml-auto">{% include "_book_status.html" %}</span>
   {% if page.watching %}
   <form hx-post="/book/{{ page.book_id }}/recheck"
-        hx-target="#buch-stand-{{ page.book_id }}" hx-swap="outerHTML">
+        hx-target="#book-status-{{ page.book_id }}" hx-swap="outerHTML">
     <button type="submit" title="jetzt nachsehen"
             class="flex rounded p-1 text-soft hover:bg-hair hover:text-accent">
       <svg class="i"><use href="#ic-refresh"/></svg></button>

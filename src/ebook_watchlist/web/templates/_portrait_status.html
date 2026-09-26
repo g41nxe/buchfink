@@ -13,7 +13,7 @@
 
    Erwartet: `url`, `job` (der Stand, oder nichts), `present`; `retry`, wenn ein
    „unbekannt“ ohne Text steht und inzwischen einer beiliegt. #}
-<span id="steckbrief-stand"
+<span id="portrait-status"
       class="mt-2 flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-xs
              font-normal text-soft sm:mt-0 sm:ml-auto sm:w-auto sm:justify-end"
       {% if job and job.busy %}
@@ -30,19 +30,19 @@
   <span class="text-danger">{{ job.trouble }}</span>
   {% endif %}
   {% if present %}
-  <button type="button" hx-post="{{ url }}?again=1" hx-target="#steckbrief-stand"
+  <button type="button" hx-post="{{ url }}?again=1" hx-target="#portrait-status"
           hx-swap="outerHTML"
           hx-confirm="Den Steckbrief neu beschreiben lassen? Das fragt das Modell noch einmal; der neue ersetzt den alten in der Anzeige."
           title="Neu beschreiben (fragt das Modell noch einmal)" aria-label="Neu beschreiben"
-          class="tun flex items-center gap-1 rounded p-1 hover:bg-hair hover:text-accent">
+          class="tap flex items-center gap-1 rounded p-1 hover:bg-hair hover:text-accent">
     <svg class="i"><use href="#ic-refresh"/></svg>
     <span class="hidden sm:inline">neu beschreiben</span></button>
   {% endif %}
   {% if not present %}
-  <button type="button" hx-post="{{ url }}" hx-target="#steckbrief-stand" hx-swap="outerHTML"
+  <button type="button" hx-post="{{ url }}" hx-target="#portrait-status" hx-swap="outerHTML"
           title="{{ 'Noch einmal beschreiben: jetzt liegt ein Text bei' if retry else 'Steckbrief anlegen' }}"
           aria-label="{{ 'Noch einmal beschreiben' if retry else 'Steckbrief anlegen' }}"
-          class="tun flex items-center rounded p-1 hover:bg-hair hover:text-accent">
+          class="tap flex items-center rounded p-1 hover:bg-hair hover:text-accent">
     <svg class="i"><use href="#ic-refresh"/></svg></button>
   {% endif %}
   {% endif %}

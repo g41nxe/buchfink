@@ -18,7 +18,7 @@
 {% set tone = ("text-accent" if library else "text-amber") if url else "text-soft" %}
 <{{ "a" if url else "div" }}
    {% if url %}href="{{ url }}" target="_blank" rel="noopener"
-   title="{{ display }} öffnen" class="kachel-klickbar cursor-pointer {% else %}
+   title="{{ display }} öffnen" class="tile-clickable cursor-pointer {% else %}
    {# `max-w-xs`, wo die Kachel allein steht: sonst ist die Rasterspalte so
       breit wie der ganze Kopf, und ein Preis in einem 1024 Pixel breiten
       Kasten sieht aus wie ein Fehler. Auf der Buchseite stehen seit #33 zwei
@@ -32,7 +32,7 @@
           {{ "w-full" if fills else "max-w-xs" }}
           justify-between overflow-hidden rounded-lg border border-rule bg-card
           px-3 pt-2 pr-12 pb-2.5">
-  <svg class="kachelbild {{ tone }}" aria-hidden="true">
+  <svg class="tile-image {{ tone }}" aria-hidden="true">
     <use href="#{{ 'ic-lib' if library else 'ic-shop' }}"/></svg>
   <div class="relative mb-2 flex flex-wrap items-center gap-1.5 text-xs
               tracking-wide uppercase">

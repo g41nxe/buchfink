@@ -38,7 +38,7 @@
      was sich geändert hat.</p>
   <div class="mt-4 flex flex-wrap items-center gap-4">
     <a href="/watchlist"
-       class="tun inline-flex h-9 items-center justify-center rounded border border-accent
+       class="tap inline-flex h-9 items-center justify-center rounded border border-accent
               bg-accent/10 px-3 text-sm font-medium text-accent hover:bg-accent/25">Zur Watchlist</a>
     <a href="/overview" class="text-sm text-accent underline decoration-accent/30
        underline-offset-2 hover:decoration-accent">Zur Übersicht</a>
@@ -113,17 +113,17 @@
    daneben — zwei rechtsbuendige Knoepfe, die fast, aber nicht ganz
    fluchten, sahen kaputter aus als gar keine Ausrichtung. Im Fluss nach
    dem Text ist der Knopf eindeutig Teil des Satzes, nicht der Spalten. #}
-<form hx-post="/run" hx-target="#lauf" hx-swap="innerHTML"
+<form hx-post="/run" hx-target="#run-slot" hx-swap="innerHTML"
       hx-disabled-elt="find button" class="w-full sm:w-auto">
   <button type="submit"
-          class="tun inline-flex h-9 w-full items-center justify-center gap-1 rounded border
+          class="tap inline-flex h-9 w-full items-center justify-center gap-1 rounded border
                  border-accent bg-accent/10 px-2 text-sm font-medium text-accent
                  hover:bg-accent/25 sm:h-7 sm:w-auto sm:text-xs">
     <svg class="i"><use href="#ic-refresh"/></svg>Jetzt prüfen</button>
 </form>
 {% endif %}
 </div>
-<div id="lauf">
+<div id="run-slot">
   {% if run_state.busy or run_state.trouble %}{% include "_run_panel.html" %}{% endif %}
 </div>
 
@@ -155,7 +155,7 @@
        egal wie sie zueinander ausgerichtet waren. Ruhig bis zum Hover —
        derselbe Stil wie der "Beobachten"-Knopf im Stapel. #}
     <a href="/watchlist"
-       class="tun ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
+       class="tap ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
               border border-rule px-2 text-xs font-medium text-ink
               hover:border-accent hover:text-accent">
       Ganze Watchlist <span class="text-soft">({{ view.watchlist_total }})</span></a>
@@ -164,7 +164,7 @@
   {% for entry in view.offers %}
     {# Dieselbe Kennung wie auf der Watchlist: der enge Lauf tauscht die Zeile
        gegen sich selbst aus, und das soll hier wie dort gehen. #}
-    <li id="eintrag-{{ entry.book_id }}">
+    <li id="entry-{{ entry.book_id }}">
       {% set under_author %}
       {{ source_icons(entry.source_groups) }}
       {% endset %}
@@ -203,7 +203,7 @@
   {% call section(view.suggestions|length ~ " von " ~ view.suggestions_total
                   ~ " zu entscheiden", "ic-binoculars", margin="mb-2") %}
     <a href="/suggestions"
-       class="tun ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
+       class="tap ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
               border border-rule px-2 text-xs font-medium text-ink
               hover:border-accent hover:text-accent">
       Alle Vorschläge <span class="text-soft">({{ view.suggestions_total }})</span></a>

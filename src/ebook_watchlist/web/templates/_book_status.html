@@ -4,7 +4,7 @@
    Der Trigger steht nur dran, solange etwas laeuft; sobald der Server die
    Zeile ohne ihn zurueckgibt, hoert die Seite von selbst auf zu fragen —
    dasselbe Muster wie `_run_panel.html`, kein Websocket (ADR 3). #}
-<span id="buch-stand-{{ page.book_id }}"
+<span id="book-status-{{ page.book_id }}"
       class="flex items-center gap-1.5 text-xs font-normal text-soft"
       {% if check and check.busy %}
       hx-get="/book/{{ page.book_id }}/recheck"

@@ -327,7 +327,7 @@ def test_on_the_phone_a_tap_on_the_row_ticks_nothing(client: TestClient, db: Sto
     body = client.get("/suggestions").text
 
     checkbox = _tag_around(body, 'name="keys"')
-    assert ':disabled="klein"' in checkbox
+    assert ':disabled="narrow"' in checkbox
     assert "matchMedia" in _tag_around(body, 'id="pile"')
 
 
@@ -716,7 +716,7 @@ def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
     found(db, item_id="teuer", title="Kostet viel", price=499)
     found(db, item_id="billig", title="Kostet wenig", price=199)
 
-    body = client.get("/suggestions?sortiert=preis").text
+    body = client.get("/suggestions?sort=price").text
 
     assert body.index("Kostet wenig") < body.index("Kostet viel")
 
@@ -727,7 +727,7 @@ def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -
     for number in range(5):
         found(db, item_id=str(number), title=f"Fund {number}", price=100 + number)
 
-    pile = view.pending(db, load_settings(), limit=2, sort="preis")
+    pile = view.pending(db, load_settings(), limit=2, sort="price")
 
     assert [item.title for item in pile.items] == ["Fund 0", "Fund 1"]
     assert pile.total == 5
@@ -736,10 +736,10 @@ def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -
 def test_the_filter_keeps_the_order(client: TestClient, db: Store) -> None:
     """Wer auf "Themen" klickt, behaelt seine Reihenfolge."""
     found(db)
-    body = client.get("/suggestions?sortiert=preis").text
+    body = client.get("/suggestions?sort=price").text
 
     assert "reason=genre_category" in body
-    assert "sortiert=preis" in body
+    assert "sort=price" in body
 
 
 def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> None:
@@ -754,16 +754,27 @@ def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> 
         data={
             "kind": str(RelationKind.DISMISSED),
             "keys": [f"{discovery.source}:{discovery.source_item_id}"],
-            "sortiert": "preis",
+            "sort": "price",
         },
     )
 
-    assert response.headers["location"] == "/suggestions?sortiert=preis"
+    assert response.headers["location"] == "/suggestions?sort=price"
 
 
 def test_the_default_order_stays_out_of_the_links(client: TestClient, db: Store) -> None:
     found(db)
-    assert "sortiert=sterne" not in client.get("/suggestions").text
+    assert "sort=stars" not in client.get("/suggestions").text
+
+
+def test_an_old_sort_address_still_sorts(client: TestClient, db: Store) -> None:
+    """`?sortiert=preis` stand bis #70 in der Adresse und in Lesezeichen."""
+    found(db, item_id="teuer", title="Kostet viel", price=499)
+    found(db, item_id="billig", title="Kostet wenig", price=199)
+
+    body = client.get("/suggestions?sortiert=preis").text
+
+    assert body.index("Kostet wenig") < body.index("Kostet viel")
+    assert "sort=price" in body
 
 
 def test_sorting_by_occasion_works_against_the_real_type(
@@ -778,7 +789,7 @@ def test_sorting_by_occasion_works_against_the_real_type(
     found(db, item_id="thema", title="Aus dem Regal", reason=MatchReason.GENRE_CATEGORY)
     found(db, item_id="autor", title="Von wem ich lese", reason=MatchReason.PROFILE_AUTHOR)
 
-    body = client.get("/suggestions?sortiert=anlass").text
+    body = client.get("/suggestions?sort=reason").text
 
     assert body.index("Von wem ich lese") < body.index("Aus dem Regal")
 

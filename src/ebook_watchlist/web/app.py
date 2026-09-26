@@ -20,7 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlencode
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -115,6 +115,9 @@ def _stars(value: float | None) -> str:
 
 TEMPLATES.env.filters["sum_chars"] = _sum_chars
 TEMPLATES.env.filters["stars"] = _stars
+#: Die alten Sortierschlüssel (#70): der Browser hat vielleicht noch einen
+#: davon gemerkt, und `_sort_select.html` übersetzt ihn beim Umziehen.
+TEMPLATES.env.globals["old_sort_slugs"] = sorting.OLD_SLUGS
 
 #: Digest files are named by the Run that wrote them. Serving anything else
 #: from the data directory would turn a read-only page into a file browser.
@@ -126,6 +129,12 @@ OLD_ADDRESSES: dict[str, str] = {
     "/vorschlaege": "/suggestions",
     "/profil": "/profile",
 }
+
+#: Der Filter der Watchlist auf offene Zuordnungen (`?only=unsure`).
+UNSURE = "unsure"
+WATCHLIST_UNSURE = f"/watchlist?only={UNSURE}"
+#: Der Ruecksprung, wie ihn eine vor #70 geladene Seite noch schickt.
+OLD_WATCHLIST_BACK: dict[str, str] = {"/watchlist?nur=unklar": WATCHLIST_UNSURE}
 
 #: FastAPI liest Formularfelder ueber diese Marker. Als Modulkonstante,
 #: damit im Funktionskopf kein Aufruf steht (ruff B008).
@@ -334,18 +343,23 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def start_page(
         request: Request,
-        rueckgaengig: str = "",
-        art: str = "",
+        undo_discovery: str = "",
+        discovery_kind: str = "",
         undo: int | None = None,
         kind: str = "",
+        old_undo_discovery: str = Query("", alias="rueckgaengig"),
+        old_discovery_kind: str = Query("", alias="art"),
     ) -> HTMLResponse:
         """Was heute zählt — nicht der Zustand des Werkzeugs, der steht auf
         der Übersicht (Issue #5).
 
         Zwei Arten von Rücknahme, weil die Seite zwei Arten von Zeilen zeigt:
-        ``rueckgaengig``/``art`` nennen einen entschiedenen Fund,
+        ``undo_discovery``/``discovery_kind`` nennen einen entschiedenen Fund,
         ``undo``/``kind`` einen abgeschlossenen Watchlist-Eintrag (#22).
+        ``rueckgaengig``/``art`` sind die alten Namen der ersten beiden (#70).
         """
+        undo_discovery = undo_discovery or old_undo_discovery
+        discovery_kind = discovery_kind or old_discovery_kind
         settings = load_settings()
         store = _store_for(paths.db_path())
         return TEMPLATES.TemplateResponse(
@@ -355,7 +369,11 @@ def create_app() -> FastAPI:
                 "settings": settings,
                 "asset_version": asset_version(),
                 "view": home.build(store, settings, now=datetime.now()),
-                "undo": home.undo_for(store, rueckgaengig, art) if rueckgaengig else None,
+                "undo": (
+                    home.undo_for(store, undo_discovery, discovery_kind)
+                    if undo_discovery
+                    else None
+                ),
                 "undo_entry": watchlist.undo_for(store, undo, kind) if undo else None,
                 "closings": watchlist.CLOSINGS,
                 # Der juengste Tagesbericht ist der Weg hinter "N Aenderungen";
@@ -405,10 +423,10 @@ def create_app() -> FastAPI:
     def _watchlist_page(
         request: Request,
         message: str | None = None,
-        nur: str = "",
+        only: str = "",
         undo: int | None = None,
         kind: str = "",
-        sortiert: str = "",
+        sort: str = "",
         existing: int | None = None,
         already: str = "",
     ) -> HTMLResponse:
@@ -416,10 +434,10 @@ def create_app() -> FastAPI:
         store = _store_for(paths.db_path())
         # Der aufgeloeste Schluessel, nicht der aus der Adresse: die Seite soll
         # auch bei einem Tippfehler die Reihenfolge anzeigen, die sie benutzt.
-        order, chosen = sorting.chosen(sorting.WATCHLIST, sortiert)
+        order, chosen = sorting.chosen(sorting.WATCHLIST, sort)
         rows = watchlist.entries(store, settings, sort=order.slug)
         open_count = sum(1 for entry in rows if entry.needs_choice)
-        only_unsure = nur == "unklar"
+        only_unsure = only == UNSURE
         return TEMPLATES.TemplateResponse(
             request,
             "watchlist.html",
@@ -439,8 +457,8 @@ def create_app() -> FastAPI:
                 "orders": sorting.WATCHLIST,
                 "sort": order.slug,
                 "links": {
-                    "all": _link("/watchlist", sortiert=chosen),
-                    "unsure": _link("/watchlist", nur="unklar", sortiert=chosen),
+                    "all": _link("/watchlist", sort=chosen),
+                    "unsure": _link("/watchlist", only=UNSURE, sort=chosen),
                 },
             },
         )
@@ -448,16 +466,22 @@ def create_app() -> FastAPI:
     @app.get("/watchlist", response_class=HTMLResponse)
     def watchlist_page(
         request: Request,
-        nur: str = "",
+        only: str = "",
         undo: int | None = None,
         kind: str = "",
-        sortiert: str = "",
+        sort: str = "",
         existing: int | None = None,
         already: str = "",
+        old_only: str = Query("", alias="nur"),
+        old_sort: str = Query("", alias="sortiert"),
     ) -> HTMLResponse:
+        # `nur=unklar` und `sortiert` sind die alten Namen (#70); ein
+        # Lesezeichen führt weiter zur selben Liste.
+        only = only or (UNSURE if old_only == "unklar" else "")
+        sort = sort or old_sort
         try:
             return _watchlist_page(
-                request, nur=nur, undo=undo, kind=kind, sortiert=sortiert,
+                request, only=only, undo=undo, kind=kind, sort=sort,
                 existing=existing, already=already,
             )
         except ConfigError as exc:
@@ -666,7 +690,8 @@ def create_app() -> FastAPI:
         Ohne die Pruefung liesse sich ueber ein untergeschobenes Feld auf eine
         fremde Adresse umleiten.
         """
-        return target if target in ("/watchlist", "/watchlist?nur=unklar") else "/watchlist"
+        target = OLD_WATCHLIST_BACK.get(target, target)
+        return target if target in ("/watchlist", WATCHLIST_UNSURE) else "/watchlist"
 
     @app.post("/watchlist/{book_id}/rename")
     def watchlist_rename(
@@ -736,14 +761,14 @@ def create_app() -> FastAPI:
         elif action == "restore":
             assignments.restore(store, book_id, source, now)
         # Dorthin zurueck, wo entschieden wurde. Vorher stand hier fest
-        # ``?nur=unklar``: wer aus der vollen Liste heraus bestaetigte, landete
+        # ``?only=unsure``: wer aus der vollen Liste heraus bestaetigte, landete
         # danach in der gefilterten — und sah seinen Eintrag nicht mehr.
         target = _back(back)
         # War es die letzte offene Frage, fuehrt der Filter in eine leere
         # Liste. Das ist kein Fehler, aber eine Sackgasse: die Seite sagt
         # "Nichts offen" und verlangt einen weiteren Klick, um wieder etwas
         # zu sehen. Dann lieber gleich die ganze Liste.
-        if target.endswith("?nur=unklar") and not any(
+        if target == WATCHLIST_UNSURE and not any(
             entry.needs_choice for entry in watchlist.entries(store, load_settings())
         ):
             target = "/watchlist"
@@ -1016,11 +1041,17 @@ def create_app() -> FastAPI:
 
     @app.get("/suggestions", response_class=HTMLResponse)
     def triage_page(
-        request: Request, reason: str = "", anlass: str = "", sortiert: str = ""
+        request: Request,
+        reason: str = "",
+        sort: str = "",
+        old_reason: str = Query("", alias="anlass"),
+        old_sort: str = Query("", alias="sortiert"),
     ) -> HTMLResponse:
-        # `anlass` ist der alte Name des Filters (#57); eine Adresse als
-        # Lesezeichen führt weiter zum selben Stapel.
-        reason = reason or anlass
+        # `anlass` ist der alte Name des Filters (#57), `sortiert` der der
+        # Sortierung (#70); eine Adresse als Lesezeichen führt weiter zum
+        # selben Stapel.
+        reason = reason or old_reason
+        sort = sort or old_sort
         try:
             settings = load_settings()
         except ConfigError as exc:
@@ -1030,7 +1061,7 @@ def create_app() -> FastAPI:
                 {"message": str(exc), "asset_version": asset_version()},
                 status_code=500,
             )
-        order, chosen = sorting.chosen(sorting.SUGGESTIONS, sortiert)
+        order, chosen = sorting.chosen(sorting.SUGGESTIONS, sort)
         pile = triage.pending(
             _store_for(paths.db_path()),
             settings,
@@ -1054,12 +1085,12 @@ def create_app() -> FastAPI:
                 "chosen": chosen,
                 # Ein Filter wirft die Sortierung nicht weg und umgekehrt.
                 "links": {
-                    "all": _link("/suggestions", sortiert=chosen),
+                    "all": _link("/suggestions", sort=chosen),
                     "profile_author": _link(
-                        "/suggestions", reason="profile_author", sortiert=chosen
+                        "/suggestions", reason="profile_author", sort=chosen
                     ),
                     "genre_category": _link(
-                        "/suggestions", reason="genre_category", sortiert=chosen
+                        "/suggestions", reason="genre_category", sort=chosen
                     ),
                 },
             },
@@ -1070,8 +1101,9 @@ def create_app() -> FastAPI:
         kind: str = Form(...),
         keys: list[str] = _SELECTED,
         reason: str = Form(""),
-        sortiert: str = Form(""),
+        sort: str = Form(""),
         back: str = Form("/suggestions"),
+        old_sort: str = Form("", alias="sortiert"),
     ) -> RedirectResponse:
         """Eine Entscheidung auf die Auswahl anwenden.
 
@@ -1087,12 +1119,15 @@ def create_app() -> FastAPI:
         suchen, wo sie gerade verschwunden ist. Ein Formularfeld ist kein Ziel;
         was nicht zu diesen beiden Faellen passt, fuehrt in den Stapel.
         """
+        sort = sort or old_sort  # der alte Name des Felds (#70)
         store = _store_for(paths.db_path())
         try:
             triage.decide(store, load_settings(), keys, kind, now=datetime.now())
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if back == "buch" and len(keys) == 1:
+        # "buch" hieß der Rücksprung zur Buchseite bis #70; eine Seite, die
+        # noch offen war, schickt ihn so.
+        if back in ("book", "buch") and len(keys) == 1:
             source, _, item_id = keys[0].partition(":")
             book_id = store.book_by_source_item(source, item_id)
             if book_id is not None:
@@ -1100,14 +1135,18 @@ def create_app() -> FastAPI:
         if back == "/":
             if len(keys) == 1:
                 return RedirectResponse(
-                    "/?" + urlencode({"rueckgaengig": keys[0], "art": kind}), status_code=303
+                    "/?" + urlencode({"undo_discovery": keys[0], "discovery_kind": kind}),
+                    status_code=303,
                 )
             return RedirectResponse("/", status_code=303)
         # Filter *und* Reihenfolge ueberleben die Entscheidung: nach dem
         # Ausschliessen von drei Funden steht man sonst in einer anders
         # geordneten Liste als der, aus der man sie gewaehlt hat (#37).
         return RedirectResponse(
-            _link("/suggestions", reason=reason, sortiert=sortiert), status_code=303
+            _link(
+                "/suggestions", reason=reason, sort=sorting.OLD_SLUGS.get(sort, sort)
+            ),
+            status_code=303,
         )
 
     @app.post("/suggestions/{source}/{item_id}/decide", response_class=HTMLResponse)
@@ -1150,7 +1189,9 @@ def create_app() -> FastAPI:
     # --- Meine Bücher (#71) --------------------------------------------------
 
     @app.get("/owned", response_class=HTMLResponse)
-    def owned_page(request: Request, sortiert: str = "") -> HTMLResponse:
+    def owned_page(
+        request: Request, sort: str = "", old_sort: str = Query("", alias="sortiert")
+    ) -> HTMLResponse:
         """Alles, was die Leserin als *Hab ich* führt — nur zum Ansehen."""
         try:
             settings = load_settings()
@@ -1161,7 +1202,8 @@ def create_app() -> FastAPI:
                 {"message": str(exc), "asset_version": asset_version()},
                 status_code=500,
             )
-        order, _ = sorting.chosen(sorting.OWNED, sortiert)
+        # `sortiert` ist der alte Name (#70).
+        order, _ = sorting.chosen(sorting.OWNED, sort or old_sort)
         return TEMPLATES.TemplateResponse(
             request,
             "owned.html",

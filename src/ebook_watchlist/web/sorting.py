@@ -14,7 +14,7 @@ Schlüsselwert klein sein. Deshalb die Verneinungen (`not entry.borrowable`) und
 die negativen Zahlen: eine Richtung je Schlüssel, in einer Vergleichsfunktion,
 statt `reverse=True` und dann Ausnahmen für die Ränge, die andersherum laufen.
 
-Die Wahl steht in der Adresse (`?sortiert=preis`) und ist damit teilbar. Der
+Die Wahl steht in der Adresse (`?sort=price`) und ist damit teilbar. Der
 Browser merkt sie sich zusätzlich, aber nur, um eine leere Adresse zu füllen —
 was dasteht, gilt.
 """
@@ -56,7 +56,7 @@ def _title(row: Any) -> str:
 class Order:
     """Ein Schlüssel, wie ihn Adresse und Auswahlfeld kennen."""
 
-    #: Was in der Adresse steht (`?sortiert=preis`).
+    #: Was in der Adresse steht (`?sort=price`).
     slug: str
     #: Was im Auswahlfeld steht. Nennt die Richtung mit — „Preis" allein sagt
     #: nicht, ob das Teure oben steht.
@@ -77,14 +77,14 @@ def _by_price(row: Any) -> tuple:
 WATCHLIST: tuple[Order, ...] = (
     # Die bisherige Reihenfolge der Seite, jetzt mit Namen.
     Order(
-        "offen",
+        "open",
         "offene zuerst, dann A–Z",
         lambda entry: (not entry.needs_attention, _title(entry)),
     ),
-    Order("frei", "ausleihbar zuerst", lambda entry: (not entry.borrowable, _title(entry))),
-    Order("preis", "günstigste zuerst", _by_price),
+    Order("free", "ausleihbar zuerst", lambda entry: (not entry.borrowable, _title(entry))),
+    Order("price", "günstigste zuerst", _by_price),
     Order(
-        "neu",
+        "new",
         "zuletzt hinzugefügt",
         lambda entry: (_newest_first(entry.added_at), _title(entry)),
     ),
@@ -94,24 +94,24 @@ SUGGESTIONS: tuple[Order, ...] = (
     # Die bisherige Reihenfolge des Stapels, jetzt mit Namen: das Beste zuerst,
     # Unbewertetes ans Ende — es ist keine Empfehlung, sondern eine offene Frage.
     Order(
-        "sterne",
+        "stars",
         "beste Übereinstimmung zuerst",
         # Nach Prozent, nicht nach Sternen: die Sterne fassen zusammen, die
         # Zahl ordnet (ADR 33). Ohne Urteil steht ein Fund am Ende.
         lambda item: (item.percent is None, -(item.percent or 0), _title(item)),
     ),
-    Order("frei", "ausleihbar zuerst", lambda item: (not item.borrowable, _title(item))),
+    Order("free", "ausleihbar zuerst", lambda item: (not item.borrowable, _title(item))),
     Order(
-        "anlass",
+        "reason",
         "Autor:in vor Thema",
         # Dieselbe Unterscheidung wie die Filterpillen darüber, nur ordnend
         # statt wegwerfend: der Kanal, den die Leserin selbst gewählt hat,
         # steht vor dem Regal, dem noch niemand zugestimmt hat.
         lambda item: (str(item.reason) != "profile_author", _title(item)),
     ),
-    Order("preis", "günstigste zuerst", _by_price),
+    Order("price", "günstigste zuerst", _by_price),
     Order(
-        "neu",
+        "new",
         "zuletzt gesehen",
         lambda item: (_newest_first(item.observed_at), _title(item)),
     ),
@@ -121,23 +121,40 @@ SUGGESTIONS: tuple[Order, ...] = (
 OWNED: tuple[Order, ...] = (
     # Meine Bücher (#71): ein Bestand, keine Aufgabe — also alphabetisch zuerst,
     # und hier ist der Titel eine eigene Wahl, weil er die Voreinstellung ist.
-    Order("titel", "Titel A–Z", lambda book: (_title(book),)),
-    Order("autor", "Autor:in A–Z", lambda book: ((book.author or "").casefold(), _title(book))),
-    Order("neu", "zuletzt vermerkt", lambda book: (_newest_first(book.since), _title(book))),
+    Order("title", "Titel A–Z", lambda book: (_title(book),)),
+    Order("author", "Autor:in A–Z", lambda book: ((book.author or "").casefold(), _title(book))),
+    Order("new", "zuletzt vermerkt", lambda book: (_newest_first(book.since), _title(book))),
     Order(
-        "sterne",
+        "stars",
         "beste Übereinstimmung zuerst",
         lambda book: (book.percent is None, -(book.percent or 0), _title(book)),
     ),
 )
 
 
+#: Die Schlüssel, wie sie bis #70 hießen. Eine Adresse als Lesezeichen
+#: (`?sortiert=preis`) oder ein im Browser gemerkter Wert führt weiter zur
+#: selben Reihenfolge; geschrieben wird nur noch der neue Name.
+OLD_SLUGS: dict[str, str] = {
+    "offen": "open",
+    "frei": "free",
+    "preis": "price",
+    "neu": "new",
+    "sterne": "stars",
+    "anlass": "reason",
+    "titel": "title",
+    "autor": "author",
+}
+
+
 def resolve(orders: tuple[Order, ...], slug: str | None) -> Order:
     """Der gemeinte Schlüssel — die Voreinstellung, wenn die Adresse Unsinn nennt.
 
     Nie ein Fehler: eine unbekannte Sortierung ist ein Tippfehler in der
-    Adresse, kein Grund, die Liste zu verweigern (ADR 7).
+    Adresse, kein Grund, die Liste zu verweigern (ADR 7). Ein alter Name
+    (:data:`OLD_SLUGS`) gilt wie der neue.
     """
+    slug = OLD_SLUGS.get(slug or "", slug)
     for order in orders:
         if order.slug == slug:
             return order
@@ -148,7 +165,7 @@ def chosen(orders: tuple[Order, ...], slug: str | None) -> tuple[Order, str]:
     """Der geltende Schlüssel — und was davon in eine Adresse gehört.
 
     Das Zweite ist leer, solange die Voreinstellung gilt: sie wirkt ohnehin,
-    und ein `?sortiert=offen` an jedem Verweis der Seite wäre Lärm. Eine
+    und ein `?sort=open` an jedem Verweis der Seite wäre Lärm. Eine
     Stelle für beide Listen, damit die Regel nicht an zwei Orten steht und an
     einem davon veraltet.
     """

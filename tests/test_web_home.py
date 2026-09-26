@@ -417,6 +417,34 @@ def test_after_a_decision_the_start_page_offers_to_take_it_back(
     assert "0 von 0 zu entscheiden" in body
 
 
+def test_the_way_back_names_the_find_in_english(data_dir: Path, db: Store) -> None:
+    finished_run(db, finished_at=datetime.now())
+    found(db, item_id="7", title="Der Kannibalenhügel")
+    client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=False)
+
+    response = client.post(
+        "/suggestions/decide",
+        data={"kind": "dismissed", "keys": ["beam:7"], "back": "/"},
+    )
+
+    assert response.headers["location"] == "/?undo_discovery=beam%3A7&discovery_kind=dismissed"
+
+
+def test_the_old_way_back_still_offers_to_take_it_back(data_dir: Path, db: Store) -> None:
+    """`/?rueckgaengig=…&art=…` hieß die Adresse bis #70."""
+    finished_run(db, finished_at=datetime.now())
+    found(db, item_id="7", title="Der Kannibalenhügel")
+    client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=True)
+    client.post(
+        "/suggestions/decide", data={"kind": "dismissed", "keys": ["beam:7"], "back": "/"}
+    )
+
+    body = client.get("/?rueckgaengig=beam:7&art=dismissed").text
+
+    assert "Rückgängig" in body
+    assert 'action="/suggestions/undo"' in body
+
+
 def test_taking_a_decision_back_puts_the_find_back_on_the_pile(
     data_dir: Path, db: Store
 ) -> None:

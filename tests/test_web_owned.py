@@ -59,7 +59,7 @@ def test_the_list_sorts_by_title_by_default_and_by_author_on_request(client, db)
     owned(db, "Apfel", "Zoe Z")
 
     by_title = client.get("/owned").text
-    by_author = client.get("/owned?sortiert=autor").text
+    by_author = client.get("/owned?sort=author").text
 
     assert by_title.index("Apfel") < by_title.index("Zebra")
     assert by_author.index("Zebra") < by_author.index("Apfel")
@@ -69,7 +69,7 @@ def test_the_newest_mark_comes_first_on_request(client, db) -> None:
     owned(db, "Alt", "A", when=datetime(2026, 1, 1))
     owned(db, "Neu", "B", when=datetime(2026, 9, 1))
 
-    body = client.get("/owned?sortiert=neu").text
+    body = client.get("/owned?sort=new").text
 
     assert body.index("Neu") < body.index("Alt")
 

@@ -13,7 +13,7 @@
   {% set on = my_stars is not none and value <= my_stars %}
   <form method="post" action="/book/{{ book_id }}/stars">
     <input type="hidden" name="stars" value="{{ value }}">
-    {# `aspect-square` neben `tun`: auf einem Beruehrungsgeraet zwingt die
+    {# `aspect-square` neben `tap`: auf einem Beruehrungsgeraet zwingt die
        Mindesthoehe von 44 px die Breite mit, sonst waere der Stern 22 px breit
        und ein Fingerziel nur der Hoehe nach. Auf dem Schreibtisch bleibt er so
        gross wie sein Inhalt.
@@ -22,7 +22,7 @@
        verborgener Text darin: sichtbar war er nicht, im Textinhalt der Seite
        aber schon — fuenfmal "N von 5" vor dem einen Satz, der zaehlt. #}
     <button type="submit" title="{{ value }} von 5" aria-label="{{ value }} von 5"
-            class="tun inline-flex aspect-square items-center justify-center p-0.5
+            class="tap inline-flex aspect-square items-center justify-center p-0.5
                    text-lg transition
                    {{ 'text-ink' if on else 'text-rule hover:text-soft' }}">
       <svg class="i" {% if on %}style="fill:currentColor"{% endif %}><use href="#ic-star"/></svg>
