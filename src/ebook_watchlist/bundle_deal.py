@@ -63,9 +63,9 @@ class BundleAdvantage:
     @property
     def summary(self) -> str:
         """Ein Satz für Tagesbericht und Stapel."""
-        anzahl = len(self.volumes)
+        count = len(self.volumes)
         return (
-            f"{anzahl} Bände für {self.price_cents / 100:.2f} € "
+            f"{count} Bände für {self.price_cents / 100:.2f} € "
             f"statt {self.singles_cents / 100:.2f} € — {self.saved_pct} % gespart"
         ).replace(".", ",")
 
@@ -95,45 +95,45 @@ def advantage_for(
     # nichts zu raten und nichts zu vergleichen — die ISBN ist exakt
     # (MARC 770, ADR 25). Erst wenn sie schweigt, wird der Name gelesen.
     if contained is not None and price_of_isbn is not None and observation.isbn:
-        aus_der_bibliothek = contained(observation.isbn)
-        if len(aus_der_bibliothek) >= 2:
-            aus_preisen = [price_of_isbn(isbn) for isbn in aus_der_bibliothek]
-            if all(preis and preis > 0 for preis in aus_preisen):
-                return _vorteil(
+        from_library = contained(observation.isbn)
+        if len(from_library) >= 2:
+            from_prices = [price_of_isbn(isbn) for isbn in from_library]
+            if all(price and price > 0 for price in from_prices):
+                return _advantage(
                     observation,
                     settings,
-                    aus_der_bibliothek,
-                    sum(preis for preis in aus_preisen if preis),
+                    from_library,
+                    sum(price for price in from_prices if price),
                 )
             return None
 
-    bände = volume_titles(observation.title)
-    if len(bände) < 2:
+    volumes = volume_titles(observation.title)
+    if len(volumes) < 2:
         return None
 
-    preise = [price_of(titel) for titel in bände]
+    prices = [price_of(title) for title in volumes]
     # Alle oder keiner: ein fehlender Einzelpreis macht die Summe zu einer
     # Schätzung, und geschätzt wird hier nicht.
-    if any(preis is None or preis <= 0 for preis in preise):
+    if any(price is None or price <= 0 for price in prices):
         return None
 
-    einzeln = sum(preis for preis in preise if preis is not None)
-    return _vorteil(observation, settings, bände, einzeln)
+    separately = sum(price for price in prices if price is not None)
+    return _advantage(observation, settings, volumes, separately)
 
 
-def _vorteil(
+def _advantage(
     observation: Observation,
     settings: Settings,
-    bände: tuple[str, ...],
-    einzeln: int,
+    volumes: tuple[str, ...],
+    separately: int,
 ) -> BundleAdvantage | None:
     """Die Rechnung selbst — gleich, ob die Bände Titel oder ISBNs sind."""
-    if observation.price_cents is None or einzeln <= observation.price_cents:
+    if observation.price_cents is None or separately <= observation.price_cents:
         return None
-    vorteil = BundleAdvantage(
-        volumes=bände, singles_cents=einzeln, price_cents=observation.price_cents
+    advantage = BundleAdvantage(
+        volumes=volumes, singles_cents=separately, price_cents=observation.price_cents
     )
-    return vorteil if vorteil.saved_pct >= settings.min_discount_pct else None
+    return advantage if advantage.saved_pct >= settings.min_discount_pct else None
 
 
 def advantage_finder(store, settings):
@@ -151,7 +151,7 @@ def advantage_finder(store, settings):
     """
     from .sources import registry
 
-    tabellen = [
+    tables = [
         (
             store.latest_prices_by_title(settings.slug, name),
             store.prices_by_isbn(settings.slug, name),
@@ -159,17 +159,17 @@ def advantage_finder(store, settings):
         for name in registry.shops(settings)
     ]
 
-    def finde(observation):
-        for nach_titel, nach_isbn in tabellen:
-            vorteil = advantage_for(
+    def find(observation):
+        for by_title, by_isbn in tables:
+            advantage = advantage_for(
                 observation,
                 settings,
-                nach_titel.get,
+                by_title.get,
                 contained=store.contained_isbns,
-                price_of_isbn=nach_isbn.get,
+                price_of_isbn=by_isbn.get,
             )
-            if vorteil is not None:
-                return vorteil
+            if advantage is not None:
+                return advantage
         return None
 
-    return finde
+    return find

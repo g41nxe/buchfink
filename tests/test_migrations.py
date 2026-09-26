@@ -242,7 +242,7 @@ def test_a_doubled_blurb_is_cut_down_to_one(tmp_path: Path) -> None:
     weil nur nachgeladen wird, was auf „…" endet — und ein doppelter Text
     endet auf dem vollen (Ticket 40)."""
     path = tmp_path / "s.db"
-    doppelt = "Der Anfang ... alles anzeigen expand_more Der Anfang und der Rest."
+    doubled = "Der Anfang ... alles anzeigen expand_more Der Anfang und der Rest."
     with sqlite3.connect(path) as connection:
         connection.executescript(
             """
@@ -253,16 +253,16 @@ def test_a_doubled_blurb_is_cut_down_to_one(tmp_path: Path) -> None:
             PRAGMA user_version = 14;
             """
         )
-        connection.execute("INSERT INTO observation VALUES (1, ?)", (doppelt,))
+        connection.execute("INSERT INTO observation VALUES (1, ?)", (doubled,))
         connection.execute("INSERT INTO observation VALUES (2, 'Ein kurzer Text.')")
 
     migrate(create_engine(f"sqlite:///{path}"), Base.metadata)
 
     with sqlite3.connect(path) as connection:
-        texte = dict(connection.execute("SELECT id, blurb FROM observation"))
-    assert texte[1] == "Der Anfang und der Rest."
+        texts = dict(connection.execute("SELECT id, blurb FROM observation"))
+    assert texts[1] == "Der Anfang und der Rest."
     # Wer nie doppelt war, bleibt unberuehrt.
-    assert texte[2] == "Ein kurzer Text."
+    assert texts[2] == "Ein kurzer Text."
 
 
 # --- voebb heisst onleihe ----------------------------------------------------

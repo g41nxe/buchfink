@@ -130,7 +130,7 @@ def test_a_short_title_she_chose_herself_stays() -> None:
 
     from ebook_watchlist.junk import is_short_story
 
-    selbst = Observation(source="beam", source_item_id="1", title="Kurz",
+    itself = Observation(source="beam", source_item_id="1", title="Kurz",
                          match_reason=MatchReason.WATCHLIST, pages=40)
-    assert not is_short_story(selbst)
+    assert not is_short_story(itself)
     assert is_short_story(replace(by_author("Kurz"), pages=40))

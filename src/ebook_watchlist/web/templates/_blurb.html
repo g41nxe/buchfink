@@ -15,18 +15,18 @@
    und Fensterbreite. Genau die Haelfte der Arbeitsteilung aus ADR 20, die
    Alpine gehoert. Ohne Alpine bleibt der Verweis stehen und tut, was er
    heute tut. #}
-<details class="klappentext mt-6"
-         x-data="{ gekuerzt: true }"
+<details class="blurb-box mt-6"
+         x-data="{ truncated: true }"
          x-init="$nextTick(() => {
-           gekuerzt = $refs.text.scrollHeight > $refs.text.clientHeight + 1
+           truncated = $refs.text.scrollHeight > $refs.text.clientHeight + 1
          })">
   <summary class="list-none">
     <p x-ref="text" class="max-w-prose text-sm leading-relaxed text-ink">{{ text }}</p>
     {# `x-show` und nicht `:class="hidden"`: beides sind Klassen derselben
        Staerke, und `inline-block` steht im Stylesheet weiter unten — der
        Verweis blieb sichtbar. `x-show` schreibt `display` direkt ans Element. #}
-    <span x-show="gekuerzt"
-          class="mehr mt-1 inline-block cursor-pointer text-xs text-accent underline
+    <span x-show="truncated"
+          class="more mt-1 inline-block cursor-pointer text-xs text-accent underline
                  decoration-accent/30 underline-offset-2 hover:decoration-accent"></span>
   </summary>
 </details>

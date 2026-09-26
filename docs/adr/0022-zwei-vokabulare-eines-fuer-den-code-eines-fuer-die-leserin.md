@@ -107,3 +107,62 @@ benennen, wie sie sind.
 > Teil dessen, was die Leserin sieht oder als Lesezeichen behält, und
 > bleiben deutsch. Versteckte Formularfelder, die nur zwischen Vorlage und
 > Route reisen (`back`), sind dagegen Code.
+
+> **Nachtrag vom 26.09.2026: der Rest nach #65 (#70).** Die Kernmodule, die
+> Quellen-Parser und die Tests heißen jetzt englisch, bis in die lokale
+> Variable. Umbenannt wurde über den Tokenizer, Strings, Kommentare und
+> Docstrings blieben unberührt. Wo ein Bezeichner nach außen reicht, bleibt
+> der Wert, und nur der Name im Code wechselt:
+>
+> - **`THEMA` heißt `GENRE_CATEGORY`**, wie das Glossar es führt
+>   (`InterestKey.GENRE_CATEGORY`, `reasons.genre_category_name`,
+>   `Overview.genre_categories`, …). Der **gespeicherte Wert `"thema"`**
+>   in `interest.key` bleibt, wie er ist: ein Datenwert, kein Bezeichner. Eine
+>   angehängte Migration (ADR 16) wäre möglich, brächte der Leserin aber
+>   nichts und jeder Sicherung einen zweiten Schlüssel; sie unterbleibt.
+>   Das Wort, das die Leserin liest, heißt im Code `GENRE_CATEGORY_WORD` und
+>   lautet weiter „Thema".
+> - **Das Leseformat der Oberfläche ist jetzt englisch** und nimmt damit die
+>   Grenze vom 25.09. zurück, soweit sie das Leseformat deutsch hielt: in der
+>   Adresse `?sort=price`, `?only=unsure`, `/?undo_discovery=…&discovery_kind=…`
+>   (die Schlüssel `open`, `free`, `price`, `new`, `stars`, `reason`, `title`,
+>   `author`), im Browserspeicher `sort:/watchlist`, in den Vorlagen die
+>   `id`-Werte (`entry-…`, `portrait-status`, `book-status-…`, `rename`,
+>   `intake-next`, `run-slot`), die CSS-Klassen (`pill`, `tap`, `pick`,
+>   `strip`, `tile-image`, `blurb-box`, `when-open`, …) und die
+>   Alpine-Zustände. Was die Leserin *liest* — Beschriftungen, Knopfwörter —
+>   bleibt deutsch.
+>
+>   Was jemand als Lesezeichen haben kann, gilt weiter: `?sortiert=…` mit den
+>   alten Schlüsseln (`sorting.OLD_SLUGS`), `?nur=unklar`, `?anlass=` (#57),
+>   `/?rueckgaengig=…&art=…`. Im Code heißen diese alten Parameter englisch
+>   (`old_sort`, `old_only`, …); der deutsche Name steht nur noch als Alias.
+>   Der Browser liest den alten Speicherschlüssel `sortiert:…` einmal,
+>   übersetzt den Wert und zieht ihn um. Auch ein Formular, das noch mit dem
+>   alten Rücksprung (`/watchlist?nur=unklar`, `back=buch`) offen war, kommt
+>   an.
+> - **Das Antwortformat des Modells bleibt deutsch.** Der Prompt in
+>   `portrait.py` verlangt JSON mit den Schlüsseln `bekannt`, `titel`,
+>   `autor`, `originaltitel`, `genre`, `untergenre`, `pitch`, `merkmale`,
+>   `erzaehlmuster`, `id`, `satz`, `beleg`, `gewicht`, und seine Platzhalter
+>   heißen `{vokabular}` und `{buch}`. Das ist das Wire-Format zwischen Code
+>   und Modell, kein Bezeichner. `fingerprint()` rechnet über `TEMPLATE`;
+>   eine Umbenennung änderte den Abdruck, und jeder gespeicherte Steckbrief
+>   verfiele (ADR 33). Deshalb bleiben auch die Schlüsselwörter an
+>   `TEMPLATE.format(vokabular=…, buch=…)` und in den Tests die an
+>   `answer(merkmale=…, erzaehlmuster=…, bekannt=…)`, die zu Schlüsseln der
+>   Antwort werden, deutsch. Umgestellt wird erst zusammen mit einer ohnehin
+>   fälligen Prompt-Änderung (#69), wenn überhaupt.
+> - **Kommandozeilen-Optionen** (`--datei`, `--nur-bekannte`, `--anzahl`,
+>   `--fruehestens-nach`) sind Leseformat wie eine Adresse, stehen aber in
+>   Cron-Einträgen, im Skill `buch-bewerten` und in `docs/betrieb.md`; sie
+>   bleiben und tragen ein englisches `dest`.
+> - **Schlüssel in Daten- und Config-Dateien** (`hinweis` in `owned.yaml`,
+>   `sterne_ab` im Bewertungsschema, die Vokabular-Dateien mit `merkmale`,
+>   `familien`, `beschreibung`, `muster`) bleiben deutsch, wie oben für
+>   Config- und Profildateien festgehalten.
+>
+> Nach diesem Nachtrag findet ein Durchgang über die NAME-Tokens von `src/`
+> und `tests/` keine deutschen Bezeichner mehr außer den hier genannten
+> Schlüsselwörtern des Antwortformats. (`activ=` in `test_seed.py` ist ein
+> absichtlich falscher Schlüssel, kein deutsches Wort.)

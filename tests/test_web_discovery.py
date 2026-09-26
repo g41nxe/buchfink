@@ -33,7 +33,7 @@ def db(data_dir: Path) -> Store:
     return Store(paths.db_path())
 
 
-def fund(
+def put_discovery(
     db: Store,
     *,
     item_id: str = "7",
@@ -68,7 +68,7 @@ def fund(
 
 
 def test_a_find_has_a_page_of_its_own(client: TestClient, db: Store) -> None:
-    fund(db)
+    put_discovery(db)
 
     response = client.get("/discovery/beam/7")
 
@@ -84,7 +84,7 @@ def test_a_find_nobody_ever_saw_is_a_404(client: TestClient, db: Store) -> None:
 
 def test_the_page_names_the_reason_it_turned_up(client: TestClient, db: Store) -> None:
     """Derselbe Anlass wie im Stapel und im Tagesbericht, aus einer Stelle."""
-    fund(db)
+    put_discovery(db)
 
     body = client.get("/discovery/beam/7").text
 
@@ -96,7 +96,7 @@ def test_the_reasoning_is_readable_here_and_only_here(client: TestClient, db: St
     """Der Stapel zeigt den Pitch, nie die Begründung — ADR 19 wollte sie
     nachprüfbar machen, und dies ist der Ort dafür. Seit #48 rechnet sie der
     Code aus dem Steckbrief."""
-    observation = fund(db)
+    observation = put_discovery(db)
     give_profile(db)
     describe(db, subject_of(observation), 4, "Ein Metzger mit Regeln statt Gewissen.")
 
@@ -108,7 +108,7 @@ def test_the_reasoning_is_readable_here_and_only_here(client: TestClient, db: St
 
 
 def test_without_a_portrait_the_page_offers_to_make_one(client: TestClient, db: Store) -> None:
-    fund(db)
+    put_discovery(db)
 
     body = client.get("/discovery/beam/7").text
 
@@ -120,23 +120,23 @@ def test_without_a_portrait_the_page_offers_to_make_one(client: TestClient, db: 
 def test_the_price_stands_in_the_tile_of_its_source(client: TestClient, db: Store) -> None:
     """Wie auf der Buchseite: der Preis gehört zu der Quelle, die ihn genannt
     hat, nicht in eine Ecke der Seite. Ein Fund kennt genau eine."""
-    for tage, preis in ((3, 1299), (2, 1199), (1, 999)):
-        fund(db, price=preis, when=NOW - timedelta(days=tage))
+    for days, price in ((3, 1299), (2, 1199), (1, 999)):
+        put_discovery(db, price=price, when=NOW - timedelta(days=days))
 
     body = client.get("/discovery/beam/7").text
-    kachel = body[body.index("kachel-klickbar") :]
-    kachel = kachel[: kachel.index("</a>")]
+    tile = body[body.index("tile-clickable") :]
+    tile = tile[: tile.index("</a>")]
 
-    assert "9,99 €" in kachel
-    assert "Shop" in kachel
+    assert "9,99 €" in tile
+    assert "Shop" in tile
 
 
 def test_the_table_shows_the_last_five_sightings(client: TestClient, db: Store) -> None:
     """Der Snapshot ist anhängend, also steht derselbe Fund dort einmal je Lauf
     — bei einem Titel, an dem sich nichts ändert, waren das elf Zeilen mit
     elfmal demselben Betrag. Dieselbe Grenze wie auf der Buchseite."""
-    for tage in range(8):
-        fund(db, price=900 + tage, when=NOW - timedelta(days=tage))
+    for days in range(8):
+        put_discovery(db, price=900 + days, when=NOW - timedelta(days=days))
 
     body = client.get("/discovery/beam/7").text
 
@@ -151,7 +151,7 @@ def test_the_head_names_title_author_and_source_and_nothing_else(
     Anlass. Die ISBN stand zwischen Preis und Titel und gehört keiner
     Entscheidung — sie fällt weg. Und der Anlass steht einmal, als Pille: der
     Satz "neu im Thema Psychothriller" sagte dasselbe ein zweites Mal."""
-    fund(db, isbn="9783104911854")
+    put_discovery(db, isbn="9783104911854")
 
     body = client.get("/discovery/beam/7").text
 
@@ -168,7 +168,7 @@ def test_a_taken_back_decision_leads_to_the_find_again(
     — und die Verknuepfung zur Quelle bleibt ebenfalls. Der Fund steht danach
     wieder im Stapel; sein Titel muss dann auch wieder auf die Fundseite
     fuehren und nicht auf eine Buchseite, auf der nichts mehr gilt."""
-    fund(db)
+    put_discovery(db)
     client.post("/suggestions/decide", data={"kind": "watching", "keys": ["beam:7"]})
     book_id = db.book_by_source_item("beam", "7")
     client.post(
@@ -176,11 +176,11 @@ def test_a_taken_back_decision_leads_to_the_find_again(
         data={"key": "beam:7", "kind": "watching", "back": "/suggestions"},
     )
 
-    antwort = client.get("/discovery/beam/7")
+    response = client.get("/discovery/beam/7")
 
     assert book_id is not None
-    assert antwort.status_code == 200
-    assert "Der Kannibalenhügel" in antwort.text
+    assert response.status_code == 200
+    assert "Der Kannibalenhügel" in response.text
 
 
 def test_a_decision_with_an_unknown_kind_creates_nothing(
@@ -190,19 +190,19 @@ def test_a_decision_with_an_unknown_kind_creates_nothing(
     kann alles schicken. Frueher entstand dabei erst die Buch-Zeile und dann
     der Fehler — zurueck blieb ein Buch ohne jede Beziehung, das den Fund von
     seiner eigenen Seite wegleitete."""
-    fund(db)
+    put_discovery(db)
 
-    antwort = client.post(
+    response = client.post(
         "/suggestions/decide", data={"kind": "gefaellt", "keys": ["beam:7"]}
     )
 
-    assert antwort.status_code == 400
+    assert response.status_code == 400
     assert db.book_by_source_item("beam", "7") is None
 
 
 def test_the_page_leaves_out_what_a_find_does_not_have(client: TestClient, db: Store) -> None:
     """Kein Buch heißt: keine Beziehungen, keine Notiz, kein "Prüfen bei"."""
-    fund(db)
+    put_discovery(db)
 
     body = client.get("/discovery/beam/7").text
 
@@ -215,16 +215,16 @@ def test_deciding_here_leads_to_the_new_book(client: TestClient, db: Store) -> N
     """Mit der Entscheidung wird aus dem Fund ein Buch (ADR 18), und die
     Buchseite ist die reichere Ansicht. In den Stapel zurueckzuspringen hiesse,
     die eigene Entscheidung dort zu suchen, wo sie gerade verschwunden ist."""
-    fund(db)
+    put_discovery(db)
 
-    antwort = client.post(
+    response = client.post(
         "/suggestions/decide",
-        data={"kind": "watching", "keys": ["beam:7"], "back": "buch"},
+        data={"kind": "watching", "keys": ["beam:7"], "back": "book"},
     )
 
     book_id = db.book_by_source_item("beam", "7")
     assert book_id is not None
-    assert antwort.headers["location"] == f"/book/{book_id}"
+    assert response.headers["location"] == f"/book/{book_id}"
 
 
 def test_a_find_that_became_a_book_leads_to_its_book_page(
@@ -232,7 +232,7 @@ def test_a_find_that_became_a_book_leads_to_its_book_page(
 ) -> None:
     """Nach einer Entscheidung gibt es eine Buchseite — die ist dann die
     reichere Ansicht, und ein alter Link soll nicht daran vorbeiführen."""
-    fund(db)
+    put_discovery(db)
     client.post("/suggestions/decide", data={"kind": "owned", "keys": ["beam:7"]})
 
     response = client.get("/discovery/beam/7")
@@ -245,7 +245,7 @@ def test_a_find_that_became_a_book_leads_to_its_book_page(
 def test_the_page_links_to_the_source(client: TestClient, db: Store) -> None:
     """Der Weg zur Quelle haengt am Symbol unter dem Autor, wie in der Zeile —
     der Titel bleibt Text, wie auf der Buchseite."""
-    fund(db)
+    put_discovery(db)
 
     body = client.get("/discovery/beam/7").text
 
@@ -268,7 +268,7 @@ def test_a_find_can_be_described_from_its_page(
     from ebook_watchlist.web import book as book_page
     from test_web_book import StubAsker, _leopard
 
-    observation = fund(db, item_id="7")
+    observation = put_discovery(db, item_id="7")
     give_profile(db)
     asker = StubAsker(_leopard())
     monkeypatch.setattr(book_page, "build_portrayer", portrayer_via(asker))
@@ -298,10 +298,10 @@ def test_a_find_can_be_described_anew_on_request(
     from ebook_watchlist.web import book as book_page
     from test_web_book import _Changing, _leopard
 
-    fund(db, item_id="7")
+    put_discovery(db, item_id="7")
     give_profile(db)
-    neu = _leopard().replace("Der Leopoldsapfel wird genau ausgemalt.", "Ein ganz anderer Satz.")
-    asker = _Changing(_leopard(), neu)
+    new = _leopard().replace("Der Leopoldsapfel wird genau ausgemalt.", "Ein ganz anderer Satz.")
+    asker = _Changing(_leopard(), new)
     monkeypatch.setattr(book_page, "build_portrayer", portrayer_via(asker))
 
     def wait() -> None:
@@ -331,7 +331,7 @@ def test_a_second_click_costs_no_second_call(
     from ebook_watchlist.web import discovery
     from test_web_book import StubAsker, _leopard
 
-    fund(db, item_id="7")
+    put_discovery(db, item_id="7")
     asker = StubAsker(_leopard())
     monkeypatch.setattr(book_page, "build_portrayer", portrayer_via(asker))
     from ebook_watchlist.config import load_settings
@@ -368,32 +368,32 @@ def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
     from ebook_watchlist.portrait import Portrait, fingerprint, load_vocabulary
     from ebook_watchlist.web import book as book_view
 
-    observation = fund(db)
+    observation = put_discovery(db)
     give_profile(db)
-    wort = load_vocabulary()
+    vocabulary = load_vocabulary()
     db.put_portrait(subject_of(observation),
-                    Portrait(known=False, fingerprint=fingerprint(wort), with_text=True),
+                    Portrait(known=False, fingerprint=fingerprint(vocabulary), with_text=True),
                     now=datetime(2026, 9, 26, 12, 0))
-    gefragt = []
+    asked = []
 
-    class Kanal:
+    class Channel:
         def ask(self, text, max_tokens=2000):
-            gefragt.append(text)
+            asked.append(text)
             return _json.dumps({"bekannt": True, "titel": "T", "autor": "A", "genre": "Horror",
                                 "untergenre": "x", "pitch": "Ein Pitch.",
                                 "merkmale": [{"id": "gritty", "satz": "S.", "beleg": "leseprobe",
                                               "gewicht": "praegend"}], "erzaehlmuster": []})
 
-    monkeypatch.setattr(book_view, "build_portrayer", portrayer_via(Kanal()))
+    monkeypatch.setattr(book_view, "build_portrayer", portrayer_via(Channel()))
     monkeypatch.setattr(book_view, "sample_fetcher", lambda settings: lambda url: "Der Anfang.")
     monkeypatch.setattr(book_view, "gather_evidence",
                         lambda store, settings, obs, sources: [
                             replace(o, sample_url="https://x.invalid/p.epub") for o in obs])
 
-    fehler = book_view.portray_observation(db, load_settings(), observation,
+    failure = book_view.portray_observation(db, load_settings(), observation,
                                            now=datetime(2026, 9, 27))
-    assert fehler == ""
+    assert failure == ""
 
-    stored = db.portrait(subject_of(observation), fingerprint(wort))
+    stored = db.portrait(subject_of(observation), fingerprint(vocabulary))
     assert stored.known and stored.with_sample
-    assert len(gefragt) == 1 and "Der Anfang." in gefragt[0]
+    assert len(asked) == 1 and "Der Anfang." in asked[0]

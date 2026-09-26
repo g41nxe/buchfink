@@ -37,9 +37,9 @@ def test_the_palette_is_not_behind_a_media_query() -> None:
     Schalter still die Wirkung, und die Seite sieht dabei richtig aus, solange
     man nicht klickt.
     """
-    ohne_kommentare = re.sub(r"/\*.*?\*/", "", APP_CSS.read_text(encoding="utf-8"), flags=re.S)
+    without_comments = re.sub(r"/\*.*?\*/", "", APP_CSS.read_text(encoding="utf-8"), flags=re.S)
 
-    assert "prefers-color-scheme" not in ohne_kommentare
+    assert "prefers-color-scheme" not in without_comments
 
 
 def test_every_colour_carries_both_values() -> None:
@@ -51,9 +51,9 @@ def test_every_colour_carries_both_values() -> None:
     """
     text = APP_CSS.read_text(encoding="utf-8")
     theme = text[text.index("@theme {") : text.index("/* Hell und Dunkel")]
-    ohne_dunkel = [
-        zeile.strip()
-        for zeile in theme.splitlines()
-        if zeile.strip().startswith("--color-") and "light-dark(" not in zeile
+    without_dark = [
+        row.strip()
+        for row in theme.splitlines()
+        if row.strip().startswith("--color-") and "light-dark(" not in row
     ]
-    assert ohne_dunkel == []
+    assert without_dark == []

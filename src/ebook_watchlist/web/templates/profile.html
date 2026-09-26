@@ -15,7 +15,7 @@
    zweite Erstaufnahme. #}
 {% if view.facet_profile is none %}
 <a href="/intake" data-intake
-   class="tun mb-6 flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/5
+   class="tap mb-6 flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/5
           px-5 py-4 hover:bg-accent/10">
   <svg class="i shrink-0 text-accent"><use href="#ic-heart"/></svg>
   <span class="text-sm">
@@ -126,13 +126,13 @@
 
    Alpine statt fuenf `details`: die Liste soll darunter in voller Breite
    aufgehen statt in einer Rasterspalte (ADR 20). #}
-<div x-data="{ offen: null }"
+<div x-data="{ openShelf: null }"
      class="rounded-lg border border-rule bg-card px-5 pt-4 pb-4">
   {# Die Linie traegt die Reiter — und erscheint deshalb erst, wenn einer
      offen ist. Zugeklappt lag sie sonst als freischwebender Strich unter den
      Zahlen und trennte nichts von nichts. #}
   <div class="flex flex-wrap justify-center gap-x-6"
-       :class="offen ? 'border-b border-rule' : ''">
+       :class="openShelf ? 'border-b border-rule' : ''">
     {% for shelf in view.counts %}
     <button type="button"
             class="-mb-px rounded-t border-b-2 px-3 pt-1 pb-2 text-center transition
@@ -141,7 +141,7 @@
                und Amber "Thema". Welcher Reiter offen ist, ist keine
                Kategorie, sondern ein Zustand der Bedienung — er nimmt keine
                der beiden Bedeutungen in Anspruch. #}
-            :class="offen === '{{ shelf.kind }}'
+            :class="openShelf === '{{ shelf.kind }}'
                     ? 'border-ink bg-hair text-ink'
                     {# Leere Regale gedaempft, aber lesbar: `text-rule` stand
                        auf `paper` bei einem Kontrast von 1,4 zu 1 und war
@@ -149,7 +149,7 @@
                        bei 5,9. Dass hier nichts zu holen ist, sagen die Null
                        und der abgeschaltete Knopf. #}
                     : 'border-transparent {{ 'text-soft hover:text-ink' if shelf.count else 'text-soft' }}'"
-            @click="offen = offen === '{{ shelf.kind }}' ? null : '{{ shelf.kind }}'"
+            @click="openShelf = openShelf === '{{ shelf.kind }}' ? null : '{{ shelf.kind }}'"
             {{ 'disabled' if not shelf.count }}>
       <div class="font-serif text-xl font-semibold tabular-nums">{{ shelf.count }}</div>
       <div class="text-xs">{{ shelf.label }}</div>
@@ -159,7 +159,7 @@
 
   {% for shelf in view.counts %}
   {% if shelf.count %}
-  <div x-show="offen === '{{ shelf.kind }}'" x-cloak class="pt-3">
+  <div x-show="openShelf === '{{ shelf.kind }}'" x-cloak class="pt-3">
     {% if shelf.kind == "owned" %}
     {# Die ganze Liste mit Titelbild, Suche und Sortierung (#71). #}
     <p class="mb-2 text-right text-xs"><a href="/owned"
@@ -193,7 +193,7 @@
 {% endif %}
 <ul class="flex flex-wrap gap-2">
   {% for interest in view.authors %}
-  <li class="tun inline-flex h-7 items-center rounded-full border px-3 text-sm
+  <li class="tap inline-flex h-7 items-center rounded-full border px-3 text-sm
              {{ 'border-rule text-soft line-through' if not interest.active
                 else 'border-accent/40 text-accent' }}">
     {{ interest.value }}
@@ -207,12 +207,12 @@
 </ul>
 
 {{ section("Themen", "ic-tag") }}
-{% if not view.themen %}
+{% if not view.genre_categories %}
 <p class="py-2 text-sm text-soft italic">Keine hinterlegt.</p>
 {% endif %}
 <ul class="flex flex-wrap gap-2">
-  {% for interest in view.themen %}
-  <li class="tun inline-flex h-7 items-center rounded-full border px-3 text-sm
+  {% for interest in view.genre_categories %}
+  <li class="tap inline-flex h-7 items-center rounded-full border px-3 text-sm
              {{ 'border-rule text-soft line-through' if not interest.active
                 else 'border-amber/40 text-amber' }}"
       title="{{ interest.value }}">{{ interest.label }}</li>

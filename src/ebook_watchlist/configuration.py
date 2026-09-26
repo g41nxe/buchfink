@@ -36,11 +36,12 @@ class Configured:
     watchlist: list[WatchlistEntry]
     #: Interesse-Zeilen nach Wert, damit die Aussaat sie wiederfindet.
     author_interests: dict[str, InterestRow]
-    thema_interests: dict[str, InterestRow]
+    genre_category_interests: dict[str, InterestRow]
 
     def interest_for(self, key: str, value: str) -> InterestRow | None:
-        table = self.author_interests if key == InterestKey.AUTHOR else self.thema_interests
-        return table.get(value)
+        if key == InterestKey.AUTHOR:
+            return self.author_interests.get(value)
+        return self.genre_category_interests.get(value)
 
 
 def _details(row) -> dict:
@@ -58,7 +59,9 @@ def load(store: Store, settings: Settings) -> Configured:
     """
     interests = store.interests(settings.slug)
     authors = {row.value: row for row in interests if row.key == InterestKey.AUTHOR}
-    themen = {row.value: row for row in interests if row.key == InterestKey.THEMA}
+    category_interests = {
+        row.value: row for row in interests if row.key == InterestKey.GENRE_CATEGORY
+    }
 
     core, extended = [], []
     for value, row in authors.items():
@@ -99,11 +102,11 @@ def load(store: Store, settings: Settings) -> Configured:
         settings,
         reference_authors=core,
         extended_authors=extended,
-        genre_categories=list(themen),
+        genre_categories=list(category_interests),
     )
     return Configured(
         settings=settings,
         watchlist=watchlist,
         author_interests=authors,
-        thema_interests=themen,
+        genre_category_interests=category_interests,
     )

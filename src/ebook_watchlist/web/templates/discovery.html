@@ -66,7 +66,7 @@
   <input type="hidden" name="keys" value="{{ page.key }}">
   {# Nach der Entscheidung auf die Buchseite: den Fund gibt es dann nicht mehr,
      das Buch schon. #}
-  <input type="hidden" name="back" value="buch">
+  <input type="hidden" name="back" value="book">
   {% for kind, label in actions %}
   {{ state_button(kind, label, icon=icons[kind], value=kind,
                   extra="w-full sm:w-auto") }}

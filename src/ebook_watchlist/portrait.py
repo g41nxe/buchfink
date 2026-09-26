@@ -144,24 +144,24 @@ class Vocabulary:
         dagegen unter ihrer Grundhandlung: die ist selbst vergebbar, und das
         Modell soll sehen, wann das genauere Muster passt.
         """
-        zeilen = []
-        for name, frage in self.dimensions:
-            zeilen.append(f"{name} ({frage}):")
+        rows = []
+        for name, question in self.dimensions:
+            rows.append(f"{name} ({question}):")
             if name == PATTERN_DIMENSION:
                 for family in self.families:
                     if not family.members or not self.is_pattern(family.members[0]):
                         continue
                     for index, term_id in enumerate(family.members):
                         term = self.terms[term_id]
-                        einzug = "  " if index == 0 else "    "
-                        zeilen.append(f"{einzug}{term.id}: {term.name} — {term.description}")
+                        indent = "  " if index == 0 else "    "
+                        rows.append(f"{indent}{term.id}: {term.name} — {term.description}")
                 continue
-            zeilen.extend(
+            rows.extend(
                 f"  {term.id}: {term.name} — {term.description}"
                 for term in self.terms.values()
                 if term.dimension == name
             )
-        return "\n".join(zeilen)
+        return "\n".join(rows)
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,19 +230,21 @@ def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> V
     Merkmale und Erzählmuster zusammen; fehlt die Datei der Erzählmuster, gibt
     es eben keine.
     """
-    datei = path or VOCABULARY_PATH
-    muster = patterns or PATTERNS_PATH
+    file = path or VOCABULARY_PATH
+    patterns_path = patterns or PATTERNS_PATH
     try:
-        text = datei.read_text(encoding="utf-8")
-        muster_text = muster.read_text(encoding="utf-8") if muster.exists() else None
+        text = file.read_text(encoding="utf-8")
+        patterns_text = (
+            patterns_path.read_text(encoding="utf-8") if patterns_path.exists() else None
+        )
     except OSError as exc:
         raise VocabularyError(f"{exc.filename} ist nicht lesbar: {exc}") from exc
-    return _parse_vocabulary(text, datei.name, muster_text, muster.name)
+    return _parse_vocabulary(text, file.name, patterns_text, patterns_path.name)
 
 
 @lru_cache(maxsize=8)
 def _parse_vocabulary(
-    text: str, name: str, muster_text: str | None, muster_name: str
+    text: str, name: str, patterns_text: str | None, patterns_name: str
 ) -> Vocabulary:
     """Geparst wird nur, wenn sich der Inhalt ändert.
 
@@ -252,41 +254,41 @@ def _parse_vocabulary(
     zwei schnelle Änderungen können dieselbe Zeit tragen.
     """
     try:
-        daten = yaml.safe_load(text) or {}
+        data = yaml.safe_load(text) or {}
     except yaml.YAMLError as exc:
         raise VocabularyError(f"{name} ist nicht lesbar: {exc}") from exc
 
     terms: dict[str, Term] = {}
     dimensions: list[tuple[str, str]] = []
-    for dimension in daten.get("dimensionen") or []:
+    for dimension in data.get("dimensionen") or []:
         name = str(dimension["name"])
         dimensions.append((name, str(dimension.get("frage", ""))))
-        for eintrag in dimension.get("merkmale") or []:
-            term_id = str(eintrag["id"])
+        for entry in dimension.get("merkmale") or []:
+            term_id = str(entry["id"])
             if term_id in terms:
                 raise VocabularyError(f"das Merkmal {term_id} steht zweimal im Vokabular")
             terms[term_id] = Term(
-                term_id, str(eintrag["name"]), str(eintrag.get("beschreibung", "")).strip(), name
+                term_id, str(entry["name"]), str(entry.get("beschreibung", "")).strip(), name
             )
 
     families: list[Family] = []
-    vergeben: dict[str, str] = {}
-    for eintrag in daten.get("familien") or []:
-        name = str(eintrag["name"])
-        members = tuple(str(term_id) for term_id in eintrag.get("merkmale") or [])
+    assigned: dict[str, str] = {}
+    for entry in data.get("familien") or []:
+        name = str(entry["name"])
+        members = tuple(str(term_id) for term_id in entry.get("merkmale") or [])
         for term_id in members:
             if term_id not in terms:
                 raise VocabularyError(f"die Familie {name} nennt {term_id}, das es nicht gibt")
-            if term_id in vergeben:
+            if term_id in assigned:
                 raise VocabularyError(
-                    f"{term_id} steht in zwei Familien: {vergeben[term_id]} und {name}"
+                    f"{term_id} steht in zwei Familien: {assigned[term_id]} und {name}"
                 )
-            vergeben[term_id] = name
-        beschreibung = str(eintrag.get("beschreibung", "")).strip()
-        families.append(Family(str(eintrag["id"]), name, members, beschreibung))
+            assigned[term_id] = name
+        description = str(entry.get("beschreibung", "")).strip()
+        families.append(Family(str(entry["id"]), name, members, description))
 
-    if muster_text is not None:
-        _load_patterns(muster_text, muster_name, terms, families, dimensions)
+    if patterns_text is not None:
+        _load_patterns(patterns_text, patterns_name, terms, families, dimensions)
     return Vocabulary(terms, tuple(families), tuple(dimensions))
 
 
@@ -299,36 +301,36 @@ def _load_patterns(
 ) -> None:
     """Die Erzählmuster dazuladen: jede Grundhandlung ist Familie und Wort zugleich."""
     try:
-        daten = yaml.safe_load(text) or {}
+        data = yaml.safe_load(text) or {}
     except yaml.YAMLError as exc:
         raise VocabularyError(f"{name} ist nicht lesbar: {exc}") from exc
 
-    familien_ids = {family.id for family in families}
+    family_ids = {family.id for family in families}
 
-    def neu(term_id: str, name: str, beschreibung: str) -> None:
-        if term_id in terms or term_id in familien_ids:
+    def new(term_id: str, name: str, description: str) -> None:
+        if term_id in terms or term_id in family_ids:
             raise VocabularyError(f"{term_id} steht zweimal im Vokabular")
-        terms[term_id] = Term(term_id, name, beschreibung.strip(), PATTERN_DIMENSION)
+        terms[term_id] = Term(term_id, name, description.strip(), PATTERN_DIMENSION)
 
-    grund: dict[str, list[str]] = {}
-    namen: dict[str, str] = {}
-    for eintrag in daten.get("familien") or []:
-        family_id, name = str(eintrag["id"]), str(eintrag["name"])
-        neu(family_id, name, str(eintrag.get("beschreibung", "")))
-        grund[family_id] = [family_id]
-        namen[family_id] = name
-    for eintrag in daten.get("muster") or []:
-        term_id, familie = str(eintrag["id"]), str(eintrag.get("familie") or "")
-        if familie not in grund:
+    base: dict[str, list[str]] = {}
+    names: dict[str, str] = {}
+    for entry in data.get("familien") or []:
+        family_id, name = str(entry["id"]), str(entry["name"])
+        new(family_id, name, str(entry.get("beschreibung", "")))
+        base[family_id] = [family_id]
+        names[family_id] = name
+    for entry in data.get("muster") or []:
+        term_id, parent = str(entry["id"]), str(entry.get("familie") or "")
+        if parent not in base:
             raise VocabularyError(f"das Erzählmuster {term_id} nennt keine Grundhandlung")
-        neu(term_id, str(eintrag["name"]), str(eintrag.get("beschreibung", "")))
-        grund[familie].append(term_id)
+        new(term_id, str(entry["name"]), str(entry.get("beschreibung", "")))
+        base[parent].append(term_id)
 
-    if grund:
+    if base:
         dimensions.append((PATTERN_DIMENSION, "was für eine Geschichte es erzählt"))
         families.extend(
-            Family(family_id, namen[family_id], tuple(members), terms[family_id].description)
-            for family_id, members in grund.items()
+            Family(family_id, names[family_id], tuple(members), terms[family_id].description)
+            for family_id, members in base.items()
         )
 
 
@@ -424,17 +426,17 @@ def fingerprint(vocabulary: Vocabulary) -> str:
     speicher von ``load_vocabulary`` immer als dasselbe Objekt, und der Abdruck
     wird für jedes Buch im Regal gebraucht.
     """
-    bekannt = _FINGERPRINTS.get(id(vocabulary))
-    if bekannt is not None and bekannt[0] is vocabulary:
-        return bekannt[1]
-    stoff = TEMPLATE + vocabulary.prompt_text()
-    abdruck = hashlib.sha256(stoff.encode("utf-8")).hexdigest()[:16]
+    known = _FINGERPRINTS.get(id(vocabulary))
+    if known is not None and known[0] is vocabulary:
+        return known[1]
+    material = TEMPLATE + vocabulary.prompt_text()
+    stamp = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
     if len(_FINGERPRINTS) >= 16:
         _FINGERPRINTS.clear()
     # Das Vokabular selbst mit ablegen: so kann seine id nicht an ein anderes
     # Objekt weitergegeben werden, solange der Eintrag lebt.
-    _FINGERPRINTS[id(vocabulary)] = (vocabulary, abdruck)
-    return abdruck
+    _FINGERPRINTS[id(vocabulary)] = (vocabulary, stamp)
+    return stamp
 
 
 _FINGERPRINTS: dict[int, tuple[Vocabulary, str]] = {}
@@ -458,12 +460,12 @@ def prompt(
     vocabulary: Vocabulary,
     sample: str | None = None,
 ) -> str:
-    buch = [f"Titel: {title}", f"Autor: {author or '(nicht angegeben)'}"]
+    book = [f"Titel: {title}", f"Autor: {author or '(nicht angegeben)'}"]
     if blurb:
-        buch.append(f"Klappentext: {blurb}")
+        book.append(f"Klappentext: {blurb}")
     if sample:
-        buch.append(SAMPLE_NOTE + sample)
-    return TEMPLATE.format(vokabular=vocabulary.prompt_text(), buch="\n".join(buch))
+        book.append(SAMPLE_NOTE + sample)
+    return TEMPLATE.format(vokabular=vocabulary.prompt_text(), buch="\n".join(book))
 
 
 def _text(value) -> str | None:
@@ -509,82 +511,82 @@ def parse_answer(
     genannt: ein erfundenes Wort könnte keine zwei Bücher je gemeinsam haben.
     Alle anderen Verstöße verwerfen nichts.
     """
-    daten = _json_object(text)
-    if not isinstance(daten, dict):
+    data = _json_object(text)
+    if not isinstance(data, dict):
         raise PortrayalUnavailable("Antwort ist kein JSON-Objekt")
-    abdruck = fingerprint(vocabulary)
-    roh = daten.get("merkmale") or []
-    roh_muster = daten.get("erzaehlmuster") or []
+    stamp = fingerprint(vocabulary)
+    raw = data.get("merkmale") or []
+    raw_patterns = data.get("erzaehlmuster") or []
 
     # Nur ein echtes Ja: "false" als Text ist kein Ja.
-    if daten.get("bekannt") is not True:
-        verstoesse = ("unbekannt, aber Merkmale vergeben",) if roh or roh_muster else ()
-        return Portrait(known=False, fingerprint=abdruck, violations=verstoesse)
+    if data.get("bekannt") is not True:
+        violations = ("unbekannt, aber Merkmale vergeben",) if raw or raw_patterns else ()
+        return Portrait(known=False, fingerprint=stamp, violations=violations)
 
     traits: list[Trait] = []
-    verstoesse: list[str] = []
+    violations: list[str] = []
     # Ein Wort in der falschen Liste wird übernommen und genannt: ob es ein
     # Merkmal oder ein Muster ist, weiß das Vokabular, nicht die Liste.
-    for liste, soll_muster in ((roh, False), (roh_muster, True)):
-        for eintrag in liste:
-            if not isinstance(eintrag, dict):
-                verstoesse.append("ein Merkmal ohne Form")
+    for items, expect_pattern in ((raw, False), (raw_patterns, True)):
+        for entry in items:
+            if not isinstance(entry, dict):
+                violations.append("ein Merkmal ohne Form")
                 continue
-            term_id = str(eintrag.get("id") or "").strip()
+            term_id = str(entry.get("id") or "").strip()
             if term_id not in vocabulary.terms:
-                verstoesse.append(f"nicht im Vokabular: {term_id or '(leer)'}")
+                violations.append(f"nicht im Vokabular: {term_id or '(leer)'}")
                 continue
             if any(trait.term == term_id for trait in traits):
-                verstoesse.append(f"doppelt vergeben: {term_id}")
+                violations.append(f"doppelt vergeben: {term_id}")
                 continue
-            if vocabulary.is_pattern(term_id) != soll_muster:
-                verstoesse.append(f"in der falschen Liste: {term_id}")
-            beleg = str(eintrag.get("beleg") or "").strip()
-            if beleg not in evidence:
-                verstoesse.append(f"ungültiger Beleg bei {term_id}: {beleg or '(keiner)'}")
+            if vocabulary.is_pattern(term_id) != expect_pattern:
+                violations.append(f"in der falschen Liste: {term_id}")
+            evidence_kind = str(entry.get("beleg") or "").strip()
+            if evidence_kind not in evidence:
+                violations.append(f"ungültiger Beleg bei {term_id}: {evidence_kind or '(keiner)'}")
             # Ein Gewicht trägt nur ein Merkmal; bei einem Muster wird es nicht
             # gefragt und nicht gelesen (#62). Ein fehlendes oder fremdes Wort
             # steht als Verstoß daneben, das Merkmal bleibt ohne Gewicht.
-            gewicht = None
+            weight = None
             if not vocabulary.is_pattern(term_id):
-                wort = str(eintrag.get("gewicht") or "").strip()
-                gewicht = WEIGHT_WORDS.get(wort)
-                if gewicht is None:
-                    verstoesse.append(f"ungültiges Gewicht bei {term_id}: {wort or '(keines)'}")
+                word = str(entry.get("gewicht") or "").strip()
+                weight = WEIGHT_WORDS.get(word)
+                if weight is None:
+                    violations.append(f"ungültiges Gewicht bei {term_id}: {word or '(keines)'}")
             traits.append(
-                Trait(term_id, str(eintrag.get("satz") or "").strip(), beleg, gewicht)
+                Trait(term_id, str(entry.get("satz") or "").strip(), evidence_kind, weight)
             )
 
-    merkmale = [t for t in traits if not vocabulary.is_pattern(t.term)]
-    muster = len(traits) - len(merkmale)
-    if not FEWEST <= len(merkmale) <= MOST:
-        verstoesse.append(f"{len(merkmale)} Merkmale statt vier bis acht")
-    if not FEWEST_PATTERNS <= muster <= MOST_PATTERNS:
-        verstoesse.append(f"{muster} Erzählmuster statt eins bis drei")
-    dimensionen = Counter(vocabulary.terms[trait.term].dimension for trait in merkmale)
-    if merkmale and len(dimensionen) < MIN_DIMENSIONS:
-        verstoesse.append(f"nur {len(dimensionen)} Dimensionen statt mindestens drei")
-    for dimension, anzahl in dimensionen.items():
-        if anzahl > MOST_PER_DIMENSION:
-            verstoesse.append(f"{anzahl} Merkmale aus {dimension}, höchstens drei")
+    plain_traits = [t for t in traits if not vocabulary.is_pattern(t.term)]
+    pattern_count = len(traits) - len(plain_traits)
+    if not FEWEST <= len(plain_traits) <= MOST:
+        violations.append(f"{len(plain_traits)} Merkmale statt vier bis acht")
+    if not FEWEST_PATTERNS <= pattern_count <= MOST_PATTERNS:
+        violations.append(f"{pattern_count} Erzählmuster statt eins bis drei")
+    dimensions = Counter(vocabulary.terms[trait.term].dimension for trait in plain_traits)
+    if plain_traits and len(dimensions) < MIN_DIMENSIONS:
+        violations.append(f"nur {len(dimensions)} Dimensionen statt mindestens drei")
+    for dimension, count in dimensions.items():
+        if count > MOST_PER_DIMENSION:
+            violations.append(f"{count} Merkmale aus {dimension}, höchstens drei")
 
-    pitch = _text(daten.get("pitch"))
+    pitch = _text(data.get("pitch"))
     if pitch is None:
-        verstoesse.append("kein Pitch")
+        violations.append("kein Pitch")
     elif len(pitch) > PITCH_MAX:
-        verstoesse.append(f"Pitch hat {len(pitch)} Zeichen, höchstens {PITCH_MAX}")
+        violations.append(f"Pitch hat {len(pitch)} Zeichen, höchstens {PITCH_MAX}")
 
     return Portrait(
         known=True,
-        fingerprint=abdruck,
-        title=_text(daten.get("titel")),
-        author=_text(daten.get("autor")),
-        original_title=_text(daten.get("originaltitel")),
-        genre=_text(daten.get("genre")),
-        subgenre=_text(daten.get("untergenre")),
+        fingerprint=stamp,
+        title=_text(data.get("titel")),
+        author=_text(data.get("autor")),
+        original_title=_text(data.get("originaltitel")),
+        genre=_text(data.get("genre")),
+        subgenre=_text(data.get("untergenre")),
         pitch=pitch,
         traits=tuple(traits),
-        violations=tuple(verstoesse),
+        violations=tuple(violations),
     )
 
 

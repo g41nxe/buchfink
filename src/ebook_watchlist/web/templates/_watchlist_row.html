@@ -16,7 +16,7 @@
      von selbst auf, sobald der Server sie ohne Trigger zurueckgibt. Dasselbe
      Muster wie `_run_panel.html`: kein Websocket, kein Timer, der
      weiterlaeuft (ADR 3). #}
-  <li id="eintrag-{{ entry.book_id }}"
+  <li id="entry-{{ entry.book_id }}"
       class="{{ 'opacity-55' if not entry.active }}"
       {% if check and check.busy %}
       hx-get="/watchlist/{{ entry.book_id }}/recheck"
@@ -124,7 +124,7 @@
                           text-ink outline-none focus:border-accent">
           </label>
           <button type="submit"
-                  class="tun rounded border border-accent bg-accent/10 tun inline-flex h-9 items-center justify-center px-3 text-sm
+                  class="tap rounded border border-accent bg-accent/10 tap inline-flex h-9 items-center justify-center px-3 text-sm
                          font-medium text-accent hover:bg-accent/25">Aktualisieren</button>
         </form>
         <form method="post" action="/watchlist/{{ entry.book_id }}/missing" class="mt-2">
@@ -165,18 +165,18 @@
         <input type="hidden" name="source" value="{{ entry.choice_source }}">
         {# Zurueck dorthin, wo entschieden wurde — nicht immer in den Filter. #}
         <input type="hidden" name="back"
-               value="{{ '/watchlist?nur=unklar' if only_unsure else '/watchlist' }}">
+               value="{{ '/watchlist?only=unsure' if only_unsure else '/watchlist' }}">
 
-        <div class="streifen">
+        <div class="strip">
           {% for candidate in entry.candidates %}
-          <label class="wahl">
+          <label class="pick">
             {# Nichts ist vorausgewaehlt: der Matcher konnte die Ausgaben nicht
                unterscheiden — eine davon vorzuwaehlen saehe aus wie eine
                Empfehlung, die es nicht gibt. `required` sorgt dafuer, dass
                „Bestaetigen" ohne Wahl nicht stillschweigend nichts tut. #}
             <input type="radio" name="url" required
                    value="{{ candidate.url or '' }}">
-            <span class="feld">
+            <span class="pick-frame">
               {% if candidate.cover_file %}
               <img src="/covers/{{ candidate.cover_file }}" alt="">
               {% else %}
@@ -185,9 +185,9 @@
               <span class="block aspect-[2/3] w-full rounded-sm"
                     style="background: hsl({{ 160 + ((candidate.title | sum_chars) % 28) }} 30% 30%)"></span>
               {% endif %}
-              <span class="haken">&#10003;</span>
+              <span class="tick">&#10003;</span>
             </span>
-            <span class="beschriftung mt-1 block text-xs leading-tight">
+            <span class="caption mt-1 block text-xs leading-tight">
               {{ candidate.title }}
               {% if candidate.is_bundle %}
               <span class="mt-0.5 block text-amber">
@@ -201,10 +201,10 @@
 
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <button type="submit" name="action" value="confirm"
-                  class="tun rounded border border-accent bg-accent/10 tun inline-flex h-9 items-center justify-center px-3 text-sm
+                  class="tap rounded border border-accent bg-accent/10 tap inline-flex h-9 items-center justify-center px-3 text-sm
                          font-medium text-accent hover:bg-accent/25">Bestätigen</button>
           <button type="submit" name="action" value="none" formnovalidate
-                  class="tun rounded border border-rule bg-card tun inline-flex h-9 items-center justify-center px-3 text-sm text-soft
+                  class="tap rounded border border-rule bg-card tap inline-flex h-9 items-center justify-center px-3 text-sm text-soft
                          hover:border-danger hover:bg-danger/10 hover:text-danger"
                   title="Keine dieser Ausgaben ist es — dieselben werden nicht noch
                          einmal vorgelegt, eine neue schon">Nichts passt</button>

@@ -26,7 +26,7 @@ from ..facets import (
 )
 from ..judging import load_judge
 from ..portrait import VocabularyError, load_vocabulary
-from ..reasons import thema_name
+from ..reasons import genre_category_name
 from ..relations import InterestKey, RelationKind, labelled
 from ..store import Store
 from .spider import Spider, reader_spiders
@@ -126,7 +126,7 @@ class LikedLine:
 @dataclass(frozen=True, slots=True)
 class Overview:
     authors: tuple[Interest, ...]
-    themen: tuple[Interest, ...]
+    genre_categories: tuple[Interest, ...]
     counts: tuple[Shelf, ...]
     strong_deal: str
     deal: str
@@ -174,8 +174,8 @@ def build(store: Store, settings: Settings) -> Overview:
         return tuple(
             Interest(
                 value=row.value,
-                label=thema_name(row.value) or row.value
-                if key is InterestKey.THEMA
+                label=genre_category_name(row.value) or row.value
+                if key is InterestKey.GENRE_CATEGORY
                 else row.value,
                 tier=_details(row).get("tier", "core"),
                 active=row.active,
@@ -221,7 +221,7 @@ def build(store: Store, settings: Settings) -> Overview:
 
     return Overview(
         authors=collect(InterestKey.AUTHOR),
-        themen=collect(InterestKey.THEMA),
+        genre_categories=collect(InterestKey.GENRE_CATEGORY),
         counts=counts,
         strong_deal=_money(settings.strong_deal_max_cents),
         deal=_money(settings.deal_max_cents),

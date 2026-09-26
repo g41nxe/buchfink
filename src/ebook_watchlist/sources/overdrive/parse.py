@@ -68,12 +68,12 @@ class Detail:
 
 def _int(item: dict, field: str) -> int:
     """Eine Zahl, die dasein muss. Fehlt sie, hat sich die Antwort geaendert."""
-    wert = item.get(field)
-    if not isinstance(wert, int) or isinstance(wert, bool):
+    value = item.get(field)
+    if not isinstance(value, int) or isinstance(value, bool):
         raise SourceStructureError(
-            f"OverDrive: Titel {item.get('id')!r} nennt kein {field} (sondern {wert!r})"
+            f"OverDrive: Titel {item.get('id')!r} nennt kein {field} (sondern {value!r})"
         )
-    return wert
+    return value
 
 
 def _text(item: dict, field: str) -> str | None:
@@ -83,10 +83,10 @@ def _text(item: dict, field: str) -> str | None:
     ``"{'text': 'hallo'}"`` — und die stand danach in der Datenbank, im
     Tagesbericht und im Prompt des Bewertungstors.
     """
-    wert = item.get(field)
-    if not isinstance(wert, str) or not wert.strip():
+    value = item.get(field)
+    if not isinstance(value, str) or not value.strip():
         return None
-    return wert.strip()
+    return value.strip()
 
 
 def _isbn(item: dict) -> str | None:
@@ -99,8 +99,8 @@ def _isbn(item: dict) -> str | None:
     for format_ in item.get("formats") or []:
         if not isinstance(format_, dict) or not format_.get("isbn"):
             continue
-        if treffer := _ISBN13.search(str(format_["isbn"]).replace("-", "")):
-            return treffer.group(1)
+        if hit := _ISBN13.search(str(format_["isbn"]).replace("-", "")):
+            return hit.group(1)
     return None
 
 
@@ -110,11 +110,11 @@ def parse_title(item: dict) -> Detail:
     Beide Wege liefern dieselbe Gestalt — deshalb liest sie auch dieselbe
     Funktion, statt dass zwei Fassungen auseinanderlaufen.
     """
-    titel = item.get("title")
-    if not isinstance(titel, str) or not titel.strip():
+    title = item.get("title")
+    if not isinstance(title, str) or not title.strip():
         raise SourceStructureError(f"OverDrive: Titel {item.get('id')!r} hat keinen Titel")
     return Detail(
-        title=titel.strip(),
+        title=title.strip(),
         author=_text(item, "firstCreatorName"),
         isbn=_isbn(item),
         owned_copies=_int(item, "ownedCopies"),
@@ -132,10 +132,10 @@ def _cover(item: dict) -> str | None:
     darunter: eine Liste statt eines Objekts warf einen ``AttributeError``,
     und der steht im Tagesbericht als Panne statt als Auskunft (ADR 7).
     """
-    bilder = item.get("covers")
-    bilder = bilder if isinstance(bilder, dict) else {}
-    gross = bilder.get("cover510Wide") or bilder.get("cover300Wide") or {}
-    return gross.get("href") if isinstance(gross, dict) else None
+    images = item.get("covers")
+    images = images if isinstance(images, dict) else {}
+    large = images.get("cover510Wide") or images.get("cover300Wide") or {}
+    return large.get("href") if isinstance(large, dict) else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,8 +153,8 @@ class Collection:
 
 
 def _count(item: dict, field: str) -> int:
-    wert = item.get(field)
-    return wert if isinstance(wert, int) and not isinstance(wert, bool) else 0
+    value = item.get(field)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
 def parse_collection(
@@ -171,42 +171,42 @@ def parse_collection(
         raise SourceStructureError(
             f"OverDrive: Sammlung {collection.id!r} ohne items — die Antwort hat sich geändert"
         )
-    funde = []
+    found_items = []
     for item in items:
         if not isinstance(item, dict):
             continue
-        art = item.get("type")
-        if not isinstance(art, dict) or art.get("id") != sel.COLLECTION_TYPE:
+        kind = item.get("type")
+        if not isinstance(kind, dict) or kind.get("id") != sel.COLLECTION_TYPE:
             continue
-        sprachen = {s.get("id") for s in item.get("languages") or [] if isinstance(s, dict)}
-        if sel.COLLECTION_LANGUAGE not in sprachen:
+        languages = {s.get("id") for s in item.get("languages") or [] if isinstance(s, dict)}
+        if sel.COLLECTION_LANGUAGE not in languages:
             continue
         codes = [c for c in item.get("bisacCodes") or [] if isinstance(c, str)]
         if collection.bisac and not any(
             c.startswith(prefix) for c in codes for prefix in collection.bisac
         ):
             continue
-        titel = _text(item, "title")
-        if titel is None:
+        title = _text(item, "title")
+        if title is None:
             continue
-        kennung = title_id(item)
-        frei = _count(item, "luckyDayAvailableCopies") or _count(item, "availableCopies")
-        funde.append(
+        item_id = title_id(item)
+        free = _count(item, "luckyDayAvailableCopies") or _count(item, "availableCopies")
+        found_items.append(
             Observation(
                 source=source,
-                source_item_id=kennung,
-                title=titel,
+                source_item_id=item_id,
+                title=title,
                 author=_text(item, "firstCreatorName"),
                 match_reason=MatchReason.GENRE_CATEGORY,
                 category=collection.name,
                 isbn=_isbn(item),
-                availability=Availability.AVAILABLE if frei else Availability.UNAVAILABLE,
+                availability=Availability.AVAILABLE if free else Availability.UNAVAILABLE,
                 cover_url=_cover(item),
                 blurb=_text(item, "description"),
-                url=sel.TITLE_URL.format(title_id=kennung),
+                url=sel.TITLE_URL.format(title_id=item_id),
             )
         )
-    return funde
+    return found_items
 
 
 def title_id(item: dict) -> str:
@@ -216,10 +216,10 @@ def title_id(item: dict) -> str:
     spaltete die Geschichte eines Titels still in zwei (wie ``require_title_id``
     bei der Onleihe).
     """
-    kennung = item.get("id")
-    if kennung is None or not str(kennung).strip():
+    item_id = item.get("id")
+    if item_id is None or not str(item_id).strip():
         raise SourceStructureError("OverDrive: ein Treffer ohne id")
-    return str(kennung)
+    return str(item_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,10 +251,10 @@ def _language(item: dict) -> str | None:
     Kennzeichnung, keine Voraussetzung, und ein Umbau an dieser Stelle darf
     keine Zuordnung kosten.
     """
-    sprachen = item.get("languages")
-    if not isinstance(sprachen, list) or not sprachen or not isinstance(sprachen[0], dict):
+    languages = item.get("languages")
+    if not isinstance(languages, list) or not languages or not isinstance(languages[0], dict):
         return None
-    return sel.LANGUAGE_CODES.get(str(sprachen[0].get("id") or "").lower())
+    return sel.LANGUAGE_CODES.get(str(languages[0].get("id") or "").lower())
 
 
 def parse_search(text: str) -> list[Candidate] | None:
@@ -270,7 +270,7 @@ def parse_search(text: str) -> list[Candidate] | None:
         raise SourceStructureError("OverDrive: Antwort ohne Trefferliste 'items'")
     if not items:
         return None
-    gefunden = []
+    found = []
     for item in items:
         if not isinstance(item, dict):
             raise SourceStructureError(f"OverDrive: ein Treffer ist kein Objekt: {item!r}")
@@ -280,12 +280,12 @@ def parse_search(text: str) -> list[Candidate] | None:
         # ganze Quelle fuer den ganzen Lauf ab — auch fuer die vierzehn Titel,
         # deren Zuordnung laengst steht. Die Onleihe verlangt je Karte genau
         # dasselbe: Titel und Link.
-        titel = item.get("title")
-        if not isinstance(titel, str) or not titel.strip():
+        title = item.get("title")
+        if not isinstance(title, str) or not title.strip():
             raise SourceStructureError(f"OverDrive: Treffer {item.get('id')!r} ohne Titel")
-        gefunden.append(
+        found.append(
             Candidate(
-                title=titel.strip(),
+                title=title.strip(),
                 author=_text(item, "firstCreatorName"),
                 title_id=title_id(item),
                 isbn=_isbn(item),
@@ -293,4 +293,4 @@ def parse_search(text: str) -> list[Candidate] | None:
                 language=_language(item),
             )
         )
-    return gefunden
+    return found

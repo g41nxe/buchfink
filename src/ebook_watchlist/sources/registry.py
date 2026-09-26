@@ -164,10 +164,10 @@ def label(settings: Settings, name: str) -> str:
        Leserin (Ticket 14).
     """
     options = settings.sources.get(name) or {}
-    if eigener := DISPLAY.get(name):
-        return eigener
-    if isinstance(options, dict) and (aus_der_einrichtung := options.get("name")):
-        return str(aus_der_einrichtung)
+    if own := DISPLAY.get(name):
+        return own
+    if isinstance(options, dict) and (from_institution := options.get("name")):
+        return str(from_institution)
     return LIBRARY if category(settings, name) == "library" else SHOP
 
 

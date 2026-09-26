@@ -30,7 +30,7 @@ def settings() -> Settings:
     return Settings(slug="t", name="Test")
 
 
-def saat(**overrides) -> Seed:
+def seed(**overrides) -> Seed:
     return Seed(**overrides)
 
 
@@ -103,7 +103,7 @@ def test_the_watchlist_becomes_books_and_relations(store: Store) -> None:
     report = sow(
         store,
         settings(),
-        saat(),
+        seed(),
         [WatchlistEntry(title="Blindflug", author="Peter Watts")],
         now=NOW,
     )
@@ -121,7 +121,7 @@ def test_several_relations_hold_at_once(store: Store) -> None:
     sow(
         store,
         settings(),
-        saat(liked_books=["Cold Eternity - S.A. Barnes"]),
+        seed(liked_books=["Cold Eternity - S.A. Barnes"]),
         [WatchlistEntry(title="Cold Eternity", author="S.A. Barnes")],
         now=NOW,
     )
@@ -134,7 +134,7 @@ def test_a_relation_is_deactivated_not_deleted(store: Store) -> None:
     """Providence von der Watchlist zu nehmen zerstörte bisher die Tatsache,
     dass es je beobachtet wurde."""
     sow(
-        store, settings(), saat(), [WatchlistEntry(title="Providence", author="Max Barry")], now=NOW
+        store, settings(), seed(), [WatchlistEntry(title="Providence", author="Max Barry")], now=NOW
     )
     book = store.books()[0]
 
@@ -149,7 +149,7 @@ def test_authors_and_themes_become_interests(store: Store) -> None:
     report = sow(
         store,
         settings(),
-        saat(
+        seed(
             reference_authors=["Chris Carter"],
             extended_authors=["Dave Eggers"],
             genre_categories=["belletristik/krimi-thriller/psychothriller"],
@@ -170,7 +170,7 @@ def test_an_author_on_both_lists_is_swept_daily_not_twice(store: Store) -> None:
     report = sow(
         store,
         settings(),
-        saat(reference_authors=["Chris Carter"], extended_authors=["Chris Carter"]),
+        seed(reference_authors=["Chris Carter"], extended_authors=["Chris Carter"]),
         [],
         now=NOW,
     )
@@ -181,7 +181,7 @@ def test_importing_twice_changes_nothing(store: Store) -> None:
     """Der Import ist wiederholbar — sonst wäre er einmalig und damit ein Risiko."""
     args = (
         settings(),
-        saat(reference_authors=["Chris Carter"], liked_books=["Cry Baby - Gillian Flynn"]),
+        seed(reference_authors=["Chris Carter"], liked_books=["Cry Baby - Gillian Flynn"]),
         [WatchlistEntry(title="Blindflug", author="Peter Watts")],
     )
     sow(store, *args, now=NOW)
@@ -194,7 +194,7 @@ def test_importing_twice_changes_nothing(store: Store) -> None:
 def test_a_second_import_does_not_revive_what_was_switched_off(store: Store) -> None:
     args = (
         settings(),
-        saat(),
+        seed(),
         [WatchlistEntry(title="Providence", author="Max Barry", active=False)],
     )
     sow(store, *args, now=NOW)
@@ -205,7 +205,7 @@ def test_a_second_import_keeps_what_the_reader_paused(store: Store) -> None:
     """Der Modulkopf verspricht es, ``put_relation`` hielt es nicht: es setzt
     ``active`` auch an einer bestehenden Zeile. Ein Eintrag, den die Leserin in
     der Oberfläche pausiert hatte, lief nach ``ebw seed`` wieder."""
-    args = (settings(), saat(), [WatchlistEntry(title="Providence", author="Max Barry")])
+    args = (settings(), seed(), [WatchlistEntry(title="Providence", author="Max Barry")])
     sow(store, *args, now=NOW)
     book = store.books()[0]
     store.deactivate_relation("t", book.id, str(RelationKind.WATCHING), now=NOW)
@@ -221,7 +221,7 @@ def test_a_second_import_keeps_a_lifted_restriction_lifted(store: Store) -> None
     wieder da."""
     args = (
         settings(),
-        saat(),
+        seed(),
         [WatchlistEntry(title="Providence", author="Max Barry", check_shop=False)],
     )
     sow(store, *args, now=NOW)
@@ -241,7 +241,7 @@ def test_each_interest_is_seeded_on_its_own(store: Store) -> None:
     """Der behobene Fehler: der alte Schlüssel liess 'category' bei Autor:innen
     leer, so dass alle Autor:innen sich eine Aussaat teilten — die erste säte
     still an, jede weitere meldete ihre ganze Backlist."""
-    sow(store, settings(), saat(reference_authors=["Chris Carter", "Jo Nesbø"]), [], now=NOW)
+    sow(store, settings(), seed(reference_authors=["Chris Carter", "Jo Nesbø"]), [], now=NOW)
     carter, nesbo = store.interests("t", key=str(InterestKey.AUTHOR))
 
     store.mark_interest_seeded(carter.id, "beam", now=NOW)
@@ -251,7 +251,7 @@ def test_each_interest_is_seeded_on_its_own(store: Store) -> None:
 
 
 def test_seeding_is_per_source(store: Store) -> None:
-    sow(store, settings(), saat(reference_authors=["Chris Carter"]), [], now=NOW)
+    sow(store, settings(), seed(reference_authors=["Chris Carter"]), [], now=NOW)
     carter = store.interests("t")[0]
 
     store.mark_interest_seeded(carter.id, "beam", now=NOW)
@@ -284,7 +284,7 @@ def test_a_restriction_names_the_kind_of_source_not_its_name(store: Store) -> No
     sow(
         store,
         settings(),
-        saat(),
+        seed(),
         [WatchlistEntry(title="Providence", author="Max Barry", check_shop=False)],
         now=NOW,
     )
@@ -327,7 +327,7 @@ def test_owned_becomes_a_relation_and_no_judgement(store: Store) -> None:
     report = sow(
         store,
         settings(),
-        saat(),
+        seed(),
         [],
         owned=[OwnedBook(title="Knochenbrecher", author="Chris Carter")],
         now=NOW,
@@ -344,12 +344,12 @@ def test_owning_a_watched_book_stops_watching_it(store: Store) -> None:
     Der Import legte ``owned`` an und liess ``watching`` laufen — das Buch wurde
     weiter abgerufen und weiter gemeldet."""
     watchlist = [WatchlistEntry(title="Rosewater", author="Tade Thompson")]
-    sow(store, settings(), saat(), watchlist, now=NOW)
+    sow(store, settings(), seed(), watchlist, now=NOW)
 
     sow(
         store,
         settings(),
-        saat(),
+        seed(),
         watchlist,
         owned=[OwnedBook(title="Rosewater", author="Tade Thompson")],
         now=NOW,
@@ -369,7 +369,7 @@ def test_a_second_import_keeps_watching_that_the_reader_resumed(store: Store) ->
     nächsten Import."""
     args = (
         settings(),
-        saat(),
+        seed(),
         [WatchlistEntry(title="Rosewater", author="Tade Thompson")],
     )
     owned = [OwnedBook(title="Rosewater", author="Tade Thompson")]
@@ -384,15 +384,15 @@ def test_a_second_import_keeps_watching_that_the_reader_resumed(store: Store) ->
     ]
 
 
-def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store) -> None:
+def test_the_note_is_about_the_identification_not_the_judgement(store: Store) -> None:
     """Er bittet um Gegenprüfung, ob der Band im Handel so heißt — das gehört
     an die Beziehung, wo die Leserin es beim Nachsehen findet."""
     sow(
         store,
         settings(),
-        saat(),
+        seed(),
         [],
-        owned=[OwnedBook(title="Off-Line", hinweis="Bitte gegenprüfen.")],
+        owned=[OwnedBook(title="Off-Line", note="Bitte gegenprüfen.")],
         now=NOW,
     )
     relation = store.relations("t", kind=str(RelationKind.OWNED))[0]
@@ -401,8 +401,8 @@ def test_the_hinweis_is_about_the_identification_not_the_judgement(store: Store)
 
 def test_importing_twice_leaves_one_relation(store: Store) -> None:
     entries = [OwnedBook(title="Rosewater", author="Tade Thompson")]
-    sow(store, settings(), saat(), [], owned=entries, now=NOW)
-    sow(store, settings(), saat(), [], owned=entries, now=NOW)
+    sow(store, settings(), seed(), [], owned=entries, now=NOW)
+    sow(store, settings(), seed(), [], owned=entries, now=NOW)
 
     book = store.books()[0]
     assert len(store.relations_of("t", book.id)) == 1

@@ -224,7 +224,9 @@ it reaches the reader, and it has to be a deal to be reported at all.
 **Reader-facing name: *Thema*.** "Regal" was the shop's word for its own
 shelving, not the reader's word for what interests them. The code keeps
 `genre_category`; every string a reader sees says Thema, and both come from
-`reasons.py`.
+`reasons.py`. The interest key is `InterestKey.GENRE_CATEGORY`, but the value
+stored in the database stays `"thema"` — a data value, not an identifier, and
+not migrated (ADR 22, addendum of 26.09.2026).
 
 ### Discovery
 *deutsch: Fund*

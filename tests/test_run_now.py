@@ -266,16 +266,16 @@ def test_the_run_opens_no_console_window(monkeypatch: pytest.MonkeyPatch) -> Non
     from ebook_watchlist.web import runs
 
     monkeypatch.setattr(runs.sys, "platform", "win32")
-    gesehen: dict = {}
+    seen: dict = {}
 
     class Popen:
         def __init__(self, *args, **kwargs) -> None:
-            gesehen.update(kwargs)
+            seen.update(kwargs)
 
     monkeypatch.setattr(runs.subprocess, "Popen", Popen)
     RunLauncher()._spawn()
 
-    flags = gesehen["creationflags"]
+    flags = seen["creationflags"]
     assert flags & subprocess.CREATE_NO_WINDOW
     assert flags & subprocess.CREATE_NEW_PROCESS_GROUP
     assert not flags & subprocess.DETACHED_PROCESS

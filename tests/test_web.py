@@ -191,27 +191,27 @@ def test_a_broken_configuration_is_a_page_not_a_traceback_on_post(
 
 
 @pytest.mark.parametrize(
-    ("pfad", "name"),
+    ("path", "name"),
     [("/", "Home"), ("/watchlist", "Watchlist"), ("/suggestions", "Vorschläge"),
      ("/profile", "Profil"), ("/overview", "Übersicht")],
 )
 def test_the_navigation_marks_the_page_you_are_on(
-    client: TestClient, pfad: str, name: str
+    client: TestClient, path: str, name: str
 ) -> None:
     """Vier gleich aussehende Links sagten auch auf der offenen Seite nichts."""
-    body = client.get(pfad).text
+    body = client.get(path).text
 
     assert body.count('aria-current="page"') == 1
     marker = body.index('aria-current="page"')
     assert name in body[marker : marker + 400]
 
 
-@pytest.mark.parametrize("pfad", ["/", "/watchlist", "/suggestions", "/profile"])
-def test_the_overview_is_reachable_from_every_page(client: TestClient, pfad: str) -> None:
+@pytest.mark.parametrize("path", ["/", "/watchlist", "/suggestions", "/profile"])
+def test_the_overview_is_reachable_from_every_page(client: TestClient, path: str) -> None:
     """Die Uebersicht hing bis #25 an zwei Verweisen der Startseite: wer auf der
     Watchlist stand und nachsehen wollte, wann zuletzt geprueft wurde, musste
     erst zurueck."""
-    assert 'href="/overview"' in client.get(pfad).text
+    assert 'href="/overview"' in client.get(path).text
 
 
 def test_a_digest_is_offered_as_a_report_not_as_a_file_name(
@@ -269,13 +269,13 @@ def test_a_moment_is_written_the_same_way_everywhere(
     # Das Jahr gehoert ausdruecklich ins Muster, obwohl es verschwinden soll:
     # ohne es faende der Ausdruck genau die Schreibweise nicht, gegen die
     # dieser Test steht, und bliebe gruen, wenn sie zurueckkaeme. Nachgestellt.
-    momente = re.findall(r"\d{2}\.\d{2}\.\d{0,4} \d{2}:\d{2}(?::\d{2})?", body)
-    assert momente, "kein Zeitpunkt auf der Seite gefunden"
+    moments = re.findall(r"\d{2}\.\d{2}\.\d{0,4} \d{2}:\d{2}(?::\d{2})?", body)
+    assert moments, "kein Zeitpunkt auf der Seite gefunden"
 
-    mit_sekunden = [m for m in momente if m.count(":") > 1]
-    mit_jahr = [m for m in momente if re.match(r"\d{2}\.\d{2}\.\d{4}", m)]
-    assert not mit_sekunden, f"Sekunden in {mit_sekunden}"
-    assert not mit_jahr, f"Jahr in einem Zeitpunkt: {mit_jahr}"
+    with_seconds = [m for m in moments if m.count(":") > 1]
+    with_year = [m for m in moments if re.match(r"\d{2}\.\d{2}\.\d{4}", m)]
+    assert not with_seconds, f"Sekunden in {with_seconds}"
+    assert not with_year, f"Jahr in einem Zeitpunkt: {with_year}"
 
 
 def test_the_interface_still_starts_without_a_usable_console(
@@ -290,7 +290,7 @@ def test_the_interface_still_starts_without_a_usable_console(
     """
     import importlib
 
-    class OhneHandle:
+    class WithoutHandle:
         """Was ``pythonw.exe`` ohne Konsole liefert: da, aber unbeschreibbar."""
 
         def write(self, _text: str) -> int:
@@ -299,8 +299,8 @@ def test_the_interface_still_starts_without_a_usable_console(
         def flush(self) -> None:
             raise OSError("kein gueltiges Handle")
 
-    monkeypatch.setattr(sys, "stderr", OhneHandle())
-    monkeypatch.setattr(sys, "stdout", OhneHandle())
+    monkeypatch.setattr(sys, "stderr", WithoutHandle())
+    monkeypatch.setattr(sys, "stdout", WithoutHandle())
 
     importlib.import_module("ebook_watchlist.web.__main__")._safe_output()
     print("eine Zeile, die sonst niemand liest", file=sys.stderr)
@@ -319,31 +319,31 @@ def test_the_cwa_link_appears_only_when_an_address_is_configured(
     """
     from ebook_watchlist.web.app import TEMPLATES
 
-    ohne = client.get("/watchlist").text
-    assert "CWA" not in ohne
+    without = client.get("/watchlist").text
+    assert "CWA" not in without
 
     monkeypatch.setitem(TEMPLATES.env.globals, "cwa_url", "http://books.example/")
-    mit = client.get("/watchlist").text
+    with_it = client.get("/watchlist").text
 
-    assert 'href="http://books.example/"' in mit
+    assert 'href="http://books.example/"' in with_it
     # Eine fremde Anwendung oeffnet in einem neuen Tab, und `noopener` gehoert
     # dazu, damit sie kein `window.opener` auf Buchfink bekommt.
-    assert 'target="_blank" rel="noopener"' in mit
+    assert 'target="_blank" rel="noopener"' in with_it
 
 
 # --- Hell und Dunkel (#19) ---------------------------------------------------
 
 
-@pytest.mark.parametrize("pfad", ["/", "/watchlist", "/suggestions", "/profile", "/overview"])
-def test_every_page_carries_the_colour_switch(client: TestClient, pfad: str) -> None:
+@pytest.mark.parametrize("path", ["/", "/watchlist", "/suggestions", "/profile", "/overview"])
+def test_every_page_carries_the_colour_switch(client: TestClient, path: str) -> None:
     """Der Schalter steht im Fussbereich, und den traegt `base.html` — also
     jede Seite. Eine Einstellung, die nur an einer Stelle erreichbar ist, muss
     man suchen."""
-    body = client.get(pfad).text
+    body = client.get(path).text
 
     assert "<footer" in body
-    for wort in ("System", "Hell", "Dunkel"):
-        assert f">{wort}</button>" in body
+    for word in ("System", "Hell", "Dunkel"):
+        assert f">{word}</button>" in body
 
 
 def test_the_colour_is_set_before_the_first_paint(client: TestClient) -> None:
@@ -353,10 +353,10 @@ def test_the_colour_is_set_before_the_first_paint(client: TestClient) -> None:
     mit `defer` und sind dafuer zu spaet. Wer das aendert, sieht beim naechsten
     Aufruf eine weisse Seite, bevor die dunkle kommt.
     """
-    kopf = client.get("/").text.split("</head>")[0]
+    head = client.get("/").text.split("</head>")[0]
     # Der eine Skriptblock ohne Quelle: die beiden Bibliotheken stehen als
     # `<script src=... defer>` daneben.
-    inline = kopf[kopf.index("<script>") : kopf.index("</script>", kopf.index("<script>"))]
+    inline = head[head.index("<script>") : head.index("</script>", head.index("<script>"))]
 
     assert 'localStorage.getItem("theme")' in inline
     assert "dataset.theme" in inline
@@ -373,14 +373,14 @@ def test_the_server_never_decides_the_colour(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize(
-    ("alt", "neu"),
+    ("old", "new"),
     [("/uebersicht", "/overview"), ("/vorschlaege?anlass=thema", "/suggestions?anlass=thema"),
      ("/profil", "/profile")],
 )
-def test_old_german_addresses_still_lead_home(data_dir: Path, alt: str, neu: str) -> None:
+def test_old_german_addresses_still_lead_home(data_dir: Path, old: str, new: str) -> None:
     """Die Routen sind seit dem 24.09.2026 englisch (ADR 22); ein altes
     Lesezeichen führt dauerhaft weiter, mit seiner Abfrage."""
-    antwort = TestClient(create_app(), follow_redirects=False).get(alt)
+    response = TestClient(create_app(), follow_redirects=False).get(old)
 
-    assert antwort.status_code == 301
-    assert antwort.headers["location"] == neu
+    assert response.status_code == 301
+    assert response.headers["location"] == new

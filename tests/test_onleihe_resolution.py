@@ -208,10 +208,10 @@ def test_the_stored_candidates_carry_their_cover(context: RunContext) -> None:
 
     onleihe.linked_entry(entry, context)
 
-    zeile = context.store.get_book_source(context.book_for(entry), "onleihe")
-    kandidaten = json.loads(zeile.details or "{}").get("candidates") or []
-    assert kandidaten, "die Aufloesung hat keine Kandidaten festgehalten"
-    assert all(k["cover_url"] for k in kandidaten)
+    row = context.store.get_book_source(context.book_for(entry), "onleihe")
+    candidates = json.loads(row.details or "{}").get("candidates") or []
+    assert candidates, "die Aufloesung hat keine Kandidaten festgehalten"
+    assert all(k["cover_url"] for k in candidates)
 
 
 def test_rejecting_candidates_does_not_move_the_retry_window(context: RunContext) -> None:

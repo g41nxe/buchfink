@@ -94,15 +94,15 @@ def test_nothing_to_choose_from() -> None:
 def test_the_cut_only_happens_where_the_text_really_repeats() -> None:
     """„alles anzeigen" kann auch Fliesstext sein. Ohne Probe schnitt die
     Regel mitten im Satz und warf den Anfang weg (Ticket 40)."""
-    satz = "Die Ausstellung will alles anzeigen, was die Stadt verbirgt."
+    sentence = "Die Ausstellung will alles anzeigen, was die Stadt verbirgt."
 
-    assert without_teaser(satz) == satz
+    assert without_teaser(sentence) == sentence
 
 
 def test_the_teaser_goes_where_the_full_text_repeats_it() -> None:
-    doppelt = "Der Anfang ... alles anzeigen expand_more Der Anfang und der Rest."
+    doubled = "Der Anfang ... alles anzeigen expand_more Der Anfang und der Rest."
 
-    assert without_teaser(doppelt) == "Der Anfang und der Rest."
+    assert without_teaser(doubled) == "Der Anfang und der Rest."
 
 
 def test_the_collapse_label_goes_too() -> None:
@@ -115,6 +115,6 @@ def test_the_collapse_label_goes_too() -> None:
 
 
 def test_the_same_words_in_the_middle_of_a_sentence_stay() -> None:
-    satz = "Er wollte weniger anzeigen als nötig, und schwieg."
+    sentence = "Er wollte weniger anzeigen als nötig, und schwieg."
 
-    assert clean_blurb(satz) == satz
+    assert clean_blurb(sentence) == sentence

@@ -22,16 +22,16 @@ CONTAINER = """<?xml version="1.0"?>
 </container>"""
 
 
-def seite(text: str) -> str:
+def page(text: str) -> str:
     return (
         '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>x</title>'
         f"<style>p {{ color: red }}</style></head><body><p>{text}</p></body></html>"
     )
 
 
-def epub(*seiten: tuple[str, str], spine: list[str] | None = None) -> bytes:
+def epub(*pages: tuple[str, str], spine: list[str] | None = None) -> bytes:
     """Ein EPUB mit diesen Seiten; ``spine`` gibt die Lesereihenfolge vor."""
-    ids = [name for name, _ in seiten]
+    ids = [name for name, _ in pages]
     manifest = "".join(
         f'<item id="{name}" href="text/{name}.xhtml" media-type="application/xhtml+xml"/>'
         for name in ids
@@ -41,17 +41,17 @@ def epub(*seiten: tuple[str, str], spine: list[str] | None = None) -> bytes:
         '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
         f"<manifest>{manifest}</manifest><spine>{itemrefs}</spine></package>"
     )
-    puffer = io.BytesIO()
-    with zipfile.ZipFile(puffer, "w") as archiv:
-        archiv.writestr("mimetype", "application/epub+zip")
-        archiv.writestr("META-INF/container.xml", CONTAINER)
-        archiv.writestr("OEBPS/content.opf", opf)
-        for name, text in seiten:
-            archiv.writestr(f"OEBPS/text/{name}.xhtml", seite(text))
-    return puffer.getvalue()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("mimetype", "application/epub+zip")
+        archive.writestr("META-INF/container.xml", CONTAINER)
+        archive.writestr("OEBPS/content.opf", opf)
+        for name, text in pages:
+            archive.writestr(f"OEBPS/text/{name}.xhtml", page(text))
+    return buffer.getvalue()
 
 
-KAPITEL = " ".join(["Regen"] * 400)
+CHAPTER = " ".join(["Regen"] * 400)
 
 
 def test_the_opening_skips_the_front_matter() -> None:
@@ -60,7 +60,7 @@ def test_the_opening_skips_the_front_matter() -> None:
     probe = epub(
         ("cover", "Dark Matter"),
         ("impressum", "© 2016 Goldmann. ISBN 978-3-641-17142-1"),
-        ("kapitel1", "Eins. " + KAPITEL),
+        ("kapitel1", "Eins. " + CHAPTER),
     )
 
     assert opening(probe).startswith("Eins. Regen")
@@ -70,8 +70,8 @@ def test_the_spine_decides_the_order_not_the_archive() -> None:
     """Die Reihenfolge im Archiv ist zufällig; die Lesereihenfolge steht im
     ``spine`` der OPF-Datei."""
     probe = epub(
-        ("b", "Zwei. " + KAPITEL),
-        ("a", "Eins. " + KAPITEL),
+        ("b", "Zwei. " + CHAPTER),
+        ("a", "Eins. " + CHAPTER),
         spine=["a", "b"],
     )
 
@@ -83,23 +83,23 @@ def test_the_spine_decides_the_order_not_the_archive() -> None:
 def test_the_opening_is_cut_at_a_word_limit() -> None:
     """Ein paar tausend Wörter zeigen Stimme und Tempo. Die ganzen fünfzig
     Seiten einer Probe kosteten je Buch das Zehnfache im Prompt."""
-    probe = epub(*[(f"k{n}", KAPITEL) for n in range(20)])
+    probe = epub(*[(f"k{n}", CHAPTER) for n in range(20)])
 
     assert len(opening(probe).split()) == SAMPLE_WORDS
 
 
 def test_markup_and_styles_do_not_reach_the_text() -> None:
-    text = opening(epub(("k", "Eins &amp; zwei. " + KAPITEL)))
+    text = opening(epub(("k", "Eins &amp; zwei. " + CHAPTER)))
 
     assert "Eins & zwei." in text
     assert "<" not in text
     assert "color" not in text
 
 
-@pytest.mark.parametrize("kaputt", [b"kein zip", b"PK\x03\x04 abgebrochen"])
-def test_a_broken_file_is_no_sample(kaputt: bytes) -> None:
+@pytest.mark.parametrize("broken", [b"kein zip", b"PK\x03\x04 abgebrochen"])
+def test_a_broken_file_is_no_sample(broken: bytes) -> None:
     """Eine kaputte Probe kostet das Buch die Probe, nicht das Urteil."""
-    assert opening(kaputt) is None
+    assert opening(broken) is None
 
 
 def test_a_sample_without_prose_is_none() -> None:
@@ -107,27 +107,27 @@ def test_a_sample_without_prose_is_none() -> None:
 
 
 class Client:
-    def __init__(self, antwort: bytes | Exception) -> None:
-        self.antwort = antwort
-        self.gefragt: list[str] = []
+    def __init__(self, answer: bytes | Exception) -> None:
+        self.answer = answer
+        self.asked: list[str] = []
 
     def get_bytes(self, url: str) -> bytes:
-        self.gefragt.append(url)
-        if isinstance(self.antwort, Exception):
-            raise self.antwort
-        return self.antwort
+        self.asked.append(url)
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        return self.answer
 
 
 def test_fetching_reads_the_file_behind_the_address() -> None:
-    client = Client(epub(("k", "Eins. " + KAPITEL)))
+    client = Client(epub(("k", "Eins. " + CHAPTER)))
 
     assert fetch_opening(client, "https://example.org/probe.epub").startswith("Eins.")
-    assert client.gefragt == ["https://example.org/probe.epub"]
+    assert client.asked == ["https://example.org/probe.epub"]
 
 
-@pytest.mark.parametrize("fehler", [FetchError("weg"), NotFound("404")])
-def test_a_missing_sample_is_none(fehler: Exception) -> None:
-    assert fetch_opening(Client(fehler), "https://example.org/probe.epub") is None
+@pytest.mark.parametrize("failure", [FetchError("weg"), NotFound("404")])
+def test_a_missing_sample_is_none(failure: Exception) -> None:
+    assert fetch_opening(Client(failure), "https://example.org/probe.epub") is None
 
 
 def test_throttling_is_passed_on() -> None:

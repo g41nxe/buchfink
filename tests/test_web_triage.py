@@ -171,9 +171,9 @@ def test_a_decided_find_takes_its_cover_along(client: TestClient, db: Store) -> 
     from ebook_watchlist.models import Observation
 
     url = "https://beam.invalid/media/9783104911854_200x200.jpg"
-    ordner = paths.covers_dir()
-    ordner.mkdir(parents=True, exist_ok=True)
-    (ordner / file_name(url)).write_bytes(b"x")
+    folder = paths.covers_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / file_name(url)).write_bytes(b"x")
     run_id = db.start_run("test", "cli", NOW)
     db.append(
         run_id,
@@ -299,10 +299,10 @@ def test_clicking_the_title_does_not_tick_the_checkbox(client: TestClient, db: S
 # --- das Telefon ohne Mehrfachauswahl (#13) ----------------------------------
 
 
-def _tag_um(body: str, merkmal: str) -> str:
+def _tag_around(body: str, term: str) -> str:
     """Das oeffnende Element, in dem ``merkmal`` steht."""
-    stelle = body.index(merkmal)
-    return body[body.rindex("<", 0, stelle) : body.index(">", stelle) + 1]
+    pos = body.index(term)
+    return body[body.rindex("<", 0, pos) : body.index(">", pos) + 1]
 
 
 def test_the_phone_has_no_selection_bar(client: TestClient, db: Store) -> None:
@@ -312,9 +312,9 @@ def test_the_phone_has_no_selection_bar(client: TestClient, db: Store) -> None:
 
     body = client.get("/suggestions").text
 
-    leiste = _tag_um(body, "sticky bottom-0")
-    assert "hidden" in leiste.split('"')[1].split()
-    assert "sm:flex" in leiste
+    bar = _tag_around(body, "sticky bottom-0")
+    assert "hidden" in bar.split('"')[1].split()
+    assert "sm:flex" in bar
 
 
 def test_on_the_phone_a_tap_on_the_row_ticks_nothing(client: TestClient, db: Store) -> None:
@@ -326,9 +326,9 @@ def test_on_the_phone_a_tap_on_the_row_ticks_nothing(client: TestClient, db: Sto
 
     body = client.get("/suggestions").text
 
-    kaestchen = _tag_um(body, 'name="keys"')
-    assert ':disabled="klein"' in kaestchen
-    assert "matchMedia" in _tag_um(body, 'id="pile"')
+    checkbox = _tag_around(body, 'name="keys"')
+    assert ':disabled="narrow"' in checkbox
+    assert "matchMedia" in _tag_around(body, 'id="pile"')
 
 
 # --- eine Zeile, eine Entscheidung (Issue #9) -------------------------------
@@ -354,9 +354,9 @@ def test_a_row_decision_touches_exactly_one_find(client: TestClient, db: Store) 
 
     client.post("/suggestions/beam/7/decide", data={"kind": "owned"})
 
-    titel = {book.title for book in db.books()}
-    assert "Der Kannibalenhügel" in titel
-    assert "Ein anderer Fund" not in titel
+    title = {book.title for book in db.books()}
+    assert "Der Kannibalenhügel" in title
+    assert "Ein anderer Fund" not in title
 
 
 def test_a_row_decision_answers_with_nothing_so_the_row_disappears(
@@ -438,7 +438,7 @@ def test_without_alpine_the_page_stays_a_plain_form(client: TestClient, db: Stor
 # --- die Zeile, wie in der Übersicht -----------------------------------------
 
 
-def urteil(db: Store, observation: Observation, *, stars: int, pitch: str) -> None:
+def verdict(db: Store, observation: Observation, *, stars: int, pitch: str) -> None:
     """Dem Fund einen Steckbrief legen, der mit dem Testprofil auf diese Sterne
     kommt. Das Profil liegt beim ersten Aufruf in der Datenbank — ohne es
     urteilt niemand (ADR 33, Punkt 8)."""
@@ -451,8 +451,8 @@ def urteil(db: Store, observation: Observation, *, stars: int, pitch: str) -> No
 def test_the_pitch_replaces_the_blurb(client: TestClient, db: Store) -> None:
     """Der Klappentext sagt, wovon das Buch handelt — der steht im Shop. Hier
     zählt, warum es für diese Leserin in Frage kommt."""
-    beobachtet = found(db, title="Der Kannibalenhügel", blurb="Ein Schiff, allein im Dunkeln.")
-    urteil(db, beobachtet, stars=4, pitch="Ein Ermittler am Limit, und die Jagd beginnt sofort.")
+    observed = found(db, title="Der Kannibalenhügel", blurb="Ein Schiff, allein im Dunkeln.")
+    verdict(db, observed, stars=4, pitch="Ein Ermittler am Limit, und die Jagd beginnt sofort.")
 
     body = client.get("/suggestions").text
 
@@ -470,8 +470,8 @@ def test_without_a_judgement_the_blurb_still_shows(client: TestClient, db: Store
 
 @needs_vocabulary
 def test_the_stars_of_the_gate_are_shown(client: TestClient, db: Store) -> None:
-    beobachtet = found(db, title="Der Kannibalenhügel")
-    urteil(db, beobachtet, stars=4, pitch="Kurz und knapp.")
+    observed = found(db, title="Der Kannibalenhügel")
+    verdict(db, observed, stars=4, pitch="Kurz und knapp.")
 
     body = client.get("/suggestions").text
 
@@ -504,22 +504,22 @@ def test_a_long_title_is_shortened_in_the_row_and_whole_on_the_find_page(
     einem Strich. Ungekuerzt wuchs eine Zeile dadurch auf das Doppelte ihrer
     Nachbarin, und die Liste liess sich nicht mehr ueberfliegen. Verloren geht
     nichts: die Fundseite zeigt den ganzen Titel, einen Klick entfernt."""
-    langer_titel = (
+    long_title = (
         "Schwarzweiß | Er ist ein kranker Mörder. "
         "Und er hat es auf deine Tochter abgesehen."
     )
-    found(db, item_id="lang", title=langer_titel)
+    found(db, item_id="lang", title=long_title)
 
-    liste = client.get("/suggestions").text
-    vor_dem_titel = liste[: liste.index(langer_titel)]
-    titelabsatz = vor_dem_titel[vor_dem_titel.rindex("<p ") :]
-    assert "line-clamp-2" in titelabsatz, titelabsatz
+    listing = client.get("/suggestions").text
+    before_the_title = listing[: listing.index(long_title)]
+    title_paragraph = before_the_title[before_the_title.rindex("<p ") :]
+    assert "line-clamp-2" in title_paragraph, title_paragraph
 
-    vor_dem_pitch = liste[: liste.index("Ein Schiff, allein im Dunkeln.")]
-    pitchabsatz = vor_dem_pitch[vor_dem_pitch.rindex("<p ") :]
-    assert "line-clamp-3" in pitchabsatz, pitchabsatz
+    before_the_pitch = listing[: listing.index("Ein Schiff, allein im Dunkeln.")]
+    pitch_paragraph = before_the_pitch[before_the_pitch.rindex("<p ") :]
+    assert "line-clamp-3" in pitch_paragraph, pitch_paragraph
 
-    assert langer_titel in client.get("/discovery/beam/lang").text
+    assert long_title in client.get("/discovery/beam/lang").text
 
 
 def test_the_page_shows_ten_not_fifty(client: TestClient, db: Store) -> None:
@@ -537,36 +537,36 @@ def test_the_page_shows_ten_not_fifty(client: TestClient, db: Store) -> None:
 @needs_vocabulary
 def test_the_best_stand_at_the_top(client: TestClient, db: Store) -> None:
     """Sonst faengt der Stapel mit dem an, was das Profil gerade abgelehnt hat."""
-    schwaecher = found(db, item_id="a", title="Der schwaechere Fund")
-    stark = found(db, item_id="b", title="Der stärkere Fund")
-    urteil(db, schwaecher, stars=3, pitch="Traegt eine Sache.")
-    urteil(db, stark, stars=4, pitch="Genau die kaputte Stimme.")
+    weaker = found(db, item_id="a", title="Der schwaechere Fund")
+    strong = found(db, item_id="b", title="Der stärkere Fund")
+    verdict(db, weaker, stars=3, pitch="Traegt eine Sache.")
+    verdict(db, strong, stars=4, pitch="Genau die kaputte Stimme.")
 
-    titel = [item.title for item in view.pending(db, load_settings()).items]
+    title = [item.title for item in view.pending(db, load_settings()).items]
 
-    assert titel.index("Der stärkere Fund") < titel.index("Der schwaechere Fund")
+    assert title.index("Der stärkere Fund") < title.index("Der schwaechere Fund")
 
 
 @needs_vocabulary
 def test_an_unjudged_find_sinks_below_the_judged(client: TestClient, db: Store) -> None:
     """Ohne Urteil ist es keine Empfehlung, sondern eine offene Frage."""
     found(db, item_id="a", title="Ohne Urteil")
-    bewertet = found(db, item_id="b", title="Mit Urteil")
-    urteil(db, bewertet, stars=3, pitch="Traegt eine Sache.")
+    rated = found(db, item_id="b", title="Mit Urteil")
+    verdict(db, rated, stars=3, pitch="Traegt eine Sache.")
 
-    titel = [item.title for item in view.pending(db, load_settings()).items]
+    title = [item.title for item in view.pending(db, load_settings()).items]
 
-    assert titel.index("Mit Urteil") < titel.index("Ohne Urteil")
+    assert title.index("Mit Urteil") < title.index("Ohne Urteil")
 
 
 @needs_vocabulary
 def test_what_the_gate_holds_back_is_not_a_task(client: TestClient, db: Store) -> None:
     """Dieselbe Schwelle wie im Digest. Was dich nie erreicht, ist keine
     Aufgabe — und die Seite sagt, wie viel sie deshalb verschweigt."""
-    schwach = found(db, item_id="a", title="Schwacher Fund")
-    stark = found(db, item_id="b", title="Starker Fund")
-    urteil(db, schwach, stars=2, pitch="Nur Genre-Naehe.")
-    urteil(db, stark, stars=3, pitch="Traegt eine Sache ueberzeugend.")
+    weak = found(db, item_id="a", title="Schwacher Fund")
+    strong = found(db, item_id="b", title="Starker Fund")
+    verdict(db, weak, stars=2, pitch="Nur Genre-Naehe.")
+    verdict(db, strong, stars=3, pitch="Traegt eine Sache ueberzeugend.")
 
     pile = view.pending(db, load_settings())
     body = client.get("/suggestions").text
@@ -593,8 +593,8 @@ def test_the_page_uses_the_same_threshold_as_the_digest(client: TestClient, db: 
     Drift, die dieses Projekt schon dreimal eingefangen hat."""
     from ebook_watchlist.facets import load_weights
 
-    knapp = found(db, item_id="a", title="Genau an der Schwelle")
-    urteil(db, knapp, stars=load_weights().gate_stars, pitch="Gerade so.")
+    tight = found(db, item_id="a", title="Genau an der Schwelle")
+    verdict(db, tight, stars=load_weights().gate_stars, pitch="Gerade so.")
 
     assert [i.title for i in view.pending(db, load_settings()).items] == ["Genau an der Schwelle"]
 
@@ -624,9 +624,9 @@ def test_a_suggestion_with_a_fetched_cover_shows_it(client: TestClient, db: Stor
     url = "https://beam.invalid/media/9783104911854_200x200.jpg"
     found(db, title="Mit Bild", blurb="Ein Schiff, allein im Dunkeln.")
     db.session()  # noqa: B018 - nur damit die Datei nach dem Anlegen entsteht
-    ordner = paths.covers_dir()
-    ordner.mkdir(parents=True, exist_ok=True)
-    (ordner / file_name(url)).write_bytes(b"x")
+    folder = paths.covers_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / file_name(url)).write_bytes(b"x")
 
     # Die Adresse muss an der Beobachtung stehen, sonst kann die Seite den
     # Namen gar nicht ausrechnen.
@@ -716,7 +716,7 @@ def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
     found(db, item_id="teuer", title="Kostet viel", price=499)
     found(db, item_id="billig", title="Kostet wenig", price=199)
 
-    body = client.get("/suggestions?sortiert=preis").text
+    body = client.get("/suggestions?sort=price").text
 
     assert body.index("Kostet wenig") < body.index("Kostet viel")
 
@@ -724,10 +724,10 @@ def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
 def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -> None:
     """Sonst zeigte die Seite die ersten fuenfzig einer zufaelligen Reihe,
     nur huebsch geordnet."""
-    for nummer in range(5):
-        found(db, item_id=str(nummer), title=f"Fund {nummer}", price=100 + nummer)
+    for number in range(5):
+        found(db, item_id=str(number), title=f"Fund {number}", price=100 + number)
 
-    pile = view.pending(db, load_settings(), limit=2, sort="preis")
+    pile = view.pending(db, load_settings(), limit=2, sort="price")
 
     assert [item.title for item in pile.items] == ["Fund 0", "Fund 1"]
     assert pile.total == 5
@@ -736,34 +736,45 @@ def test_sorting_happens_before_the_page_is_cut(client: TestClient, db: Store) -
 def test_the_filter_keeps_the_order(client: TestClient, db: Store) -> None:
     """Wer auf "Themen" klickt, behaelt seine Reihenfolge."""
     found(db)
-    body = client.get("/suggestions?sortiert=preis").text
+    body = client.get("/suggestions?sort=price").text
 
     assert "reason=genre_category" in body
-    assert "sortiert=preis" in body
+    assert "sort=price" in body
 
 
 def test_a_decision_returns_to_the_same_order(client: TestClient, db: Store) -> None:
     """Sonst steht man nach dem Ausschliessen in einer anders geordneten Liste
     als der, aus der man gewaehlt hat."""
-    fund = found(db, item_id="weg", title="Nichts fuer mich")
+    discovery = found(db, item_id="weg", title="Nichts fuer mich")
 
-    antwort = TestClient(
+    response = TestClient(
         create_app(), raise_server_exceptions=False, follow_redirects=False
     ).post(
         "/suggestions/decide",
         data={
             "kind": str(RelationKind.DISMISSED),
-            "keys": [f"{fund.source}:{fund.source_item_id}"],
-            "sortiert": "preis",
+            "keys": [f"{discovery.source}:{discovery.source_item_id}"],
+            "sort": "price",
         },
     )
 
-    assert antwort.headers["location"] == "/suggestions?sortiert=preis"
+    assert response.headers["location"] == "/suggestions?sort=price"
 
 
 def test_the_default_order_stays_out_of_the_links(client: TestClient, db: Store) -> None:
     found(db)
-    assert "sortiert=sterne" not in client.get("/suggestions").text
+    assert "sort=stars" not in client.get("/suggestions").text
+
+
+def test_an_old_sort_address_still_sorts(client: TestClient, db: Store) -> None:
+    """`?sortiert=preis` stand bis #70 in der Adresse und in Lesezeichen."""
+    found(db, item_id="teuer", title="Kostet viel", price=499)
+    found(db, item_id="billig", title="Kostet wenig", price=199)
+
+    body = client.get("/suggestions?sortiert=preis").text
+
+    assert body.index("Kostet wenig") < body.index("Kostet viel")
+    assert "sort=price" in body
 
 
 def test_sorting_by_occasion_works_against_the_real_type(
@@ -778,7 +789,7 @@ def test_sorting_by_occasion_works_against_the_real_type(
     found(db, item_id="thema", title="Aus dem Regal", reason=MatchReason.GENRE_CATEGORY)
     found(db, item_id="autor", title="Von wem ich lese", reason=MatchReason.PROFILE_AUTHOR)
 
-    body = client.get("/suggestions?sortiert=anlass").text
+    body = client.get("/suggestions?sort=reason").text
 
     assert body.index("Von wem ich lese") < body.index("Aus dem Regal")
 
@@ -826,8 +837,8 @@ def test_the_stack_orders_by_percent_not_by_stars(client: TestClient, db: Store)
     """Zwei Funde mit denselben Sternen stehen nach ihrer Prozentzahl."""
     middling = found(db, item_id="a", title="Der mittlere Fund")
     strong = found(db, item_id="b", title="Der starke Fund")
-    urteil(db, middling, stars=4, pitch="Trägt drei Muster.")
-    urteil(db, strong, stars=5, pitch="Trägt die Facette.")
+    verdict(db, middling, stars=4, pitch="Trägt drei Muster.")
+    verdict(db, strong, stars=5, pitch="Trägt die Facette.")
 
     items = view.pending(db, load_settings()).items
 
@@ -837,7 +848,7 @@ def test_the_stack_orders_by_percent_not_by_stars(client: TestClient, db: Store)
 
 @needs_vocabulary
 def test_the_row_shows_the_percent_beside_the_stars(client: TestClient, db: Store) -> None:
-    urteil(db, found(db, title="Der Kannibalenhügel"), stars=4, pitch="Kurz und knapp.")
+    verdict(db, found(db, title="Der Kannibalenhügel"), stars=4, pitch="Kurz und knapp.")
 
     body = client.get("/suggestions").text
 
@@ -853,7 +864,7 @@ def test_a_new_profile_reorders_the_stack_without_asking_the_model(
     (Abnahme in #48)."""
     from ebook_watchlist.facets import Liked, ReadingProfile
 
-    urteil(db, found(db, item_id="a", title="Trägt eine Sache"), stars=2, pitch="Eins.")
+    verdict(db, found(db, item_id="a", title="Trägt eine Sache"), stars=2, pitch="Eins.")
     assert view.pending(db, load_settings()).hidden_weak == 1
 
     # Jetzt mag sie auch das Poetische, über das die Form vorher nichts wusste.
@@ -922,8 +933,8 @@ def test_a_short_story_is_hidden_and_counted(client: TestClient, db: Store) -> N
     """Kurzgeschichten stehen nicht im Stapel; die Zeile darüber nennt ihre Zahl (#73)."""
     from dataclasses import replace
 
-    fund = found(db, item_id="k", title="BattleTech - Onikuma")
-    db.append(db.start_run("test", "cli", NOW), "test", [replace(fund, pages=48,
+    discovery = found(db, item_id="k", title="BattleTech - Onikuma")
+    db.append(db.start_run("test", "cli", NOW), "test", [replace(discovery, pages=48,
                                                                  observed_at=NOW)], NOW)
 
     pile = view.pending(db, load_settings())

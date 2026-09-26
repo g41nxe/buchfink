@@ -95,13 +95,13 @@ def _clean(text: str) -> str:
 
 
 def _fields(xml: str) -> list[tuple[str, dict[str, list[str]]]]:
-    aus: list[tuple[str, dict[str, list[str]]]] = []
-    for tag, inhalt in _FIELD.findall(xml):
-        teile: dict[str, list[str]] = {}
-        for code, wert in _SUBFIELD.findall(inhalt):
-            teile.setdefault(code, []).append(_clean(wert))
-        aus.append((tag, teile))
-    return aus
+    out: list[tuple[str, dict[str, list[str]]]] = []
+    for tag, content in _FIELD.findall(xml):
+        parts: dict[str, list[str]] = {}
+        for code, value in _SUBFIELD.findall(content):
+            parts.setdefault(code, []).append(_clean(value))
+        out.append((tag, parts))
+    return out
 
 
 def parse(xml: str) -> Record:
@@ -110,56 +110,56 @@ def parse(xml: str) -> Record:
     Rein und ohne Netz, damit sich das Auswerten an gespeicherten Antworten
     prüfen lässt — dieselbe Trennung wie bei den Quellen.
     """
-    treffer = _RECORDS.search(xml)
-    if treffer and treffer.group(1) == "0":
+    hit = _RECORDS.search(xml)
+    if hit and hit.group(1) == "0":
         return Record()
 
-    titel = untertitel = autor = reihe = band = sprache = original = verlag = None
-    enthalten: list[str] = []
-    schlagwoerter: list[str] = []
+    title = subtitle = author = series = volume = language = original = publisher = None
+    contained: list[str] = []
+    subjects: list[str] = []
 
-    for tag, teile in _fields(xml):
-        erste = {code: werte[0] for code, werte in teile.items() if werte}
+    for tag, parts in _fields(xml):
+        first = {code: values[0] for code, values in parts.items() if values}
         if tag == "245":
-            titel = titel or erste.get("a")
-            untertitel = untertitel or erste.get("b")
-            autor = autor or erste.get("c")
-            band = band or erste.get("n")
+            title = title or first.get("a")
+            subtitle = subtitle or first.get("b")
+            author = author or first.get("c")
+            volume = volume or first.get("n")
         elif tag == "100":
-            autor = erste.get("a") or autor
+            author = first.get("a") or author
         elif tag == "490":
-            reihe = reihe or erste.get("a")
-            band = band or erste.get("v")
+            series = series or first.get("a")
+            volume = volume or first.get("v")
         elif tag in ("264", "260"):
-            verlag = verlag or erste.get("b")
+            publisher = publisher or first.get("b")
         elif tag == "240":
-            original = original or erste.get("a")
+            original = original or first.get("a")
         elif tag == "653":
             # "(BISAC Subject Heading)FIC050000", "(VLB-WN)9112": Codes fuer
             # den Handel. Was ohne Klammer beginnt, hat ein Mensch geschrieben.
-            schlagwoerter += [w for w in teile.get("a", []) if w and not w.startswith("(")]
+            subjects += [w for w in parts.get("a", []) if w and not w.startswith("(")]
         elif tag == "041":
-            sprache = sprache or erste.get("a")
+            language = language or first.get("a")
         elif tag == "770":
             # Der Hinweis steht in $i; "Enthält" ist der Fall, der uns angeht.
             # Kleingeschrieben verglichen und nur am Anfang, weil die DNB
             # auch "Enthält außerdem" schreibt.
-            if erste.get("i", "").lower().startswith("enth"):
-                for wert in teile.get("z", []):
-                    if _ISBN13.match(wert):
-                        enthalten.append(wert)
+            if first.get("i", "").lower().startswith("enth"):
+                for value in parts.get("z", []):
+                    if _ISBN13.match(value):
+                        contained.append(value)
 
     return Record(
-        title=titel,
-        subtitle=untertitel,
-        author=autor,
-        series=reihe,
-        series_index=band,
-        language=sprache,
-        contains=tuple(dict.fromkeys(enthalten)),
+        title=title,
+        subtitle=subtitle,
+        author=author,
+        series=series,
+        series_index=volume,
+        language=language,
+        contains=tuple(dict.fromkeys(contained)),
         original_title=original,
-        keywords=tuple(dict.fromkeys(schlagwoerter)),
-        publisher=verlag,
+        keywords=tuple(dict.fromkeys(subjects)),
+        publisher=publisher,
     )
 
 
@@ -196,8 +196,8 @@ class Dnb:
             # Eine unerreichbare Bibliothek ist kein Grund, einen Lauf zu
             # beenden — dasselbe Zugestaendnis wie bei einem Titelbild.
             return None
-        datensatz = parse(xml)
-        return None if datensatz.is_empty else datensatz
+        record = parse(xml)
+        return None if record.is_empty else record
 
 
 @dataclass(slots=True)
@@ -224,23 +224,23 @@ class OriginalTitles:
     spent: int = 0
 
     def __call__(self, isbns: Sequence[str]) -> dict[str, tuple[str, ...]]:
-        bekannt = self.store.dnb_original_titles(isbns)
+        known = self.store.dnb_original_titles(isbns)
         for isbn in isbns:
-            if isbn in bekannt or self.dnb is None or self.spent >= self.budget:
+            if isbn in known or self.dnb is None or self.spent >= self.budget:
                 continue
             self.spent += 1
             try:
-                datensatz = self.dnb.about(isbn)
+                record = self.dnb.about(isbn)
             except RateLimited:
                 self.spent = self.budget
                 break
             except Exception:  # noqa: BLE001 - eine Auskunft, nicht die Zuordnung
                 continue
             # Auch das Schweigen, damit niemand dieselbe ISBN erneut fragt.
-            self.store.save_dnb(isbn, datensatz, self.now or datetime.now())
-            bekannt[isbn] = (
-                tuple(n for n in (datensatz.original_title, datensatz.title) if n)
-                if datensatz
+            self.store.save_dnb(isbn, record, self.now or datetime.now())
+            known[isbn] = (
+                tuple(n for n in (record.original_title, record.title) if n)
+                if record
                 else ()
             )
-        return bekannt
+        return known

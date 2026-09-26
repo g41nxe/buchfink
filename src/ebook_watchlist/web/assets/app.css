@@ -94,7 +94,7 @@
   summary,
   label,
   input,
-  .kachel-klickbar {
+  .tile-clickable {
     transition:
       color 0.15s,
       background-color 0.15s,
@@ -174,7 +174,7 @@
      verglichen, und dafuer muessen sie nebeneinander liegen. Waehlen ist ein
      Zustand (ein Formularfeld), keine Handlung — deshalb braucht nichts
      davon Ueberfahren und alles funktioniert auf dem Telefon gleich. */
-  .streifen {
+  .strip {
     display: flex;
     gap: 0.7rem;
     overflow-x: auto;
@@ -185,18 +185,18 @@
     scroll-behavior: smooth;
     scrollbar-width: none;
   }
-  .streifen::-webkit-scrollbar { display: none }
-  .streifen > * { flex: 0 0 auto; width: 6.6rem; scroll-snap-align: start }
+  .strip::-webkit-scrollbar { display: none }
+  .strip > * { flex: 0 0 auto; width: 6.6rem; scroll-snap-align: start }
 
-  .wahl { display: block; cursor: pointer }
-  .wahl input { position: absolute; opacity: 0; width: 0; height: 0 }
-  .wahl .feld {
+  .pick { display: block; cursor: pointer }
+  .pick input { position: absolute; opacity: 0; width: 0; height: 0 }
+  .pick .pick-frame {
     position: relative;
     display: block;
     border-radius: 0.35rem;
     box-shadow: 0 0 0 1px var(--color-rule);
   }
-  .wahl img {
+  .pick img {
     display: block;
     width: 100%;
     aspect-ratio: 2 / 3;
@@ -206,7 +206,7 @@
   /* Innerhalb des Covers: der Streifen scrollt, und was herausragt, wird
      abgeschnitten — auch nach oben. Der Ring trennt trotzdem vom Bild,
      genau wie bei den Cover-Abzeichen. */
-  .wahl .haken {
+  .pick .tick {
     position: absolute;
     top: 0.35rem;
     left: 0.35rem;
@@ -222,32 +222,32 @@
     box-shadow: 0 0 0 2px var(--color-card), 0 1px 3px rgb(0 0 0 / 0.45);
     transition: opacity 0.12s;
   }
-  .wahl:has(:checked) .feld { box-shadow: 0 0 0 2px var(--color-accent) }
-  .wahl:has(:checked) .haken { opacity: 1 }
-  .wahl:hover .feld {
+  .pick:has(:checked) .pick-frame { box-shadow: 0 0 0 2px var(--color-accent) }
+  .pick:has(:checked) .tick { opacity: 1 }
+  .pick:hover .pick-frame {
     box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 55%, transparent);
   }
 
   /* Erst wenn eine Wahl steht, treten die anderen zurueck — vorher saehe die
      Reihe aus, als waere sie deaktiviert. Entsaettigt statt abgedunkelt:
      ein weisses Cover soll hell bleiben und nicht nach Ladefehler aussehen. */
-  .streifen:has(:checked) .wahl:not(:has(:checked)) .feld img {
+  .strip:has(:checked) .pick:not(:has(:checked)) .pick-frame img {
     filter: grayscale(0.9) brightness(0.8);
     transition: filter 0.15s;
   }
-  .streifen:has(:checked) .wahl:not(:has(:checked)) .beschriftung {
+  .strip:has(:checked) .pick:not(:has(:checked)) .caption {
     color: var(--color-soft);
   }
   /* Ueberfahren holt ein entsaettigtes Cover zurueck: vergleichen muss
      moeglich bleiben. Auf dem Telefon geht das nur durch Antippen. */
-  .streifen:has(:checked) .wahl:not(:has(:checked)):hover .feld img {
+  .strip:has(:checked) .pick:not(:has(:checked)):hover .pick-frame img {
     filter: none;
   }
 
   /* Auf der Buchseite ist das Cover viermal so gross wie in einer Zeile —
      das Abzeichen im Listenmass wirkt daneben verloren (Ticket 52). */
-  .badge-gross { width: 28px; height: 28px }
-  .badge-gross svg { width: 17px; height: 17px }
+  .badge-large { width: 28px; height: 28px }
+  .badge-large svg { width: 17px; height: 17px }
 
   /* Das Quellensymbol gross und blass in der Kachel: es sagt auf einen Blick,
      um welche Quelle es geht, ohne den Wert zu stoeren. Rechts auf halber
@@ -258,7 +258,7 @@
      40 statt 48 Pixel, seit es drei Kacheln sein koennen: die dritte Quelle
      nimmt jeder Kachel 27 Pixel Breite, und die holt das Symbol zurueck,
      ohne dass "nicht im Katalog" umbricht. */
-  .kachelbild {
+  .tile-image {
     position: absolute;
     right: 8px;
     top: 50%;
@@ -279,24 +279,24 @@
 
   /* Klappentext: verkuerzt, aufklappbar — dasselbe Muster, das der Shop
      selbst benutzt, nur ohne dass sein Knopf im gespeicherten Text landet. */
-  .klappentext summary::-webkit-details-marker { display: none }
-  .klappentext:not([open]) summary p {
+  .blurb-box summary::-webkit-details-marker { display: none }
+  .blurb-box:not([open]) summary p {
     display: -webkit-box;
     -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .klappentext:not([open]) .mehr::after { content: "mehr anzeigen" }
-  .klappentext[open] .mehr::after { content: "weniger anzeigen" }
+  .blurb-box:not([open]) .more::after { content: "mehr anzeigen" }
+  .blurb-box[open] .more::after { content: "weniger anzeigen" }
 
   /* Wo mit dem Finger bedient wird, gelten 44 px als Mindestmass. */
   @media (hover: none) {
-    .tun { min-height: 44px }
+    .tap { min-height: 44px }
     /* Ausser bei den Filterpillen: sie sind Ansichten, keine Handlungen, und
        drei davon nebeneinander mit 44 px Hoehe sahen auf dem Telefon aus wie
        ein Block statt wie eine Reihe. 36 px bleiben mit dem Finger gut zu
-       treffen. Steht nach `.tun`, weil beide gleich stark sind. */
-    .pille { min-height: 36px }
+       treffen. Steht nach `.tap`, weil beide gleich stark sind. */
+    .pill { min-height: 36px }
   }
 }
 
@@ -304,14 +304,14 @@
    `utilities`, und die kommt nach `base` — eine Regel dort verliert gegen
    `.border-rule`, egal wie spezifisch sie ist. Nicht zugeordnete Regeln
    schlagen jede Ebene, und genau das braucht der Rahmen beim Ueberfahren. */
-.kachel-klickbar {
+.tile-clickable {
   transition: border-color 0.15s, background-color 0.15s;
 }
-.kachel-klickbar.kachel-klickbar:hover {
+.tile-clickable.tile-clickable:hover {
   border-color: currentColor;
   background: color-mix(in oklab, currentColor 6%, var(--color-card));
 }
-.kachel-klickbar:hover .kachelbild {
+.tile-clickable:hover .tile-image {
   opacity: 0.18;
 }
 
@@ -324,7 +324,7 @@
 /* Ein Fokusring fuer alles, was Fokus bekommen kann. Vorher gab es genau eine
    Regel dafuer und sechs Eingabefelder mit `focus:border-accent`; Knoepfe,
    Pillen, Navigation und Kaestchen bekamen den Standardring des Browsers, und
-   das versteckte Radio in `.wahl` gar keinen.
+   das versteckte Radio in `.pick` gar keinen.
 
    `:focus-visible`, nicht `:focus`: ein Mausklick auf einen Knopf soll keinen
    Ring hinterlassen, die Tabulatortaste schon.
@@ -342,7 +342,7 @@
    befuerchtet. Wer `outline-none` schreibt, hat einen eigenen Fokusstil und
    soll ihn behalten. */
 :focus-visible:not(.outline-none),
-.wahl:has(:focus-visible) .feld {
+.pick:has(:focus-visible) .pick-frame {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -351,6 +351,6 @@
    Namen tragen ihr `wenn-`, weil die Regel jedes `details` der Anwendung
    trifft: `.auf` und `.zu` waeren zwei deutsche Alltagswoerter, die sich
    irgendwann jemand anders fuer etwas anderes nimmt. */
-details > summary > .wenn-auf,
-details[open] > summary > .wenn-zu { display: none; }
-details[open] > summary > .wenn-auf { display: inline-flex; }
+details > summary > .when-open,
+details[open] > summary > .when-closed { display: none; }
+details[open] > summary > .when-open { display: inline-flex; }

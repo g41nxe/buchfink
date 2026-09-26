@@ -145,19 +145,19 @@ def volume_of(title: str) -> int | None:
     sie klein ist: "1984" ist kein Band, "Fahrenheit 451" auch nicht.
     """
     text = fold(title)
-    treffer = _VOLUME_WORD.search(text)
-    if treffer:
-        return int(treffer.group(1))
+    hit = _VOLUME_WORD.search(text)
+    if hit:
+        return int(hit.group(1))
 
-    kopf = _SUBTITLE.split(text, maxsplit=1)[0].strip()
-    treffer = _VOLUME_TRAILING.search(kopf)
-    if not treffer:
+    head = _SUBTITLE.split(text, maxsplit=1)[0].strip()
+    hit = _VOLUME_TRAILING.search(head)
+    if not hit:
         return None
-    zahl = int(treffer.group(1))
-    rest = kopf[: treffer.start()].strip()
-    if not rest or zahl > MAX_VOLUME:
+    number = int(hit.group(1))
+    rest = head[: hit.start()].strip()
+    if not rest or number > MAX_VOLUME:
         return None
-    return zahl
+    return number
 
 
 def volumes_conflict(left: str, right: str) -> bool:
@@ -170,11 +170,11 @@ def volumes_conflict(left: str, right: str) -> bool:
     andere einen **spaeteren**: wer Band 1 sucht, sagt das selten dazu, und
     "Der Schwarm 2" ist dann nicht gemeint.
     """
-    hier, dort = volume_of(left), volume_of(right)
-    if hier is not None and dort is not None:
-        return hier != dort
-    if hier is None and dort is not None:
-        return dort > 1
+    here, there = volume_of(left), volume_of(right)
+    if here is not None and there is not None:
+        return here != there
+    if here is None and there is not None:
+        return there > 1
     return False
 
 

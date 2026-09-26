@@ -505,12 +505,12 @@ def frequent_families(store: Store, settings: Settings, vocabulary) -> set[str]:
     und der Bestand wächst mit jedem Lauf.
     """
     key = (str(store.path), settings.slug, fingerprint(vocabulary))
-    stand = store.high_water()
+    watermark = store.high_water()
     cached = _FREQUENT.get(key)
-    if cached is not None and cached[0] == stand:
+    if cached is not None and cached[0] == watermark:
         return set(cached[1])
     result = _count_frequent(store, settings, vocabulary)
-    _FREQUENT[key] = (stand, result)
+    _FREQUENT[key] = (watermark, result)
     return set(result)
 
 

@@ -86,9 +86,9 @@ def test_a_title_without_a_title_is_refused() -> None:
 
 
 def test_the_search_yields_its_hits() -> None:
-    gefunden = parse.parse_search(fixture("search-hits.json"))
+    found = parse.parse_search(fixture("search-hits.json"))
 
-    assert [(c.title, c.author, c.title_id) for c in gefunden] == [
+    assert [(c.title, c.author, c.title_id) for c in found] == [
         ("Der Zeitenläufer (Dark Matter)", "Blake Crouch", "3222096")
     ]
 
@@ -121,9 +121,9 @@ def test_the_german_edition_is_found_through_its_isbn() -> None:
     Ausgabenrauschen, und übrig bleiben "dark matter" gegen "zeitenlaufer" —
     Wert 26 bei einer Schwelle von 85. Die Kennung trägt es, und zwar mit der
     Mechanik, die beam längst benutzt."""
-    quelle = source(fixture("search-hits.json"))
+    overdrive = source(fixture("search-hits.json"))
 
-    resolution = quelle.resolve(
+    resolution = overdrive.resolve(
         WatchlistEntry(title="Dark Matter", author="Blake Crouch", isbn="9783641171421")
     )
 
@@ -137,9 +137,9 @@ def test_without_an_isbn_the_renamed_edition_stays_unmatched() -> None:
     gerät: ohne Kennung findet der Titelvergleich dieses Buch nicht. Von den
     fünfzehn beobachteten Büchern tragen dreizehn eine ISBN — die zwei übrigen
     bleiben auf den Titel angewiesen."""
-    quelle = source(fixture("search-hits.json"))
+    overdrive = source(fixture("search-hits.json"))
 
-    resolution = quelle.resolve(WatchlistEntry(title="Dark Matter", author="Blake Crouch"))
+    resolution = overdrive.resolve(WatchlistEntry(title="Dark Matter", author="Blake Crouch"))
 
     assert resolution.confidence is not Confidence.AUTO_ACCEPT
 
@@ -148,9 +148,9 @@ def test_a_candidate_brings_its_cover() -> None:
     """Bei einer offenen Zuordnung entscheidet das Auge, welcher Treffer der
     richtige ist (Ticket 41). Die Karte trägt das Bild längst — weitergereicht
     wurde es nicht, und in der Auswahl stand ein Platzhalter."""
-    quelle = source(fixture("search-hits.json"))
+    overdrive = source(fixture("search-hits.json"))
 
-    resolution = quelle.resolve(
+    resolution = overdrive.resolve(
         WatchlistEntry(title="Dark Matter", author="Blake Crouch", isbn="9783641171421")
     )
 
@@ -158,17 +158,17 @@ def test_a_candidate_brings_its_cover() -> None:
 
 
 def test_an_unknown_title_resolves_to_nothing() -> None:
-    quelle = source(fixture("search-no-hits.json"))
+    overdrive = source(fixture("search-no-hits.json"))
 
-    assert quelle.resolve(WatchlistEntry(title="Gibt es nicht", author="Niemand")) is None
+    assert overdrive.resolve(WatchlistEntry(title="Gibt es nicht", author="Niemand")) is None
 
 
 def test_the_query_carries_title_and_surname() -> None:
-    quelle = source(fixture("search-hits.json"))
+    overdrive = source(fixture("search-hits.json"))
 
-    quelle.resolve(WatchlistEntry(title="Dark Matter", author="Blake Crouch"))
+    overdrive.resolve(WatchlistEntry(title="Dark Matter", author="Blake Crouch"))
 
-    _, params = quelle.client.requests[0]
+    _, params = overdrive.client.requests[0]
     assert params["query"] == "Dark Matter Crouch"
     # Nur deutsche EPUB-E-Books, wie bei der Onleihe.
     assert params["format"] == "ebook-epub-adobe"
@@ -190,7 +190,7 @@ class ScriptedClient:
         return self.texts.pop(0) if len(self.texts) > 1 else self.texts[0]
 
 
-def karte(title: str, author: str, isbn: str, title_id: str, language: str) -> dict:
+def card(title: str, author: str, isbn: str, title_id: str, language: str) -> dict:
     """Eine Trefferkarte in der Gestalt der aufgezeichneten, mit anderen Werten.
 
     Die Suche nach *Scythe* wurde am 25.09.2026 nur im Browser nachgestellt,
@@ -211,8 +211,8 @@ def karte(title: str, author: str, isbn: str, title_id: str, language: str) -> d
     }
 
 
-def antwort(*karten: dict) -> str:
-    return json.dumps({"items": list(karten), "totalItems": len(karten)})
+def answer(*cards: dict) -> str:
+    return json.dumps({"items": list(cards), "totalItems": len(cards)})
 
 
 @pytest.fixture
@@ -225,13 +225,13 @@ def context(store):
 
 
 SCYTHE = WatchlistEntry(title="Scythe", author="Neal Shusterman")
-ENGLISCH = karte("Scythe", "Neal Shusterman", "9781442472426", "1911111", "en")
+ENGLISH = card("Scythe", "Neal Shusterman", "9781442472426", "1911111", "en")
 
 
 def test_a_card_says_which_language_it_is_in() -> None:
-    gefunden = parse.parse_search(antwort(ENGLISCH))
+    found = parse.parse_search(answer(ENGLISH))
 
-    assert gefunden[0].language == "eng"
+    assert found[0].language == "eng"
     # Die aufgezeichnete Karte ist deutsch.
     assert parse.parse_search(fixture("search-hits.json"))[0].language == "ger"
 
@@ -240,25 +240,25 @@ def test_a_named_title_is_searched_once_more_in_every_language(context) -> None:
     """Abnahme: ein englischer Titel, den die Bibliothek nur auf Englisch
     führt, wird gefunden. Der Sprachfilter ist für Funde richtig, für einen
     Titel, den die Leserin selbst benannt hat, nicht (#10, #77)."""
-    quelle = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json"),
-                                                   antwort(ENGLISCH)))
+    overdrive = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json"),
+                                                   answer(ENGLISH)))
 
-    linked = quelle.linked_entry(SCYTHE, context)
+    linked = overdrive.linked_entry(SCYTHE, context)
 
     assert linked.resolved_links["overdrive"] == "https://voebb.overdrive.com/media/1911111"
-    deutsch, alle = (params for _, params in quelle.client.requests)
-    assert deutsch["language"] == "de"
-    assert "language" not in alle
+    german_params, all_params = (params for _, params in overdrive.client.requests)
+    assert german_params["language"] == "de"
+    assert "language" not in all_params
     # Das Format bleibt: ein Hörbuch ist auch in jeder Sprache kein E-Book.
-    assert alle["format"] == "ebook-epub-adobe"
+    assert all_params["format"] == "ebook-epub-adobe"
 
 
 def test_the_language_of_an_accepted_edition_is_remembered(context) -> None:
     """Die Kachel soll sagen können, dass die Ausgabe englisch ist."""
-    quelle = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json"),
-                                                   antwort(ENGLISCH)))
+    overdrive = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json"),
+                                                   answer(ENGLISH)))
 
-    quelle.linked_entry(SCYTHE, context)
+    overdrive.linked_entry(SCYTHE, context)
 
     link = context.store.get_book_source(context.book_for(SCYTHE), "overdrive")
     assert json.loads(link.details)["language"] == "eng"
@@ -266,17 +266,17 @@ def test_the_language_of_an_accepted_edition_is_remembered(context) -> None:
 
 def test_a_german_find_needs_no_second_search(context) -> None:
     """Deutsch zuerst, wie bisher — und wenn das reicht, bleibt es dabei."""
-    quelle = OverdriveSource(client=ScriptedClient(fixture("search-hits.json")))
+    overdrive = OverdriveSource(client=ScriptedClient(fixture("search-hits.json")))
 
-    quelle.linked_entry(WatchlistEntry(title="Der Zeitenläufer", author="Blake Crouch"), context)
+    overdrive.linked_entry(WatchlistEntry(title="Der Zeitenläufer", author="Blake Crouch"), context)
 
-    assert len(quelle.client.requests) == 1
+    assert len(overdrive.client.requests) == 1
 
 
 def test_nothing_in_any_language_is_still_an_answer(context) -> None:
-    quelle = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json")))
+    overdrive = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json")))
 
-    assert quelle.linked_entry(SCYTHE, context) is None
+    assert overdrive.linked_entry(SCYTHE, context) is None
     link = context.store.get_book_source(context.book_for(SCYTHE), "overdrive")
     assert json.loads(link.details)["outcome"] == "not_found"
 
@@ -285,58 +285,58 @@ def test_nothing_in_any_language_is_still_an_answer(context) -> None:
 
 
 def test_an_unresolved_entry_is_skipped_not_guessed() -> None:
-    quelle = source(fixture("title.json"))
+    overdrive = source(fixture("title.json"))
 
-    assert quelle.check(WatchlistEntry(title="Dark Matter", author="Blake Crouch")) is None
-    assert quelle.client.requests == []
+    assert overdrive.check(WatchlistEntry(title="Dark Matter", author="Blake Crouch")) is None
+    assert overdrive.client.requests == []
 
 
 def test_a_resolved_entry_becomes_an_observation() -> None:
-    quelle = source(fixture("title.json"))
-    eintrag = WatchlistEntry(
+    overdrive = source(fixture("title.json"))
+    entry = WatchlistEntry(
         title="Dark Matter",
         author="Blake Crouch",
         resolved_links={"overdrive": "https://voebb.overdrive.com/media/3222096"},
     )
 
-    beobachtung = quelle.check(eintrag)
+    observation = overdrive.check(entry)
 
-    assert beobachtung.source_item_id == "3222096"
+    assert observation.source_item_id == "3222096"
     # Der Titel, wie OverDrive ihn nennt — eine falsche Zuordnung muss sichtbar
     # werden (ADR 9).
-    assert beobachtung.title == "Der Zeitenläufer (Dark Matter)"
-    assert beobachtung.match_reason is MatchReason.WATCHLIST
-    assert beobachtung.availability is Availability.UNAVAILABLE
-    assert beobachtung.reservation_count == 8
-    assert beobachtung.isbn == "9783641171421"
-    assert beobachtung.url == "https://voebb.overdrive.com/media/3222096"
+    assert observation.title == "Der Zeitenläufer (Dark Matter)"
+    assert observation.match_reason is MatchReason.WATCHLIST
+    assert observation.availability is Availability.UNAVAILABLE
+    assert observation.reservation_count == 8
+    assert observation.isbn == "9783641171421"
+    assert observation.url == "https://voebb.overdrive.com/media/3222096"
 
 
 def test_a_link_we_cannot_key_is_refused() -> None:
     """Der Snapshot ist auf die Nummer geschlüsselt. Eine erfundene spaltete
     die Geschichte eines Titels still in zwei."""
-    quelle = source(fixture("title.json"))
-    eintrag = WatchlistEntry(
+    overdrive = source(fixture("title.json"))
+    entry = WatchlistEntry(
         title="Dark Matter", resolved_links={"overdrive": "https://voebb.overdrive.com/media/"}
     )
 
     with pytest.raises(SourceStructureError, match="Titelnummer"):
-        quelle.check(eintrag)
+        overdrive.check(entry)
 
 
 def test_a_vanished_title_skips_that_entry_instead_of_failing_the_source() -> None:
     from ebook_watchlist.http import NotFound
 
-    class Weg:
+    class Gone:
         def get(self, url, params=None):
             raise NotFound(url)
 
-    quelle = OverdriveSource(client=Weg())
-    eintrag = WatchlistEntry(
+    overdrive = OverdriveSource(client=Gone())
+    entry = WatchlistEntry(
         title="Dark Matter", resolved_links={"overdrive": "https://voebb.overdrive.com/media/1"}
     )
 
-    assert quelle.check(eintrag) is None
+    assert overdrive.check(entry) is None
 
 
 def test_the_title_id_comes_out_of_the_reader_facing_url() -> None:
@@ -358,26 +358,28 @@ def lucky_day() -> str:
 def test_lucky_day_yields_german_fiction_ebooks_only() -> None:
     from ebook_watchlist.sources.overdrive.source import Collection
 
-    funde = parse.parse_collection(parse.payload(lucky_day()), Collection("1572172", "Lucky Day"))
+    discoveries = parse.parse_collection(
+        parse.payload(lucky_day()), Collection("1572172", "Lucky Day")
+    )
 
-    assert {f.title for f in funde} == {"Schaut, wie wir tanzen", "Der Hausmann",
+    assert {f.title for f in discoveries} == {"Schaut, wie wir tanzen", "Der Hausmann",
                                         "Steinernes Fleisch"}
-    for fund in funde:
-        assert fund.match_reason is MatchReason.GENRE_CATEGORY
-        assert fund.category == "Lucky Day"
+    for discovery in discoveries:
+        assert discovery.match_reason is MatchReason.GENRE_CATEGORY
+        assert discovery.category == "Lucky Day"
         # Lucky Day heißt: sofort ausleihbar, ohne Wartezeit.
-        assert fund.availability is Availability.AVAILABLE
-        assert fund.isbn and fund.url.startswith("https://voebb.overdrive.com/media/")
+        assert discovery.availability is Availability.AVAILABLE
+        assert discovery.isbn and discovery.url.startswith("https://voebb.overdrive.com/media/")
 
 
 def test_a_collection_can_narrow_to_genres() -> None:
     """Die BISAC-Präfixe engen weiter ein: FIC009 ist Fantasy."""
     from ebook_watchlist.sources.overdrive.source import Collection
 
-    funde = parse.parse_collection(parse.payload(lucky_day()),
+    discoveries = parse.parse_collection(parse.payload(lucky_day()),
                                    Collection("1572172", "Lucky Day", ("FIC009",)))
 
-    assert [f.title for f in funde] == ["Steinernes Fleisch"]
+    assert [f.title for f in discoveries] == ["Steinernes Fleisch"]
 
 
 def test_a_collection_without_items_is_a_changed_interface() -> None:
@@ -396,13 +398,13 @@ def test_the_run_collects_the_collection_next_to_the_watchlist(tmp_path) -> None
     from ebook_watchlist.store import Store
 
     client = StubClient(lucky_day())
-    quelle = OverdriveSource(client=client, collections=(Collection("1572172", "Lucky Day"),))
+    overdrive = OverdriveSource(client=client, collections=(Collection("1572172", "Lucky Day"),))
     context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"),
                          now=datetime(2026, 9, 26, 12, 0))
 
-    funde = quelle.collect(load_settings(), [], context)
+    discoveries = overdrive.collect(load_settings(), [], context)
 
-    assert len(funde) == 3
+    assert len(discoveries) == 3
     assert client.requests[0][0].endswith("/libraries/voebb/collections/1572172")
 
 
@@ -411,9 +413,9 @@ def test_the_collection_is_read_from_the_settings() -> None:
     from ebook_watchlist.sources.overdrive.source import Collection
     from ebook_watchlist.sources.registry import _build_overdrive
 
-    quelle = _build_overdrive("overdrive", {"collections": [
+    overdrive = _build_overdrive("overdrive", {"collections": [
         {"id": 1572172, "name": "Lucky Day", "bisac": ["FIC"]}]}, StubClient(""))
 
-    assert quelle.collections == (Collection("1572172", "Lucky Day", ("FIC",)),)
+    assert overdrive.collections == (Collection("1572172", "Lucky Day", ("FIC",)),)
     with pytest.raises(ConfigError):
         _build_overdrive("overdrive", {"collections": [{"name": "ohne Nummer"}]}, StubClient(""))

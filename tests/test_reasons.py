@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.reasons import short_why, thema_name, why_shown
+from ebook_watchlist.reasons import genre_category_name, short_why, why_shown
 
 
 def observation(**overrides) -> Observation:
@@ -35,7 +35,7 @@ def test_an_author_reason_without_a_name_still_reads() -> None:
     assert why_shown(seen) == "neu von einer Autor:in, der du folgst"
 
 
-def test_the_reader_facing_word_is_thema_not_regal() -> None:
+def test_the_reader_facing_word_for_a_genre_category_is_not_shelf() -> None:
     seen = observation(category="belletristik/krimi-thriller/psychothriller")
     assert why_shown(seen) == "neu im Thema Psychothriller"
 
@@ -59,7 +59,7 @@ def test_the_raw_shelf_path_never_reaches_the_reader() -> None:
     ],
 )
 def test_a_shelf_path_becomes_a_readable_name(category: str | None, expected: str) -> None:
-    assert thema_name(category) == expected
+    assert genre_category_name(category) == expected
 
 
 def test_a_theme_without_a_category_does_not_pretend_to_know_one() -> None:
@@ -74,7 +74,7 @@ def test_the_short_form_fits_a_label() -> None:
     assert short_why(observation(category="a/b/psychothriller")) == "Psychothriller"
 
 
-def test_the_short_form_falls_back_to_thema_without_a_readable_name() -> None:
+def test_the_short_form_falls_back_to_the_genre_category_word_without_a_name() -> None:
     """Ohne Kategorie bleibt "Thema" die einzig ehrliche Auskunft."""
     assert short_why(observation(category=None)) == "Thema"
 
@@ -85,8 +85,8 @@ def test_a_library_collection_keeps_its_name_and_says_it_can_be_borrowed() -> No
     from ebook_watchlist.models import MatchReason, Observation
     from ebook_watchlist.reasons import short_why, why_shown
 
-    fund = Observation(source="overdrive", source_item_id="1", title="Der Hausmann",
+    discovery = Observation(source="overdrive", source_item_id="1", title="Der Hausmann",
                        match_reason=MatchReason.GENRE_CATEGORY, category="Lucky Day")
 
-    assert short_why(fund) == "Lucky Day"
-    assert why_shown(fund) == "sofort ausleihbar aus „Lucky Day“"
+    assert short_why(discovery) == "Lucky Day"
+    assert why_shown(discovery) == "sofort ausleihbar aus „Lucky Day“"

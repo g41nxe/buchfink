@@ -95,62 +95,62 @@ def fetcher(client: _Client) -> Callable[[str], str | None]:
 def opening(epub: bytes) -> str | None:
     """Die ersten :data:`SAMPLE_WORDS` Wörter Erzähltext, oder ``None``."""
     try:
-        with zipfile.ZipFile(io.BytesIO(epub)) as archiv:
-            woerter: list[str] = []
-            erzaehlt = False
-            for seite in _reading_order(archiv):
-                text = _page_text(archiv, seite)
+        with zipfile.ZipFile(io.BytesIO(epub)) as archive:
+            words: list[str] = []
+            in_story = False
+            for page in _reading_order(archive):
+                text = _page_text(archive, page)
                 if text is None:
                     continue
-                if not erzaehlt:
+                if not in_story:
                     # Vorne steht, was nicht erzählt; ab der ersten Seite mit
                     # Erzähltext zählt alles, auch ein kurzes Kapitel.
                     if len(text.split()) < MIN_PROSE_WORDS or _NOT_PROSE.match(text):
                         continue
-                    erzaehlt = True
-                woerter += text.split()
-                if len(woerter) >= SAMPLE_WORDS:
+                    in_story = True
+                words += text.split()
+                if len(words) >= SAMPLE_WORDS:
                     break
     except (zipfile.BadZipFile, KeyError, ValueError, OSError):
         return None
-    return " ".join(woerter[:SAMPLE_WORDS]) or None
+    return " ".join(words[:SAMPLE_WORDS]) or None
 
 
-def _reading_order(archiv: zipfile.ZipFile) -> list[str]:
+def _reading_order(archive: zipfile.ZipFile) -> list[str]:
     """Die Seiten in Lesereihenfolge: ``container.xml`` → OPF → ``spine``.
 
     Die Reihenfolge im Archiv ist zufällig; die Probe von Fischer hat "Über
     John Scalzi" hinter den Kapiteln, ein anderer Verlag davor.
     """
-    container = archiv.read("META-INF/container.xml").decode("utf-8", "replace")
-    treffer = re.search(r'full-path="([^"]+)"', container)
-    if treffer is None:
+    container = archive.read("META-INF/container.xml").decode("utf-8", "replace")
+    hit = re.search(r'full-path="([^"]+)"', container)
+    if hit is None:
         return []
-    opf_pfad = treffer.group(1)
-    opf = archiv.read(opf_pfad).decode("utf-8", "replace")
-    basis = posixpath.dirname(opf_pfad)
+    opf_path = hit.group(1)
+    opf = archive.read(opf_path).decode("utf-8", "replace")
+    base_dir = posixpath.dirname(opf_path)
 
     manifest: dict[str, str] = {}
     for tag in re.findall(r"<(?:\w+:)?item\b[^>]*>", opf):
         attribute = dict(_ATTR.findall(tag))
         if "id" in attribute and "href" in attribute:
             manifest[attribute["id"]] = attribute["href"]
-    reihenfolge = []
+    order = []
     for tag in re.findall(r"<(?:\w+:)?itemref\b[^>]*>", opf):
         idref = dict(_ATTR.findall(tag)).get("idref")
         if idref in manifest:
-            reihenfolge.append(posixpath.normpath(posixpath.join(basis, manifest[idref])))
-    return reihenfolge
+            order.append(posixpath.normpath(posixpath.join(base_dir, manifest[idref])))
+    return order
 
 
-def _page_text(archiv: zipfile.ZipFile, pfad: str) -> str | None:
+def _page_text(archive: zipfile.ZipFile, path: str) -> str | None:
     try:
-        info = archiv.getinfo(pfad)
+        info = archive.getinfo(path)
     except KeyError:
         return None
     if info.file_size > _MAX_PAGE_BYTES:
         return None
-    seite = BeautifulSoup(archiv.read(info), "html.parser")
-    for weg in seite(["head", "script", "style"]):
-        weg.decompose()
-    return " ".join(seite.get_text(" ").split())
+    page = BeautifulSoup(archive.read(info), "html.parser")
+    for gone in page(["head", "script", "style"]):
+        gone.decompose()
+    return " ".join(page.get_text(" ").split())

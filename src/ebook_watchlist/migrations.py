@@ -232,8 +232,8 @@ def _rename_rubric_version(connection: Connection) -> None:
     """
     if not _has_table(connection, "rating"):
         return
-    spalten = _columns(connection, "rating")
-    if "profile_version" in spalten or "rubric_version" not in spalten:
+    columns = _columns(connection, "rating")
+    if "profile_version" in columns or "rubric_version" not in columns:
         return
     connection.exec_driver_sql(
         "ALTER TABLE rating RENAME COLUMN rubric_version TO profile_version"
@@ -306,9 +306,9 @@ def _dnb_is_keyed_by_isbn(connection: Connection) -> None:
     gehen wie eine neue (ADR 16).
     """
     connection.exec_driver_sql("DROP TABLE IF EXISTS book_contains")
-    for spalte in ("series_index", "language", "dnb_checked_at"):
-        if spalte in _columns(connection, "book"):
-            connection.exec_driver_sql(f"ALTER TABLE book DROP COLUMN {spalte}")
+    for column in ("series_index", "language", "dnb_checked_at"):
+        if column in _columns(connection, "book"):
+            connection.exec_driver_sql(f"ALTER TABLE book DROP COLUMN {column}")
     connection.exec_driver_sql(
         "CREATE TABLE IF NOT EXISTS dnb_record ("
         "isbn TEXT PRIMARY KEY, checked_at DATETIME NOT NULL, found INTEGER NOT NULL, "
@@ -345,14 +345,14 @@ def _blurb_stands_once(connection: Connection) -> None:
     Der Schnitt ist verlustfrei: in 110 von 110 beginnt der volle Text mit dem
     Anriss, in keinem einzigen ist er kuerzer.
     """
-    zeilen = connection.exec_driver_sql(
+    rows = connection.exec_driver_sql(
         "SELECT id, blurb FROM observation WHERE blurb LIKE '%alles anzeigen%'"
     ).fetchall()
-    for zeile_id, blurb in zeilen:
-        gekuerzt = without_teaser(blurb)
-        if gekuerzt and gekuerzt != blurb:
+    for row_id, blurb in rows:
+        shortened = without_teaser(blurb)
+        if shortened and shortened != blurb:
             connection.exec_driver_sql(
-                "UPDATE observation SET blurb = ? WHERE id = ?", (gekuerzt, zeile_id)
+                "UPDATE observation SET blurb = ? WHERE id = ?", (shortened, row_id)
             )
 
 
@@ -425,14 +425,14 @@ def _blurb_without_the_collapse_button(connection: Connection) -> None:
     eines Klappentexts auf dem Entwurf der Buchseite — also genau dort, wo ihn
     zum ersten Mal jemand liest.
     """
-    zeilen = connection.exec_driver_sql(
+    rows = connection.exec_driver_sql(
         "SELECT id, blurb FROM observation WHERE blurb IS NOT NULL AND blurb != ''"
     ).fetchall()
-    for zeile_id, blurb in zeilen:
-        gereinigt = clean_blurb(blurb)
-        if gereinigt and gereinigt != blurb:
+    for row_id, blurb in rows:
+        cleaned = clean_blurb(blurb)
+        if cleaned and cleaned != blurb:
             connection.exec_driver_sql(
-                "UPDATE observation SET blurb = ? WHERE id = ?", (gereinigt, zeile_id)
+                "UPDATE observation SET blurb = ? WHERE id = ?", (cleaned, row_id)
             )
 
 
@@ -466,7 +466,7 @@ def _voebb_is_called_onleihe(connection: Connection) -> None:
     fuer die Leserin ohnehin immer ("Leser:innen der Bibliothek"), und die
     zweite Bibliothek bringt eigene Stimmen mit.
     """
-    for tabelle, spalte, alt, neu in (
+    for table, column, old, new in (
         ("observation", "source", "voebb", "onleihe"),
         ("book_source", "source", "voebb", "onleihe"),
         ("interest_seeded", "source", "voebb", "onleihe"),
@@ -476,7 +476,7 @@ def _voebb_is_called_onleihe(connection: Connection) -> None:
         # Tabelle *und* Spalte: eine Migration beschreibt die Welt, in der sie
         # geschrieben wurde, und muss in einer aelteren wirkungslos sein statt
         # zu scheitern.
-        if not _has_table(connection, tabelle) or spalte not in _columns(connection, tabelle):
+        if not _has_table(connection, table) or column not in _columns(connection, table):
             continue
         # ``OR IGNORE``, weil der Quellname bei ``book_source`` und
         # ``interest_seeded`` im Primaerschluessel steht: wer vorher in
@@ -491,8 +491,8 @@ def _voebb_is_called_onleihe(connection: Connection) -> None:
         # Tabellen- und Spaltennamen stehen als Literale in der Zeile darueber,
         # nur die Werte sind gebunden.
         connection.exec_driver_sql(
-            f"UPDATE OR IGNORE {tabelle} SET {spalte} = ? WHERE {spalte} = ?",  # noqa: S608
-            (neu, alt),
+            f"UPDATE OR IGNORE {table} SET {column} = ? WHERE {column} = ?",  # noqa: S608
+            (new, old),
         )
 
     # Urteile ueber einen Fund ohne ISBN haengen am Quellnamen

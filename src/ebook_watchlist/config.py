@@ -187,7 +187,7 @@ class OwnedBook:
 
     title: str
     author: str | None = None
-    hinweis: str | None = None
+    note: str | None = None
 
 
 def _load_yaml(path: Path, what: str) -> Any:
@@ -343,10 +343,10 @@ def _reject_seed_keys(data: dict[str, Any]) -> None:
     von Hand umzieht und eine Zeile vergisst, soll es beim naechsten Aufruf
     hoeren statt in einem Monat zu bemerken, dass eine Autor:in fehlt.
     """
-    uebrig = [name for name in _SEED_KEYS if name in data]
-    if uebrig:
+    leftover = [name for name in _SEED_KEYS if name in data]
+    if leftover:
         raise ConfigError(
-            f"settings.yaml: {', '.join(uebrig)} gehoert nach seed.yaml — "
+            f"settings.yaml: {', '.join(leftover)} gehoert nach seed.yaml — "
             "was dort steht, gilt nur beim Import, und hier gilt es gar nicht"
         )
 
@@ -364,15 +364,15 @@ def _check_source_names(settings: Settings) -> None:
     """
     from .sources import registry
 
-    gesehen: dict[str, str] = {}
+    seen: dict[str, str] = {}
     for name in settings.sources:
-        beschriftung = registry.label(settings, name)
-        if erster := gesehen.get(beschriftung):
+        label = registry.label(settings, name)
+        if first := seen.get(label):
             raise ConfigError(
-                f"settings.yaml: '{erster}' und '{name}' heissen beide "
-                f"\"{beschriftung}\" — gib einer von beiden ein eigenes 'name:'"
+                f"settings.yaml: '{first}' und '{name}' heissen beide "
+                f"\"{label}\" — gib einer von beiden ein eigenes 'name:'"
             )
-        gesehen[beschriftung] = name
+        seen[label] = name
 
 
 def load_dismissals(path: Path | None = None) -> dict[str, frozenset[str]]:
@@ -427,7 +427,7 @@ def load_owned(path: Path | None = None) -> list[OwnedBook]:
             OwnedBook(
                 title=str(_require(raw, "title", what)).strip(),
                 author=str(raw.get("author") or "").strip() or None,
-                hinweis=str(raw["hinweis"]).strip() if raw.get("hinweis") else None,
+                note=str(raw["hinweis"]).strip() if raw.get("hinweis") else None,
             )
         )
     return owned

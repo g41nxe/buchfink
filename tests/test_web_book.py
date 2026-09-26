@@ -386,7 +386,7 @@ def test_a_discovery_names_the_author_who_brought_it_in(
     assert "neu von Jo Nesbø, der du folgst" in body
 
 
-def test_a_discovery_from_a_thema_says_which(client: TestClient, db: Store) -> None:
+def test_a_discovery_from_a_genre_category_says_which(client: TestClient, db: Store) -> None:
     book = db.find_or_create_book(isbn=None, title="Ein Fund", now=NOW)
     discovery(
         db,
@@ -427,14 +427,14 @@ def test_foreign_voices_stand_apart_from_the_fit(client, db) -> None:
     Übereinstimmung mit dem Profil. Sie stehen für sich (ADR 19, Ticket 54)."""
     from ebook_watchlist.ratings import BY_ONLEIHE_READERS
 
-    buch = db.find_or_create_book(
+    book = db.find_or_create_book(
         isbn="9783641117009", title="Die sieben Schwestern", author="Riley", now=NOW
     )
-    db.put_rating(f"book:{buch.id}", stars=4, confidence="belegt",
+    db.put_rating(f"book:{book.id}", stars=4, confidence="belegt",
                   reason="Durchschnitt der Leser:innen aus 1641 Stimmen",
                   profile_version=0, now=NOW, origin=BY_ONLEIHE_READERS, votes=1641)
 
-    body = client.get(f"/book/{buch.id}").text
+    body = client.get(f"/book/{book.id}").text
 
     assert "Was andere Leser:innen sagen" in body
     assert "1641 Stimmen" in body
@@ -449,24 +449,24 @@ def test_the_head_carries_price_and_availability(client: TestClient, db: Store) 
     from ebook_watchlist.models import MatchReason, Observation
 
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Das Knochenband", author="MacBride", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Das Knochenband", author="MacBride", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
     # Ohne Zuordnung keine Kachel: die Kachel *ist* die Quelle, nicht die
     # Beobachtung.
-    db.put_book_source(buch.id, "beam", outcome="linked", url="https://beam.invalid/1",
+    db.put_book_source(book.id, "beam", outcome="linked", url="https://beam.invalid/1",
                        resolved_at=NOW, reason="")
     run_id = db.start_run(settings.slug, "cli", NOW)
     db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="1", title="Das Knochenband",
                     author="MacBride", match_reason=MatchReason.WATCHLIST,
-                    price_cents=299, book_id=buch.id, blurb="Ein abgründiger Fall."),
+                    price_cents=299, book_id=book.id, blurb="Ein abgründiger Fall."),
     ], NOW)
 
-    body = client.get(f"/book/{buch.id}").text
+    body = client.get(f"/book/{book.id}").text
 
-    kopf = body[: body.find("Bewertung")]
-    assert "2,99" in kopf
-    assert "kachelbild" in kopf
+    head = body[: body.find("Bewertung")]
+    assert "2,99" in head
+    assert "tile-image" in head
 
 
 def test_the_blurb_lives_on_the_book_not_in_every_observation(db: Store) -> None:
@@ -475,18 +475,18 @@ def test_the_blurb_lives_on_the_book_not_in_every_observation(db: Store) -> None
     from ebook_watchlist.models import MatchReason, Observation
 
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
     run_id = db.start_run(settings.slug, "cli", NOW)
     db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="1", title="Egal", author="Wer",
                     match_reason=MatchReason.WATCHLIST, price_cents=299,
-                    book_id=buch.id, blurb="Ein langer Text."),
+                    book_id=book.id, blurb="Ein langer Text."),
     ], NOW)
 
-    assert db.book(buch.id).blurb == "Ein langer Text."
-    beobachtet = db.observations_for_book(settings.slug, buch.id)
-    assert [o.blurb for o in beobachtet] == [None]
+    assert db.book(book.id).blurb == "Ein langer Text."
+    observed = db.observations_for_book(settings.slug, book.id)
+    assert [o.blurb for o in observed] == [None]
 
 
 def test_a_discovery_keeps_its_blurb_in_the_observation(db: Store) -> None:
@@ -502,8 +502,8 @@ def test_a_discovery_keeps_its_blurb_in_the_observation(db: Store) -> None:
                     blurb="Ein Schiff, allein im Dunkeln."),
     ], NOW)
 
-    fund = db.latest_discoveries(settings.slug)[0]
-    assert fund.blurb == "Ein Schiff, allein im Dunkeln."
+    discovery = db.latest_discoveries(settings.slug)[0]
+    assert discovery.blurb == "Ein Schiff, allein im Dunkeln."
 
 
 def test_the_longer_blurb_wins(db: Store) -> None:
@@ -512,19 +512,19 @@ def test_the_longer_blurb_wins(db: Store) -> None:
     from ebook_watchlist.models import MatchReason, Observation
 
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
     run_id = db.start_run(settings.slug, "cli", NOW)
 
-    def schreibe(text: str) -> None:
+    def write(text: str) -> None:
         db.append(run_id, settings.slug, [
             Observation(source="beam", source_item_id="1", title="Egal", author="Wer",
-                        match_reason=MatchReason.WATCHLIST, book_id=buch.id, blurb=text),
+                        match_reason=MatchReason.WATCHLIST, book_id=book.id, blurb=text),
         ], NOW)
 
-    schreibe("Der ganze Text, viel laenger als der Anriss.")
-    schreibe("Kurz …")
+    write("Der ganze Text, viel laenger als der Anriss.")
+    write("Kurz …")
 
-    assert db.book(buch.id).blurb == "Der ganze Text, viel laenger als der Anriss."
+    assert db.book(book.id).blurb == "Der ganze Text, viel laenger als der Anriss."
 
 
 def test_two_houses_are_still_settled_by_length(db: Store) -> None:
@@ -540,18 +540,18 @@ def test_two_houses_are_still_settled_by_length(db: Store) -> None:
     from ebook_watchlist.models import MatchReason, Observation
 
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
     run_id = db.start_run(settings.slug, "cli", NOW)
     db.append(run_id, settings.slug, [
         Observation(source="beam", source_item_id="1", title="Egal", author="Wer",
-                    match_reason=MatchReason.WATCHLIST, book_id=buch.id,
+                    match_reason=MatchReason.WATCHLIST, book_id=book.id,
                     blurb="Der Text des Shops."),
         Observation(source="onleihe", source_item_id="2", title="Egal", author="Wer",
-                    match_reason=MatchReason.WATCHLIST, book_id=buch.id,
+                    match_reason=MatchReason.WATCHLIST, book_id=book.id,
                     blurb="Der Text der Bibliothek, mit Pressestimmen davor."),
     ], NOW)
 
-    assert db.book(buch.id).blurb == "Der Text der Bibliothek, mit Pressestimmen davor."
+    assert db.book(book.id).blurb == "Der Text der Bibliothek, mit Pressestimmen davor."
 
 
 def test_the_title_can_be_corrected_from_the_book_page(client: TestClient, db: Store) -> None:
@@ -559,16 +559,16 @@ def test_the_title_can_be_corrected_from_the_book_page(client: TestClient, db: S
     wenn keine Quelle den Titel fand (ADR 27). Es ist aber eine Eigenschaft
     dieses Buchs."""
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Dunkle Gefilde", author="Morgan", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
-    db.put_book_source(buch.id, "beam", outcome="not_found", url=None, resolved_at=NOW, reason="")
+    book = db.find_or_create_book(isbn=None, title="Dunkle Gefilde", author="Morgan", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_book_source(book.id, "beam", outcome="not_found", url=None, resolved_at=NOW, reason="")
 
-    client.post(f"/book/{buch.id}/edit",
+    client.post(f"/book/{book.id}/edit",
                 data={"title": "Profit", "author": "Richard K. Morgan", "note": "Konzernduelle."})
 
-    assert db.book(buch.id).title == "Profit"
+    assert db.book(book.id).title == "Profit"
     # Die Zuordnung faellt weg — sie galt fuer den alten Titel.
-    assert db.get_book_source(buch.id, "beam") is None
+    assert db.get_book_source(book.id, "beam") is None
 
 
 def test_editing_the_title_leaves_the_note_alone(client: TestClient, db: Store) -> None:
@@ -576,14 +576,14 @@ def test_editing_the_title_leaves_the_note_alone(client: TestClient, db: Store) 
     Watchlist-Datei — das Formular fasst sie deshalb nicht an. Fasste es sie
     doch an, loeschte jedes Berichtigen sie still mit."""
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
-    db.set_relation_details(settings.slug, buch.id, str(RelationKind.WATCHING),
+    book = db.find_or_create_book(isbn=None, title="Egal", author="Wer", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
+    db.set_relation_details(settings.slug, book.id, str(RelationKind.WATCHING),
                             {"note": 'Band 1, Originaltitel "Market Forces".'}, now=NOW)
 
-    client.post(f"/book/{buch.id}/edit", data={"title": "Anders", "author": "Wer"})
+    client.post(f"/book/{book.id}/edit", data={"title": "Anders", "author": "Wer"})
 
-    assert view.build(db, settings, buch.id).note == 'Band 1, Originaltitel "Market Forces".'
+    assert view.build(db, settings, book.id).note == 'Band 1, Originaltitel "Market Forces".'
 
 
 # --- der grosse Lauf (#15) --------------------------------------------------
@@ -594,20 +594,20 @@ def test_a_running_run_is_named_in_the_head(client: TestClient, db: Store) -> No
     nicht, dass sich die Angaben gleich aendern koennen (#15)."""
     import os
 
-    buch = db.books()[0]
-    assert "Ein Lauf ist gerade unterwegs" not in client.get(f"/book/{buch.id}").text
+    book = db.books()[0]
+    assert "Ein Lauf ist gerade unterwegs" not in client.get(f"/book/{book.id}").text
 
     # Jetzt und mit lebendem Prozess: ein Lauf von vor Tagen gilt zu Recht als
     # abgebrochen, nicht als unterwegs.
     db.start_run(load_settings().slug, "cli", datetime.now(), pid=os.getpid())
 
-    assert "Ein Lauf ist gerade unterwegs" in client.get(f"/book/{buch.id}").text
+    assert "Ein Lauf ist gerade unterwegs" in client.get(f"/book/{book.id}").text
 
 
 # --- zwei Bibliotheken, zwei Kacheln ----------------------------------------
 
 
-def sichtung(name: str, *, label: str, availability: str, when: datetime) -> view.Sighting:
+def make_sighting(name: str, *, label: str, availability: str, when: datetime) -> view.Sighting:
     return view.Sighting(
         when=when, name=name, source=label, price=None,
         availability=availability, other_title=None, deal=False,
@@ -619,68 +619,68 @@ def test_two_libraries_do_not_share_one_tile() -> None:
     Bibliothek ging das gut; mit zweien fand die Onleihe-Kachel die Sichtung
     von OverDrive und behauptete "verliehen" fuer einen Titel, den die Onleihe
     gar nicht fuehrt."""
-    frueher, spaeter = datetime(2026, 9, 11, 12), datetime(2026, 9, 11, 21)
-    verlauf = (
-        sichtung("overdrive", label="Bibliothek", availability="verliehen", when=spaeter),
-        sichtung("onleihe", label="Bibliothek", availability="unklar", when=frueher),
+    earlier, later = datetime(2026, 9, 11, 12), datetime(2026, 9, 11, 21)
+    history = (
+        make_sighting("overdrive", label="Bibliothek", availability="verliehen", when=later),
+        make_sighting("onleihe", label="Bibliothek", availability="unklar", when=earlier),
     )
 
-    neueste = view._latest_per_source(verlauf)
+    newest = view._latest_per_source(history)
 
     # Zwei Quellen, zwei Eintraege — nicht einer, der den anderen verdeckt.
-    assert {s.name for s in neueste} == {"onleihe", "overdrive"}
+    assert {s.name for s in newest} == {"onleihe", "overdrive"}
 
 
 def test_a_tile_asks_for_its_own_source_not_for_its_label() -> None:
-    frueher, spaeter = datetime(2026, 9, 11, 12), datetime(2026, 9, 11, 21)
-    seite = view.Page(
+    earlier, later = datetime(2026, 9, 11, 12), datetime(2026, 9, 11, 21)
+    page = view.Page(
         book_id=1, title="Dark Matter", author=None, series=None, isbn=None,
         cover_file=None, relations=(), sources=(), judgements=(), origin=None,
         history=(
-            sichtung("overdrive", label="Bibliothek", availability="verliehen", when=spaeter),
-            sichtung("onleihe", label="Bibliothek", availability="unklar", when=frueher),
+            make_sighting("overdrive", label="Bibliothek", availability="verliehen", when=later),
+            make_sighting("onleihe", label="Bibliothek", availability="unklar", when=earlier),
         ),
         latest=(
-            sichtung("overdrive", label="Bibliothek", availability="verliehen", when=spaeter),
-            sichtung("onleihe", label="Bibliothek", availability="unklar", when=frueher),
+            make_sighting("overdrive", label="Bibliothek", availability="verliehen", when=later),
+            make_sighting("onleihe", label="Bibliothek", availability="unklar", when=earlier),
         ),
     )
 
-    assert seite.latest_at("overdrive").availability == "verliehen"
-    assert seite.latest_at("onleihe").availability == "unklar"
+    assert page.latest_at("overdrive").availability == "verliehen"
+    assert page.latest_at("onleihe").availability == "unklar"
 
 
 def test_the_book_page_names_series_and_volume(client: TestClient, db: Store) -> None:
     """Reihe und Band stehen im Kopf neben der Autor:in (#10)."""
     from ebook_watchlist.dnb import Record
 
-    buch = db.find_or_create_book(isbn="9783426306406", title="Autorität",
+    book = db.find_or_create_book(isbn="9783426306406", title="Autorität",
                                   author="Jeff VanderMeer", now=NOW)
     db.save_dnb("9783426306406", Record(series="Southern Reach", series_index="2"), NOW)
     db.series_from_dnb()
 
-    assert "Southern Reach, Band 2" in client.get(f"/book/{buch.id}").text
+    assert "Southern Reach, Band 2" in client.get(f"/book/{book.id}").text
 
 
 # --- je Quellenart eine Kachel (#33) ----------------------------------------
 
 
-def drei_quellen() -> Settings:
+def three_sources() -> Settings:
     """Zwei Bibliotheken und ein Shop — der Fall, fuer den der Kopf gebaut wird."""
     return Settings(slug="test", name="Testprofil",
                    sources={"onleihe": {}, "overdrive": {}, "beam": {}})
 
 
-def verknuepft(db: Store, book_id: int, *namen: str, ohne: str = "") -> None:
+def linked(db: Store, book_id: int, *names: str, without: str = "") -> None:
     """Die Quellen ans Buch haengen — ohne Verknuepfung kennt der Kopf sie nicht.
 
     ``ohne`` nennt die Quelle, die nachgesehen und nichts gefunden hat.
     """
-    for name in namen:
+    for name in names:
         db.put_book_source(
             book_id,
             name,
-            outcome=str(LinkOutcome.NOT_FOUND if name == ohne else LinkOutcome.LINKED),
+            outcome=str(LinkOutcome.NOT_FOUND if name == without else LinkOutcome.LINKED),
             resolved_at=NOW,
         )
 
@@ -689,79 +689,79 @@ def test_each_category_becomes_one_tile(db: Store) -> None:
     """Drei Quellen, zwei Kacheln: die Seite beantwortet zwei Fragen — kann ich
     es leihen, was kostet es —, und beide haben genau eine Antwort."""
     book = db.books()[0]
-    verknuepft(db, book.id, "overdrive", "onleihe", "beam")
+    linked(db, book.id, "overdrive", "onleihe", "beam")
     sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
     sighting(db, book.id, when=NOW, source="onleihe")
     sighting(db, book.id, when=NOW, price=999, source="beam")
 
-    arten = view.build(db, drei_quellen(), book.id).categories
+    kinds = view.build(db, three_sources(), book.id).categories
 
-    assert [art.category for art in arten] == ["library", "shop"]
+    assert [kind.category for kind in kinds] == ["library", "shop"]
 
 
 def test_the_library_tile_names_the_source_that_has_it(db: Store) -> None:
     """Zwei Bibliotheken, eine hat es: die Kachel nennt sie, statt zweimal
     "nicht im Katalog" nebeneinanderzustellen."""
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe", "overdrive")
+    linked(db, book.id, "onleihe", "overdrive")
     sighting(db, book.id, when=NOW, source="onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
 
-    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+    library = view.build(db, three_sources(), book.id).categories[0]
 
-    assert bibliothek.best is not None
-    assert bibliothek.best.name == "overdrive"
-    assert bibliothek.sighting is not None
-    assert bibliothek.sighting.availability == "ausleihbar"
+    assert library.best is not None
+    assert library.best.name == "overdrive"
+    assert library.sighting is not None
+    assert library.sighting.availability == "ausleihbar"
 
 
 def test_the_shop_tile_names_the_cheapest(db: Store) -> None:
     """Der zweitguenstigste Preis aendert keine Entscheidung."""
     book = db.books()[0]
-    verknuepft(db, book.id, "beam", "fake")
+    linked(db, book.id, "beam", "fake")
     sighting(db, book.id, when=NOW, price=1299, source="beam")
     sighting(db, book.id, when=NOW, price=499, source="fake")
 
-    laden = view.build(
+    shop = view.build(
         db,
         Settings(slug="test", name="Testprofil", sources={"beam": {}, "fake": {}}),
         book.id,
     ).categories[0]
 
-    assert laden.category == "shop"
-    assert laden.best is not None and laden.best.name == "fake"
-    assert laden.sighting is not None and laden.sighting.price == "4,99 €"
+    assert shop.category == "shop"
+    assert shop.best is not None and shop.best.name == "fake"
+    assert shop.sighting is not None and shop.sighting.price == "4,99 €"
 
 
 def test_every_source_of_a_category_is_listed(db: Store) -> None:
     """Die Uebersicht bleibt: je Quelle eine Blase unter ihrer Kachel."""
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe", "overdrive", "beam")
+    linked(db, book.id, "onleihe", "overdrive", "beam")
     sighting(db, book.id, when=NOW, source="onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
     sighting(db, book.id, when=NOW, price=999, source="beam")
 
-    arten = view.build(db, drei_quellen(), book.id).categories
+    kinds = view.build(db, three_sources(), book.id).categories
 
-    assert [len(art.sources) for art in arten] == [2, 1]
+    assert [len(kind.sources) for kind in kinds] == [2, 1]
     # Die beste zuerst, damit die Blasenreihe liest wie die Kachel darueber.
-    assert arten[0].sources[0].name == "overdrive"
+    assert kinds[0].sources[0].name == "overdrive"
 
 
 def test_a_category_without_a_find_has_no_best(db: Store) -> None:
     """Kennt keine Bibliothek das Buch, steht in der Kachel "nicht im Katalog"
     — und kein Name, denn es gibt keinen zu nennen."""
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe", "overdrive", "beam",
-               ohne="onleihe")
+    linked(db, book.id, "onleihe", "overdrive", "beam",
+               without="onleihe")
     db.put_book_source(book.id, "overdrive", outcome=str(LinkOutcome.NOT_FOUND),
                        resolved_at=NOW)
     sighting(db, book.id, when=NOW, price=999, source="beam")
 
-    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+    library = view.build(db, three_sources(), book.id).categories[0]
 
-    assert bibliothek.best is None
-    assert len(bibliothek.sources) == 2
+    assert library.best is None
+    assert len(library.sources) == 2
 
 
 # --- die Quellen, eine Zeile je Quelle (#34) --------------------------------
@@ -771,48 +771,48 @@ def test_the_section_is_called_sources(client: TestClient, db: Store) -> None:
     """Sie zeigte, welche Quelle welchen Titel meint — das zieht in den roten
     Kasten um. Was bleibt, ist die Uebersicht ueber alle Quellen."""
     book = db.books()[0]
-    verknuepft(db, book.id, "beam")
+    linked(db, book.id, "beam")
 
     body = client.get(f"/book/{book.id}").text
 
-    kopf = body[body.index("#ic-plug") :][:200]
-    assert "Quellen" in kopf
-    assert "Zuordnung" not in kopf
+    head = body[body.index("#ic-plug") :][:200]
+    assert "Quellen" in head
+    assert "Zuordnung" not in head
 
 
 def test_a_library_row_says_how_long_the_wait_is(db: Store) -> None:
     """Statt eines Strichs die Auskunft, die man braucht: wie viele vor mir."""
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe")
+    linked(db, book.id, "onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE,
              source="onleihe", reservations=3)
 
-    sichtung = view.build(db, drei_quellen(), book.id).latest_at("onleihe")
+    make_sighting = view.build(db, three_sources(), book.id).latest_at("onleihe")
 
-    assert sichtung is not None
-    assert sichtung.hold == "3 Vormerkungen"
+    assert make_sighting is not None
+    assert make_sighting.hold == "3 Vormerkungen"
 
 
 def test_a_returning_copy_names_the_date(db: Store) -> None:
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe")
+    linked(db, book.id, "onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE,
              source="onleihe", available_from="12.10.2026")
 
-    sichtung = view.build(db, drei_quellen(), book.id).latest_at("onleihe")
+    make_sighting = view.build(db, three_sources(), book.id).latest_at("onleihe")
 
-    assert sichtung is not None and sichtung.hold == "frei ab 12.10.2026"
+    assert make_sighting is not None and make_sighting.hold == "frei ab 12.10.2026"
 
 
 def test_a_borrowable_copy_has_nothing_to_wait_for(db: Store) -> None:
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe")
+    linked(db, book.id, "onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE,
              source="onleihe", reservations=0)
 
-    sichtung = view.build(db, drei_quellen(), book.id).latest_at("onleihe")
+    make_sighting = view.build(db, three_sources(), book.id).latest_at("onleihe")
 
-    assert sichtung is not None and sichtung.hold is None
+    assert make_sighting is not None and make_sighting.hold is None
 
 
 def test_the_source_row_links_on_the_name(client: TestClient, db: Store) -> None:
@@ -841,26 +841,26 @@ def test_a_lent_out_copy_still_names_its_library(db: Store) -> None:
     """Gefuehrt und gerade verliehen ist nicht dasselbe wie "nicht im Katalog":
     das eine heisst warten, das andere anderswo suchen."""
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe")
+    linked(db, book.id, "onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE,
              source="onleihe", reservations=3)
 
-    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+    library = view.build(db, three_sources(), book.id).categories[0]
 
-    assert bibliothek.best is not None and bibliothek.best.name == "onleihe"
-    assert bibliothek.sighting is not None
-    assert bibliothek.sighting.availability == "verliehen"
+    assert library.best is not None and library.best.name == "onleihe"
+    assert library.sighting is not None
+    assert library.sighting.availability == "verliehen"
 
 
 def test_a_borrowable_library_beats_a_lent_out_one(db: Store) -> None:
     book = db.books()[0]
-    verknuepft(db, book.id, "onleihe", "overdrive")
+    linked(db, book.id, "onleihe", "overdrive")
     sighting(db, book.id, when=NOW, availability=Availability.UNAVAILABLE, source="onleihe")
     sighting(db, book.id, when=NOW, availability=Availability.AVAILABLE, source="overdrive")
 
-    bibliothek = view.build(db, drei_quellen(), book.id).categories[0]
+    library = view.build(db, three_sources(), book.id).categories[0]
 
-    assert bibliothek.best is not None and bibliothek.best.name == "overdrive"
+    assert library.best is not None and library.best.name == "overdrive"
 
 
 # --- der Steckbrief (#45) ----------------------------------------------------
@@ -880,17 +880,17 @@ class StubAsker:
         return self.answer
 
 
-def steckbrief_abwarten(client: TestClient, pfad: str) -> str:
+def wait_for_portrait(client: TestClient, path: str) -> str:
     """Den Knopf druecken und warten, bis der Hintergrundjob fertig ist."""
-    client.post(f"{pfad}/portrait")
+    client.post(f"{path}/portrait")
     for _ in range(250):
-        stand = client.get(f"{pfad}/portrait")
-        if stand.headers.get("HX-Refresh") == "true":
+        status = client.get(f"{path}/portrait")
+        if status.headers.get("HX-Refresh") == "true":
             break
         threading.Event().wait(0.02)
     else:
         raise AssertionError("der Steckbrief wurde nicht fertig")
-    return client.get(pfad).text
+    return client.get(path).text
 
 
 def _leopard() -> str:
@@ -921,15 +921,15 @@ def test_the_button_draws_a_portrait_once(
 ) -> None:
     """Dasselbe Buch trägt immer denselben Steckbrief: ein zweiter Klick
     kostet keinen Aufruf (ADR 33)."""
-    buch = db.books()[0]
-    fragt = StubAsker(_leopard())
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+    book = db.books()[0]
+    asker = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
 
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
-    steckbrief_abwarten(client, f"/book/{buch.id}")
+    body = wait_for_portrait(client, f"/book/{book.id}")
+    wait_for_portrait(client, f"/book/{book.id}")
 
-    assert len(fragt.asked) == 1
-    assert f"Titel: {buch.title}" in fragt.asked[0]
+    assert len(asker.asked) == 1
+    assert f"Titel: {book.title}" in asker.asked[0]
     # Nach Familien gruppiert: "brutal" steht unter "hart".
     assert "hart" in body and "gezeichnete Figur" in body
     assert "Der Leopoldsapfel wird genau ausgemalt." in body
@@ -948,16 +948,16 @@ class _Changing(StubAsker):
         return self.answers[min(len(self.asked), len(self.answers)) - 1]
 
 
-def steckbrief_neu(client: TestClient, pfad: str) -> str:
+def new_portrait(client: TestClient, path: str) -> str:
     """Den Knopf „neu beschreiben“ drücken und auf den Hintergrundjob warten."""
-    client.post(f"{pfad}/portrait?again=1")
+    client.post(f"{path}/portrait?again=1")
     for _ in range(250):
-        if client.get(f"{pfad}/portrait").headers.get("HX-Refresh") == "true":
+        if client.get(f"{path}/portrait").headers.get("HX-Refresh") == "true":
             break
         threading.Event().wait(0.02)
     else:
         raise AssertionError("der Steckbrief wurde nicht fertig")
-    return client.get(pfad).text
+    return client.get(path).text
 
 
 @needs_vocabulary
@@ -967,16 +967,16 @@ def test_the_reader_can_ask_for_a_new_portrait_and_it_replaces_the_old_one(
     """Ein dünner Steckbrief macht das Urteil dünn (*Dark Matter*, 25.09.2026:
     ein falsches Muster statt *Rätsel*). Die Leserin soll neu fragen können; der
     neue Steckbrief kommt dazu, der alte bleibt in der Tabelle (ADR 5)."""
-    buch = db.books()[0]
-    neu = _leopard().replace("Der Leopoldsapfel wird genau ausgemalt.", "Ein ganz anderer Satz.")
-    fragt = _Changing(_leopard(), neu)
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    book = db.books()[0]
+    new = _leopard().replace("Der Leopoldsapfel wird genau ausgemalt.", "Ein ganz anderer Satz.")
+    asker = _Changing(_leopard(), new)
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
+    body = wait_for_portrait(client, f"/book/{book.id}")
     assert "Der Leopoldsapfel wird genau ausgemalt." in body
 
-    body = steckbrief_neu(client, f"/book/{buch.id}")
+    body = new_portrait(client, f"/book/{book.id}")
 
-    assert len(fragt.asked) == 2
+    assert len(asker.asked) == 2
     assert "Ein ganz anderer Satz." in body
     assert "Der Leopoldsapfel wird genau ausgemalt." not in body
 
@@ -985,26 +985,26 @@ def test_the_reader_can_ask_for_a_new_portrait_and_it_replaces_the_old_one(
 def test_a_plain_click_still_costs_nothing_when_a_portrait_exists(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    buch = db.books()[0]
-    fragt = StubAsker(_leopard())
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
-    steckbrief_abwarten(client, f"/book/{buch.id}")
+    book = db.books()[0]
+    asker = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
+    wait_for_portrait(client, f"/book/{book.id}")
 
-    steckbrief_abwarten(client, f"/book/{buch.id}")
+    wait_for_portrait(client, f"/book/{book.id}")
 
-    assert len(fragt.asked) == 1
+    assert len(asker.asked) == 1
 
 
 @needs_vocabulary
 def test_the_page_offers_the_new_description_only_next_to_an_existing_portrait(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    buch = db.books()[0]
-    again = f'hx-post="/book/{buch.id}/portrait?again=1"'
-    assert again not in client.get(f"/book/{buch.id}").text  # es gibt noch keinen
+    book = db.books()[0]
+    again = f'hx-post="/book/{book.id}/portrait?again=1"'
+    assert again not in client.get(f"/book/{book.id}").text  # es gibt noch keinen
 
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    body = wait_for_portrait(client, f"/book/{book.id}")
 
     assert again in body
 
@@ -1013,10 +1013,10 @@ def test_the_page_offers_the_new_description_only_next_to_an_existing_portrait(
 def test_a_book_the_model_does_not_know_says_so(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    buch = db.books()[0]
+    book = db.books()[0]
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker('{"bekannt": false}')))
 
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    body = wait_for_portrait(client, f"/book/{book.id}")
 
     assert "kennt dieses Buch nicht" in body
 
@@ -1036,17 +1036,17 @@ def test_an_unknown_answer_without_text_is_asked_again_once_a_blurb_is_there(
     """Ein Watchlist-Buch wird beim Anlegen nur mit Titel und Autor:in beschrieben.
     Kommt später der Klappentext, darf „kennt das Modell nicht“ nicht für immer
     stehen (fünf Bücher am 25.09.2026)."""
-    buch = db.books()[0]
-    _give_blurb(db, buch.id, "")  # kein Text
+    book = db.books()[0]
+    _give_blurb(db, book.id, "")  # kein Text
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker('{"bekannt": false}')))
-    assert "kennt dieses Buch nicht" in steckbrief_abwarten(client, f"/book/{buch.id}")
+    assert "kennt dieses Buch nicht" in wait_for_portrait(client, f"/book/{book.id}")
 
-    _give_blurb(db, buch.id, "Ein Klappentext, der das Buch endlich beschreibt.")
-    fragt = StubAsker(_leopard())
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    _give_blurb(db, book.id, "Ein Klappentext, der das Buch endlich beschreibt.")
+    asker = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
+    body = wait_for_portrait(client, f"/book/{book.id}")
 
-    assert len(fragt.asked) == 1 and "endlich beschreibt" in fragt.asked[0]
+    assert len(asker.asked) == 1 and "endlich beschreibt" in asker.asked[0]
     assert "kennt dieses Buch nicht" not in body and "Nordic Noir" in body
 
 
@@ -1057,48 +1057,48 @@ def test_the_button_returns_for_an_unknown_book_once_a_text_is_there(
     """Die Buchseite fragt nie von selbst; der Knopf ist der Weg. Er stand nur,
     solange es keinen Steckbrief gab — ein gespeichertes „unbekannt“ nahm ihn weg,
     und die zweite Chance war nicht zu erreichen."""
-    buch = db.books()[0]
-    button = f'hx-post="/book/{buch.id}/portrait"'
-    _give_blurb(db, buch.id, "")
+    book = db.books()[0]
+    button = f'hx-post="/book/{book.id}/portrait"'
+    _give_blurb(db, book.id, "")
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker('{"bekannt": false}')))
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    body = wait_for_portrait(client, f"/book/{book.id}")
     assert "kennt dieses Buch nicht" in body and button not in body  # noch kein Text
 
-    _give_blurb(db, buch.id, "Ein Klappentext, der das Buch endlich beschreibt.")
+    _give_blurb(db, book.id, "Ein Klappentext, der das Buch endlich beschreibt.")
 
-    assert button in client.get(f"/book/{buch.id}").text
+    assert button in client.get(f"/book/{book.id}").text
 
 
 @needs_vocabulary
 def test_an_unknown_answer_given_with_text_stays_and_costs_no_second_call(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    buch = db.books()[0]
-    _give_blurb(db, buch.id, "Ein Redaktionsvorwort statt einer Inhaltsangabe.")
-    fragt = StubAsker('{"bekannt": false}')
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+    book = db.books()[0]
+    _give_blurb(db, book.id, "Ein Redaktionsvorwort statt einer Inhaltsangabe.")
+    asker = StubAsker('{"bekannt": false}')
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
 
-    steckbrief_abwarten(client, f"/book/{buch.id}")
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    wait_for_portrait(client, f"/book/{book.id}")
+    body = wait_for_portrait(client, f"/book/{book.id}")
 
-    assert len(fragt.asked) == 1
+    assert len(asker.asked) == 1
     assert "kennt dieses Buch nicht" in body
-    assert f'hx-post="/book/{buch.id}/portrait"' not in body  # nichts Neues zu fragen
+    assert f'hx-post="/book/{book.id}/portrait"' not in body  # nichts Neues zu fragen
 
 
 @needs_vocabulary
 def test_an_unknown_answer_without_text_is_not_asked_again_while_there_is_still_no_text(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    buch = db.books()[0]
-    _give_blurb(db, buch.id, "")
-    fragt = StubAsker('{"bekannt": false}')
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
+    book = db.books()[0]
+    _give_blurb(db, book.id, "")
+    asker = StubAsker('{"bekannt": false}')
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
 
-    steckbrief_abwarten(client, f"/book/{buch.id}")
-    steckbrief_abwarten(client, f"/book/{buch.id}")
+    wait_for_portrait(client, f"/book/{book.id}")
+    wait_for_portrait(client, f"/book/{book.id}")
 
-    assert len(fragt.asked) == 1
+    assert len(asker.asked) == 1
 
 
 @needs_vocabulary
@@ -1106,9 +1106,9 @@ def test_without_a_model_nothing_changes_and_the_page_says_why(
     client: TestClient, db: Store
 ) -> None:
     """Das Tor scheitert nie zu (ADR 7) — und der Steckbrief auch nicht."""
-    buch = db.books()[0]
+    book = db.books()[0]
 
-    body = steckbrief_abwarten(client, f"/book/{buch.id}")
+    body = wait_for_portrait(client, f"/book/{book.id}")
 
     assert "Kein Weg zum Modell" in body
 
@@ -1117,15 +1117,15 @@ def test_without_a_model_nothing_changes_and_the_page_says_why(
 def test_a_failed_call_stores_nothing(db: Store, monkeypatch: pytest.MonkeyPatch) -> None:
     from ebook_watchlist.portrait import fingerprint, load_vocabulary
 
-    buch = db.books()[0]
+    book = db.books()[0]
     monkeypatch.setattr(
         view, "build_portrayer", portrayer_via(StubAsker(PortrayalUnavailable("Zeit abgelaufen")))
     )
 
-    grund = view.portray(db, load_settings(), buch.id, now=NOW)
+    reason = view.portray(db, load_settings(), book.id, now=NOW)
 
-    assert grund == "Zeit abgelaufen"
-    assert db.portrait(view.portrait_subject(buch), fingerprint(load_vocabulary())) is None
+    assert reason == "Zeit abgelaufen"
+    assert db.portrait(view.portrait_subject(book), fingerprint(load_vocabulary())) is None
 
 
 @needs_vocabulary
@@ -1133,11 +1133,11 @@ def test_a_book_with_an_isbn_keeps_its_portrait_at_the_isbn(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Wie ein Urteil des Tors: so findet der Lauf denselben Steckbrief wieder."""
-    buch = db.find_or_create_book(isbn="9783548289441", title="Leopard",
+    book = db.find_or_create_book(isbn="9783548289441", title="Leopard",
                                   author="Jo Nesbø", now=NOW)
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
 
-    view.portray(db, load_settings(), buch.id, now=NOW)
+    view.portray(db, load_settings(), book.id, now=NOW)
 
     from ebook_watchlist.portrait import fingerprint, load_vocabulary
 
@@ -1155,24 +1155,24 @@ def test_a_portrait_survives_the_book_getting_an_isbn(
 
     from ebook_watchlist.store import BookRow
 
-    buch = db.find_or_create_book(isbn=None, title="Leopard", author="Jo Nesbø", now=NOW)
-    fragt = StubAsker(_leopard())
-    monkeypatch.setattr(view, "build_portrayer", portrayer_via(fragt))
-    view.portray(db, load_settings(), buch.id, now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Leopard", author="Jo Nesbø", now=NOW)
+    asker = StubAsker(_leopard())
+    monkeypatch.setattr(view, "build_portrayer", portrayer_via(asker))
+    view.portray(db, load_settings(), book.id, now=NOW)
     with db.session() as session:
-        session.execute(update(BookRow).where(BookRow.id == buch.id).values(isbn="9783548289441"))
+        session.execute(update(BookRow).where(BookRow.id == book.id).values(isbn="9783548289441"))
         session.commit()
 
-    view.portray(db, load_settings(), buch.id, now=NOW)
+    view.portray(db, load_settings(), book.id, now=NOW)
 
-    assert len(fragt.asked) == 1
-    assert view.build(db, load_settings(), buch.id).portrait.known
+    assert len(asker.asked) == 1
+    assert view.build(db, load_settings(), book.id).portrait.known
 
 
 # --- die Übereinstimmung aus dem Code (#46) ---------------------------------
 
 
-def _profil():
+def _profile():
     from ebook_watchlist.facets import Counterweight, Facet, ReadingProfile
 
     return ReadingProfile(
@@ -1186,27 +1186,27 @@ def test_with_profile_and_portrait_the_page_shows_the_fit(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Leopard trägt "hart" und "gezeichnete Figur" und trifft die Facette ganz."""
-    buch = db.books()[0]
+    book = db.books()[0]
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
-    view.portray(db, load_settings(), buch.id, now=NOW)
-    db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
+    view.portray(db, load_settings(), book.id, now=NOW)
+    db.put_reading_profile(load_settings().slug, _profile(), cause="Test", now=NOW)
 
-    passung = view.build(db, load_settings(), buch.id).fit
+    fit = view.build(db, load_settings(), book.id).fit
 
-    assert (passung.stars, passung.percent, passung.version) == (4, 56, 1)
-    assert passung.reasons[0].text == "hart · gezeichnete Figur"
+    assert (fit.stars, fit.percent, fit.version) == (4, 56, 1)
+    assert fit.reasons[0].text == "hart · gezeichnete Figur"
 
 
 @needs_vocabulary
 def test_the_fit_stands_under_the_judgement(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    buch = db.books()[0]
+    book = db.books()[0]
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
-    view.portray(db, load_settings(), buch.id, now=NOW)
-    db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
+    view.portray(db, load_settings(), book.id, now=NOW)
+    db.put_reading_profile(load_settings().slug, _profile(), cause="Test", now=NOW)
 
-    body = client.get(f"/book/{buch.id}").text
+    body = client.get(f"/book/{book.id}").text
 
     assert "Übereinstimmung mit deinem Leseprofil" in body
     assert "hart · gezeichnete Figur" in body
@@ -1219,19 +1219,19 @@ def test_without_a_profile_there_is_no_fit(
     client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Ohne Profil kein Urteil (ADR 33, Punkt 8) — auch nicht "passt nicht"."""
-    buch = db.books()[0]
+    book = db.books()[0]
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
-    view.portray(db, load_settings(), buch.id, now=NOW)
+    view.portray(db, load_settings(), book.id, now=NOW)
 
-    assert view.build(db, load_settings(), buch.id).fit is None
-    assert "data-fit" not in client.get(f"/book/{buch.id}").text
+    assert view.build(db, load_settings(), book.id).fit is None
+    assert "data-fit" not in client.get(f"/book/{book.id}").text
 
 
 def test_without_a_portrait_there_is_no_fit(db: Store) -> None:
-    buch = db.books()[0]
-    db.put_reading_profile(load_settings().slug, _profil(), cause="Test", now=NOW)
+    book = db.books()[0]
+    db.put_reading_profile(load_settings().slug, _profile(), cause="Test", now=NOW)
 
-    assert view.build(db, load_settings(), buch.id).fit is None
+    assert view.build(db, load_settings(), book.id).fit is None
 
 
 @needs_vocabulary
@@ -1239,11 +1239,11 @@ def test_story_patterns_stand_apart_from_the_terms(
     db: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Merkmale sagen, wie es sich liest; Muster, was es erzählt (#49)."""
-    buch = db.books()[0]
+    book = db.books()[0]
     monkeypatch.setattr(view, "build_portrayer", portrayer_via(StubAsker(_leopard())))
-    view.portray(db, load_settings(), buch.id, now=NOW)
+    view.portray(db, load_settings(), book.id, now=NOW)
 
-    bild = view.build(db, load_settings(), buch.id).portrait
+    portrait = view.build(db, load_settings(), book.id).portrait
 
-    assert [f.name for f in bild.patterns] == ["Katz und Maus"]
-    assert "Katz und Maus" not in [f.name for f in bild.families]
+    assert [f.name for f in portrait.patterns] == ["Katz und Maus"]
+    assert "Katz und Maus" not in [f.name for f in portrait.families]

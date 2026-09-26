@@ -129,9 +129,9 @@ def parse_detail(html: str) -> Detail:
 
 
 def _publisher(page) -> str | None:
-    marke = page.select_one(sel.PUBLISHER_LABEL)
-    wert = marke.find_next_sibling() if marke is not None else None
-    return wert.get_text(" ", strip=True) or None if wert is not None else None
+    marker = page.select_one(sel.PUBLISHER_LABEL)
+    value = marker.find_next_sibling() if marker is not None else None
+    return value.get_text(" ", strip=True) or None if value is not None else None
 
 
 def _sample(page) -> str | None:
@@ -145,8 +145,8 @@ def _sample(page) -> str | None:
     href = link.get("href") if link is not None else None
     if not isinstance(href, str):
         return None
-    datei = href.split("url=", 1)[1].strip()
-    return datei if datei.startswith("https://") else None
+    file = href.split("url=", 1)[1].strip()
+    return file if file.startswith("https://") else None
 
 
 def _rating(page) -> int | None:
@@ -169,11 +169,11 @@ def _rating(page) -> int | None:
 def _votes(page) -> int | None:
     """Wie viele Stimmen dahinterstehen. Ohne sie ist der Schnitt wertlos."""
     label = page.select_one(sel.DETAIL_VOTES)
-    wert = label.find_next("dd") if label is not None else None
-    if wert is None:
+    value = label.find_next("dd") if label is not None else None
+    if value is None:
         return None
-    ziffern = re.sub(r"[^0-9]", "", wert.get_text(" ", strip=True))
-    return int(ziffern) if ziffern else None
+    digits = re.sub(r"[^0-9]", "", value.get_text(" ", strip=True))
+    return int(digits) if digits else None
 
 
 def _blurb(page) -> str | None:
@@ -300,9 +300,9 @@ def parse_search_results(html: str, base: str = sel.BASE) -> list[Candidate] | N
 
 
 def _card_cover(card: Tag, base: str) -> str | None:
-    bild = card.select_one(sel.CARD_COVER)
-    quelle = bild.get("src") if bild is not None else None
-    return urljoin(base, quelle) if isinstance(quelle, str) and quelle else None
+    image = card.select_one(sel.CARD_COVER)
+    source = image.get("src") if image is not None else None
+    return urljoin(base, source) if isinstance(source, str) and source else None
 
 
 def total_hits(html: str) -> int | None:
@@ -363,20 +363,20 @@ def parse_list(
     Frisch zurückgegeben heißt: frei — dem Wesen der Liste nach. Wird das Buch
     wieder verliehen, steht es beim nächsten Lauf nicht mehr darin.
     """
-    funde = []
+    found_items = []
     for card in parse_search_results(html, base) or []:
         if card.medium not in media:
             continue
         if not _FICTION.search(f"{card.subtitle or ''} {card.blurb or ''}"):
             continue
-        kennung = _title_id(card.url)
-        if kennung is None:
+        item_id = _title_id(card.url)
+        if item_id is None:
             continue
         isbn = _COVER_ISBN.search(card.cover_url or "")
-        funde.append(
+        found_items.append(
             Observation(
                 source=source,
-                source_item_id=kennung,
+                source_item_id=item_id,
                 title=card.title,
                 author=_natural_author(card.author),
                 match_reason=MatchReason.GENRE_CATEGORY,
@@ -388,11 +388,11 @@ def parse_list(
                 url=card.url,
             )
         )
-    return funde
+    return found_items
 
 
 def _title_id(url: str) -> str | None:
     """``mediaInfo,0-0-361212177-200-…`` → ``361212177``."""
-    treffer = re.search(r"mediaInfo,\d+-\d+-(\d+)-", url)
-    return treffer.group(1) if treffer else None
+    hit = re.search(r"mediaInfo,\d+-\d+-(\d+)-", url)
+    return hit.group(1) if hit else None
 

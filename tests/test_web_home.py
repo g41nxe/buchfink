@@ -211,8 +211,8 @@ def test_while_a_run_is_going_the_start_page_shows_it_instead_of_the_button(
 def test_a_cheap_and_borrowable_watchlist_title_is_offered(
     client: TestClient, db: Store
 ) -> None:
-    schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
-    seen(db, schwestern.id, price=399, available=True)
+    sisters = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, sisters.id, price=399, available=True)
 
     body = client.get("/").text
 
@@ -227,8 +227,8 @@ def test_an_offer_carries_the_same_actions_as_on_the_watchlist(
 ) -> None:
     """Dieselbe Zeile soll ueberall dasselbe anbieten (#22): die Zeilen hier
     trugen gar nichts, waehrend die Vorschlaege darunter drei Zeichen hatten."""
-    schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
-    seen(db, schwestern.id, price=399, available=True)
+    sisters = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, sisters.id, price=399, available=True)
 
     body = client.get("/").text
 
@@ -238,16 +238,16 @@ def test_an_offer_carries_the_same_actions_as_on_the_watchlist(
 
 def test_finishing_an_offer_stays_on_the_start_page(client: TestClient, db: Store) -> None:
     """Wer hier entscheidet, will hier bleiben — und den Weg zurueck hier haben."""
-    schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
-    seen(db, schwestern.id, price=399, available=True)
+    sisters = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, sisters.id, price=399, available=True)
 
-    antwort = client.post(
-        f"/watchlist/{schwestern.id}/finish",
+    response = client.post(
+        f"/watchlist/{sisters.id}/finish",
         data={"kind": "owned", "back": "/"},
     )
 
-    assert antwort.url.path == "/"
-    assert "Rückgängig" in antwort.text
+    assert response.url.path == "/"
+    assert "Rückgängig" in response.text
 
 
 def test_a_title_that_is_neither_cheap_nor_borrowable_stays_off_the_front(
@@ -315,15 +315,15 @@ def test_each_decision_has_its_own_distinct_icon(client: TestClient, db: Store) 
         rest = form[form.index(f'value="{kind}"') :]
         return re.search(r'use href="#(ic-\w+)"', rest).group(1)
 
-    zeichen = {icon_of(kind) for kind in ("dismissed", "owned", "watching")}
-    assert len(zeichen) == 3, f"nicht drei verschiedene Zeichen: {zeichen}"
+    icons = {icon_of(kind) for kind in ("dismissed", "owned", "watching")}
+    assert len(icons) == 3, f"nicht drei verschiedene Zeichen: {icons}"
     # Fernglas, nicht Lupe: die Lupe heisst ueberall "suchen", und gesucht
     # wird hier gerade nicht — beobachtet wird von weitem.
     assert icon_of("watching") == "ic-binoculars"
     # Ein Verweis auf ein Zeichen, das es im Sprite nicht gibt, bleibt leer
     # und faellt niemandem auf ausser der Leserin.
-    for zeichen_name in zeichen:
-        assert f'<symbol id="{zeichen_name}"' in body
+    for icon_name in icons:
+        assert f'<symbol id="{icon_name}"' in body
 
 
 def test_the_owned_button_is_coloured_like_a_purchase_not_like_the_library(
@@ -337,10 +337,10 @@ def test_the_owned_button_is_coloured_like_a_purchase_not_like_the_library(
     body = client.get("/").text
     form = body[body.index('action="/suggestions/decide"') :]
     start = form.index('value="owned"')
-    knopf = form[start : form.index("</button>", start)]
+    button = form[start : form.index("</button>", start)]
 
-    assert "hover:text-amber" in knopf
-    assert "hover:text-accent" not in knopf
+    assert "hover:text-amber" in button
+    assert "hover:text-accent" not in button
 
 
 def test_a_decision_is_a_verb_on_the_button_and_the_same_verb_on_the_pile(
@@ -353,11 +353,11 @@ def test_a_decision_is_a_verb_on_the_button_and_the_same_verb_on_the_pile(
     found(db, item_id="7", title="Der Kannibalenhügel")
 
     start = client.get("/").text
-    stapel = client.get("/suggestions").text
+    pile = client.get("/suggestions").text
 
-    for wort in ("Ausschließen", "Hab ich", "Beobachten"):
-        assert wort in start, wort
-        assert wort in stapel, wort
+    for word in ("Ausschließen", "Hab ich", "Beobachten"):
+        assert word in start, word
+        assert word in pile, word
     assert "Ausgeschlossen" not in start
 
 
@@ -417,6 +417,34 @@ def test_after_a_decision_the_start_page_offers_to_take_it_back(
     assert "0 von 0 zu entscheiden" in body
 
 
+def test_the_way_back_names_the_find_in_english(data_dir: Path, db: Store) -> None:
+    finished_run(db, finished_at=datetime.now())
+    found(db, item_id="7", title="Der Kannibalenhügel")
+    client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=False)
+
+    response = client.post(
+        "/suggestions/decide",
+        data={"kind": "dismissed", "keys": ["beam:7"], "back": "/"},
+    )
+
+    assert response.headers["location"] == "/?undo_discovery=beam%3A7&discovery_kind=dismissed"
+
+
+def test_the_old_way_back_still_offers_to_take_it_back(data_dir: Path, db: Store) -> None:
+    """`/?rueckgaengig=…&art=…` hieß die Adresse bis #70."""
+    finished_run(db, finished_at=datetime.now())
+    found(db, item_id="7", title="Der Kannibalenhügel")
+    client = TestClient(create_app(), raise_server_exceptions=False, follow_redirects=True)
+    client.post(
+        "/suggestions/decide", data={"kind": "dismissed", "keys": ["beam:7"], "back": "/"}
+    )
+
+    body = client.get("/?rueckgaengig=beam:7&art=dismissed").text
+
+    assert "Rückgängig" in body
+    assert 'action="/suggestions/undo"' in body
+
+
 def test_taking_a_decision_back_puts_the_find_back_on_the_pile(
     data_dir: Path, db: Store
 ) -> None:
@@ -471,17 +499,17 @@ def test_another_profile_shows_another_number(data_dir: Path, db: Store) -> None
         found(db, item_id=str(number), title=f"Fund {number}")
     finished_run(db, finished_at=datetime.now())
 
-    knapp = replace(load_settings(), home_suggestions=1)
-    seite = view.build(db, knapp, now=datetime.now())
+    tight = replace(load_settings(), home_suggestions=1)
+    page = view.build(db, tight, now=datetime.now())
 
-    assert len(seite.suggestions) == 1
-    assert seite.suggestions_total == 5
+    assert len(page.suggestions) == 1
+    assert page.suggestions_total == 5
 
 
 # --- Der Umzug --------------------------------------------------------------
 
 
-def test_the_dashboard_lives_at_uebersicht(client: TestClient) -> None:
+def test_the_dashboard_lives_at_overview(client: TestClient) -> None:
     response = client.get("/overview")
 
     assert response.status_code == 200
@@ -517,11 +545,11 @@ def test_an_offer_shows_its_judgement_like_everywhere_else(
 ) -> None:
     """Dieselbe Zeile, dieselbe Spalte: Sterne und Pitch des Werkzeugs stehen
     auf der Startseite wie auf der Watchlist und im Stapel (#16)."""
-    schwestern = next(b for b in db.books() if b.title == "Die sieben Schwestern")
-    seen(db, schwestern.id, price=399, available=True)
-    beobachtung = db.observations_for_book("test", schwestern.id)[0]
+    sisters = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, sisters.id, price=399, available=True)
+    observation = db.observations_for_book("test", sisters.id)[0]
     give_profile(db)
-    describe(db, subject_of(beobachtung), 4,
+    describe(db, subject_of(observation), 4,
              "Sieben Schwestern, ein Vermaechtnis, viele Rueckblenden.")
 
     body = client.get("/").text

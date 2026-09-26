@@ -313,8 +313,8 @@ def test_the_question_says_which_source_is_asking(client: TestClient, db: Store)
 
     # Im Fragetext selbst, nicht irgendwo auf der Seite: die Quellenkacheln
     # nennen die Onleihe ohnehin.
-    frage = body[body.index("Welches Buch ist das richtige?") :][:400]
-    assert "Onleihe" in frage
+    question = body[body.index("Welches Buch ist das richtige?") :][:400]
+    assert "Onleihe" in question
 
 
 def test_a_not_found_link_asks_nobody(client: TestClient, db: Store) -> None:
@@ -428,9 +428,9 @@ def test_entries_put_the_questions_first(db: Store) -> None:
 
 def test_an_entry_shows_the_last_price_it_was_seen_at(db: Store) -> None:
     rows = {row.title: row for row in view.entries(db, load_settings())}
-    schwarm = rows.get("Der Schwarm")
-    if schwarm is not None and schwarm.latest is not None:
-        assert schwarm.price is not None
+    swarm = rows.get("Der Schwarm")
+    if swarm is not None and swarm.latest is not None:
+        assert swarm.price is not None
 
 
 # --- zwei Bibliotheken, eine Zeile ------------------------------------------
@@ -450,36 +450,36 @@ def test_one_library_lending_it_out_does_not_hide_the_other_one_having_it(
     from ebook_watchlist.models import Availability, MatchReason, Observation
 
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Dark Matter", author="Crouch", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Dark Matter", author="Crouch", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
 
-    def sichtung(quelle: str, verfuegbarkeit: Availability) -> None:
+    def sighting(source: str, availability: Availability) -> None:
         run_id = db.start_run(settings.slug, "cli", NOW)
         db.append(
             run_id,
             settings.slug,
             [
                 Observation(
-                    source=quelle,
+                    source=source,
                     source_item_id="1",
                     title="Dark Matter",
                     match_reason=MatchReason.WATCHLIST,
-                    book_id=buch.id,
-                    availability=verfuegbarkeit,
+                    book_id=book.id,
+                    availability=availability,
                     observed_at=NOW,
                 )
             ],
             NOW,
         )
 
-    sichtung("onleihe", Availability.AVAILABLE)
+    sighting("onleihe", Availability.AVAILABLE)
     # Zuletzt eingefuegt, also frueher der Gewinner.
-    sichtung("overdrive", Availability.UNAVAILABLE)
+    sighting("overdrive", Availability.UNAVAILABLE)
 
-    zeile = next(e for e in view.entries(db, settings) if e.book_id == buch.id)
+    row = next(e for e in view.entries(db, settings) if e.book_id == book.id)
 
-    assert zeile.availability == "ausleihbar"
-    assert zeile.borrowable
+    assert row.availability == "ausleihbar"
+    assert row.borrowable
 
 
 def test_a_library_without_a_price_does_not_erase_the_shop_price(db: Store) -> None:
@@ -488,47 +488,47 @@ def test_a_library_without_a_price_does_not_erase_the_shop_price(db: Store) -> N
     from ebook_watchlist.models import Availability, MatchReason, Observation
 
     settings = load_settings()
-    buch = db.find_or_create_book(isbn=None, title="Ein Buch", author="Wer", now=NOW)
-    db.put_relation(settings.slug, buch.id, str(RelationKind.WATCHING), now=NOW)
+    book = db.find_or_create_book(isbn=None, title="Ein Buch", author="Wer", now=NOW)
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
 
-    quellen = (("beam", 499, None), ("overdrive", None, Availability.UNKNOWN))
-    for quelle, preis, verfuegbar in quellen:
+    sources = (("beam", 499, None), ("overdrive", None, Availability.UNKNOWN))
+    for source, price, available in sources:
         run_id = db.start_run(settings.slug, "cli", NOW)
         db.append(
             run_id,
             settings.slug,
             [
                 Observation(
-                    source=quelle,
+                    source=source,
                     source_item_id="1",
                     title="Ein Buch",
                     match_reason=MatchReason.WATCHLIST,
-                    book_id=buch.id,
-                    price_cents=preis,
-                    availability=verfuegbar,
+                    book_id=book.id,
+                    price_cents=price,
+                    availability=available,
                     observed_at=NOW,
                 )
             ],
             NOW,
         )
 
-    zeile = next(e for e in view.entries(db, settings) if e.book_id == buch.id)
+    row = next(e for e in view.entries(db, settings) if e.book_id == book.id)
 
-    assert zeile.price == "4,99 €"
+    assert row.price == "4,99 €"
 
 
 # --- je Quellenart ein Zeichen mit Zahl (#35) -------------------------------
 
 
-def zustand(name: str, art: str, gefunden: bool = True) -> view.SourceState:
+def state(name: str, kind: str, found: bool = True) -> view.SourceState:
     return view.SourceState(
         name=name,
-        outcome=str(LinkOutcome.LINKED if gefunden else LinkOutcome.NOT_FOUND),
-        url=f"https://{name}.invalid/1" if gefunden else None,
+        outcome=str(LinkOutcome.LINKED if found else LinkOutcome.NOT_FOUND),
+        url=f"https://{name}.invalid/1" if found else None,
         matched_title=None,
         matched_author=None,
         reason="",
-        category=art,
+        category=kind,
         display=name.capitalize(),
     )
 
@@ -536,42 +536,42 @@ def zustand(name: str, art: str, gefunden: bool = True) -> view.SourceState:
 def test_two_libraries_become_one_symbol_with_a_count() -> None:
     """Acht Zeichen in einer Zeile sind kein Ueberblick mehr, sondern ein
     Muster — und welche Bibliothek welches ist, sieht man ohnehin nicht."""
-    gruppen = view.source_groups(
-        (zustand("onleihe", "library", gefunden=False),
-         zustand("overdrive", "library"),
-         zustand("beam", "shop"))
+    groups = view.source_groups(
+        (state("onleihe", "library", found=False),
+         state("overdrive", "library"),
+         state("beam", "shop"))
     )
 
-    assert [(g.category, g.count, g.found) for g in gruppen] == [
+    assert [(g.category, g.count, g.found) for g in groups] == [
         ("library", 2, True), ("shop", 1, True)]
 
 
 def test_a_category_nobody_found_stays_dull() -> None:
-    gruppen = view.source_groups(
-        (zustand("onleihe", "library", gefunden=False),
-         zustand("overdrive", "library", gefunden=False))
+    groups = view.source_groups(
+        (state("onleihe", "library", found=False),
+         state("overdrive", "library", found=False))
     )
 
-    assert gruppen[0].found is False
+    assert groups[0].found is False
 
 
 def test_the_symbol_links_to_the_source_that_has_it() -> None:
     """Eine Quelle hat es: dorthin fuehrt der Klick. Mehrere: die Erste von
     ihnen, denn eine Zeile hat nur ein Ziel."""
-    gruppen = view.source_groups(
-        (zustand("onleihe", "library", gefunden=False), zustand("overdrive", "library"))
+    groups = view.source_groups(
+        (state("onleihe", "library", found=False), state("overdrive", "library"))
     )
 
-    assert gruppen[0].url == "https://overdrive.invalid/1"
+    assert groups[0].url == "https://overdrive.invalid/1"
 
 
 def test_the_hint_names_every_source_of_the_category() -> None:
     """Die Zahl sagt wie viele, der Hinweis welche."""
-    gruppen = view.source_groups(
-        (zustand("onleihe", "library", gefunden=False), zustand("overdrive", "library"))
+    groups = view.source_groups(
+        (state("onleihe", "library", found=False), state("overdrive", "library"))
     )
 
-    assert gruppen[0].hint == "Overdrive: gefunden · Onleihe: nicht im Katalog"
+    assert groups[0].hint == "Overdrive: gefunden · Onleihe: nicht im Katalog"
 
 
 # --- die Bewertung in der Zeile (#16) ---------------------------------------
@@ -594,10 +594,10 @@ def test_the_row_carries_the_verdict_of_the_code(client: TestClient, db: Store) 
     give_profile(db)
     describe(db, "isbn:9783000000042", 4, "Ein Forscher, 1977 tief in einer Mine.")
 
-    eintrag = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
+    entry = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
 
-    assert (eintrag.stars, eintrag.percent) == (4, 56)
-    assert eintrag.pitch == "Ein Forscher, 1977 tief in einer Mine."
+    assert (entry.stars, entry.percent) == (4, 56)
+    assert entry.pitch == "Ein Forscher, 1977 tief in einer Mine."
     assert "Ein Forscher" in client.get("/watchlist").text
 
 
@@ -611,17 +611,17 @@ def test_a_title_without_a_find_carries_its_portrait_at_the_book(db: Store) -> N
     give_profile(db)
     describe(db, book_subject(book.id), 3, "Am Buch.")
 
-    eintrag = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
+    entry = next(e for e in view.entries(db, load_settings()) if e.book_id == book.id)
 
-    assert (eintrag.stars, eintrag.pitch) == (3, "Am Buch.")
+    assert (entry.stars, entry.pitch) == (3, "Am Buch.")
 
 
 def test_a_title_nobody_judged_shows_no_stars(db: Store) -> None:
     """Null Sterne waeren eine Aussage, "noch nicht bewertet" ist keine."""
-    eintrag = view.entries(db, load_settings())[0]
+    entry = view.entries(db, load_settings())[0]
 
-    assert eintrag.stars is None
-    assert eintrag.pitch is None
+    assert entry.stars is None
+    assert entry.pitch is None
 
 
 # --- sortieren (#37) --------------------------------------------------------
@@ -637,28 +637,28 @@ def test_the_list_offers_every_sort_key(client: TestClient) -> None:
 
 
 def test_the_address_decides_the_order(client: TestClient, db: Store) -> None:
-    alt = view.add(db, "test", title="Zuerst da", author=None, now=datetime(2026, 1, 1))
-    neu = view.add(db, "test", title="Eben erst", author=None, now=datetime(2026, 9, 1))
-    assert alt != neu
+    old = view.add(db, "test", title="Zuerst da", author=None, now=datetime(2026, 1, 1))
+    new = view.add(db, "test", title="Eben erst", author=None, now=datetime(2026, 9, 1))
+    assert old != new
 
-    body = client.get("/watchlist?sortiert=neu").text
+    body = client.get("/watchlist?sort=new").text
 
     assert body.index("Eben erst") < body.index("Zuerst da")
 
 
 def test_the_chosen_order_is_the_one_the_field_shows(client: TestClient) -> None:
     """Sonst sortiert die Seite nach dem einen und behauptet das andere."""
-    body = client.get("/watchlist?sortiert=preis").text
-    assert 'value="preis" selected' in body
+    body = client.get("/watchlist?sort=price").text
+    assert 'value="price" selected' in body
 
 
 def test_an_unknown_order_falls_back_instead_of_failing(client: TestClient) -> None:
     """Ein Tippfehler in der Adresse ist kein Grund, die Liste zu verweigern
     (ADR 7)."""
-    antwort = client.get("/watchlist?sortiert=gibtsnicht")
+    response = client.get("/watchlist?sort=gibtsnicht")
 
-    assert antwort.status_code == 200
-    assert f'value="{sorting.WATCHLIST[0].slug}" selected' in antwort.text
+    assert response.status_code == 200
+    assert f'value="{sorting.WATCHLIST[0].slug}" selected' in response.text
 
 
 def test_the_filter_for_open_assignments_keeps_the_order(
@@ -671,16 +671,41 @@ def test_the_filter_for_open_assignments_keeps_the_order(
         matched_title="Irgendwas", url="https://beam.invalid/1",
     )
 
-    body = client.get("/watchlist?sortiert=preis").text
+    body = client.get("/watchlist?sort=price").text
 
-    assert "nur=unklar" in body
-    assert "sortiert=preis" in body
+    assert "only=unsure" in body
+    assert "sort=price" in body
+
+
+def test_an_old_address_keeps_its_order_and_filter(client: TestClient, db: Store) -> None:
+    """Wer `?sortiert=preis` oder `?nur=unklar` als Lesezeichen hat, landet
+    weiter in derselben Liste (#70)."""
+    book = db.books()[0]
+    db.put_book_source(
+        book.id, "beam", outcome=str(LinkOutcome.UNSURE), resolved_at=NOW,
+        matched_title="Irgendwas", url="https://beam.invalid/1",
+    )
+
+    body = client.get("/watchlist?sortiert=preis&nur=unklar").text
+
+    assert 'value="price" selected' in body
+    assert 'name="only" value="unsure"' in body
+    assert "sort=price" in body
+
+
+def test_the_remembered_order_moves_from_the_old_key(client: TestClient) -> None:
+    """Der Browser merkte sich die Wahl bis #70 unter `sortiert:…`; der
+    neue Schlüssel liest ihn einmal und übernimmt ihn."""
+    body = client.get("/watchlist").text
+
+    assert '"sort:/watchlist"' in body
+    assert '"sortiert:/watchlist"' in body
 
 
 def test_the_default_order_stays_out_of_the_links(client: TestClient) -> None:
-    """`?sortiert=offen` an jedem Verweis waere Laerm: die Voreinstellung gilt
+    """`?sort=open` an jedem Verweis waere Laerm: die Voreinstellung gilt
     ohnehin."""
-    assert "sortiert=offen" not in client.get("/watchlist").text
+    assert "sort=open" not in client.get("/watchlist").text
 
 
 # --- von der Watchlist nehmen, ohne Urteil (#72) ------------------------------------------
@@ -693,7 +718,7 @@ def test_removing_takes_the_entry_off_without_saying_anything_about_the_book(
 
     body = client.post(f"/watchlist/{book.id}/finish", data={"kind": "removed"}).text
 
-    assert f'id="eintrag-{book.id}"' not in body
+    assert f'id="entry-{book.id}"' not in body
     assert "von der Watchlist genommen" in body and "Rückgängig" in body
     kinds = {r.kind: r for r in db.relations_of("test", book.id)}
     # Kein Besitz, kein Ausschließen, kein Urteil: es darf wieder vorgeschlagen werden.
@@ -707,23 +732,23 @@ def test_a_removed_entry_comes_back_with_undo(client: TestClient, db: Store) -> 
 
     client.post("/watchlist/undo", data={"book_id": str(book.id), "kind": "removed"})
 
-    assert f'id="eintrag-{book.id}"' in client.get("/watchlist").text
+    assert f'id="entry-{book.id}"' in client.get("/watchlist").text
 
 
 def test_a_removed_entry_is_not_a_paused_one(client: TestClient, db: Store) -> None:
     """Pausiert bleibt auf der Liste; entfernt nicht."""
-    pausiert = db.books()[0]
-    entfernt = db.find_or_create_book(isbn=None, title="Zweites Buch", author="B",
+    paused = db.books()[0]
+    removed = db.find_or_create_book(isbn=None, title="Zweites Buch", author="B",
                                       now=datetime(2026, 9, 26, 12, 0))
-    db.put_relation("test", entfernt.id, str(RelationKind.WATCHING),
+    db.put_relation("test", removed.id, str(RelationKind.WATCHING),
                     now=datetime(2026, 9, 26, 12, 0))
-    client.post(f"/watchlist/{pausiert.id}/active", data={"active": "0"})
-    client.post(f"/watchlist/{entfernt.id}/finish", data={"kind": "removed"})
+    client.post(f"/watchlist/{paused.id}/active", data={"active": "0"})
+    client.post(f"/watchlist/{removed.id}/finish", data={"kind": "removed"})
 
     body = client.get("/watchlist").text
 
-    assert f'id="eintrag-{pausiert.id}"' in body
-    assert f'id="eintrag-{entfernt.id}"' not in body
+    assert f'id="entry-{paused.id}"' in body
+    assert f'id="entry-{removed.id}"' not in body
 
 
 def test_watching_again_brings_a_removed_book_back(client: TestClient, db: Store) -> None:
@@ -732,7 +757,7 @@ def test_watching_again_brings_a_removed_book_back(client: TestClient, db: Store
 
     client.post(f"/watchlist/{book.id}/active", data={"active": "1"})
 
-    assert f'id="eintrag-{book.id}"' in client.get("/watchlist").text
+    assert f'id="entry-{book.id}"' in client.get("/watchlist").text
 
 
 def test_the_row_offers_to_take_the_entry_off_the_list(client: TestClient, db: Store) -> None:

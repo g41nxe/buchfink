@@ -86,10 +86,10 @@
            Buch zu oeffnen. Abgeschaltet reagiert das Kaestchen auf keinen
            Klick mehr. Dieselbe Grenze wie Tailwinds `sm`, und sie folgt
            dem Drehen des Geraets. #}
-        klein: window.matchMedia('(max-width: 639px)').matches,
+        narrow: window.matchMedia('(max-width: 639px)').matches,
         init() {
-          const schmal = window.matchMedia('(max-width: 639px)');
-          schmal.addEventListener('change', e => { this.klein = e.matches; if (e.matches) this.mark(false) });
+          const phone = window.matchMedia('(max-width: 639px)');
+          phone.addEventListener('change', e => { this.narrow = e.matches; if (e.matches) this.mark(false) });
         },
         boxes() { return this.$root.querySelectorAll('input[name=keys]') },
         recount() {
@@ -105,7 +105,7 @@
          der Zaehler sonst Geister: das Entfernen loest kein `change` aus. #}
       @htmx:after-swap.window="recount()">
 <input type="hidden" name="reason" value="{{ reason }}">
-<input type="hidden" name="sortiert" value="{{ chosen }}">
+<input type="hidden" name="sort" value="{{ chosen }}">
 
 <ul class="divide-y divide-hair">
   {% for item in pile.items %}
@@ -114,7 +114,7 @@
        Seite eigenes hat, kommt als Steckplatz herein: das Kaestchen, die
        Sterne des Tors, der Pitch und die drei Entscheidungen. #}
     {% set selection %}
-    <input type="checkbox" name="keys" value="{{ item.key }}" :disabled="klein"
+    <input type="checkbox" name="keys" value="{{ item.key }}" :disabled="narrow"
            class="h-5 w-5 shrink-0 accent-[var(--color-accent)]">
     {% endset %}
 
@@ -207,11 +207,11 @@
      eine Ansicht, eine Auswahl ist der erste Teil einer Handlung. #}
   <span x-cloak class="flex items-center gap-2">
     <button type="button" @click="mark(true)"
-            class="tun inline-flex h-9 items-center justify-center rounded border
+            class="tap inline-flex h-9 items-center justify-center rounded border
                    border-rule px-2 text-sm font-medium text-soft sm:px-3
                    hover:border-soft hover:text-ink">alle</button>
     <button type="button" @click="mark(false)" :disabled="chosen === 0"
-            class="tun inline-flex h-9 items-center justify-center rounded border
+            class="tap inline-flex h-9 items-center justify-center rounded border
                    border-rule px-2 text-sm font-medium text-soft sm:px-3
                    hover:border-soft hover:text-ink
                    disabled:opacity-40 disabled:hover:border-rule

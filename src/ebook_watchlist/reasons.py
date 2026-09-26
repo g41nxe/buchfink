@@ -18,7 +18,7 @@ from .models import MatchReason, Observation
 
 #: Was die Leserin sieht, wo der Code ``genre_category`` sagt. "Regal" war der
 #: Begriff des Shops, nicht ihrer.
-THEMA = "Thema"
+GENRE_CATEGORY_WORD = "Thema"
 
 _SHELF_NAMES = {
     "psychothriller": "Psychothriller",
@@ -30,7 +30,7 @@ _SHELF_NAMES = {
 }
 
 
-def thema_name(category: str | None) -> str | None:
+def genre_category_name(category: str | None) -> str | None:
     """``belletristik/krimi-thriller/psychothriller`` → ``Psychothriller``.
 
     Unbekannte Pfade werden nicht erraten, sondern lesbar gemacht: der letzte
@@ -69,14 +69,14 @@ def why_shown(observation: Observation) -> str:
             return "neu von einer Autor:in, der du folgst"
         return f"neu von {author}, der du folgst"
 
-    thema = thema_name(observation.category)
-    if thema and _is_library(observation.source):
+    category_name = genre_category_name(observation.category)
+    if category_name and _is_library(observation.source):
         # Eine Sammlung der Bibliothek ist kein Regal im Shop: was darin steht,
         # lässt sich gleich leihen (#74).
-        return f"sofort ausleihbar aus „{thema}“"
-    if thema:
-        return f"neu im {THEMA} {thema}"
-    return f"neu in einem {THEMA}, dem du folgst"
+        return f"sofort ausleihbar aus „{category_name}“"
+    if category_name:
+        return f"neu im {GENRE_CATEGORY_WORD} {category_name}"
+    return f"neu in einem {GENRE_CATEGORY_WORD}, dem du folgst"
 
 
 def short_why(observation: Observation) -> str:
@@ -90,4 +90,4 @@ def short_why(observation: Observation) -> str:
         return "Watchlist"
     if observation.match_reason is MatchReason.PROFILE_AUTHOR:
         return "Autor:in"
-    return thema_name(observation.category) or THEMA
+    return genre_category_name(observation.category) or GENRE_CATEGORY_WORD

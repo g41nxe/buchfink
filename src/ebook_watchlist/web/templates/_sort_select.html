@@ -7,8 +7,8 @@
    Schlüssel kostet darin keinen Platz.
 
    Ein GET-Formular, kein Zustand: die Adresse trägt die Wahl
-   (`?sortiert=preis`), damit sie teilbar ist und der Zurück-Knopf stimmt.
-   Die anderen Parameter der Seite — `reason`, `nur` — reisen als `fields` mit,
+   (`?sort=price`), damit sie teilbar ist und der Zurück-Knopf stimmt.
+   Die anderen Parameter der Seite — `reason`, `only` — reisen als `fields` mit,
    sonst fiele beim Sortieren der Filter weg.
 
    `onchange` statt Alpine: hier ist nichts zu verwalten, nur abzuschicken.
@@ -25,14 +25,28 @@
    Zugriff steht in einem `try`, und in einem privaten Fenster wirft er. #}
 <script>
 (function () {
-  var name = "sortiert:{{ target }}";
+  var name = "sort:{{ target }}";
   var allowed = [{% for order in orders %}"{{ order.slug }}"{% if not loop.last %}, {% endif %}{% endfor %}];
   var address = new URL(location.href);
-  if (address.searchParams.has("sortiert")) return;
+  if (address.searchParams.has("sort") || address.searchParams.has("sortiert")) return;
   var remembered = null;
-  try { remembered = localStorage.getItem(name); } catch (e) { return; }
+  try {
+    remembered = localStorage.getItem(name);
+    if (remembered === null) {
+      {# Bis #70 hieß der Schlüssel `sortiert:…`, und die Werte waren
+         deutsch: einmal lesen, übersetzen, umziehen. #}
+      var old = "sortiert:{{ target }}";
+      var aliases = {{ old_sort_slugs | tojson }};
+      remembered = localStorage.getItem(old);
+      if (remembered !== null) {
+        remembered = aliases[remembered] || remembered;
+        localStorage.setItem(name, remembered);
+        localStorage.removeItem(old);
+      }
+    }
+  } catch (e) { return; }
   if (!remembered || remembered === allowed[0] || allowed.indexOf(remembered) < 0) return;
-  address.searchParams.set("sortiert", remembered);
+  address.searchParams.set("sort", remembered);
   location.replace(address.toString());
 })();
 </script>
@@ -40,8 +54,8 @@
   {{ fields }}
   <label class="flex w-full items-center gap-2 sm:w-auto">
     <span class="shrink-0 text-xs text-soft">Sortiert nach</span>
-    <select name="sortiert"
-            onchange="try { localStorage.setItem('sortiert:{{ target }}', this.value) } catch (e) {}; this.form.submit()"
+    <select name="sort"
+            onchange="try { localStorage.setItem('sort:{{ target }}', this.value) } catch (e) {}; this.form.submit()"
             class="h-10 w-full rounded border border-rule bg-card px-2 text-sm text-ink
                    outline-none focus:border-accent sm:h-8 sm:w-auto">
       {% for order in orders %}
@@ -54,7 +68,7 @@
      sobald welches da ist — er ist der Rückfall, nicht das Bedienelement. #}
   <noscript>
     <button type="submit"
-            class="tun inline-flex h-10 items-center rounded border border-rule px-3
+            class="tap inline-flex h-10 items-center rounded border border-rule px-3
                    text-sm text-soft hover:border-accent hover:text-accent
                    sm:h-8">los</button>
   </noscript>

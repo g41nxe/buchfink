@@ -12,7 +12,7 @@
 #}
 {% macro pill(text, url=none, active=false, tone="accent") %}
 {%- set classes -%}
-pille tun inline-flex h-7 items-center rounded border px-3 text-xs transition
+pill tap inline-flex h-7 items-center rounded border px-3 text-xs transition
 sm:rounded-full
 {% if active and tone == "amber" %}border-amber bg-amber/10 text-amber
 {% elif active %}border-accent bg-accent/10 text-accent
