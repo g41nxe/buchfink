@@ -13,8 +13,8 @@ standing between a loose search hit and a wrong title being watched for months
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
@@ -73,6 +73,11 @@ class Candidate:
     #: steht in jedem Suchtreffer, wurde bisher nur weggeworfen. Zwei Ausgaben
     #: nebeneinander zu vergleichen ist eine Frage ans Auge (Ticket 41).
     cover_url: str | None = None
+    #: Die Sprache der Ausgabe, als Code der DNB (``ger``, ``eng``), wo die
+    #: Quelle sie nennt. Der Matcher liest sie nicht — sie reist mit, damit
+    #: eine angenommene fremdsprachige Ausgabe auf der Kachel als solche
+    #: erkennbar bleibt (#77).
+    language: str | None = None
     payload: Any = None
 
 
@@ -160,6 +165,11 @@ class Resolution:
     best: Scored | None = None
     ranked: tuple[Scored, ...] = field(default_factory=tuple)
     reason: str = ""
+    #: Wer ausser dem Sieger gleich gut war, wo das nicht die Titelwerte
+    #: sagen: bei einer Zuordnung ueber den Originaltitel (#77) liegen die
+    #: Kandidaten beim Titelvergleich weit auseinander — gleich sind sie erst
+    #: in dem, was die DNB ueber sie weiss.
+    alternatives: tuple[Scored, ...] = ()
 
     @property
     def accepted(self) -> Candidate | None:
@@ -182,6 +192,9 @@ class Resolution:
         """
         if self.best is None:
             return ()
+        if self.alternatives:
+            gleich = [self.best, *(s for s in self.alternatives if s is not self.best)]
+            return tuple(scored.candidate for scored in gleich[:MAX_CANDIDATES])
         gleich = [self.best] + [
             kandidat for kandidat in self.ranked[1:] if _is_tied(self.best, kandidat)
         ]
@@ -524,4 +537,116 @@ def match(query: Query, candidates: Sequence[Candidate]) -> Resolution:
         best=ranked[0] if confidence is not Confidence.NO_MATCH else None,
         ranked=ranked,
         reason=reason,
+    )
+
+
+#: ISBN rein, Originaltitel raus — ``None``, wo die DNB keinen nennt. Was
+#: nicht im Ergebnis steht, ist unbekannt geblieben (etwa ueber dem Budget).
+OriginalTitleLookup = Callable[[Sequence[str]], Mapping[str, "str | None"]]
+
+
+def needs_original_title(resolution: Resolution) -> bool:
+    """Ob der Titelvergleich so wenig gefunden hat, dass der Originaltitel
+    gefragt werden darf (#77).
+
+    Nur, was sonst **unaufgeloest** bliebe: kein Treffer, oder einer, dessen
+    Titelwert unter der Schwelle liegt. Ein Titel ueber der Schwelle ist schon
+    eine Antwort oder eine Frage an die Leserin — ihn der DNB vorzulegen hiesse,
+    fuer jeden gewoehnlichen Fund eine Anfrage zu stellen.
+    """
+    if resolution.accepted is not None:
+        return False
+    best = resolution.best
+    return best is None or best.title_fuzzy < NO_MATCH_BELOW
+
+
+def by_original_title(
+    query: Query, resolution: Resolution, original_titles: OriginalTitleLookup
+) -> Resolution:
+    """Eine uebersetzte Ausgabe ueber den Originaltitel finden (#77).
+
+    *Scythe* von Neal Shusterman steht bei OverDrive und im Shop als *Die
+    Hueter des Todes*. Der Titelvergleich sieht darin nichts (Wert 29), und
+    die Autor:in allein darf nichts entscheiden — sie bestaetigt nur einen
+    Titel, der schon passt (ADR 8). Die DNB aber kennt zur ISBN der deutschen
+    Ausgabe den Titel des Originals, und **der** wird gegen den eingegebenen
+    gehalten, mit denselben Schwellen wie jeder Titel.
+
+    Gefragt wird sparsam, weil jede Frage eine Anfrage an die DNB sein kann:
+
+    * nur fuer eine Zuordnung, die sonst offen bliebe (:func:`needs_original_title`),
+    * nur fuer Kandidaten, deren Autor:in **bestaetigt** stimmt
+      (:func:`author_matches`, die strenge Regel) und die eine ISBN tragen,
+    * und nie ohne Autor:in am Eintrag — dann trueg der Originaltitel die
+      Zuordnung allein, und "Dark Matter" ist der Originaltitel zweier Buecher.
+
+    Angenommen wird nur **ein** Buch. Treffen zwei verschiedene ISBNs, kommt
+    die Frage zur Leserin; dieselbe ISBN auf zwei Karten ist ein Buch.
+
+    Reihen: der Originaltitel muss den eingegebenen Titel treffen, nicht bloss
+    die Reihe. "Arc of a Scythe" gegen "Scythe" ergibt 57 und faellt durch;
+    eine Karte, die einen spaeteren Band nennt, wird gar nicht erst gefragt —
+    ein Treffer auf Band 2 darf Band 1 nicht ersetzen.
+    """
+    if not query.author or not needs_original_title(resolution):
+        return resolution
+    wanted_title = normalize_title(query.title)
+    if not wanted_title:
+        return resolution
+
+    worth_asking = [
+        scored
+        for scored in resolution.ranked
+        if scored.candidate.identifier
+        and not scored.volume_conflict
+        and author_matches(query.author, scored.candidate.author)
+    ]
+    if not worth_asking:
+        return resolution
+
+    known = original_titles(list(dict.fromkeys(s.candidate.identifier for s in worth_asking)))
+
+    hits: list[tuple[Scored, str, int]] = []
+    for scored in worth_asking:
+        original = known.get(scored.candidate.identifier or "")
+        if not original or volumes_conflict(query.title, original):
+            continue
+        found_title = normalize_title(original)
+        similarity = 100 if found_title == wanted_title else title_similarity(
+            wanted_title, found_title
+        )
+        if similarity >= NO_MATCH_BELOW:
+            hits.append((scored, original, similarity))
+    if not hits:
+        return resolution
+
+    # Eine Karte je Buch: dieselbe ISBN in zwei Formaten ist kein Zweifel.
+    books: dict[str, tuple[Scored, str, int]] = {}
+    for hit in hits:
+        books.setdefault(hit[0].candidate.identifier or "", hit)
+    best, original, similarity = next(iter(books.values()))
+    others = tuple(scored for scored, _, _ in books.values())
+
+    if len(books) > 1:
+        return replace(
+            resolution,
+            confidence=Confidence.PROVISIONAL,
+            best=best,
+            alternatives=others,
+            reason=f"der Originaltitel „{original}“ trifft {len(books)} Bücher — bitte bestätigen",
+        )
+    if similarity < STRONG_TITLE or best.id_conflict:
+        return replace(
+            resolution,
+            confidence=Confidence.PROVISIONAL,
+            best=best,
+            alternatives=others,
+            reason=f"Originaltitel „{original}“ laut DNB, nicht eindeutig — bitte bestätigen",
+        )
+    return replace(
+        resolution,
+        confidence=Confidence.AUTO_ACCEPT,
+        best=best,
+        alternatives=others,
+        reason=f"über den Originaltitel „{original}“ zugeordnet (DNB)",
     )

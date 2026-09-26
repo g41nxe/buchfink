@@ -113,8 +113,10 @@ class OverdriveSource(LibrarySource):
     def _url(self, path: str, **kwargs: str) -> str:
         return urljoin(self.base, path.format(library=self.library, **kwargs))
 
-    def _search_page(self, query: str, page: int) -> str:
+    def _search_page(self, query: str, page: int, *, any_language: bool = False) -> str:
         params = dict(sel.SEARCH_PARAMS, query=query, perPage=str(sel.PER_PAGE))
+        if not any_language:
+            params.update(sel.LANGUAGE_PARAMS)
         if page:
             # Seiten sind 1-basiert; ``page=1`` ist die Voreinstellung und wird
             # deshalb gar nicht erst mitgeschickt.
@@ -135,6 +137,18 @@ class OverdriveSource(LibrarySource):
         return f"{entry.title} {nachname}"
 
     def resolve(self, entry: WatchlistEntry) -> Resolution | None:
+        return self._resolve(entry, any_language=False)
+
+    def resolve_in_any_language(self, entry: WatchlistEntry) -> Resolution | None:
+        """Dieselbe Suche ohne ``language=de`` (#77).
+
+        *Scythe* fuehrt diese Bibliothek als englisches E-Book, "1 von 3
+        Exemplaren verfuegbar" — und die deutsche Suche konnte es nie sehen.
+        Das Format bleibt: ein Hoerbuch ist auch in jeder Sprache kein E-Book.
+        """
+        return self._resolve(entry, any_language=True)
+
+    def _resolve(self, entry: WatchlistEntry, *, any_language: bool) -> Resolution | None:
         # ``identifier``: der Matcher nimmt eine uebereinstimmende Kennung als
         # Zuordnung ("Kennung stimmt ueberein") — dieselbe Mechanik, mit der
         # beam dieses Buch findet. Hier traegt sie die Quelle: der deutsche
@@ -150,7 +164,9 @@ class OverdriveSource(LibrarySource):
         gesehen: list[Candidate] = []
 
         for page in range(MAX_RESOLUTION_PAGES):
-            gefunden = parse.parse_search(self._search_page(self._query_for(entry), page))
+            gefunden = parse.parse_search(
+                self._search_page(self._query_for(entry), page, any_language=any_language)
+            )
             if gefunden is None:
                 # Kein Treffer — eine Antwort, keine Stoerung.
                 return None if page == 0 else match(query, gesehen)
@@ -161,6 +177,7 @@ class OverdriveSource(LibrarySource):
                     author=card.author,
                     identifier=card.isbn,
                     cover_url=card.cover_url,
+                    language=card.language,
                     payload=sel.TITLE_URL.format(title_id=card.title_id),
                 )
                 for card in gefunden

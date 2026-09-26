@@ -129,6 +129,34 @@ The matcher compares normalised titles, but an exact **identifier** wins over
 any title score: `Dark Matter` and `Der Zeitenläufer (Dark Matter)` are the
 same book and score 26 out of 100, while their ISBN is identical.
 
+A Watchlist Entry typed in the original language resolves in three steps, the
+cheapest first (#77):
+
+1. The Source's own search — German only where the Source filters by language.
+2. If that leaves the entry unresolved (no match, or a title score below the
+   threshold), the **Original Title** of every candidate by the same author
+   that carries an ISBN is held against the typed title, with the same
+   thresholds as a title. *Scythe* finds *Die Hüter des Todes* this way. One
+   book is accepted; two different books with that original title become a
+   question for the reader, never a silent pick. A title that already matches
+   costs no DNB request.
+3. If still nothing is accepted, the same search **without the language
+   filter** — the English edition, if the library only has that one. An
+   accepted edition in a language the Profile does not name is marked with
+   that language on the Watchlist row ("englisch").
+
+Discoveries keep the language filter: this is only for a title the reader
+named herself.
+
+### Original Title
+*deutsch: Originaltitel*
+
+The title of the work a translation was made from, as the DNB records it for
+the translation's ISBN (MARC `240`). Stored in `dnb_record` like every DNB
+answer, asked for at most once per ISBN and within the per-Run `dnb_budget`
+(ADR 25). Used twice: as Evidence for a Portrait (#17), and to resolve a
+Watchlist Entry typed in the original language (#77).
+
 ### Thunder
 *deutsch: die Schnittstelle von OverDrive*
 
@@ -199,7 +227,9 @@ A Discovery the DNB lists **explicitly** in a language the Profile does not
 name (`languages`, ISO 639-2 codes, default `ger`). It never reaches the pile
 and costs no Rating. Unknown is never foreign: without an ISBN or a DNB answer
 a Discovery stays where it is. A Watchlist Entry is never foreign, whatever its
-language (#10).
+language (#10) — and its search is not limited to German either: if the German
+search finds nothing, it is searched once more in every language (#77, see
+Resolution).
 
 ### Suggestion
 *deutsch: Vorschlag*

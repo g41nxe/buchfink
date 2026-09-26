@@ -25,12 +25,38 @@ TITLE_URL = "https://voebb.overdrive.com/media/{title_id}"
 SEARCH_PATH = "libraries/{library}/media"
 TITLE_PATH = "libraries/{library}/media/{title_id}"
 
-#: Nur deutsche EPUB-E-Books, wie bei der Onleihe (``media: [ebook]``).
+#: Nur EPUB-E-Books, wie bei der Onleihe (``media: [ebook]``).
 #: ``ebook-epub-adobe`` ist das Format, das die Leserin auf einem E-Reader
 #: oeffnen kann; ``ebook-overdrive`` ist der Browser-Leser derselben Ausgabe.
 SEARCH_PARAMS: dict[str, str] = {
     "format": "ebook-epub-adobe",
+}
+
+#: Zuerst wird nur deutsch gesucht. Entfaellt fuer die zweite Suche nach
+#: einem Watchlist-Titel, die die deutsche nicht zuordnen konnte (#77) — ein
+#: Titel, den die Leserin selbst benannt hat, ist nie fremd.
+LANGUAGE_PARAMS: dict[str, str] = {
     "language": "de",
+}
+
+#: Die Sprache einer Karte (``languages[].id``) in den Codes der DNB (ISO
+#: 639-2/B), damit eine Sprache ueberall gleich heisst. Was hier fehlt,
+#: bleibt ungesagt — behaupten ist schlimmer als schweigen.
+LANGUAGE_CODES: dict[str, str] = {
+    "de": "ger",
+    "en": "eng",
+    "fr": "fre",
+    "es": "spa",
+    "it": "ita",
+    "nl": "dut",
+    "sv": "swe",
+    "da": "dan",
+    "no": "nor",
+    "pl": "pol",
+    "pt": "por",
+    "tr": "tur",
+    "ru": "rus",
+    "ja": "jpn",
 }
 
 #: Wie viele Treffer je Seite. Thunder erlaubt bis 100 und antwortet darueber

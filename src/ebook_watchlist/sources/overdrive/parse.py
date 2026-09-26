@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 from ...models import Availability
 from ..base import SourceStructureError
+from . import selectors as sel
 
 #: Dieselbe Pruefung wie bei den beiden anderen Quellen: eine ISBN-13 beginnt
 #: mit 978 oder 979. Ungeprueft durchgereicht kostet sie zweierlei — der
@@ -166,6 +167,23 @@ class Candidate:
     #: Das Titelbild des Treffers — bei einer offenen Zuordnung entscheidet
     #: das Auge, welcher der richtige ist (Ticket 41).
     cover_url: str | None = None
+    #: Die Sprache der Ausgabe, als Code der DNB (``ger``, ``eng``). Seit ein
+    #: Watchlist-Titel auch ohne Sprachfilter gesucht wird, kann das eine
+    #: andere als Deutsch sein, und die Kachel sagt es dann (#77).
+    language: str | None = None
+
+
+def _language(item: dict) -> str | None:
+    """Die erste Sprache der Karte, in den Codes der DNB — oder nichts.
+
+    Eine fremde Gestalt schweigt statt zu werfen: die Sprache ist eine
+    Kennzeichnung, keine Voraussetzung, und ein Umbau an dieser Stelle darf
+    keine Zuordnung kosten.
+    """
+    sprachen = item.get("languages")
+    if not isinstance(sprachen, list) or not sprachen or not isinstance(sprachen[0], dict):
+        return None
+    return sel.LANGUAGE_CODES.get(str(sprachen[0].get("id") or "").lower())
 
 
 def parse_search(text: str) -> list[Candidate] | None:
@@ -201,6 +219,7 @@ def parse_search(text: str) -> list[Candidate] | None:
                 title_id=title_id(item),
                 isbn=_isbn(item),
                 cover_url=_cover(item),
+                language=_language(item),
             )
         )
     return gefunden

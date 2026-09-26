@@ -61,6 +61,43 @@ GROUP_LANGUAGES: dict[str, str] = {
 }
 
 
+#: Wie eine Sprache der Leserin gegenueber heisst — als Adjektiv, weil es
+#: auf der Kachel neben einem Buch steht ("englisch"). Was hier fehlt, steht
+#: als Code da: ein seltener Code ist immer noch mehr Auskunft als keine.
+LANGUAGE_NAMES: dict[str, str] = {
+    "ger": "deutsch",
+    "eng": "englisch",
+    "fre": "französisch",
+    "spa": "spanisch",
+    "ita": "italienisch",
+    "dut": "niederländisch",
+    "swe": "schwedisch",
+    "dan": "dänisch",
+    "nor": "norwegisch",
+    "pol": "polnisch",
+    "por": "portugiesisch",
+    "tur": "türkisch",
+    "rus": "russisch",
+    "jpn": "japanisch",
+    "hun": "ungarisch",
+    "rum": "rumänisch",
+}
+
+
+def language_name(code: str) -> str:
+    return LANGUAGE_NAMES.get(code, code)
+
+
+def is_other_language(code: str | None, settings: Settings) -> bool:
+    """Ob eine **ausdrueckliche** Sprache keine des Profils ist.
+
+    Dieselbe Zurueckhaltung wie bei :func:`is_foreign`: keine Angabe und die
+    Sonderwerte ("unbestimmt", "mehrsprachig") sagen nicht, dass ein Buch
+    nicht deutsch ist.
+    """
+    return bool(code) and code not in NOT_A_LANGUAGE and code not in settings.languages
+
+
 def language_of_isbn(isbn: str) -> str | None:
     """Die Sprache, die die Registrierungsgruppe nennt — oder nichts.
 

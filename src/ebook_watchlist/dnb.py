@@ -35,9 +35,15 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import TYPE_CHECKING
 
-from .http import FetchError, HttpClient
+from .http import FetchError, HttpClient, RateLimited
+
+if TYPE_CHECKING:
+    from .store import Store
 
 SRU_URL = "https://services.dnb.de/sru/dnb"
 
@@ -192,3 +198,45 @@ class Dnb:
             return None
         datensatz = parse(xml)
         return None if datensatz.is_empty else datensatz
+
+
+@dataclass(slots=True)
+class OriginalTitles:
+    """Der Originaltitel zu ISBNs, fuer die Zuordnung eines Watchlist-Titels (#77).
+
+    Erst die Tabelle ``dnb_record``, dann — nur fuer das, was sie nicht kennt
+    — die DNB selbst, und deren Antwort landet in derselben Tabelle, genau wie
+    beim Nachschlagen hinter dem Snapshot (ADR 25). Die Frage kostet also
+    einmal je ISBN, nicht einmal je Lauf.
+
+    ``budget`` ist dieselbe Obergrenze wie ``dnb_budget``: was die Zuordnung
+    verbraucht, steht dem Nachschlagen hinter dem Snapshot nicht mehr zur
+    Verfuegung (:attr:`spent`). Ohne ``dnb`` antwortet nur die Tabelle — so
+    arbeitet jeder Weg, der keine Anfragen stellen soll.
+    """
+
+    store: Store
+    dnb: Dnb | None = None
+    budget: int = 0
+    now: datetime | None = None
+    #: Was davon verbraucht ist. Eine gedrosselte DNB verbraucht den Rest:
+    #: 429 heisst Halt, auch fuer alles, was nach der Zuordnung noch kaeme.
+    spent: int = 0
+
+    def __call__(self, isbns: Sequence[str]) -> dict[str, str | None]:
+        bekannt = self.store.dnb_original_titles(isbns)
+        for isbn in isbns:
+            if isbn in bekannt or self.dnb is None or self.spent >= self.budget:
+                continue
+            self.spent += 1
+            try:
+                datensatz = self.dnb.about(isbn)
+            except RateLimited:
+                self.spent = self.budget
+                break
+            except Exception:  # noqa: BLE001 - eine Auskunft, nicht die Zuordnung
+                continue
+            # Auch das Schweigen, damit niemand dieselbe ISBN erneut fragt.
+            self.store.save_dnb(isbn, datensatz, self.now or datetime.now())
+            bekannt[isbn] = datensatz.original_title if datensatz else None
+        return bekannt
