@@ -127,6 +127,30 @@
 </figure>
 {% endmacro %}
 
+{# Merkmale und Erzählmuster, eine Spinne zur Zeit — auf Profil- und Buchseite
+   derselbe Umschalter. Gedrückte Knöpfe, keine Reiter: es gibt keine
+   Reiterfläche, nur zwei Ansichten derselben Stelle. Beide Makros erwarten
+   ein `x-data` mit `spiderTab` (1 = die erste Spinne) darüber. #}
+{% macro switch(spiders) %}
+{% if spiders | length > 1 %}
+<div role="group" aria-label="Ansicht" data-spider-switch
+     class="inline-flex shrink-0 rounded-lg bg-hair p-0.5 text-xs">
+  {% for s in spiders %}
+  <button type="button" @click="spiderTab = {{ loop.index }}"
+          :aria-pressed="spiderTab === {{ loop.index }}"
+          :class="spiderTab === {{ loop.index }} ? 'bg-card text-ink shadow-sm' : 'text-soft hover:text-ink'"
+          class="rounded-md px-3 py-1.5 font-medium transition">{{ s.title }}</button>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro toggled(spiders) %}
+{% for s in spiders %}
+<div x-show="spiderTab === {{ loop.index }}" {{ '' if loop.first else 'x-cloak' }}>{{ spider(s, caption=false) }}</div>
+{% endfor %}
+{% endmacro %}
+
 {% macro legend(with_book=false, unknown=0, sides=false, classes="mt-1") %}
 <p class="{{ classes }} flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft">
   <span class="inline-flex items-center gap-1.5">

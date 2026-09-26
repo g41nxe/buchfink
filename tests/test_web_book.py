@@ -1213,6 +1213,18 @@ def test_the_fit_stands_under_the_judgement(
     assert "Harry Hole wird zurückgeholt." in body
     # Das Buch über der Geschmacksform (#79).
     assert 'data-spider="Merkmale"' in body and "dieses Buch" in body
+    # Ein Umschalter wie auf der Profilseite, eine Spinne zur Zeit (26.09.2026) —
+    # sobald die Form auch Erzählmuster kennt.
+    from dataclasses import replace
+
+    from ebook_watchlist.facets import Liked
+
+    with_patterns = replace(_profile(), liked=(Liked("pursuit"), Liked("quest"), Liked("escape")))
+    db.put_reading_profile(load_settings().slug, with_patterns, cause="Test", now=NOW)
+    body = client.get(f"/book/{book.id}").text
+    fit = body.split("data-spider-switch", 1)[1]
+    assert "Merkmale" in fit and "Erzählmuster" in fit
+    assert 'x-show="spiderTab === 2"' in body
 
 
 def test_without_a_profile_there_is_no_fit(

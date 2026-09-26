@@ -109,25 +109,11 @@
        wählt Merkmale oder Erzählmuster. Gedrückte Knöpfe, keine Reiter — es
        gibt keine Reiterfläche, nur zwei Ansichten derselben Karte. #}
     {% if view.spiders %}
-    {% from "_spider.html" import spider, legend %}
-    {% set switch %}
-    {% if view.spiders | length > 1 %}
-    <div role="group" aria-label="Ansicht" class="inline-flex shrink-0 rounded-lg bg-hair p-0.5 text-xs">
-      {% for s in view.spiders %}
-      <button type="button" @click="spiderTab = {{ loop.index }}"
-              :aria-pressed="spiderTab === {{ loop.index }}"
-              :class="spiderTab === {{ loop.index }} ? 'bg-card text-ink shadow-sm' : 'text-soft hover:text-ink'"
-              class="rounded-md px-3 py-1.5 font-medium transition">{{ s.title }}</button>
-      {% endfor %}
-    </div>
-    {% endif %}
-    {% endset %}
+    {% from "_spider.html" import switch, toggled, legend %}
     {% call card("Geschmacksform", "ic-radar",
                  sub="Jede Familie an ihrem Platz, gelernt aus deinen Büchern.",
-                 extra=switch) %}
-      {% for s in view.spiders %}
-      <div x-show="spiderTab === {{ loop.index }}" {{ '' if loop.first else 'x-cloak' }}>{{ spider(s, caption=false) }}</div>
-      {% endfor %}
+                 extra=switch(view.spiders)) %}
+      {{ toggled(view.spiders) }}
       {{ legend(sides=true, classes="mt-3 border-t border-hair pt-3") }}
     {% endcall %}
     {% endif %}

@@ -63,11 +63,11 @@
      Untereinander, nicht nebeneinander: die Namen an 44 Speichen brauchen die
      Breite (Recherche zur Spinne, 26.09.2026). #}
   {% if fit.spiders %}
-  {% from "_spider.html" import spider, legend %}
-  <div class="mt-4">
-    <div class="grid gap-6">
-      {% for s in fit.spiders %}{{ spider(s) }}{% endfor %}
-    </div>
+  {% from "_spider.html" import switch, toggled, legend %}
+  <div class="mt-4" x-data="{ spiderTab: 1 }">
+    {# Der Umschalter wie auf der Profilseite: eine Spinne zur Zeit. #}
+    <div class="mb-2 flex justify-end">{{ switch(fit.spiders) }}</div>
+    {{ toggled(fit.spiders) }}
     {{ legend(with_book=true, unknown=fit.unknown) }}
   </div>
   {% endif %}
