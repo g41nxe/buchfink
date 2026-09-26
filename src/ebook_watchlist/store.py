@@ -592,6 +592,16 @@ def _better_spelling(kept: str | None, seen: str | None) -> str | None:
     return preferred_spelling([kept, seen]) or kept
 
 
+#: Welcher Steckbrief eines Buchs gilt: einer mit Text vor jedem ohne, dann
+#: der jüngste. Eine Zeile aus der Zeit vor der Spalte (``NULL``) zählt wie
+#: „ohne Text" — ob einer dabei war, weiß niemand mehr.
+_BEST_PORTRAIT_FIRST = (
+    PortraitRow.with_text.is_(True).desc(),
+    PortraitRow.created_at.desc(),
+    PortraitRow.id.desc(),
+)
+
+
 def _portrait_of(row: PortraitRow) -> Portrait:
     """Eine gespeicherte Zeile als Steckbrief."""
     return Portrait(
@@ -1746,12 +1756,16 @@ class Store:
         Ein Steckbrief mit altem Fingerabdruck gilt nicht mehr: Anweisung oder
         Merkmale haben sich seitdem geändert, und er wird neu angelegt, sobald
         ihn jemand braucht.
+
+        Einer, der mit Text entstand, geht jedem ohne vor, auch einem jüngeren:
+        aus dem Gedächtnis hielt das Modell *Gestohlene Erinnerung* für *Dark
+        Matter* (26.09.2026). Unter Gleichen gilt der jüngste.
         """
         with self.session() as session:
             row = session.scalars(
                 select(PortraitRow)
                 .where(PortraitRow.subject == subject, PortraitRow.fingerprint == fingerprint)
-                .order_by(PortraitRow.created_at.desc(), PortraitRow.id.desc())
+                .order_by(*_BEST_PORTRAIT_FIRST)
             ).first()
             return _portrait_of(row) if row is not None else None
 
@@ -1765,10 +1779,14 @@ class Store:
             rows = session.scalars(
                 select(PortraitRow)
                 .where(PortraitRow.subject.in_(wanted), PortraitRow.fingerprint == fingerprint)
-                .order_by(PortraitRow.created_at, PortraitRow.id)
+                .order_by(*_BEST_PORTRAIT_FIRST)
             )
-            # Aufsteigend gelesen, damit der jüngste je Schlüssel zuletzt kommt und gilt.
-            return {row.subject: _portrait_of(row) for row in rows}
+            # Der beste je Schlüssel kommt zuerst und bleibt — dieselbe Regel
+            # wie bei :meth:`portrait`.
+            best: dict[str, Portrait] = {}
+            for row in rows:
+                best.setdefault(row.subject, _portrait_of(row))
+            return best
 
     # --- Leseprofil aus Facetten (#46) ---------------------------------------
 

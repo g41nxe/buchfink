@@ -393,6 +393,27 @@ def test_the_latest_portrait_wins(store: Store) -> None:
     assert store.portrait("book:7", new.fingerprint).pitch == "Neu."
 
 
+def test_a_portrait_without_text_does_not_displace_one_with_text(store: Store) -> None:
+    """*Gestohlene Erinnerung* (26.09.2026): um 10:35 mit Klappentext
+    beschrieben, um 18:49 ohne — und der zweite hielt das Buch für *Dark
+    Matter*. Wer nur aus dem Gedächtnis schreibt, verdrängt keinen Beleg."""
+    from dataclasses import replace
+
+    vocabulary = load_vocabulary()
+    with_text = replace(parse_answer(answer(pitch="Mit Text."), vocabulary), with_text=True)
+    without = replace(parse_answer(answer(pitch="Ohne Text."), vocabulary), with_text=False)
+    later = replace(parse_answer(answer(pitch="Später mit Text."), vocabulary), with_text=True)
+
+    store.put_portrait("isbn:1", with_text, now=NOW)
+    store.put_portrait("isbn:1", without, now=NOW.replace(hour=18))
+
+    assert store.portrait("isbn:1", with_text.fingerprint).pitch == "Mit Text."
+    assert store.portraits_for(["isbn:1"], with_text.fingerprint)["isbn:1"].pitch == "Mit Text."
+
+    store.put_portrait("isbn:1", later, now=NOW.replace(hour=19))
+    assert store.portrait("isbn:1", later.fingerprint).pitch == "Später mit Text."
+
+
 def test_an_unknown_book_is_kept_too(store: Store) -> None:
     """Sonst würde jede Seite dasselbe unbekannte Buch erneut fragen."""
     portrait = parse_answer(json.dumps({"bekannt": False}), load_vocabulary())
