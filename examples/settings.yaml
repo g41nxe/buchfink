@@ -56,6 +56,9 @@ sources:
     # Which formats to watch. The Onleihe lists the ebook and the audiobook of a
     # novel as two separate titles, so without a preference neither can win.
     media: [ebook]
+    # Listen, aus denen Vorschläge kommen (#74): E-Books, Belletristik, frei.
+    lists:
+    - {path: "lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html", name: Zuletzt zurückgegeben}
   # Die zweite Plattform desselben Verbunds, mit eigenem Bestand: was die
   # Onleihe nicht führt, steht hier mitunter sehr wohl. Nur deutsche
   # EPUB-E-Books. Einstellbar sind Sammlungen, aus denen Vorschläge kommen

@@ -388,3 +388,65 @@ def test_an_abstract_without_its_own_text_stays_empty() -> None:
     </body></html>"""
 
     assert parse._blurb(parse.soup(html)) is None
+
+
+# --- „zuletzt zurückgegeben" als Vorschlagsquelle (#74) -------------------------------------
+#
+# Aufgezeichnet am 26.09.2026: 20 Karten, Belletristik gemischt mit Sachbuch,
+# Kochbuch und Noten. Die Karten tragen kein Genre und keine Verfügbarkeit.
+
+
+def test_the_list_yields_fiction_as_borrowable_finds() -> None:
+    from ebook_watchlist.models import MatchReason
+    from ebook_watchlist.sources.onleihe.parse import OnleiheList, parse_list
+
+    funde = parse_list(fixture("recently-returned.html"),
+                       OnleiheList("lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html",
+                                   "Zuletzt zurückgegeben"))
+    titel = {f.title for f in funde}
+
+    assert {"Der eiserne Sommer", "Der fröhliche Frauenhasser",
+            "Rom sehen und nicht sterben"} <= titel
+    assert not titel & {"Organische Chemie", "Linsen, Kichererbsen & Co.", "Peer Gynt"}
+    fund = next(f for f in funde if f.title == "Der fröhliche Frauenhasser")
+    assert fund.match_reason is MatchReason.GENRE_CATEGORY
+    assert fund.category == "Zuletzt zurückgegeben"
+    # Frisch zurückgegeben heißt: frei. Die ISBN steht in der Adresse des Titelbilds.
+    assert fund.availability is Availability.AVAILABLE
+    assert fund.isbn == "9783641088286"
+    assert fund.author == "Colin Cotterill"
+    assert fund.source_item_id == "361212177"
+
+
+def test_the_run_collects_the_lists_next_to_the_watchlist(tmp_path) -> None:
+    from datetime import datetime
+
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.sources.base import RunContext
+    from ebook_watchlist.sources.onleihe.parse import OnleiheList
+    from ebook_watchlist.store import Store
+
+    client = StubClient(fixture("recently-returned.html"))
+    quelle = OnleiheSource(client=client, lists=(
+        OnleiheList("lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html", "Zuletzt zurückgegeben"),))
+    context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"),
+                         now=datetime(2026, 9, 26, 12, 0))
+
+    funde = quelle.collect(load_settings(), [], context)
+
+    assert funde and all(f.category == "Zuletzt zurückgegeben" for f in funde)
+
+
+def test_the_lists_are_read_from_the_settings() -> None:
+    from ebook_watchlist.config import ConfigError
+    from ebook_watchlist.sources.onleihe.parse import OnleiheList
+    from ebook_watchlist.sources.registry import _build_onleihe
+
+    quelle = _build_onleihe("onleihe", {"lists": [
+        {"path": "lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html", "name": "Zuletzt zurückgegeben"}]},
+        StubClient(""))
+
+    assert quelle.lists == (OnleiheList("lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html",
+                                        "Zuletzt zurückgegeben"),)
+    with pytest.raises(ConfigError):
+        _build_onleihe("onleihe", {"lists": [{"name": "ohne Pfad"}]}, StubClient(""))

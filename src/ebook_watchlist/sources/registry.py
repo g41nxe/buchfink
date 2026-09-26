@@ -25,6 +25,7 @@ from .beam import BeamSource
 from .fake import FakeSource
 from .onleihe import OnleiheSource
 from .onleihe import selectors as onleihe_selectors
+from .onleihe.parse import OnleiheList
 from .overdrive import OverdriveSource
 from .overdrive.parse import Collection
 
@@ -55,7 +56,18 @@ def _build_onleihe(name: str, options: dict, client: HttpClient) -> Source:
                     f"settings.yaml: source {name!r}: unknown medium {wanted!r} (known: {known})"
                 )
             media.append(icon)
-    return OnleiheSource(client=client, name=name, media=media)
+    # Listen, aus denen Vorschläge kommen (#74), etwa:
+    #   lists:
+    #   - {path: "lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html", name: Zuletzt zurückgegeben}
+    raw_lists = options.get("lists") or []
+    if not isinstance(raw_lists, list):
+        raise ConfigError(f"settings.yaml: source {name!r}: 'lists' must be a list")
+    lists = []
+    for entry in raw_lists:
+        if not isinstance(entry, dict) or not entry.get("path") or not entry.get("name"):
+            raise ConfigError(f"settings.yaml: source {name!r}: a list needs 'path' and 'name'")
+        lists.append(OnleiheList(str(entry["path"]), str(entry["name"])))
+    return OnleiheSource(client=client, name=name, media=media, lists=tuple(lists))
 
 
 def _build_overdrive(name: str, options: dict, client: HttpClient) -> Source:

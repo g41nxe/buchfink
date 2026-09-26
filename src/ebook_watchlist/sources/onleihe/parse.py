@@ -13,7 +13,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 
-from ...models import Availability
+from ...models import Availability, MatchReason, Observation
 from ..base import SourceStructureError
 from . import selectors as sel
 
@@ -312,3 +312,87 @@ def total_hits(html: str) -> int | None:
         return 0
     match = re.search(rf"(\d+)\s+{sel.HITS_MARKER}", text)
     return int(match.group(1)) if match else None
+
+
+# --- Listen als Vorschlagsquelle (#74) ------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class OnleiheList:
+    """Eine Liste der Onleihe, aus der Vorschläge kommen — etwa „zuletzt
+    zurückgegeben". ``path`` ist die Adresse relativ zum Frontend."""
+
+    path: str
+    name: str
+
+
+#: Woran eine Karte als Belletristik zu erkennen ist. Die Karten tragen kein
+#: Genre; Untertitel und Anriss sagen es oft („Roman", „Kriminalroman", „der
+#: sechste Laos-Krimi"). Bewusst streng: lieber einen Roman verpassen, als dass
+#: Kochbücher und Formelsammlungen Steckbriefe kosten.
+_FICTION = re.compile(
+    r"(roman|krimi|thriller|erzählung|novelle|fantasy|science[- ]fiction|horror|dystopie)",
+    re.IGNORECASE,
+)
+
+#: Die ISBN steckt in der Adresse des Titelbilds: ``…/tn9783641088286s.jpg``.
+_COVER_ISBN = re.compile(r"/tn(97[89]\d{10})[a-z]?\.")
+
+
+def _natural_author(author: str | None) -> str | None:
+    """„Cotterill, Colin" → „Colin Cotterill"; mehrere mit Semikolon getrennt."""
+    if not author:
+        return None
+    names = []
+    for part in author.split(";"):
+        last, _, first = part.partition(",")
+        names.append(f"{first.strip()} {last.strip()}".strip() if first else last.strip())
+    return ", ".join(n for n in names if n) or None
+
+
+def parse_list(
+    html: str,
+    onleihe_list: OnleiheList,
+    *,
+    media: tuple[str, ...] = sel.DEFAULT_MEDIA,
+    base: str = sel.BASE,
+    source: str = "onleihe",
+) -> list[Observation]:
+    """Die Karten einer Liste als Funde: E-Book, Belletristik, ausleihbar.
+
+    Frisch zurückgegeben heißt: frei — dem Wesen der Liste nach. Wird das Buch
+    wieder verliehen, steht es beim nächsten Lauf nicht mehr darin.
+    """
+    funde = []
+    for card in parse_search_results(html, base) or []:
+        if card.medium not in media:
+            continue
+        if not _FICTION.search(f"{card.subtitle or ''} {card.blurb or ''}"):
+            continue
+        kennung = _title_id(card.url)
+        if kennung is None:
+            continue
+        isbn = _COVER_ISBN.search(card.cover_url or "")
+        funde.append(
+            Observation(
+                source=source,
+                source_item_id=kennung,
+                title=card.title,
+                author=_natural_author(card.author),
+                match_reason=MatchReason.GENRE_CATEGORY,
+                category=onleihe_list.name,
+                isbn=isbn.group(1) if isbn else None,
+                availability=Availability.AVAILABLE,
+                cover_url=card.cover_url,
+                blurb=card.blurb,
+                url=card.url,
+            )
+        )
+    return funde
+
+
+def _title_id(url: str) -> str | None:
+    """``mediaInfo,0-0-361212177-200-…`` → ``361212177``."""
+    treffer = re.search(r"mediaInfo,\d+-\d+-(\d+)-", url)
+    return treffer.group(1) if treffer else None
+

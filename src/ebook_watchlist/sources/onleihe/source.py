@@ -9,13 +9,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from urllib.parse import urljoin
 
-from ...config import WatchlistEntry
+from ...config import Settings, WatchlistEntry
 from ...http import HttpClient, NotFound
 from ...matching import Candidate, Confidence, Query, Resolution, match
 from ...models import MatchReason, Observation
-from ..base import Item, LibrarySource, SourceStructureError
+from ..base import Item, LibrarySource, RunContext, SourceStructureError
 from . import parse
 from . import selectors as sel
+from .parse import OnleiheList
 
 SOURCE_NAME = "onleihe"
 
@@ -53,11 +54,36 @@ class OnleiheSource(LibrarySource):
         name: str = SOURCE_NAME,
         base: str = sel.BASE,
         media: Sequence[str] = sel.DEFAULT_MEDIA,
+        lists: Sequence[OnleiheList] = (),
     ) -> None:
         self.client = client
         self.name = name
         self.base = base
         self.media = tuple(media)
+        #: Listen, aus denen Vorschläge kommen (#74), etwa „zuletzt zurückgegeben".
+        self.lists = tuple(lists)
+
+    def collect(
+        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
+    ) -> list[Observation]:
+        """Die Watchlist wie jede Bibliothek, dazu die erste Seite jeder Liste.
+
+        Eine Anfrage je Liste und Lauf: die Onleihe hat ein eigenes Tempolimit.
+        Was die Watchlist schon abdeckt oder verworfen ist, kommt nicht noch
+        einmal — dieselbe Regel wie beim Shop.
+        """
+        observations = self.watch(watchlist, context)
+        seen = {o.source_item_id for o in observations}
+        for onleihe_list in self.lists:
+            html = self.client.get(urljoin(self.base, onleihe_list.path))
+            for fund in parse.parse_list(
+                html, onleihe_list, media=self.media, base=self.base, source=self.name
+            ):
+                if fund.source_item_id in seen or context.is_dismissed(fund):
+                    continue
+                seen.add(fund.source_item_id)
+                observations.append(fund)
+        return observations
 
     def check(self, entry: WatchlistEntry) -> Observation | None:
         """Availability for an entry whose detail page is already pinned.
