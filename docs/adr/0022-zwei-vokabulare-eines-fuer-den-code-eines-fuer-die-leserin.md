@@ -141,6 +141,18 @@ benennen, wie sie sind.
 >   übersetzt den Wert und zieht ihn um. Auch ein Formular, das noch mit dem
 >   alten Rücksprung (`/watchlist?nur=unklar`, `back=buch`) offen war, kommt
 >   an.
+> - **Das Antwortformat des Modells bleibt deutsch.** Der Prompt in
+>   `portrait.py` verlangt JSON mit den Schlüsseln `bekannt`, `titel`,
+>   `autor`, `originaltitel`, `genre`, `untergenre`, `pitch`, `merkmale`,
+>   `erzaehlmuster`, `id`, `satz`, `beleg`, `gewicht`, und seine Platzhalter
+>   heißen `{vokabular}` und `{buch}`. Das ist das Wire-Format zwischen Code
+>   und Modell, kein Bezeichner. `fingerprint()` rechnet über `TEMPLATE`;
+>   eine Umbenennung änderte den Abdruck, und jeder gespeicherte Steckbrief
+>   verfiele (ADR 33). Deshalb bleiben auch die Schlüsselwörter an
+>   `TEMPLATE.format(vokabular=…, buch=…)` und in den Tests die an
+>   `answer(merkmale=…, erzaehlmuster=…, bekannt=…)`, die zu Schlüsseln der
+>   Antwort werden, deutsch. Umgestellt wird erst zusammen mit einer ohnehin
+>   fälligen Prompt-Änderung (#69), wenn überhaupt.
 > - **Kommandozeilen-Optionen** (`--datei`, `--nur-bekannte`, `--anzahl`,
 >   `--fruehestens-nach`) sind Leseformat wie eine Adresse, stehen aber in
 >   Cron-Einträgen, im Skill `buch-bewerten` und in `docs/betrieb.md`; sie
@@ -149,3 +161,8 @@ benennen, wie sie sind.
 >   `sterne_ab` im Bewertungsschema, die Vokabular-Dateien mit `merkmale`,
 >   `familien`, `beschreibung`, `muster`) bleiben deutsch, wie oben für
 >   Config- und Profildateien festgehalten.
+>
+> Nach diesem Nachtrag findet ein Durchgang über die NAME-Tokens von `src/`
+> und `tests/` keine deutschen Bezeichner mehr außer den hier genannten
+> Schlüsselwörtern des Antwortformats. (`activ=` in `test_seed.py` ist ein
+> absichtlich falscher Schlüssel, kein deutsches Wort.)
