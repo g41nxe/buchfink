@@ -21,9 +21,9 @@
    Entscheidung ein, die Pille sagt, warum dieses Buch ueberhaupt da ist. #}
 {% set origin_pill %}
 {% if page.origin %}
-<span class="rounded px-1.5 py-0.5 text-xs font-medium
-             {{ 'bg-accent/15 text-accent' if page.origin.author_driven
-                else 'bg-amber/15 text-amber' }}">{{ page.origin.short }}</span>
+{% from "_origin_pill.html" import origin_pill %}
+{{ origin_pill(page.origin.short, author=page.origin.author_driven,
+               from_list=page.origin.from_list) }}
 {% endif %}
 {% endset %}
 

@@ -997,3 +997,50 @@ def test_a_later_volume_leaves_the_pile_and_is_counted(db: Store) -> None:
 
     assert [s.title for s in pile.items] == ["Otherland. Band 2"]
     assert (1, "mitten in einer Reihe") in pile.hidden
+
+
+def test_a_library_list_is_not_shown_as_a_genre(client: TestClient, db: Store) -> None:
+    """„Lucky Day" stand in der Bernstein-Pille eines Themas und unter dem
+    Filter „Themen" (26.09.2026). Eine Liste der Bibliothek ist ihre eigene
+    Herkunft."""
+    from dataclasses import replace
+
+    from ebook_watchlist.models import Availability
+
+    shelf = found(db, item_id="t", title="Ein Thriller")
+    today = datetime.now()
+    run_id = db.start_run("test", "cli", today)
+    db.append(run_id, "test", [replace(
+        shelf, source="overdrive", source_item_id="l", title="Der Hausmann", price_cents=None,
+        category="Lucky Day", availability=Availability.AVAILABLE,
+    )], today)
+
+    pile = view.pending(db, load_settings())
+    by_title = {s.title: s for s in pile.items}
+    assert by_title["Der Hausmann"].from_list
+    assert not by_title["Ein Thriller"].from_list
+
+    themes = view.pending(db, load_settings(), reason="genre_category")
+    lists = view.pending(db, load_settings(), reason="library_list")
+    assert [s.title for s in themes.items] == ["Ein Thriller"]
+    assert [s.title for s in lists.items] == ["Der Hausmann"]
+    assert 'href="/suggestions?reason=library_list"' in client.get("/suggestions").text
+
+
+def test_the_find_page_does_not_show_a_library_list_as_a_genre(
+    client: TestClient, db: Store
+) -> None:
+    from dataclasses import replace
+
+    from ebook_watchlist.models import Availability
+
+    shelf = found(db, item_id="t", title="Ein Thriller")
+    db.append(db.start_run("test", "cli", NOW), "test", [replace(
+        shelf, source="overdrive", source_item_id="l", title="Der Hausmann", price_cents=None,
+        category="Lucky Day", availability=Availability.AVAILABLE,
+    )], NOW)
+
+    body = client.get("/discovery/overdrive/l").text
+
+    assert "Lucky Day" in body and "bg-amber/15 text-amber\">Lucky Day" not in body
+    assert 'href="#ic-lib"/></svg>Lucky Day' in body

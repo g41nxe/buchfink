@@ -39,7 +39,7 @@ from ..ratings import (
     book_subject,
     subject_of,
 )
-from ..reasons import short_why, why_shown
+from ..reasons import is_library_list, short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sample import fetcher
 from ..sources import build_sources, registry
@@ -175,6 +175,8 @@ class Origin:
     #: Autor:in oder Thema — dieselbe Farbtrennung wie in der Triage.
     author_driven: bool
     when: datetime | None
+    #: Aus einer Liste der Bibliothek („Lucky Day"), nicht aus einem Thema.
+    from_list: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -554,6 +556,7 @@ def _origin(seen) -> Origin | None:
             short=short_why(observation),
             author_driven=observation.match_reason is MatchReason.PROFILE_AUTHOR,
             when=observation.observed_at,
+            from_list=is_library_list(observation),
         )
     return None
 

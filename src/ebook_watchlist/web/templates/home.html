@@ -212,9 +212,9 @@
   {% for item in view.suggestions %}
     <li>
       {% set pill %}
-      <span class="rounded px-1.5 py-0.5 text-xs font-medium
-                   {{ 'bg-accent/15 text-accent' if item.reason == 'profile_author'
-                      else 'bg-amber/15 text-amber' }}">{{ item.why_short }}</span>
+      {% from "_origin_pill.html" import origin_pill %}
+      {{ origin_pill(item.why_short, author=item.reason == 'profile_author',
+                     from_list=item.from_list) }}
       {% endset %}
 
       {% set under_author %}

@@ -26,7 +26,13 @@ from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
 from ..ratings import subject_of
-from ..reasons import genre_category_name, short_why, source_kinds, why_shown
+from ..reasons import (
+    genre_category_name,
+    is_library_list,
+    short_why,
+    source_kinds,
+    why_shown,
+)
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..series import mid_series_finder
 from ..sources import registry
@@ -91,6 +97,8 @@ class Suggestion:
     #: Schluessel "zuletzt hinzugefuegt"; ein Fund wird nicht hinzugefuegt,
     #: er taucht auf.
     observed_at: datetime | None = None
+    #: Aus einer Liste der Bibliothek („Lucky Day"), nicht aus einem Thema.
+    from_list: bool = False
 
     @property
     def is_bundle(self) -> bool:
@@ -235,6 +243,7 @@ def _suggestion(
         bundle=bundle,
         borrowable=observation.availability is Availability.AVAILABLE,
         observed_at=observation.observed_at,
+        from_list=is_library_list(observation),
     )
 
 
@@ -255,6 +264,16 @@ def _fresh(observation: Observation, library_sources: set[str], now: datetime) -
     ):
         return replace(observation, availability=Availability.UNKNOWN)
     return observation
+
+
+#: Der Filter für Funde aus einer Liste der Bibliothek. Kein Match Reason:
+#: gespeichert werden sie wie ein Thema (`reasons.is_library_list`).
+LIBRARY_LIST = "library_list"
+
+
+def _origin(observation: Observation) -> str:
+    """Wonach der Stapel filtert: der Anlass, eine Bibliotheksliste eigens."""
+    return LIBRARY_LIST if is_library_list(observation) else str(observation.match_reason)
 
 
 def _one_per_book(items: list[Suggestion]) -> list[Suggestion]:
@@ -366,7 +385,7 @@ def pending(
         if verdict is not None and verdict.withholds(judge.threshold):
             hidden_weak += 1
             continue
-        if reason and str(observation.match_reason) != reason:
+        if reason and _origin(observation) != reason:
             continue
         items.append(
             _suggestion(observation, settings, verdict, advantage, covers)

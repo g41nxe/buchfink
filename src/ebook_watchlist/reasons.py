@@ -66,6 +66,22 @@ def _is_library(source: str) -> bool:
     return source_kinds().get(source) == "library"
 
 
+def is_library_list(observation: Observation) -> bool:
+    """Ein Fund aus einer Liste der Bibliothek — „Lucky Day", „Zuletzt
+    zurückgegeben" (#74), kein Thema der Leserin.
+
+    Gespeichert wird er mit dem Anlass eines Themas; die Liste trägt einen
+    Namen, ein Thema einen Shop-Pfad. Gezeigt werden beide getrennt: sonst
+    stand „Lucky Day" in der Bernstein-Pille eines Themas.
+    """
+    return (
+        observation.match_reason is MatchReason.GENRE_CATEGORY
+        and bool(observation.category)
+        and "/" not in (observation.category or "")
+        and _is_library(observation.source)
+    )
+
+
 def why_shown(observation: Observation) -> str:
     """Ein Satzteil, der den Anlass benennt — nicht den Match Reason.
 
@@ -84,7 +100,7 @@ def why_shown(observation: Observation) -> str:
     category_name = genre_category_name(observation.category)
     library = _is_library(observation.source)
     free = observation.availability is Availability.AVAILABLE
-    if category_name and library and "/" not in (observation.category or ""):
+    if category_name and is_library_list(observation):
         # Eine Sammlung der Bibliothek ist kein Regal im Shop: was darin steht,
         # lässt sich gleich leihen (#74) — wenn ein Exemplar frei ist. Eine
         # Sammlung trägt einen Namen, ein Thema der Leserin einen Shop-Pfad.

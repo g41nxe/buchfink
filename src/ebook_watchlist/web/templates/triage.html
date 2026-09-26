@@ -60,6 +60,8 @@
           active=reason == "profile_author") }}
   {{ pill("Themen", url=links["genre_category"],
           active=reason == "genre_category", tone="amber") }}
+  {{ pill("Bibliothekslisten", url=links["library_list"],
+          active=reason == "library_list") }}
 
   {{ sort_select(orders, sort, "/suggestions", sort_fields) }}
 
@@ -119,9 +121,9 @@
     {% endset %}
 
     {% set pill %}
-    <span class="rounded px-1.5 py-0.5 text-xs font-medium
-                 {{ 'bg-accent/15 text-accent' if item.reason == 'profile_author'
-                    else 'bg-amber/15 text-amber' }}">{{ item.why_short }}</span>
+    {% from "_origin_pill.html" import origin_pill %}
+    {{ origin_pill(item.why_short, author=item.reason == 'profile_author',
+                   from_list=item.from_list) }}
     {% if item.is_bundle %}
     {# Eine Sammelausgabe darf nicht aussehen wie der gesuchte Einzelband
        (ADR 24). Nennt der Name die Baende, stehen sie dabei — sonst nur die

@@ -1093,6 +1093,9 @@ def create_app() -> FastAPI:
                     "genre_category": _link(
                         "/suggestions", reason="genre_category", sort=chosen
                     ),
+                    "library_list": _link(
+                        "/suggestions", reason=triage.LIBRARY_LIST, sort=chosen
+                    ),
                 },
             },
         )

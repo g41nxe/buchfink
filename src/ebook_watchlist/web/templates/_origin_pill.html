@@ -1,0 +1,13 @@
+{# Der Anlass eines Fundes als Pille — eine Stelle für Stapel, Startseite,
+   Buch- und Fundseite. Petrol heißt Autor:in, Bernstein Thema. Eine Liste
+   der Bibliothek („Lucky Day") ist keins von beiden: neutral, mit dem Zeichen
+   der Bibliothek. Vorher stand sie in Bernstein und las sich wie ein Thema. #}
+{% macro origin_pill(label, author=false, from_list=false) %}
+{% if from_list %}
+<span class="inline-flex items-center gap-1 rounded bg-hair px-1.5 py-0.5 text-xs font-medium
+             text-ink"><svg class="i"><use href="#ic-lib"/></svg>{{ label }}</span>
+{% else %}
+<span class="rounded px-1.5 py-0.5 text-xs font-medium
+             {{ 'bg-accent/15 text-accent' if author else 'bg-amber/15 text-amber' }}">{{ label }}</span>
+{% endif %}
+{% endmacro %}
