@@ -512,3 +512,46 @@ def test_a_short_story_costs_no_portrait_and_is_held_back(store, vocabulary, wei
 
     assert kept == [] and portrayer.calls == []
     assert report.short_stories == 1
+
+
+
+# --- aus dem Review (26.09.2026) ----------------------------------------------------------
+
+
+def test_a_short_story_stays_held_back_after_its_first_sighting(store, vocabulary, weights) -> None:
+    """Ein Preissturz bringt eine Kurzgeschichte nicht zurück (#73)."""
+    kurz = discovery(isbn="9783104911854", price_cents=199, pages=40)
+    drop = Delta(DeltaKind.PRICE_DROP, kurz, replace(kurz, price_cents=299))
+
+    kept, report = run(store, vocabulary, weights, [drop], Portrayer(vocabulary, GOOD))
+
+    assert kept == [] and report.short_stories == 1
+
+
+def test_the_twin_of_a_short_story_is_held_back_too(store, vocabulary, weights) -> None:
+    """Dieselbe ISBN bei zwei Quellen: ist die eine eine Kurzgeschichte, ist es
+    die andere auch."""
+    shop = discovery(isbn="9783104911854")
+    bibliothek = discovery(isbn="9783104911854", source="onleihe", source_item_id="9")
+
+    kept, report = run(store, vocabulary, weights, [first_seen(shop), first_seen(bibliothek)],
+                       Portrayer(vocabulary, GOOD),
+                       evidence=lambda obs: [replace(o, pages=40) for o in obs])
+
+    assert kept == [] and report.short_stories == 2
+
+
+def test_a_library_find_that_becomes_free_is_judged_first(store, vocabulary, weights) -> None:
+    """Ein Bibliotheksfund, zuerst verliehen, dann frei: auch er bekommt einen
+    Steckbrief, bevor er gezeigt wird (#74)."""
+    from ebook_watchlist.models import Availability
+
+    frei = discovery(isbn="9783104911854", source="overdrive", price_cents=None,
+                     availability=Availability.AVAILABLE)
+    delta = Delta(DeltaKind.BECAME_AVAILABLE, frei,
+                  replace(frei, availability=Availability.UNAVAILABLE))
+    portrayer = Portrayer(vocabulary, POOR)
+
+    kept, report = run(store, vocabulary, weights, [delta], portrayer)
+
+    assert portrayer.calls and kept == [] and report.held_back == 1

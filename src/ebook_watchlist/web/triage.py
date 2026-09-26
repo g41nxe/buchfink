@@ -10,8 +10,8 @@ Buch bei der Onleihe wäre trotzdem wieder aufgetaucht (ADR 18).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, replace
+from datetime import datetime, timedelta
 
 from .. import paths
 from ..authorship import ai_authors, is_ai_authored
@@ -26,7 +26,7 @@ from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
 from ..ratings import subject_of
-from ..reasons import genre_category_name, short_why, why_shown
+from ..reasons import genre_category_name, short_why, source_kinds, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sources import registry
 from ..store import Store
@@ -234,6 +234,25 @@ def _suggestion(
     )
 
 
+#: Wie lange eine Verfügbarkeit einer Bibliothek im Stapel gilt. Ein Fund aus
+#: einer Liste oder Sammlung wird nur gesehen, solange er darin steht; danach
+#: bliebe er für immer „ausleihbar" (Review, #74). Eine Sammlung wird täglich
+#: gelesen, drei Tage lassen einem ausgefallenen Lauf Luft.
+LIBRARY_FRESH_DAYS = 3
+
+
+def _fresh(observation: Observation, library_sources: set[str], now: datetime) -> Observation:
+    """Die Verfügbarkeit eines Bibliotheksfunds, oder „unbekannt", wenn sie alt ist."""
+    if (
+        observation.source in library_sources
+        and observation.availability is Availability.AVAILABLE
+        and observation.observed_at is not None
+        and now - observation.observed_at > timedelta(days=LIBRARY_FRESH_DAYS)
+    ):
+        return replace(observation, availability=Availability.UNKNOWN)
+    return observation
+
+
 def pending(
     store: Store,
     settings: Settings,
@@ -273,6 +292,8 @@ def pending(
     hidden_language = 0
     hidden_ai = 0
     hidden_short = 0
+    now = datetime.now()
+    library_sources = {name for name, kind in source_kinds().items() if kind == "library"}
     for observation in found:
         if (observation.source, observation.source_item_id) in decided_items:
             continue
@@ -299,6 +320,7 @@ def pending(
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
         # weder eine Anfrage für den Klappentext noch ein Urteil.
         advantage = find_advantage(observation)
+        observation = _fresh(observation, library_sources, now)
         if not worth_announcing(observation, settings, bundle_advantage=advantage):
             hidden_priced += 1
             continue

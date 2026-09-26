@@ -6,11 +6,12 @@ holds need an authenticated scrape and are deferred to v2 (ADR 6).
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from urllib.parse import urljoin
 
 from ...config import Settings, WatchlistEntry
-from ...http import HttpClient, NotFound
+from ...http import HttpClient, NotFound, RateLimited
 from ...matching import Candidate, Confidence, Query, Resolution, match
 from ...models import MatchReason, Observation
 from ..base import Item, LibrarySource, RunContext, SourceStructureError
@@ -75,10 +76,18 @@ class OnleiheSource(LibrarySource):
         observations = self.watch(watchlist, context)
         seen = {o.source_item_id for o in observations}
         for onleihe_list in self.lists:
-            html = self.client.get(urljoin(self.base, onleihe_list.path))
-            for found_item in parse.parse_list(
-                html, onleihe_list, media=self.media, base=self.base, source=self.name
-            ):
+            try:
+                html = self.client.get(urljoin(self.base, onleihe_list.path))
+                found = parse.parse_list(
+                    html, onleihe_list, media=self.media, base=self.base, source=self.name
+                )
+            except RateLimited:
+                raise
+            except Exception as exc:  # noqa: BLE001 - eine Liste, nicht die Bibliothek
+                print(f"{self.name}: Liste {onleihe_list.name} übersprungen: "
+                      f"{type(exc).__name__}", file=sys.stderr)
+                continue
+            for found_item in found:
                 if found_item.source_item_id in seen or context.is_dismissed(found_item):
                     continue
                 seen.add(found_item.source_item_id)

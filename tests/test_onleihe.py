@@ -450,3 +450,20 @@ def test_the_lists_are_read_from_the_settings() -> None:
                                         "Zuletzt zurückgegeben"),)
     with pytest.raises(ConfigError):
         _build_onleihe("onleihe", {"lists": [{"name": "ohne Pfad"}]}, StubClient(""))
+
+
+
+def test_a_broken_list_costs_the_list_not_the_watchlist(tmp_path) -> None:
+    from datetime import datetime
+
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.sources.base import RunContext
+    from ebook_watchlist.sources.onleihe.parse import OnleiheList
+    from ebook_watchlist.store import Store
+
+    quelle = OnleiheSource(client=StubClient("<html>umgebaut</html>"),
+                           lists=(OnleiheList("weg.html", "Weg"),))
+    context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"),
+                         now=datetime(2026, 9, 26, 12, 0))
+
+    assert quelle.collect(load_settings(), [], context) == []

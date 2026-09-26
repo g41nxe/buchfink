@@ -537,3 +537,22 @@ def test_the_profile_page_leads_to_where_things_are_changed(client, db, profile)
 
     assert f'href="/book/{liked}#sharpening"' in body
     assert f'href="/book/{disliked}#sharpening"' in body
+
+
+
+def test_taking_back_a_genre_counterweight_leaves_the_general_one(client, db, profile) -> None:
+    """„X (nur bei Fantasy)" und „X" sind zwei Gegengewichte (Review)."""
+    from ebook_watchlist.facets import Counterweight, ReadingProfile
+
+    b = book(db, "Herr der Ringe", ["world_building", "leisurely", "bittersweet",
+                                    "descriptive"], kind="disliked")
+    db.put_reading_profile(slug(), ReadingProfile(profile.facets, (
+        Counterweight(("big_world",), None, ("Herr der Ringe",)),
+        Counterweight(("big_world",), "Fantasy", ("Herr der Ringe",)),
+    ), profile.liked), cause="Test", now=NOW)
+
+    client.post(f"/book/{b}/sharpen/counterweight/remove",
+                data={"family": "big_world|Fantasy"})
+
+    assert db.reading_profile(slug()).counterweights == (
+        Counterweight(("big_world",), None, ("Herr der Ringe",)),)

@@ -250,3 +250,36 @@ def test_a_portrait_remembers_whether_a_sample_went_along(store) -> None:
                        now=datetime(2026, 9, 26, 12, 0))
 
     assert store.portrait("item:beam:697", "x").with_sample is True
+
+
+
+def test_a_known_page_count_is_carried_to_the_next_sighting(store) -> None:
+    """Die Trefferliste nennt keinen Umfang; der von der Detailseite gilt weiter (#73)."""
+    from datetime import datetime
+
+    from ebook_watchlist.models import MatchReason, Observation
+
+    now = datetime(2026, 9, 26, 12, 0)
+    fund = Observation(source="beam", source_item_id="7", title="Kurz", pages=48,
+                       match_reason=MatchReason.GENRE_CATEGORY, observed_at=now)
+    store.append(store.start_run("test", "cli", now), "test", [fund], now)
+
+    (weiter,) = store.with_known_pages([Observation(
+        source="beam", source_item_id="7", title="Kurz",
+        match_reason=MatchReason.GENRE_CATEGORY)])
+
+    assert weiter.pages == 48
+
+
+def test_a_later_volume_does_not_lend_its_series_name(store) -> None:
+    """„Scythe – Der Zorn der Gerechten" ist Band 2: sein Titel trägt die Reihe,
+    nicht das gesuchte Buch (#77)."""
+    from datetime import datetime
+
+    from ebook_watchlist.dnb import Record
+
+    store.save_dnb("9783733650162", Record(title="Scythe – Der Zorn der Gerechten",
+                                           series="Scythe", series_index="2"),
+                   datetime(2026, 9, 26, 12, 0))
+
+    assert store.dnb_original_titles(["9783733650162"]) == {"9783733650162": ()}

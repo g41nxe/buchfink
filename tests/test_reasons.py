@@ -82,11 +82,37 @@ def test_the_short_form_falls_back_to_the_genre_category_word_without_a_name() -
 def test_a_library_collection_keeps_its_name_and_says_it_can_be_borrowed() -> None:
     """Lucky Day ist kein Shop-Pfad, sondern ein Name — und die Sammlung einer
     Bibliothek heißt: sofort ausleihbar (#74)."""
-    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.models import Availability, MatchReason, Observation
     from ebook_watchlist.reasons import short_why, why_shown
 
     discovery = Observation(source="overdrive", source_item_id="1", title="Der Hausmann",
-                       match_reason=MatchReason.GENRE_CATEGORY, category="Lucky Day")
+                            match_reason=MatchReason.GENRE_CATEGORY, category="Lucky Day",
+                            availability=Availability.AVAILABLE)
 
     assert short_why(discovery) == "Lucky Day"
     assert why_shown(discovery) == "sofort ausleihbar aus „Lucky Day“"
+
+
+
+def test_a_collection_find_without_free_copies_does_not_promise_them() -> None:
+    from ebook_watchlist.models import Availability, MatchReason, Observation
+    from ebook_watchlist.reasons import why_shown
+
+    fund = Observation(source="overdrive", source_item_id="1", title="T",
+                       match_reason=MatchReason.GENRE_CATEGORY, category="Lucky Day",
+                       availability=Availability.UNAVAILABLE)
+
+    assert why_shown(fund) == "aus „Lucky Day“"
+
+
+def test_a_library_is_known_by_its_kind_not_its_name(monkeypatch) -> None:
+    """Eine Onleihe namens „voebb" ist eine Bibliothek (Review)."""
+    from ebook_watchlist import reasons
+    from ebook_watchlist.models import Availability, MatchReason, Observation
+
+    monkeypatch.setattr(reasons, "source_kinds", lambda: {"voebb": "library"})
+    fund = Observation(source="voebb", source_item_id="1", title="T",
+                       match_reason=MatchReason.GENRE_CATEGORY, category="Zuletzt zurückgegeben",
+                       availability=Availability.AVAILABLE)
+
+    assert reasons.why_shown(fund) == "sofort ausleihbar aus „Zuletzt zurückgegeben“"

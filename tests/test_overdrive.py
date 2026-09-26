@@ -419,3 +419,25 @@ def test_the_collection_is_read_from_the_settings() -> None:
     assert overdrive.collections == (Collection("1572172", "Lucky Day", ("FIC",)),)
     with pytest.raises(ConfigError):
         _build_overdrive("overdrive", {"collections": [{"name": "ohne Nummer"}]}, StubClient(""))
+
+
+
+def test_a_broken_collection_costs_the_collection_not_the_watchlist(tmp_path) -> None:
+    """Zieht die Bibliothek eine Sammlung zurück, prüft die Quelle weiter (Review)."""
+    from datetime import datetime
+
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.http import NotFound
+    from ebook_watchlist.sources.base import RunContext
+    from ebook_watchlist.sources.overdrive.source import Collection
+    from ebook_watchlist.store import Store
+
+    class Gone:
+        def get(self, url, params=None):
+            raise NotFound(url)
+
+    quelle = OverdriveSource(client=Gone(), collections=(Collection("1", "Weg"),))
+    context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"),
+                         now=datetime(2026, 9, 26, 12, 0))
+
+    assert quelle.collect(load_settings(), [], context) == []

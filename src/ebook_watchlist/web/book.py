@@ -798,6 +798,10 @@ def set_relation(
     if kind not in RELATION_KINDS:
         raise ValueError(f"unbekannte Beziehung {kind!r}")
     store.put_relation(settings.slug, book_id, kind, active=active, now=now)
+    if kind == str(RelationKind.WATCHING) and active:
+        from .watchlist import watch_again
+
+        watch_again(store, settings.slug, book_id, now=now)
 
 
 def price_points(history: tuple[Sighting, ...]) -> list[Sighting]:

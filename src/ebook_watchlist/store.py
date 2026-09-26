@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Sequence
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -1028,6 +1029,32 @@ class Store:
                     )
             return facts
 
+    def with_known_pages(self, observations: Sequence[Observation]) -> list[Observation]:
+        """Den zuletzt bekannten Umfang je Fund nachtragen (#73).
+
+        Die Trefferliste nennt keinen Umfang, nur die Detailseite; ohne das
+        stünde eine Kurzgeschichte nach einem Tag wieder im Stapel, weil die
+        neue Sichtung aus der Liste die ältere mit Seitenzahl überdeckt.
+        """
+        missing = [o for o in observations if o.pages is None]
+        if not missing:
+            return list(observations)
+        wanted = {(o.source, o.source_item_id) for o in missing}
+        with self.session() as session:
+            rows = session.execute(
+                select(ObservationRow.source, ObservationRow.source_item_id, ObservationRow.pages)
+                .where(
+                    ObservationRow.pages.is_not(None),
+                    ObservationRow.source_item_id.in_({item for _, item in wanted}),
+                )
+                .order_by(ObservationRow.id)
+            )
+            known = {(src, item): pages for src, item, pages in rows if (src, item) in wanted}
+        return [
+            replace(o, pages=known[o.key]) if o.pages is None and o.key in known else o
+            for o in observations
+        ]
+
     def dnb_original_titles(self, isbns: Iterable[str]) -> dict[str, tuple[str, ...]]:
         """ISBN -> die Namen, die die DNB dem Buch gibt: Originaltitel und Titel.
 
@@ -1050,14 +1077,24 @@ class Store:
                     DnbRecordRow.found,
                     DnbRecordRow.original_title,
                     DnbRecordRow.title,
+                    DnbRecordRow.series_index,
                 ).where(
                     DnbRecordRow.isbn.in_(wanted),
                     or_(DnbRecordRow.found.is_(False), DnbRecordRow.reading >= DNB_READING),
                 )
             )
+            # Der Titel eines späteren Bandes trägt oft nur die Reihe vorn
+            # („Scythe – Der Zorn der Gerechten" ist Band 2): er zählt nur bei
+            # Band 1 oder einem Buch ohne Reihe (Review, #77).
             return {
-                isbn: tuple(n for n in (original, title) if n) if found else ()
-                for isbn, found, original, title in rows
+                isbn: tuple(
+                    n
+                    for n in (original, title if (index or "1").strip() in ("", "1") else None)
+                    if n
+                )
+                if found
+                else ()
+                for isbn, found, original, title, index in rows
             }
 
     def dnb_languages(self) -> dict[str, str]:

@@ -586,6 +586,7 @@ def add(
         for r in store.relations_of(profile_slug, book.id)
     )
     store.put_relation(profile_slug, book.id, str(RelationKind.WATCHING), now=now)
+    watch_again(store, profile_slug, book.id, now=now)
     return Added(book.id, existed=known is not None, already_watched=watched)
 
 
@@ -680,6 +681,12 @@ def finish(
     else:
         store.put_relation(profile_slug, book_id, kind, now=now)
     store.deactivate_relation(profile_slug, book_id, str(RelationKind.WATCHING), now=now)
+
+
+def watch_again(store: Store, profile_slug: str, book_id: int, *, now: datetime) -> None:
+    """Wer ein Buch wieder beobachtet, hebt „entfernt" auf (#72): sonst
+    verschwände es beim nächsten Pausieren, statt als pausiert dazustehen."""
+    _mark_removed(store, profile_slug, book_id, False, now=now)
 
 
 def _mark_removed(

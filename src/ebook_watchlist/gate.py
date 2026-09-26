@@ -177,6 +177,13 @@ def apply(
             # Erst jetzt ist der Umfang bekannt: eine Kurzgeschichte kostet
             # keinen Steckbrief und wird nicht gezeigt (#73).
             short = {o.key for o in described if is_short_story(o)}
+            # Dieselbe ISBN bei einer zweiten Quelle ist dieselbe Kurzgeschichte.
+            short |= {
+                sibling.key
+                for o in described
+                if o.key in short
+                for sibling in waiting[subject_of(o)]
+            }
             described = [o for o in described if o.key not in short]
         # Alle auf einmal: der Steckbrief-Ersteller bündelt selbst (#66). Was er
         # nicht liefert — ein gescheitertes Bündel, ein ausgelassenes Buch —,
@@ -198,7 +205,12 @@ def apply(
 
     kept: list[Delta] = []
     for delta in deltas:
-        if delta.current.key in short:
+        # Auch ein Preissturz oder ein Freiwerden bringt eine Kurzgeschichte
+        # nicht zurück: der Umfang reist mit der Beobachtung (#73).
+        if delta.current.key in short or (
+            delta.current.match_reason is not MatchReason.WATCHLIST
+            and is_short_story(delta.current)
+        ):
             report.short_stories += 1
             continue
         if delta.current.match_reason is MatchReason.WATCHLIST:
@@ -216,7 +228,9 @@ def apply(
             verdict = judge(portrait, profile, vocabulary, weights, form)
 
         if verdict is None:
-            if delta.kind is DeltaKind.FIRST_SEEN:
+            # Ein Bibliotheksfund, der zuerst verliehen war, kommt als
+            # „frei geworden" — auch er ist eine Entdeckung ohne Urteil (#74).
+            if _is_discovery(delta):
                 if (
                     observation.key in portraits
                     or observation.key in attempted
@@ -256,6 +270,6 @@ def _is_discovery(delta: Delta) -> bool:
     gemessen, und das tut :func:`apply` an seiner eigenen Stelle.
     """
     return (
-        delta.kind is DeltaKind.FIRST_SEEN
+        delta.kind in (DeltaKind.FIRST_SEEN, DeltaKind.BECAME_AVAILABLE)
         and delta.current.match_reason is not MatchReason.WATCHLIST
     )

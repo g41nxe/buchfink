@@ -17,11 +17,12 @@ Kontaktadresse, und bei 429 haelt der HttpClient hart an.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from urllib.parse import urljoin
 
 from ...config import Settings, WatchlistEntry
-from ...http import HttpClient, NotFound
+from ...http import HttpClient, NotFound, RateLimited
 from ...matching import Candidate, Confidence, Query, Resolution, match
 from ...models import MatchReason, Observation
 from ..base import LibrarySource, RunContext, SourceStructureError
@@ -87,10 +88,18 @@ class OverdriveSource(LibrarySource):
         observations = self.watch(watchlist, context)
         seen = {o.source_item_id for o in observations}
         for collection in self.collections:
-            text = self.client.get(self._url(sel.COLLECTION_PATH, collection=collection.id))
-            for found_item in parse.parse_collection(
-                parse.payload(text), collection, source=self.name
-            ):
+            try:
+                text = self.client.get(self._url(sel.COLLECTION_PATH, collection=collection.id))
+                found = parse.parse_collection(parse.payload(text), collection, source=self.name)
+            except RateLimited:
+                raise
+            except Exception as exc:  # noqa: BLE001 - eine Sammlung, nicht die Bibliothek
+                # Zieht die Bibliothek eine Sammlung zurück, prüft die Quelle
+                # die Watchlist weiter (Review).
+                print(f"{self.name}: Sammlung {collection.name} übersprungen: "
+                      f"{type(exc).__name__}", file=sys.stderr)
+                continue
+            for found_item in found:
                 if found_item.source_item_id in seen or context.is_dismissed(found_item):
                     continue
                 seen.add(found_item.source_item_id)

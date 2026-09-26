@@ -169,7 +169,7 @@ def _by_kind(store, settings, profile, kind, title, shelf, vocabulary) -> Sharpe
             genre=shelf.genre,
             counted=tuple(
                 Family(
-                    ",".join(c.families),
+                    ",".join(c.families) + (f"|{c.genre}" if c.genre else ""),
                     family_names(c.families, vocabulary)
                     + (f" (nur bei {c.genre})" if c.genre else ""),
                     False,
@@ -376,14 +376,16 @@ def remove_counterweight(
     """Ein Gegengewicht aus diesem *Doof*-Buch zurücknehmen (#51).
 
     Es verliert nur dieses Buch; trägt es noch ein anderes, bleibt es stehen.
-    ``family`` nennt die Familien des Bündels, mit Komma getrennt.
+    ``family`` nennt die Familien des Bündels, mit Komma getrennt, und nach
+    einem ``|`` sein Genre: „X (nur bei Fantasy)" und „X" sind zwei.
     """
     shelf, _ = _book(store, settings, book_id, DISLIKED)
     profile = store.reading_profile(settings.slug)
-    families = tuple(family.split(","))
+    names, _, genre = family.partition("|")
+    families = tuple(names.split(","))
     kept, changed = [], False
     for c in profile.counterweights:
-        if c.families == families and shelf.title in c.books:
+        if c.families == families and (c.genre or "") == genre and shelf.title in c.books:
             changed = True
             rest = tuple(b for b in c.books if b != shelf.title)
             if rest:

@@ -537,6 +537,7 @@ def create_app() -> FastAPI:
             store.put_relation(
                 settings.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()
             )
+            watchlist.watch_again(store, settings.slug, book_id, now=datetime.now())
         else:
             store.deactivate_relation(
                 settings.slug, book_id, str(RelationKind.WATCHING), now=datetime.now()

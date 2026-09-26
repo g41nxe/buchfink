@@ -942,3 +942,20 @@ def test_a_short_story_is_hidden_and_counted(client: TestClient, db: Store) -> N
     assert "BattleTech - Onikuma" not in [i.title for i in pile.items]
     assert pile.hidden_short == 1
     assert "1 Kurzgeschichte" in client.get("/suggestions").text
+
+
+
+def test_an_old_library_availability_does_not_count(client: TestClient, db: Store) -> None:
+    """Ein Bibliotheksfund, der seit Tagen nicht mehr gesehen wurde, ist nicht
+    mehr sicher frei — zu leihen verspricht der Stapel nur Frisches (Review)."""
+    from dataclasses import replace
+    from datetime import timedelta
+
+    from ebook_watchlist.models import Availability
+
+    alt = found(db, item_id="alt", title="Längst weg", source="onleihe", price=None)
+    db.append(db.start_run("test", "cli", NOW), "test",
+              [replace(alt, availability=Availability.AVAILABLE,
+                       observed_at=datetime.now() - timedelta(days=5))], NOW)
+
+    assert "Längst weg" not in [i.title for i in view.pending(db, load_settings()).items]

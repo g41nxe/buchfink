@@ -764,3 +764,15 @@ def test_the_row_offers_to_take_the_entry_off_the_list(client: TestClient, db: S
     body = client.get("/watchlist").text
 
     assert 'aria-label="von der Watchlist nehmen"' in body
+
+
+
+def test_a_removed_book_taken_up_again_can_be_paused(client: TestClient, db: Store) -> None:
+    """Entfernt, wieder aufgenommen, pausiert: steht als pausiert da (Review)."""
+    book = db.books()[0]
+    client.post(f"/watchlist/{book.id}/finish", data={"kind": "removed"})
+    client.post(f"/watchlist/{book.id}/active", data={"active": "1"})
+
+    client.post(f"/watchlist/{book.id}/active", data={"active": "0"})
+
+    assert f'id="entry-{book.id}"' in client.get("/watchlist").text

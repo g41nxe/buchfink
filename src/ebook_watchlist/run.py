@@ -982,6 +982,9 @@ def _run(
         ),
     )
     observations, failures = _collect(sources, settings, watchlist, context)
+    # Der Umfang von der Detailseite gilt weiter, auch wenn die Trefferliste
+    # ihn nicht nennt (#73).
+    observations = store.with_known_pages(observations)
     failures = [*probe_failures, *failures]
     if sweep_extended and not failures:
         store.set_state(settings.slug, EXTENDED_SWEEP_KEY, started_at)
