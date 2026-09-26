@@ -959,3 +959,28 @@ def test_an_old_library_availability_does_not_count(client: TestClient, db: Stor
                        observed_at=datetime.now() - timedelta(days=5))], NOW)
 
     assert "Längst weg" not in [i.title for i in view.pending(db, load_settings()).items]
+
+
+def test_one_book_at_two_sources_is_one_suggestion(db: Store) -> None:
+    """„Broken House" stand zweimal im Stapel, bei beam und bei OverDrive — mit
+    derselben ISBN. Es bleibt eine Zeile, und die ausleihbare geht vor."""
+    from dataclasses import replace
+
+    from ebook_watchlist.models import Availability
+
+    at_shop = found(db, item_id="605720", title="Broken House - Düstere Ahnung",
+                    isbn="9783104038230", price=299, reason=MatchReason.PROFILE_AUTHOR)
+    # Heute gesehen: eine alte Verfügbarkeit einer Bibliothek zählt nicht.
+    today = datetime.now()
+    run_id = db.start_run("test", "cli", today)
+    db.append(run_id, "test", [replace(
+        at_shop, source="overdrive", source_item_id="4927425", price_cents=None,
+        title="Broken House--Düstere Ahnung", availability=Availability.AVAILABLE,
+    )], today)
+
+    pile = view.pending(db, load_settings())
+
+    assert [(s.source, s.title) for s in pile.items] == [
+        ("overdrive", "Broken House--Düstere Ahnung")
+    ]
+    assert pile.total == 1

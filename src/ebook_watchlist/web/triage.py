@@ -253,6 +253,31 @@ def _fresh(observation: Observation, library_sources: set[str], now: datetime) -
     return observation
 
 
+def _one_per_book(items: list[Suggestion]) -> list[Suggestion]:
+    """Ein Buch, eine Zeile — auch wenn zwei Quellen es führen.
+
+    „Broken House" stand zweimal im Stapel, bei beam und bei OverDrive, mit
+    derselben ISBN. Entschieden wurde schon je ISBN, gezeigt noch je Quelle.
+    Es bleibt der Fund, der am wenigsten kostet: ausleihbar vor dem
+    günstigsten Preis.
+    """
+    best: dict[str, Suggestion] = {}
+    kept: list[Suggestion] = []
+    for item in items:
+        if not item.isbn:
+            kept.append(item)
+            continue
+        other = best.get(item.isbn)
+        if other is None or _cost(item) < _cost(other):
+            best[item.isbn] = item
+    return [*kept, *best.values()]
+
+
+def _cost(item: Suggestion) -> tuple[int, int]:
+    price = item.price_cents if item.price_cents is not None else 10**9
+    return (0 if item.borrowable else 1, price)
+
+
 def pending(
     store: Store,
     settings: Settings,
@@ -336,6 +361,8 @@ def pending(
         items.append(
             _suggestion(observation, settings, verdict, advantage, covers)
         )
+
+    items = _one_per_book(items)
 
     # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
     # ersten fuenfzig einer zufaelligen Reihe, nur huebsch geordnet.
