@@ -1213,6 +1213,9 @@ def test_the_fit_stands_under_the_judgement(
     assert "Harry Hole wird zurückgeholt." in body
     # Das Buch über der Geschmacksform (#79).
     assert 'data-spider="Merkmale"' in body and "dieses Buch" in body
+    # Der Abgleich: Überblick, Brücke, Wasserfall (26.09.2026).
+    assert "data-overview" in body and "data-bridge" in body
+    assert "Wie das Urteil entsteht" in body and "data-waterfall" in body
     # Ein Umschalter wie auf der Profilseite, eine Spinne zur Zeit (26.09.2026) —
     # sobald die Form auch Erzählmuster kennt.
     from dataclasses import replace

@@ -20,6 +20,12 @@
           title="gegen Fassung {{ fit.version }} deines Leseprofils"
           >{{ fit.percent }}&nbsp;%</span>
   </div>
+  {# Was das Buch ist, in der Farbe deines Geschmacks (26.09.2026). #}
+  {% if fit.comparison %}
+  {% from "_comparison.html" import summary, overview, bridge, waterfall %}
+  <div class="mt-3 max-w-2xl">{{ summary(fit.comparison) }}{{ overview(fit.comparison) }}</div>
+  <p class="mt-5 mb-1 text-xs font-medium tracking-wider text-soft uppercase">Aus dem Steckbrief</p>
+  {% endif %}
   {# Die Facette als Marke, wie die Achsen beim Urteil des Tors: der Name
      ist die Auskunft, das Zeichen sagt, ob ganz, zum Teil oder dagegen. Kein
      Satz drumherum — "Trifft deine Facette …, wie Leichenblässe" las sich
@@ -58,18 +64,32 @@
     {% endif %}
     {% endfor %}
   </ul>
-  {# Das Buch über deiner Geschmacksform (#79): seine Spur außen zeigt, was es
-     trägt; liegt sie an einem Balken nach innen, spricht das dagegen.
-     Untereinander, nicht nebeneinander: die Namen an 44 Speichen brauchen die
-     Breite (Recherche zur Spinne, 26.09.2026). #}
+  {% if fit.comparison %}
+  {# Was es von deinem Profil abdeckt — die einzige Ansicht, die auch zeigt,
+     was fehlt. #}
+  <section class="mt-5 border-t border-hair pt-4">
+    <h3 class="text-sm font-semibold">Wie viel von deinem Profil es abdeckt</h3>
+    <p class="mb-3 text-xs text-soft">Links deine stärksten Vorlieben und Abneigungen, rechts
+      das Buch; eine Linie, wo sie sich treffen.</p>
+    {{ bridge(fit.comparison.bridge) }}
+  </section>
+  {# Wie die Zahl oben entsteht — für wen es genau wissen will. #}
+  <details class="mt-5 border-t border-hair pt-4">
+    <summary class="cursor-pointer text-sm font-semibold">Wie das Urteil entsteht</summary>
+    <div class="mt-3">{{ waterfall(fit.comparison, fit.stars) }}</div>
+  </details>
+  {% endif %}
+  {# Das Buch über deiner ganzen Geschmacksform (#79): für den Zusammenhang,
+     eingeklappt — für die Frage „passt es“ ist der Abgleich oben da. #}
   {% if fit.spiders %}
   {% from "_spider.html" import switch, toggled, legend %}
-  <div class="mt-4" x-data="{ spiderTab: 1 }">
+  <details class="mt-5 border-t border-hair pt-4" x-data="{ spiderTab: 1 }">
+    <summary class="cursor-pointer text-sm font-semibold">Deine ganze Geschmacksform</summary>
     {# Der Umschalter wie auf der Profilseite: eine Spinne zur Zeit. #}
-    <div class="mb-2 flex justify-end">{{ switch(fit.spiders) }}</div>
+    <div class="mt-3 mb-2 flex justify-end">{{ switch(fit.spiders) }}</div>
     {{ toggled(fit.spiders) }}
     {{ legend(with_book=true, unknown=fit.unknown) }}
-  </div>
+  </details>
   {% endif %}
 </div>
 {% endif %}

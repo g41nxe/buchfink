@@ -44,6 +44,7 @@ from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sample import fetcher
 from ..sources import build_sources, registry
 from ..store import Store
+from .comparison import Comparison, compare
 from .spider import Spider, book_spiders, unknown_families
 from .watchlist import SourceState
 
@@ -336,6 +337,8 @@ class FitView:
     spiders: tuple[Spider, ...] = ()
     #: Wie viele Familien des Buchs die Form nicht kennt: sie zählen nicht.
     unknown: int = 0
+    #: Überblick, Brücke und Wasserfall (26.09.2026).
+    comparison: Comparison | None = None
 
 
 def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
@@ -366,6 +369,7 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
             if judge.form is not None
             else 0
         ),
+        comparison=compare(portrait, judge),
     )
 
 

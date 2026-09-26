@@ -1,0 +1,133 @@
+{# Der Abgleich auf der Buchseite (26.09.2026): was das Buch ist (Überblick),
+   was es von deinem Profil abdeckt (Brücke), wie das Urteil entsteht
+   (Wasserfall). Gerechnet wird in `web/comparison.py`.
+
+   Farben wie überall: Petrol magst du, Rot lehnst du ab, Grau ist dir fast
+   egal oder unbekannt; Bernstein ist das Buch. Die Klassen stehen
+   ausgeschrieben, damit Tailwind sie baut: fill-accent fill-danger fill-soft
+   stroke-accent stroke-danger. #}
+
+{% set _pill_tone = {
+     "for": "bg-accent-bg text-accent ring-accent/30",
+     "against": "bg-danger/10 text-danger ring-danger/30",
+     "indifferent": "text-soft ring-rule",
+     "unknown": "text-soft ring-rule",
+   } %}
+{% set _pill_size = {
+     "prägend": "h-9 px-3.5 text-base font-semibold",
+     "deutlich": "h-8 px-3 text-sm font-medium",
+     "am Rand": "h-7 px-2.5 text-xs",
+   } %}
+{% set _word = {"for": "magst du", "against": "lehnst du ab",
+                "indifferent": "ist dir fast egal", "unknown": "kennt dein Profil noch nicht"} %}
+
+{% macro summary(c) %}
+<p class="text-sm" data-comparison-summary>
+  {% if c.strongest %}Am stärksten prägt das Buch
+  {% for p in c.strongest %}<b class="font-semibold">{{ p.name }}</b>
+  <span class="text-soft">({{ _word[p.side] }})</span>{% if not loop.last %} und {% endif %}{% endfor %}.
+  {% endif %}
+  {% if c.also_for %}Außerdem dafür: {{ c.also_for | join(", ") }}.{% endif %}
+  {% if c.against %}Dagegen spricht <b class="font-semibold text-danger">{{ c.against | join(", ") }}</b>.
+  {% else %}Nichts spricht dagegen.{% endif %}
+</p>
+{% endmacro %}
+
+{% macro overview(c) %}
+<div class="mt-3 grid gap-3 sm:grid-cols-2" data-overview>
+  {% for g in c.groups %}
+  <div>
+    <p class="mb-1 text-xs font-medium tracking-wider text-soft uppercase">{{ g.dimension }}</p>
+    <div class="flex flex-wrap items-center gap-1.5">
+      {% for p in g.pills %}
+      <span class="inline-flex items-center rounded-full ring-1 ring-inset
+                   {{ _pill_size[p.weight_word] }} {{ _pill_tone[p.side] }}"
+            title="{{ p.weight_word }} im Buch · {{ _word[p.side] }}">{{ p.name }}{% if p.side == "unknown" %}<span class="ml-1 opacity-60">?</span>{% endif %}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-soft">
+  <span><span class="text-accent">●</span> magst du</span>
+  <span><span class="text-danger">●</span> lehnst du ab</span>
+  <span>○ fast egal oder unbekannt</span>
+  <span>groß: prägt das Buch · klein: am Rand</span>
+</p>
+{% endmacro %}
+
+{# Deine stärksten Vorlieben und Abneigungen links, das Buch rechts, eine Linie,
+   wo sie sich treffen. Die einzige Ansicht, die auch zeigt, was fehlt. #}
+{% macro bridge(b) %}
+{% set rows = [b.mine | length, b.book | length] | max %}
+{% set lx, rx = 168, 318 %}
+<svg viewBox="0 0 480 {{ rows * 26 + 34 }}" class="h-auto w-full max-w-xl" role="img"
+     aria-label="Deine stärksten Vorlieben und was davon im Buch steht" data-bridge>
+  <text x="{{ lx }}" y="14" text-anchor="end" font-size="11" letter-spacing="0.5"
+        class="fill-soft uppercase">dein Geschmack</text>
+  <text x="{{ rx }}" y="14" font-size="11" letter-spacing="0.5" class="fill-soft uppercase">im Buch</text>
+  {% for m in b.mine %}
+  {% set y = 34 + loop.index0 * 26 %}
+  <text x="{{ lx - 14 }}" y="{{ y + 4 }}" text-anchor="end" font-size="13"
+        class="{{ 'fill-ink' if m.hit else 'fill-soft' }}" {% if not m.hit %}opacity="0.65"{% endif %}>{{ m.name }}</text>
+  <rect x="{{ lx - 6 }}" y="{{ y - 4 }}" width="{{ '%.0f' | format(m.value | abs * 40) }}" height="8" rx="2"
+        class="{{ 'fill-accent' if m.value > 0 else 'fill-danger' }}" opacity="{{ 1 if m.hit else 0.35 }}"/>
+  {% endfor %}
+  {% for p in b.book %}
+  {% set y = 34 + loop.index0 * 26 %}
+  {% set n = {"prägend": 3, "deutlich": 2, "am Rand": 1}[p.weight_word] %}
+  {% for i in range(3) %}
+  <circle cx="{{ rx + 6 + i * 8 }}" cy="{{ y }}" r="2.6" class="{{ 'fill-amber' if i < n else 'fill-hair' }}"/>
+  {% endfor %}
+  <text x="{{ rx + 34 }}" y="{{ y + 4 }}" font-size="13" class="fill-ink">{{ p.name }}</text>
+  {% endfor %}
+  {% set linked = b.links | map(attribute=1) | list %}
+  {% for p in b.book %}
+  {% if loop.index0 not in linked %}
+  <text x="{{ rx - 8 }}" y="{{ 34 + loop.index0 * 26 + 4 }}" text-anchor="end" font-size="11"
+        class="fill-soft">{{ {"indifferent": "fast egal", "unknown": "unbekannt"}.get(p.side, "") }}</text>
+  {% endif %}
+  {% endfor %}
+  {% for a, r, side in b.links %}
+  {% set y1, y2 = 34 + a * 26, 34 + r * 26 %}
+  <path d="M{{ lx + 36 }},{{ y1 }} C{{ (lx + rx) / 2 + 18 }},{{ y1 }} {{ (lx + rx) / 2 + 18 }},{{ y2 }} {{ rx - 4 }},{{ y2 }}"
+        class="fill-none {{ 'stroke-accent' if side == 'for' else 'stroke-danger' }}" stroke-width="2"/>
+  {% endfor %}
+</svg>
+{% if b.missing %}
+<p class="mt-2 text-xs text-soft">Was du magst und das Buch nicht hat: {{ b.missing | join(", ") }}</p>
+{% endif %}
+{% endmacro %}
+
+{# Wie die Prozentzahl entsteht: jede Zeile hebt oder senkt, die letzte ist
+   genau die Zahl oben — aus denselben Schritten wie das Urteil. #}
+{% macro waterfall(c, stars) %}
+{% set left, right = 170, 450 %}
+{% set scale = right - left %}
+{% set h = (c.waterfall | length + 1) * 22 + 34 %}
+<svg viewBox="0 0 480 {{ h }}" class="h-auto w-full max-w-xl" role="img"
+     aria-label="Wie die Übereinstimmung entsteht" data-waterfall>
+  {% for pct in (0, 25, 50, 75, 100) %}
+  {% set x = left + scale * pct / 100 %}
+  <line x1="{{ x }}" y1="8" x2="{{ x }}" y2="{{ h - 18 }}" class="stroke-hair"/>
+  <text x="{{ x }}" y="{{ h - 4 }}" text-anchor="middle" font-size="11" class="fill-soft">{{ pct }} %</text>
+  {% endfor %}
+  {% for row in c.waterfall %}
+  {% set y = 12 + loop.index0 * 22 %}
+  {% set x0 = left + scale * ([row.start, row.end] | min) %}
+  {% set x1 = left + scale * ([row.start, row.end] | max) %}
+  {% set tone = 'fill-soft' if row.kind in ('baseline', 'pattern_baseline')
+                else ('fill-accent' if row.delta >= 0 else 'fill-danger') %}
+  <text x="{{ left - 8 }}" y="{{ y + 12 }}" text-anchor="end" font-size="12" class="fill-ink">{{ row.label }}</text>
+  <rect x="{{ '%.1f' | format(x0) }}" y="{{ y + 2 }}" width="{{ '%.1f' | format([x1 - x0, 1.5] | max) }}"
+        height="14" rx="2" class="{{ tone }}" opacity="0.85"/>
+  <text x="{{ '%.1f' | format(x1 + 4) }}" y="{{ y + 13 }}" font-size="11" class="fill-soft">{{ '%+.0f' | format(row.delta * 100) }}</text>
+  {% endfor %}
+  {% set y = 12 + (c.waterfall | length) * 22 %}
+  <text x="{{ left - 8 }}" y="{{ y + 12 }}" text-anchor="end" font-size="12" font-weight="600"
+        class="fill-ink">Übereinstimmung</text>
+  <rect x="{{ left }}" y="{{ y + 2 }}" width="{{ '%.1f' | format(scale * c.share) }}" height="14" rx="2" class="fill-gold"/>
+  <text x="{{ '%.1f' | format(left + scale * c.share + 4) }}" y="{{ y + 13 }}" font-size="12" font-weight="600"
+        class="fill-ink">{{ '%.0f' | format(c.share * 100) }} % · {{ stars }} ★</text>
+</svg>
+{% endmacro %}
