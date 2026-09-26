@@ -96,6 +96,16 @@ def test_scythe_finds_the_german_edition_through_its_original_title() -> None:
     assert "Scythe" in resolution.reason
 
 
+def test_the_dnb_title_finds_it_when_the_original_title_is_missing() -> None:
+    """Gemessen am 26.09.2026: der Datensatz der deutschen Ausgabe nennt keinen
+    Originaltitel, aber seinen Titel „Scythe – Die Hüter des Todes"."""
+    resolution, _ = zuordnen(SCYTHE, KARTEN, {HUETER: ("Scythe – Die Hüter des Todes",)})
+
+    assert resolution.confidence is Confidence.AUTO_ACCEPT
+    assert resolution.accepted.identifier == HUETER
+    assert "Scythe" in resolution.reason
+
+
 def test_the_same_book_twice_is_still_one_book() -> None:
     """Dieselbe ISBN auf zwei Karten — zwei Formate derselben Ausgabe — ist
     kein Zweifel, sondern ein Buch."""
@@ -243,7 +253,7 @@ def test_a_known_original_title_is_read_from_the_table(db: Store) -> None:
 
     titel = OriginalTitles(db, Dnb(client=bibliothek), budget=5, now=NOW)([HUETER])
 
-    assert titel == {HUETER: "Scythe"}
+    assert titel == {HUETER: ("Scythe", "Die Hüter des Todes")}
     assert bibliothek.gefragt == []
 
 
@@ -253,7 +263,7 @@ def test_a_known_silence_is_not_asked_again(db: Store) -> None:
 
     titel = OriginalTitles(db, Dnb(client=bibliothek), budget=5, now=NOW)([KAMMER])
 
-    assert titel == {KAMMER: None}
+    assert titel == {KAMMER: ()}
     assert bibliothek.gefragt == []
 
 
@@ -264,7 +274,7 @@ def test_an_unknown_isbn_is_asked_and_remembered(db: Store) -> None:
 
     titel = OriginalTitles(db, Dnb(client=bibliothek), budget=5, now=NOW)([HUETER])
 
-    assert titel == {HUETER: "Scythe"}
+    assert titel[HUETER][0] == "Scythe"
     assert bibliothek.gefragt == [f"WOE={HUETER}"]
     assert db.dnb_facts([HUETER])[HUETER].original_title == "Scythe"
     assert db.dnb_languages()[HUETER] == "ger"
@@ -297,7 +307,7 @@ def test_a_throttled_library_spends_the_whole_budget(db: Store) -> None:
 def test_without_a_library_only_the_table_answers(db: Store) -> None:
     db.save_dnb(HUETER, Record(original_title="Scythe"), NOW)
 
-    assert OriginalTitles(db)([HUETER, ZORN]) == {HUETER: "Scythe"}
+    assert OriginalTitles(db)([HUETER, ZORN]) == {HUETER: ("Scythe",)}
 
 
 # --- im Lauf: eine Quelle, ein Eintrag ------------------------------------

@@ -223,7 +223,7 @@ class OriginalTitles:
     #: 429 heisst Halt, auch fuer alles, was nach der Zuordnung noch kaeme.
     spent: int = 0
 
-    def __call__(self, isbns: Sequence[str]) -> dict[str, str | None]:
+    def __call__(self, isbns: Sequence[str]) -> dict[str, tuple[str, ...]]:
         bekannt = self.store.dnb_original_titles(isbns)
         for isbn in isbns:
             if isbn in bekannt or self.dnb is None or self.spent >= self.budget:
@@ -238,5 +238,9 @@ class OriginalTitles:
                 continue
             # Auch das Schweigen, damit niemand dieselbe ISBN erneut fragt.
             self.store.save_dnb(isbn, datensatz, self.now or datetime.now())
-            bekannt[isbn] = datensatz.original_title if datensatz else None
+            bekannt[isbn] = (
+                tuple(n for n in (datensatz.original_title, datensatz.title) if n)
+                if datensatz
+                else ()
+            )
         return bekannt

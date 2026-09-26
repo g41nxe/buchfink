@@ -155,7 +155,10 @@ The title of the work a translation was made from, as the DNB records it for
 the translation's ISBN (MARC `240`). Stored in `dnb_record` like every DNB
 answer, asked for at most once per ISBN and within the per-Run `dnb_budget`
 (ADR 25). Used twice: as Evidence for a Portrait (#17), and to resolve a
-Watchlist Entry typed in the original language (#77).
+Watchlist Entry typed in the original language (#77). Not every record of a translation
+carries it: *Scythe* has none, but its DNB title reads „Scythe – Die Hüter des
+Todes". Resolution therefore compares the typed title with every name the DNB
+gives the book, and with each part of a title split at a dash or colon.
 
 ### Thunder
 *deutsch: die Schnittstelle von OverDrive*

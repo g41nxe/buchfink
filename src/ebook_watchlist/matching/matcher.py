@@ -13,6 +13,7 @@ standing between a loose search hit and a wrong title being watched for months
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
@@ -540,9 +541,23 @@ def match(query: Query, candidates: Sequence[Candidate]) -> Resolution:
     )
 
 
-#: ISBN rein, Originaltitel raus — ``None``, wo die DNB keinen nennt. Was
-#: nicht im Ergebnis steht, ist unbekannt geblieben (etwa ueber dem Budget).
-OriginalTitleLookup = Callable[[Sequence[str]], Mapping[str, "str | None"]]
+#: ISBN rein, die Namen der DNB raus: Originaltitel und Titel (ein einzelner
+#: Name oder ``None`` geht auch). Was nicht im Ergebnis steht, ist unbekannt
+#: geblieben (etwa ueber dem Budget).
+OriginalTitleLookup = Callable[[Sequence[str]], Mapping[str, Any]]
+
+#: Wo ein Titel der DNB in Teile zerfaellt: „Scythe – Die Hueter des Todes".
+_TITLE_PARTS = re.compile(r"\s+[–—-]\s+|:\s+")
+
+
+def _names(value: Any) -> tuple[str, ...]:
+    """Die Namen eines Buchs laut DNB, und jeder Teil eines zusammengesetzten
+    Titels für sich: die Übersetzung stellt den Originaltitel oft voran."""
+    if not value:
+        return ()
+    names = (value,) if isinstance(value, str) else tuple(value)
+    parts = [part for name in names for part in (name, *_TITLE_PARTS.split(name))]
+    return tuple(dict.fromkeys(p.strip() for p in parts if p and p.strip()))
 
 
 def needs_original_title(resolution: Resolution) -> bool:
@@ -608,15 +623,18 @@ def by_original_title(
 
     hits: list[tuple[Scored, str, int]] = []
     for scored in worth_asking:
-        original = known.get(scored.candidate.identifier or "")
-        if not original or volumes_conflict(query.title, original):
-            continue
-        found_title = normalize_title(original)
-        similarity = 100 if found_title == wanted_title else title_similarity(
-            wanted_title, found_title
-        )
-        if similarity >= NO_MATCH_BELOW:
-            hits.append((scored, original, similarity))
+        best_name, best_similarity = None, 0
+        for name in _names(known.get(scored.candidate.identifier or "")):
+            if volumes_conflict(query.title, name):
+                continue
+            found_title = normalize_title(name)
+            similarity = 100 if found_title == wanted_title else title_similarity(
+                wanted_title, found_title
+            )
+            if similarity > best_similarity:
+                best_name, best_similarity = name, similarity
+        if best_name is not None and best_similarity >= NO_MATCH_BELOW:
+            hits.append((scored, best_name, best_similarity))
     if not hits:
         return resolution
 

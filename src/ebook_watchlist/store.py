@@ -1028,26 +1028,37 @@ class Store:
                     )
             return fakten
 
-    def dnb_original_titles(self, isbns: Iterable[str]) -> dict[str, str | None]:
-        """ISBN -> Originaltitel, fuer jede ISBN, zu der die DNB **geantwortet** hat.
+    def dnb_original_titles(self, isbns: Iterable[str]) -> dict[str, tuple[str, ...]]:
+        """ISBN -> die Namen, die die DNB dem Buch gibt: Originaltitel und Titel.
 
-        Fuer die Zuordnung eines Watchlist-Titels (#77). Anders als
-        :meth:`dnb_facts` steht auch das Schweigen darin, als ``None``: es ist
-        eine Antwort, und wer sie hat, fragt nicht noch einmal. Was fehlt, ist
-        unbekannt. Ein Ja, das ein aelterer Parser las, zaehlt als unbekannt —
-        dieselbe Regel wie in :meth:`isbns_without_dnb`.
+        Fuer die Zuordnung eines Watchlist-Titels (#77). Der Titel gehoert dazu,
+        weil nicht jeder Datensatz einer Uebersetzung den Originaltitel fuehrt:
+        *Scythe* steht dort als „Scythe – Die Hueter des Todes", ohne Feld fuer
+        das Original (gemessen am 26.09.2026). Anders als :meth:`dnb_facts` steht
+        auch das Schweigen darin, als leeres Tupel: es ist eine Antwort, und wer
+        sie hat, fragt nicht noch einmal. Was fehlt, ist unbekannt. Ein Ja, das
+        ein aelterer Parser las, zaehlt als unbekannt — dieselbe Regel wie in
+        :meth:`isbns_without_dnb`.
         """
         gesucht = [isbn for isbn in isbns if isbn]
         if not gesucht:
             return {}
         with self.session() as session:
             zeilen = session.execute(
-                select(DnbRecordRow.isbn, DnbRecordRow.found, DnbRecordRow.original_title).where(
+                select(
+                    DnbRecordRow.isbn,
+                    DnbRecordRow.found,
+                    DnbRecordRow.original_title,
+                    DnbRecordRow.title,
+                ).where(
                     DnbRecordRow.isbn.in_(gesucht),
                     or_(DnbRecordRow.found.is_(False), DnbRecordRow.reading >= DNB_READING),
                 )
             )
-            return {isbn: original if found else None for isbn, found, original in zeilen}
+            return {
+                isbn: tuple(n for n in (original, title) if n) if found else ()
+                for isbn, found, original, title in zeilen
+            }
 
     def dnb_languages(self) -> dict[str, str]:
         """ISBN -> Sprache, fuer jede ISBN, zu der die DNB eine nennt (#10)."""
