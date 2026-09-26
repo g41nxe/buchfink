@@ -84,8 +84,12 @@
   {% set linked = b.links | map(attribute=1) | list %}
   {% for p in b.book %}
   {% if loop.index0 not in linked %}
+  {# Ohne Linie heißt nicht „zählt nicht“: was du magst, aber nicht zu deinen
+     stärksten gehört, sagt es hier selbst. #}
   <text x="{{ rx - 8 }}" y="{{ 34 + loop.index0 * 26 + 4 }}" text-anchor="end" font-size="11"
-        class="fill-soft">{{ {"indifferent": "fast egal", "unknown": "unbekannt"}.get(p.side, "") }}</text>
+        class="{{ {'for': 'fill-accent', 'against': 'fill-danger'}.get(p.side, 'fill-soft') }}"
+        >{{ {"for": "magst du", "against": "lehnst du ab", "indifferent": "fast egal",
+             "unknown": "unbekannt"}[p.side] }}</text>
   {% endif %}
   {% endfor %}
   {% for a, r, side in b.links %}
