@@ -32,6 +32,22 @@ COLLECTION_PATH = "libraries/{library}/collections/{collection}"
 COLLECTION_TYPE = "ebook"
 COLLECTION_LANGUAGE = "de"
 
+#: Nur, was jetzt ausleihbar ist (#74): die Facette „Available now".
+AVAILABLE_ONLY = {"showOnlyAvailable": "true"}
+#: Die neuesten zuerst — für Neuzugänge je Thema.
+NEWLY_ADDED = {"sortBy": "newlyadded"}
+#: Thema der Leserin (ein Pfad des Shops) → Thema bei OverDrive (#74). Gesucht
+#: wird ein Stichwort im letzten Abschnitt des Pfads; ein Thema ohne Eintrag
+#: wird bei OverDrive nicht gesucht. Die Kennungen stehen in der Facette
+#: ``subjects`` der Suchantwort (gemessen am 26.09.2026).
+GENRE_SUBJECTS = (
+    ("thriller", "100"),
+    ("krimi", "57"),
+    ("science-fiction", "80"),
+    ("horror", "38"),
+    ("fantasy", "24"),
+)
+
 #: Nur EPUB-E-Books, wie bei der Onleihe (``media: [ebook]``).
 #: ``ebook-epub-adobe`` ist das Format, das die Leserin auf einem E-Reader
 #: oeffnen kann; ``ebook-overdrive`` ist der Browser-Leser derselben Ausgabe.

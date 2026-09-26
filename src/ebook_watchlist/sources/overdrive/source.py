@@ -18,14 +18,13 @@ Kontaktadresse, und bei 429 haelt der HttpClient hart an.
 from __future__ import annotations
 
 import sys
-from collections.abc import Sequence
 from urllib.parse import urljoin
 
-from ...config import Settings, WatchlistEntry
+from ...config import WatchlistEntry
 from ...http import HttpClient, NotFound, RateLimited
-from ...matching import Candidate, Confidence, Query, Resolution, match
+from ...matching import Candidate, Confidence, Query, Resolution, author_matches, match
 from ...models import MatchReason, Observation
-from ..base import LibrarySource, RunContext, SourceStructureError
+from ..base import LibrarySource, SourceStructureError
 from . import parse
 from . import selectors as sel
 from .parse import Collection
@@ -74,37 +73,51 @@ class OverdriveSource(LibrarySource):
         #: Sammlungen, aus denen Vorschläge kommen (#74), etwa „Lucky Day".
         self.collections = tuple(collections)
 
-    # --- Vorschläge aus Sammlungen (#74) -----------------------------------
+    # --- Vorschläge (#74) --------------------------------------------------
 
-    def collect(
-        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
-    ) -> list[Observation]:
-        """Die Watchlist wie jede Bibliothek, dazu die Titel der Sammlungen.
+    def _finds(self, params: dict, reason: MatchReason, category: str | None = None):
+        query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **sel.LANGUAGE_PARAMS,
+                     **sel.AVAILABLE_ONLY, **params)
+        text = self.client.get(self._url(sel.SEARCH_PATH), params=query)
+        return parse.parse_finds(
+            parse.payload(text), source=self.name, reason=reason, category=category
+        )
 
-        Ein Aufruf je Sammlung und Lauf. Was die Watchlist schon abdeckt oder
-        die Leserin für immer verworfen hat, kommt nicht noch einmal — dieselbe
-        Regel wie beim Shop.
-        """
-        observations = self.watch(watchlist, context)
-        seen = {o.source_item_id for o in observations}
+    def by_author(self, author: str) -> list[Observation]:
+        """Was die Bibliothek jetzt von dieser Autorin verleihen kann — nur, wo sie
+        wirklich die Autorin ist (die Suche findet auch Nennungen im Text)."""
+        return [
+            fund
+            for fund in self._finds({"query": author}, MatchReason.PROFILE_AUTHOR)
+            if author_matches(author, fund.author)
+        ]
+
+    def by_category(self, category_path: str) -> list[Observation]:
+        """Die Neuzugänge zu einem Thema der Leserin, frei und auf Deutsch."""
+        slug = category_path.strip("/").rsplit("/", 1)[-1]
+        subject = next((sid for word, sid in sel.GENRE_SUBJECTS if word in slug), None)
+        if subject is None:
+            return []
+        return self._finds(
+            {"subject": subject, **sel.NEWLY_ADDED}, MatchReason.GENRE_CATEGORY, category_path
+        )
+
+    def extra_discoveries(self) -> list[Observation]:
+        """Die Titel der Sammlungen, etwa „Lucky Day". Eine Sammlung, die die
+        Bibliothek zurückzieht, kostet nur sich (Review)."""
+        found: list[Observation] = []
         for collection in self.collections:
             try:
                 text = self.client.get(self._url(sel.COLLECTION_PATH, collection=collection.id))
-                found = parse.parse_collection(parse.payload(text), collection, source=self.name)
+                found += parse.parse_collection(
+                    parse.payload(text), collection, source=self.name
+                )
             except RateLimited:
                 raise
             except Exception as exc:  # noqa: BLE001 - eine Sammlung, nicht die Bibliothek
-                # Zieht die Bibliothek eine Sammlung zurück, prüft die Quelle
-                # die Watchlist weiter (Review).
                 print(f"{self.name}: Sammlung {collection.name} übersprungen: "
                       f"{type(exc).__name__}", file=sys.stderr)
-                continue
-            for found_item in found:
-                if found_item.source_item_id in seen or context.is_dismissed(found_item):
-                    continue
-                seen.add(found_item.source_item_id)
-                observations.append(found_item)
-        return observations
+        return found
 
     # --- Pruefung ----------------------------------------------------------
 

@@ -235,6 +235,9 @@ class Candidate:
     #: Das Vorschaubild der Karte, fuer die Auswahl bei einer offenen
     #: Zuordnung (Ticket 41).
     cover_url: str | None = None
+    #: Ob die Karte frei ist: eine verliehene trägt „Voraussichtlich verfügbar
+    #: ab …" (#74). ``None`` bei einer Karte ohne Titel oder Link.
+    available: bool | None = None
 
 
 def _card_text(card: Tag, selector: str) -> str | None:
@@ -250,6 +253,22 @@ def _medium_of(card: Tag) -> str | None:
         name = icon.get("test-id")
         if isinstance(name, str) and name in sel.MEDIUM_ICONS:
             return name
+    return None
+
+
+def _card_available(card: Tag) -> bool | None:
+    """Frei oder verliehen, nach der Karte (#74).
+
+    Eine verliehene Karte trägt die Marke „Voraussichtlich verfügbar ab:" vor
+    dem Datum. Eine freie trägt „Verfügbar" — aber als ``<p>`` in einem
+    ``<small>``, und ``lxml`` schließt das ``<small>`` davor: der Text steht
+    dann neben dem Feld, nicht darin. Deshalb entscheidet die Marke.
+    """
+    label = card.select_one(sel.CARD_AVAILABILITY_LABEL)
+    if label is not None and "ab" in label.get_text(" ", strip=True).casefold():
+        return False
+    if label is not None or card.select_one(sel.CARD_AVAILABILITY) is not None:
+        return True
     return None
 
 
@@ -294,6 +313,7 @@ def parse_search_results(html: str, base: str = sel.BASE) -> list[Candidate] | N
                 medium=_medium_of(card),
                 url=urljoin(base, str(href)),
                 cover_url=_card_cover(card, base),
+                available=_card_available(card),
             )
         )
     return candidates
@@ -324,6 +344,10 @@ class OnleiheList:
 
     path: str
     name: str
+    #: Nur Karten, die sich als Belletristik zu erkennen geben — bei einer
+    #: gemischten Liste wie „zuletzt zurückgegeben". Die Neuzugänge der
+    #: Kategorie Belletristik brauchen den Filter nicht.
+    fiction_only: bool = True
 
 
 #: Woran eine Karte als Belletristik zu erkennen ist. Die Karten tragen kein
@@ -358,16 +382,16 @@ def parse_list(
     base: str = sel.BASE,
     source: str = "onleihe",
 ) -> list[Observation]:
-    """Die Karten einer Liste als Funde: E-Book, Belletristik, ausleihbar.
-
-    Frisch zurückgegeben heißt: frei — dem Wesen der Liste nach. Wird das Buch
-    wieder verliehen, steht es beim nächsten Lauf nicht mehr darin.
+    """Die Karten einer Liste als Funde: E-Book, frei, bei gemischten Listen
+    nur Belletristik. Eine verliehene Karte trägt ihren Vermerk und fällt weg.
     """
     found_items = []
     for card in parse_search_results(html, base) or []:
-        if card.medium not in media:
+        if card.medium not in media or card.available is False:
             continue
-        if not _FICTION.search(f"{card.subtitle or ''} {card.blurb or ''}"):
+        if onleihe_list.fiction_only and not _FICTION.search(
+            f"{card.subtitle or ''} {card.blurb or ''}"
+        ):
             continue
         item_id = _title_id(card.url)
         if item_id is None:
@@ -395,4 +419,47 @@ def _title_id(url: str) -> str | None:
     """``mediaInfo,0-0-361212177-200-…`` → ``361212177``."""
     hit = re.search(r"mediaInfo,\d+-\d+-(\d+)-", url)
     return hit.group(1) if hit else None
+
+
+def author_finds(
+    html: str,
+    author: str,
+    *,
+    media: tuple[str, ...] = sel.DEFAULT_MEDIA,
+    base: str = sel.BASE,
+    source: str = "onleihe",
+) -> list[Observation]:
+    """Die freien E-Books dieser Autorin auf einer Trefferseite (#74).
+
+    Nur, wo sie wirklich die Autorin ist: die Suche findet auch Nennungen im
+    Klappentext oder als Übersetzerin.
+    """
+    from ...matching import author_matches
+
+    funde = []
+    for card in parse_search_results(html, base) or []:
+        if card.medium not in media or card.available is False:
+            continue
+        name = _natural_author(card.author)
+        if not author_matches(author, name):
+            continue
+        kennung = _title_id(card.url)
+        if kennung is None:
+            continue
+        isbn = _COVER_ISBN.search(card.cover_url or "")
+        funde.append(
+            Observation(
+                source=source,
+                source_item_id=kennung,
+                title=card.title,
+                author=name,
+                match_reason=MatchReason.PROFILE_AUTHOR,
+                isbn=isbn.group(1) if isbn else None,
+                availability=Availability.AVAILABLE,
+                cover_url=card.cover_url,
+                blurb=card.blurb,
+                url=card.url,
+            )
+        )
+    return funde
 

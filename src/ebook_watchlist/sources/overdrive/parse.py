@@ -157,6 +157,58 @@ def _count(item: dict, field: str) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
+def observation_of(
+    item: dict,
+    *,
+    source: str,
+    reason: MatchReason,
+    category: str | None = None,
+    lucky_day: bool = False,
+) -> Observation | None:
+    """Ein Titel als Fund: E-Book auf Deutsch, sonst nichts (#74).
+
+    ``lucky_day``: es zählen die Lucky-Day-Exemplare, die ohne Wartezeit zu
+    leihen sind, auch wenn die gewöhnlichen verliehen sind.
+    """
+    art = item.get("type")
+    if not isinstance(art, dict) or art.get("id") != sel.COLLECTION_TYPE:
+        return None
+    sprachen = {s.get("id") for s in item.get("languages") or [] if isinstance(s, dict)}
+    if sel.COLLECTION_LANGUAGE not in sprachen:
+        return None
+    codes = [c for c in item.get("bisacCodes") or [] if isinstance(c, str)]
+    if any(c.startswith("JUV") for c in codes):
+        return None  # ein Kinderbuch: das Thema Science-Fiction schließt sie ein
+    titel = _text(item, "title")
+    if titel is None:
+        return None
+    titel = re.sub(r"<[^>]+>", "", titel).strip()  # „Star Wars<sup>TM</sup>"
+    kennung = title_id(item)
+    frei = _count(item, "availableCopies")
+    if lucky_day:
+        frei = _count(item, "luckyDayAvailableCopies") or frei
+    return Observation(
+        source=source,
+        source_item_id=kennung,
+        title=titel,
+        author=_text(item, "firstCreatorName"),
+        match_reason=reason,
+        category=category,
+        isbn=_isbn(item),
+        availability=Availability.AVAILABLE if frei else Availability.UNAVAILABLE,
+        cover_url=_cover(item),
+        blurb=_text(item, "description"),
+        url=sel.TITLE_URL.format(title_id=kennung),
+    )
+
+
+def _items(data: dict, what: str) -> list:
+    items = data.get("items")
+    if not isinstance(items, list):
+        raise SourceStructureError(f"OverDrive: {what} ohne items — die Antwort hat sich geändert")
+    return [item for item in items if isinstance(item, dict)]
+
+
 def parse_collection(
     data: dict, collection: Collection, *, source: str = "overdrive"
 ) -> list[Observation]:
@@ -166,47 +218,32 @@ def parse_collection(
     Tage —, auch wenn die gewöhnlichen Exemplare verliehen sind: es zählen die
     Lucky-Day-Exemplare (*Der Hausmann*: 0 frei, 44 im Lucky Day).
     """
-    items = data.get("items")
-    if not isinstance(items, list):
-        raise SourceStructureError(
-            f"OverDrive: Sammlung {collection.id!r} ohne items — die Antwort hat sich geändert"
-        )
-    found_items = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        kind = item.get("type")
-        if not isinstance(kind, dict) or kind.get("id") != sel.COLLECTION_TYPE:
-            continue
-        languages = {s.get("id") for s in item.get("languages") or [] if isinstance(s, dict)}
-        if sel.COLLECTION_LANGUAGE not in languages:
-            continue
+    funde = []
+    for item in _items(data, f"Sammlung {collection.id!r}"):
         codes = [c for c in item.get("bisacCodes") or [] if isinstance(c, str)]
         if collection.bisac and not any(
             c.startswith(prefix) for c in codes for prefix in collection.bisac
         ):
             continue
-        title = _text(item, "title")
-        if title is None:
-            continue
-        item_id = title_id(item)
-        free = _count(item, "luckyDayAvailableCopies") or _count(item, "availableCopies")
-        found_items.append(
-            Observation(
-                source=source,
-                source_item_id=item_id,
-                title=title,
-                author=_text(item, "firstCreatorName"),
-                match_reason=MatchReason.GENRE_CATEGORY,
-                category=collection.name,
-                isbn=_isbn(item),
-                availability=Availability.AVAILABLE if free else Availability.UNAVAILABLE,
-                cover_url=_cover(item),
-                blurb=_text(item, "description"),
-                url=sel.TITLE_URL.format(title_id=item_id),
-            )
+        fund = observation_of(
+            item, source=source, reason=MatchReason.GENRE_CATEGORY,
+            category=collection.name, lucky_day=True,
         )
-    return found_items
+        if fund is not None:
+            funde.append(fund)
+    return funde
+
+
+def parse_finds(
+    data: dict, *, source: str, reason: MatchReason, category: str | None = None
+) -> list[Observation]:
+    """Die Treffer einer Suche als Funde — für Autor:innen und Themen (#74)."""
+    funde = []
+    for item in _items(data, "Suche"):
+        fund = observation_of(item, source=source, reason=reason, category=category)
+        if fund is not None:
+            funde.append(fund)
+    return funde
 
 
 def title_id(item: dict) -> str:

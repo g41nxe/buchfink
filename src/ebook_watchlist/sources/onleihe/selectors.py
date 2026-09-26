@@ -28,6 +28,10 @@ CARD_TITLE = '[test-id="cardTitle"]'
 CARD_SUBTITLE = '[test-id="cardSubTitle"]'
 CARD_AUTHOR = '[test-id="cardAuthor"]'
 CARD_DETAIL_LINK = 'a[test-id="mediaInfoLink"]'
+#: Die Verfügbarkeit auf der Karte, und bei einer verliehenen die Marke
+#: „Voraussichtlich verfügbar ab:" davor (#74).
+CARD_AVAILABILITY_LABEL = '[test-id="cardLabelAvailability"]'
+CARD_AVAILABILITY = '[test-id="cardAvailability"]'
 #: Cards carry several ``ic_*`` icons (rating stars among them), so the medium
 #: is picked by name rather than by position.
 CARD_MEDIUM_ICON = 'svg[test-id^="ic_"]'

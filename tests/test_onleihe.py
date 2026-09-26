@@ -467,3 +467,73 @@ def test_a_broken_list_costs_the_list_not_the_watchlist(tmp_path) -> None:
                          now=datetime(2026, 9, 26, 12, 0))
 
     assert quelle.collect(load_settings(), [], context) == []
+
+
+
+# --- Autor:innen und Neuzugänge (#74, Scheibe 3 und 4) --------------------------------------
+
+
+def test_a_card_says_whether_it_is_lent_out() -> None:
+    cards = parse.parse_search_results(fixture("search-hits.html"))
+
+    assert [c.available for c in cards[:4]] == [False, False, False, True]
+
+
+def test_only_free_books_by_the_author_are_author_finds() -> None:
+    """Die Lucinda-Riley-Aufnahme: fast alles verliehen — nur das Freie zählt."""
+    cards = parse.parse_search_results(fixture("search-hits.html"))
+    free_ebooks = {c.title for c in cards if c.available and c.medium == "ic_ebook"}
+    quelle = OnleiheSource(client=StubClient(fixture("search-hits.html")))
+
+    found = quelle.by_author("Lucinda Riley")
+
+    assert {f.title for f in found} <= free_ebooks
+    assert all(f.availability is Availability.AVAILABLE for f in found)
+
+
+def test_a_free_book_by_the_author_is_found() -> None:
+    from ebook_watchlist.models import MatchReason
+
+    quelle = OnleiheSource(client=StubClient(fixture("recently-returned.html")))
+
+    funde = quelle.by_author("Colin Cotterill")
+
+    assert [f.title for f in funde] == ["Der fröhliche Frauenhasser"]
+    assert funde[0].match_reason is MatchReason.PROFILE_AUTHOR
+    assert funde[0].availability is Availability.AVAILABLE and funde[0].isbn
+
+
+def test_a_list_can_take_every_card_not_only_recognisable_fiction() -> None:
+    """Die Neuzugänge der Belletristik sind schon Belletristik (#74)."""
+    from ebook_watchlist.sources.onleihe.parse import OnleiheList, parse_list
+
+    alle = parse_list(fixture("recently-returned.html"),
+                      OnleiheList("mediaList,0-2-0-101-0-0-0-0-0-0-0.html", "Neu in Belletristik",
+                                  fiction_only=False))
+
+    assert "Organische Chemie" in {f.title for f in alle}
+
+
+
+def test_a_library_sweeps_the_authors_and_seeds_like_the_shop(tmp_path) -> None:
+    """Dieselbe Regel wie beim Shop: die Autorin der Leserin wird gesucht, und
+    der Fund trägt ihr Interesse, damit der erste Durchgang still sät (#74)."""
+    from dataclasses import replace as dc_replace
+    from datetime import datetime
+
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.sources.base import RunContext
+    from ebook_watchlist.store import Store
+
+    settings = dc_replace(load_settings(), reference_authors=["Colin Cotterill"],
+                          extended_authors=[], genre_categories=[])
+    context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"),
+                         now=datetime(2026, 9, 26, 12, 0),
+                         interests={("author", "Colin Cotterill"): 7})
+    quelle = OnleiheSource(client=StubClient(fixture("recently-returned.html")))
+
+    funde = quelle.collect(settings, [], context)
+
+    assert [f.title for f in funde] == ["Der fröhliche Frauenhasser"]
+    assert context.origin[("onleihe", funde[0].source_item_id)] == 7
+    assert ("onleihe", 7) in context.swept

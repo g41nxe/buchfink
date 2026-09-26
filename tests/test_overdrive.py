@@ -441,3 +441,61 @@ def test_a_broken_collection_costs_the_collection_not_the_watchlist(tmp_path) ->
                          now=datetime(2026, 9, 26, 12, 0))
 
     assert quelle.collect(load_settings(), [], context) == []
+
+
+
+# --- Autor:innen und Themen (#74, Scheibe 3 und 4) ----------------------------------------
+
+
+def test_an_author_is_searched_among_free_german_ebooks() -> None:
+    client = StubClient(fixture("search-hits.json"))
+    quelle = OverdriveSource(client=client)
+
+    funde = quelle.by_author("Blake Crouch")
+
+    url, params = client.requests[0]
+    assert params["query"] == "Blake Crouch" and params["showOnlyAvailable"] == "true"
+    assert params["language"] == "de"
+    assert [f.title for f in funde] == ["Der Zeitenläufer (Dark Matter)"]
+    assert funde[0].match_reason is MatchReason.PROFILE_AUTHOR
+    assert funde[0].isbn
+
+
+def test_a_book_by_someone_else_is_not_an_author_find() -> None:
+    quelle = OverdriveSource(client=StubClient(fixture("search-hits.json")))
+
+    assert quelle.by_author("Simon Beckett") == []
+
+
+def test_a_genre_category_is_searched_as_newly_added_by_subject() -> None:
+    """Thema → OverDrive-Thema: Psychothriller ist Thriller (100)."""
+    client = StubClient(fixture("search-hits.json"))
+    quelle = OverdriveSource(client=client)
+
+    funde = quelle.by_category("belletristik/krimi-thriller/psychothriller")
+
+    _, params = client.requests[0]
+    assert params["subject"] == "100" and params["sortBy"] == "newlyadded"
+    assert params["showOnlyAvailable"] == "true"
+    assert funde and funde[0].match_reason is MatchReason.GENRE_CATEGORY
+    assert funde[0].category == "belletristik/krimi-thriller/psychothriller"
+
+
+def test_a_genre_without_a_subject_asks_nothing() -> None:
+    client = StubClient(fixture("search-hits.json"))
+
+    assert OverdriveSource(client=client).by_category("belletristik/liebesromane") == []
+    assert client.requests == []
+
+
+def test_childrens_books_and_markup_do_not_become_finds() -> None:
+    """Das Thema Science-Fiction schließt Kinderbücher ein (Minecraft), und
+    manche Titel tragen HTML („Star Wars<sup>TM</sup>")."""
+    item = json.loads(fixture("search-hits.json"))["items"][0]
+    kind = dict(item, bisacCodes=["JUV039000"])
+    markiert = dict(item, title="Star Wars<sup>TM</sup> Herrschaft")
+
+    assert parse.observation_of(kind, source="overdrive",
+                                reason=MatchReason.GENRE_CATEGORY) is None
+    assert parse.observation_of(markiert, source="overdrive",
+                                reason=MatchReason.GENRE_CATEGORY).title == "Star WarsTM Herrschaft"

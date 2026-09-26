@@ -10,11 +10,11 @@ import sys
 from collections.abc import Sequence
 from urllib.parse import urljoin
 
-from ...config import Settings, WatchlistEntry
+from ...config import WatchlistEntry
 from ...http import HttpClient, NotFound, RateLimited
 from ...matching import Candidate, Confidence, Query, Resolution, match
 from ...models import MatchReason, Observation
-from ..base import Item, LibrarySource, RunContext, SourceStructureError
+from ..base import Item, LibrarySource, SourceStructureError
 from . import parse
 from . import selectors as sel
 from .parse import OnleiheList
@@ -64,21 +64,25 @@ class OnleiheSource(LibrarySource):
         #: Listen, aus denen Vorschläge kommen (#74), etwa „zuletzt zurückgegeben".
         self.lists = tuple(lists)
 
-    def collect(
-        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
-    ) -> list[Observation]:
-        """Die Watchlist wie jede Bibliothek, dazu die erste Seite jeder Liste.
+    def by_author(self, author: str) -> list[Observation]:
+        """Was die Onleihe jetzt von dieser Autorin verleihen kann (#74): die
+        gewöhnliche Suche, und nur Karten ohne Verliehen-Vermerk. Der Schalter
+        „Verfügbarkeit" der Suche taugt nicht — mit ihm lieferte sie fremde
+        Titel (gemessen am 26.09.2026)."""
+        return parse.author_finds(
+            self._search_page(author, 0), author, media=self.media, base=self.base,
+            source=self.name,
+        )
 
-        Eine Anfrage je Liste und Lauf: die Onleihe hat ein eigenes Tempolimit.
-        Was die Watchlist schon abdeckt oder verworfen ist, kommt nicht noch
-        einmal — dieselbe Regel wie beim Shop.
-        """
-        observations = self.watch(watchlist, context)
-        seen = {o.source_item_id for o in observations}
+    def extra_discoveries(self) -> list[Observation]:
+        """Die erste Seite jeder Liste, etwa „zuletzt zurückgegeben" oder die
+        Neuzugänge der Belletristik. Eine Liste, die es nicht mehr gibt,
+        kostet nur sich."""
+        found: list[Observation] = []
         for onleihe_list in self.lists:
             try:
                 html = self.client.get(urljoin(self.base, onleihe_list.path))
-                found = parse.parse_list(
+                found += parse.parse_list(
                     html, onleihe_list, media=self.media, base=self.base, source=self.name
                 )
             except RateLimited:
@@ -86,13 +90,7 @@ class OnleiheSource(LibrarySource):
             except Exception as exc:  # noqa: BLE001 - eine Liste, nicht die Bibliothek
                 print(f"{self.name}: Liste {onleihe_list.name} übersprungen: "
                       f"{type(exc).__name__}", file=sys.stderr)
-                continue
-            for found_item in found:
-                if found_item.source_item_id in seen or context.is_dismissed(found_item):
-                    continue
-                seen.add(found_item.source_item_id)
-                observations.append(found_item)
-        return observations
+        return found
 
     def check(self, entry: WatchlistEntry) -> Observation | None:
         """Availability for an entry whose detail page is already pinned.

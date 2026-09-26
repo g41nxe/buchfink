@@ -66,7 +66,9 @@ def _build_onleihe(name: str, options: dict, client: HttpClient) -> Source:
     for entry in raw_lists:
         if not isinstance(entry, dict) or not entry.get("path") or not entry.get("name"):
             raise ConfigError(f"settings.yaml: source {name!r}: a list needs 'path' and 'name'")
-        lists.append(OnleiheList(str(entry["path"]), str(entry["name"])))
+        lists.append(
+            OnleiheList(str(entry["path"]), str(entry["name"]), bool(entry.get("fiction", True)))
+        )
     return OnleiheSource(client=client, name=name, media=media, lists=tuple(lists))
 
 

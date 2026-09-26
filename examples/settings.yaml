@@ -59,6 +59,9 @@ sources:
     # Listen, aus denen Vorschläge kommen (#74): E-Books, Belletristik, frei.
     lists:
     - {path: "lrMediaList,0-0-0-107-0-0-0-0-0-0-0.html", name: Zuletzt zurückgegeben}
+    # Neuzugänge der Belletristik, neueste zuerst; schon Belletristik, also
+    # ohne Romanfilter. Frei ist nur, was noch nicht verliehen ist.
+    - {path: "mediaList,0-2-0-101-0-0-0-0-0-0-0.html", name: Neu in Belletristik, fiction: false}
   # Die zweite Plattform desselben Verbunds, mit eigenem Bestand: was die
   # Onleihe nicht führt, steht hier mitunter sehr wohl. Nur deutsche
   # EPUB-E-Books. Einstellbar sind Sammlungen, aus denen Vorschläge kommen

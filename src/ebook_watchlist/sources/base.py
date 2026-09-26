@@ -9,6 +9,7 @@ finishes the others and reports the failure in the Digest.
 from __future__ import annotations
 
 import dataclasses
+import sys
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -17,6 +18,7 @@ from datetime import datetime, timedelta
 from ..config import Settings, WatchlistEntry
 from ..dismissals import Dismissed
 from ..dnb import OriginalTitles
+from ..http import RateLimited
 from ..matching import Confidence, Query, Resolution, by_original_title
 from ..models import Attention, LinkOutcome, Observation
 from ..store import Store
@@ -369,8 +371,71 @@ def _certainty(resolution: Resolution) -> int:
     return {Confidence.AUTO_ACCEPT: 2, Confidence.PROVISIONAL: 1}.get(resolution.confidence, 0)
 
 
+def sweep_interests(
+    source: ResolvingSource,
+    settings: Settings,
+    context: RunContext,
+    observations: list[Observation],
+    *,
+    isolate: bool = False,
+) -> list[Observation]:
+    """Die Autor:innen und Themen der Leserin bei dieser Quelle suchen.
+
+    Eine Stelle für Shop und Bibliothek (#74): was die Watchlist schon abdeckt
+    oder für immer verworfen ist, kommt nicht noch einmal, und jeder Fund trägt
+    das Interesse, aus dem er kam — damit der erste Durchgang still sät statt
+    zu fluten.
+
+    ``isolate``: eine Suche, die scheitert, kostet nur sich — bei einer
+    Bibliothek, deren Hauptaufgabe die Watchlist ist. Eine Drosselung (429)
+    geht immer durch (ADR 7).
+    """
+    # Discoveries must not collide with what the Watchlist already covers:
+    # two Observations of one item in a single Run would leave the diff with
+    # no single "latest" to compare against next time.
+    seen = {observation.source_item_id for observation in observations}
+
+    def take(discovered: list[Observation], interest_id: int | None) -> None:
+        for observation in discovered:
+            item_id = observation.source_item_id
+            if item_id in seen or context.is_dismissed(observation):
+                continue
+            seen.add(item_id)
+            observations.append(observation)
+            if interest_id is not None:
+                context.origin[(source.name, item_id)] = interest_id
+
+    def ask(search, value: str) -> list[Observation]:
+        if not isolate:
+            return search(value)
+        try:
+            return search(value)
+        except RateLimited:
+            raise
+        except Exception as exc:  # noqa: BLE001 - eine Suche, nicht die Quelle
+            print(f"{source.name}: Suche nach {value!r} übersprungen: {type(exc).__name__}",
+                  file=sys.stderr)
+            return []
+
+    for author in settings.authors_to_sweep(context.sweep_extended):
+        interest_id = context.interests.get(("author", author))
+        if interest_id is not None:
+            context.swept.add((source.name, interest_id))
+        take(ask(source.by_author, author), interest_id)
+    for category in settings.genre_categories:
+        # "thema" ist der gespeicherte Wert des Interesses (#70), kein Wort im Code.
+        interest_id = context.interests.get(("thema", category))
+        if interest_id is not None:
+            context.swept.add((source.name, interest_id))
+        take(ask(source.by_category, category), interest_id)
+    take(source.extra_discoveries(), None)
+    return observations
+
+
 class LibrarySource(ResolvingSource):
-    """Reports whether a title can be borrowed right now."""
+    """Reports whether a title can be borrowed right now — and, since #74,
+    suggests what can be borrowed: by the reader's authors, on her shelves,
+    and from the library's own lists."""
 
     @abstractmethod
     def check(self, entry: WatchlistEntry) -> Observation | None: ...
@@ -378,10 +443,24 @@ class LibrarySource(ResolvingSource):
     def wants(self, entry: WatchlistEntry) -> bool:
         return entry.check_library
 
+    def by_author(self, author: str) -> list[Observation]:
+        """What this library can lend right now by one Reference Author."""
+        return []
+
+    def by_category(self, category_path: str) -> list[Observation]:
+        """What this library newly holds on one of the reader's shelves."""
+        return []
+
+    def extra_discoveries(self) -> list[Observation]:
+        """Finds from the library's own lists (Lucky Day, zuletzt zurückgegeben)."""
+        return []
+
     def collect(
         self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
     ) -> list[Observation]:
-        return self.watch(watchlist, context)
+        return sweep_interests(
+            self, settings, context, self.watch(watchlist, context), isolate=True
+        )
 
 
 class ShopSource(ResolvingSource):
@@ -401,34 +480,10 @@ class ShopSource(ResolvingSource):
         """The newest arrivals on one of the shop's own shelves."""
         return []
 
+    def extra_discoveries(self) -> list[Observation]:
+        return []
+
     def collect(
         self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
     ) -> list[Observation]:
-        observations = self.watch(watchlist, context)
-
-        # Discoveries must not collide with what the Watchlist already covers:
-        # two Observations of one item in a single Run would leave the diff with
-        # no single "latest" to compare against next time.
-        seen = {observation.source_item_id for observation in observations}
-
-        def take(discovered: list[Observation], interest_id: int | None) -> None:
-            for observation in discovered:
-                item_id = observation.source_item_id
-                if item_id in seen or context.is_dismissed(observation):
-                    continue
-                seen.add(item_id)
-                observations.append(observation)
-                if interest_id is not None:
-                    context.origin[(self.name, item_id)] = interest_id
-
-        for author in settings.authors_to_sweep(context.sweep_extended):
-            interest_id = context.interests.get(("author", author))
-            if interest_id is not None:
-                context.swept.add((self.name, interest_id))
-            take(self.by_author(author), interest_id)
-        for category in settings.genre_categories:
-            interest_id = context.interests.get(("thema", category))
-            if interest_id is not None:
-                context.swept.add((self.name, interest_id))
-            take(self.by_category(category), interest_id)
-        return observations
+        return sweep_interests(self, settings, context, self.watch(watchlist, context))

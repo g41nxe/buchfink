@@ -166,7 +166,11 @@ gives the book, and with each part of a title split at a dash or colon.
 A list a library curates itself, used as a source of Discoveries (#74): OverDrive's
 *Lucky Day* (instantly borrowable, seven days, no holds), and the Onleihe's
 *zuletzt zurückgegeben* (just returned, hence free; fiction recognised from subtitle
-and teaser, the ISBN read from the cover address). One request per Run; only
+and teaser, the ISBN read from the cover address), and its newest fiction
+(*Neu in Belletristik*). Since #74 both libraries also search the reader's
+authors (only what is free now) and OverDrive her shelves as newly added titles
+of a matching subject (Thriller 100, Krimi 57, Science-Fiction 80, Horror 38,
+Fantasy 24), with the same seeding as the shop: the first sweep sows silently. One request per Run; only
 German e-books, fiction by default (BISAC `FIC`, configurable per collection in
 `settings.yaml`). A find from a collection counts as a shelf find (Thema) named
 after the collection, passes the same Rating Gate, and reads "sofort ausleihbar aus
