@@ -343,3 +343,77 @@ def test_the_title_id_comes_out_of_the_reader_facing_url() -> None:
     assert title_id_from_url("https://voebb.overdrive.com/media/3222096") == "3222096"
     assert title_id_from_url("https://voebb.overdrive.com/media/3222096/") == "3222096"
     assert title_id_from_url("https://voebb.overdrive.com/media/keine-nummer") is None
+
+
+# --- Lucky Day als Vorschlagsquelle (#74) -------------------------------------------------
+#
+# Aufgezeichnet am 26.09.2026: die Sammlung „Lucky Day" der VÖBB, 15 Titel —
+# englisch und deutsch, E-Books und Hörbücher, Belletristik und Sachbuch.
+
+
+def lucky_day() -> str:
+    return fixture("collection-lucky-day.json")
+
+
+def test_lucky_day_yields_german_fiction_ebooks_only() -> None:
+    from ebook_watchlist.sources.overdrive.source import Collection
+
+    funde = parse.parse_collection(parse.payload(lucky_day()), Collection("1572172", "Lucky Day"))
+
+    assert {f.title for f in funde} == {"Schaut, wie wir tanzen", "Der Hausmann",
+                                        "Steinernes Fleisch"}
+    for fund in funde:
+        assert fund.match_reason is MatchReason.GENRE_CATEGORY
+        assert fund.category == "Lucky Day"
+        # Lucky Day heißt: sofort ausleihbar, ohne Wartezeit.
+        assert fund.availability is Availability.AVAILABLE
+        assert fund.isbn and fund.url.startswith("https://voebb.overdrive.com/media/")
+
+
+def test_a_collection_can_narrow_to_genres() -> None:
+    """Die BISAC-Präfixe engen weiter ein: FIC009 ist Fantasy."""
+    from ebook_watchlist.sources.overdrive.source import Collection
+
+    funde = parse.parse_collection(parse.payload(lucky_day()),
+                                   Collection("1572172", "Lucky Day", ("FIC009",)))
+
+    assert [f.title for f in funde] == ["Steinernes Fleisch"]
+
+
+def test_a_collection_without_items_is_a_changed_interface() -> None:
+    from ebook_watchlist.sources.overdrive.source import Collection
+
+    with pytest.raises(SourceStructureError):
+        parse.parse_collection({"title": "Lucky Day"}, Collection("1572172", "Lucky Day"))
+
+
+def test_the_run_collects_the_collection_next_to_the_watchlist(tmp_path) -> None:
+    from datetime import datetime
+
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.sources.base import RunContext
+    from ebook_watchlist.sources.overdrive.source import Collection
+    from ebook_watchlist.store import Store
+
+    client = StubClient(lucky_day())
+    quelle = OverdriveSource(client=client, collections=(Collection("1572172", "Lucky Day"),))
+    context = RunContext(profile_slug="t", store=Store(tmp_path / "s.db"),
+                         now=datetime(2026, 9, 26, 12, 0))
+
+    funde = quelle.collect(load_settings(), [], context)
+
+    assert len(funde) == 3
+    assert client.requests[0][0].endswith("/libraries/voebb/collections/1572172")
+
+
+def test_the_collection_is_read_from_the_settings() -> None:
+    from ebook_watchlist.config import ConfigError
+    from ebook_watchlist.sources.overdrive.source import Collection
+    from ebook_watchlist.sources.registry import _build_overdrive
+
+    quelle = _build_overdrive("overdrive", {"collections": [
+        {"id": 1572172, "name": "Lucky Day", "bisac": ["FIC"]}]}, StubClient(""))
+
+    assert quelle.collections == (Collection("1572172", "Lucky Day", ("FIC",)),)
+    with pytest.raises(ConfigError):
+        _build_overdrive("overdrive", {"collections": [{"name": "ohne Nummer"}]}, StubClient(""))

@@ -24,6 +24,13 @@ TITLE_URL = "https://voebb.overdrive.com/media/{title_id}"
 
 SEARCH_PATH = "libraries/{library}/media"
 TITLE_PATH = "libraries/{library}/media/{title_id}"
+#: Eine Sammlung der Bibliothek, etwa „Lucky Day" (#74): ein Aufruf, alle Titel,
+#: ohne Schlüssel. Der Parameter ``collection=`` an der Suche wird ignoriert —
+#: nur dieser Weg trägt (gemessen am 25.09.2026).
+COLLECTION_PATH = "libraries/{library}/collections/{collection}"
+#: Was aus einer Sammlung ein Vorschlag sein darf: ein E-Book auf Deutsch.
+COLLECTION_TYPE = "ebook"
+COLLECTION_LANGUAGE = "de"
 
 #: Nur EPUB-E-Books, wie bei der Onleihe (``media: [ebook]``).
 #: ``ebook-epub-adobe`` ist das Format, das die Leserin auf einem E-Reader

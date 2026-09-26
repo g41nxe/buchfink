@@ -77,3 +77,16 @@ def test_the_short_form_fits_a_label() -> None:
 def test_the_short_form_falls_back_to_thema_without_a_readable_name() -> None:
     """Ohne Kategorie bleibt "Thema" die einzig ehrliche Auskunft."""
     assert short_why(observation(category=None)) == "Thema"
+
+
+def test_a_library_collection_keeps_its_name_and_says_it_can_be_borrowed() -> None:
+    """Lucky Day ist kein Shop-Pfad, sondern ein Name — und die Sammlung einer
+    Bibliothek heißt: sofort ausleihbar (#74)."""
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.reasons import short_why, why_shown
+
+    fund = Observation(source="overdrive", source_item_id="1", title="Der Hausmann",
+                       match_reason=MatchReason.GENRE_CATEGORY, category="Lucky Day")
+
+    assert short_why(fund) == "Lucky Day"
+    assert why_shown(fund) == "sofort ausleihbar aus „Lucky Day“"

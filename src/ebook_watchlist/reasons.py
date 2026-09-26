@@ -39,8 +39,19 @@ def thema_name(category: str | None) -> str | None:
     """
     if not category:
         return None
+    if "/" not in category and category != category.lower():
+        # Kein Pfad, sondern schon ein Name — die Sammlung einer Bibliothek
+        # („Lucky Day", #74). ``capitalize`` machte daraus „Lucky day".
+        return category.strip()
     last = category.strip("/").rsplit("/", 1)[-1]
     return _SHELF_NAMES.get(last) or last.replace("-", " ").strip().capitalize() or None
+
+
+def _is_library(source: str) -> bool:
+    """Ob die Quelle eine Bibliothek ist — nach ihrer Art, wie sie heißt."""
+    from .sources.registry import KINDS
+
+    return KINDS.get(source) == "library"
 
 
 def why_shown(observation: Observation) -> str:
@@ -59,6 +70,10 @@ def why_shown(observation: Observation) -> str:
         return f"neu von {author}, der du folgst"
 
     thema = thema_name(observation.category)
+    if thema and _is_library(observation.source):
+        # Eine Sammlung der Bibliothek ist kein Regal im Shop: was darin steht,
+        # lässt sich gleich leihen (#74).
+        return f"sofort ausleihbar aus „{thema}“"
     if thema:
         return f"neu im {THEMA} {thema}"
     return f"neu in einem {THEMA}, dem du folgst"

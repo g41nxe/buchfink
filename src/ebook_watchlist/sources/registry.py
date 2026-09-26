@@ -26,6 +26,7 @@ from .fake import FakeSource
 from .onleihe import OnleiheSource
 from .onleihe import selectors as onleihe_selectors
 from .overdrive import OverdriveSource
+from .overdrive.parse import Collection
 
 
 def _build_fake(name: str, options: dict, client: HttpClient) -> Source:
@@ -58,11 +59,33 @@ def _build_onleihe(name: str, options: dict, client: HttpClient) -> Source:
 
 
 def _build_overdrive(name: str, options: dict, client: HttpClient) -> Source:
-    # Keine Optionen: nur deutsche EPUB-E-Books, und die Einrichtung steht in
-    # `selectors.py`. Wer eine andere OverDrive-Bibliothek braucht, gibt ihr
-    # dort einen Schluessel — eine Einstellung, die noch niemand gebraucht hat,
-    # waere nur eine Zeile, die niemand liest.
-    return OverdriveSource(client=client, name=name)
+    # Die Bibliothek selbst steht in `selectors.py` — eine andere hat noch
+    # niemand gebraucht. Einstellbar sind nur die Sammlungen, aus denen
+    # Vorschläge kommen (#74), etwa:
+    #
+    #   collections:
+    #     - {id: 1572172, name: Lucky Day}             # Belletristik (FIC)
+    #     - {id: …, name: …, bisac: [FIC031, FIC028]}  # nur Thriller und SF
+    raw = options.get("collections") or []
+    if not isinstance(raw, list):
+        raise ConfigError(f"settings.yaml: source {name!r}: 'collections' must be a list")
+    collections = []
+    for entry in raw:
+        if not isinstance(entry, dict) or not entry.get("id") or not entry.get("name"):
+            raise ConfigError(
+                f"settings.yaml: source {name!r}: a collection needs 'id' and 'name'"
+            )
+        bisac = entry.get("bisac")
+        if bisac is not None and not isinstance(bisac, list):
+            raise ConfigError(f"settings.yaml: source {name!r}: 'bisac' must be a list")
+        collections.append(
+            Collection(
+                str(entry["id"]),
+                str(entry["name"]),
+                tuple(str(b) for b in bisac) if bisac is not None else ("FIC",),
+            )
+        )
+    return OverdriveSource(client=client, name=name, collections=tuple(collections))
 
 
 def _build_beam(name: str, options: dict, client: HttpClient) -> Source:

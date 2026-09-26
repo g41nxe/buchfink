@@ -1,0 +1,4164 @@
+{
+ "id": "1572172",
+ "title": "Lucky Day",
+ "description": "Heute ist Ihr Glückstag! Diese beliebten Titel sind aktuell verfügbar - ganz ohne Wartezeit! Ausleihdauer 7 Tage. ",
+ "languageCode": "de",
+ "type": "generated",
+ "definition": {
+  "availabilityOption": "available-luckyday",
+  "maturityLevels": []
+ },
+ "facets": {
+  "availability": {
+   "name": "Availability",
+   "items": [
+    {
+     "isApplied": true,
+     "totalItems": 15,
+     "totalItemsText": "15",
+     "id": "all-titles",
+     "name": "All titles"
+    },
+    {
+     "isApplied": false,
+     "totalItemsText": "",
+     "id": "available-now",
+     "name": "Available now"
+    }
+   ]
+  },
+  "mediaTypes": {
+   "name": "Media type",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 12,
+     "totalItemsText": "12",
+     "id": "ebook",
+     "name": "eBook"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 3,
+     "totalItemsText": "3",
+     "id": "audiobook",
+     "name": "Audiobook"
+    }
+   ]
+  },
+  "formats": {
+   "name": "Format",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 12,
+     "totalItemsText": "12",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 10,
+     "totalItemsText": "10",
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "ebook-pdf-adobe",
+     "name": "PDF eBook"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 3,
+     "totalItemsText": "3",
+     "id": "audiobook-overdrive",
+     "name": "OverDrive Listen audiobook"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 3,
+     "totalItemsText": "3",
+     "id": "audiobook-mp3",
+     "name": "MP3 audiobook"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 11,
+     "totalItemsText": "11",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ]
+  },
+  "maturityLevels": {
+   "name": "Audience",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 15,
+     "totalItemsText": "15",
+     "id": "generalcontent",
+     "name": "General adult"
+    }
+   ]
+  },
+  "subjects": {
+   "name": "Subject",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 11,
+     "totalItemsText": "11",
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 5,
+     "totalItemsText": "5",
+     "id": "24",
+     "name": "Fantasy"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 4,
+     "totalItemsText": "4",
+     "id": "111",
+     "name": "Nonfiction"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 4,
+     "totalItemsText": "4",
+     "id": "77",
+     "name": "Romance"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 3,
+     "totalItemsText": "3",
+     "id": "49",
+     "name": "Literature"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 3,
+     "totalItemsText": "3",
+     "id": "57",
+     "name": "Mystery"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 3,
+     "totalItemsText": "3",
+     "id": "67",
+     "name": "Politics"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 2,
+     "totalItemsText": "2",
+     "id": "115",
+     "name": "Historical Fiction"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 2,
+     "totalItemsText": "2",
+     "id": "12",
+     "name": "Comic and Graphic Books"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "100",
+     "name": "Thriller"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "123",
+     "name": "Humor (Fiction)"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "14",
+     "name": "Cooking & Food"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "80",
+     "name": "Science Fiction"
+    }
+   ]
+  },
+  "bisacCodes": {
+   "name": "Bisac code",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 2,
+     "totalItemsText": "2",
+     "id": "FIC009100",
+     "name": "Fiction / Fantasy / Action & Adventure"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 2,
+     "totalItemsText": "2",
+     "id": "POL000000",
+     "name": "Political Science / General"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "CGN004010",
+     "name": "Comics & Graphic Novels / Crime & Mystery"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "CGN004030",
+     "name": "COMICS & GRAPHIC NOVELS / Fantasy / General"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "CGN004050",
+     "name": "COMICS & GRAPHIC NOVELS / East Asian Style / Manga / General"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "CGN010010",
+     "name": "COMICS & GRAPHIC NOVELS / Historical Fiction / Ancient"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "CKB039000",
+     "name": "Cooking / Health & Healing / General"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC000000",
+     "name": "Fiction / General"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC002000",
+     "name": "Fiction / Action & Adventure"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC009020",
+     "name": "Fiction / Fantasy / Epic"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC009140",
+     "name": "Fiction / Fantasy / Military"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC019000",
+     "name": "Fiction / Literary"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC022060",
+     "name": "Fiction / Mystery & Detective / Historical"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC022100",
+     "name": "Fiction / Mystery & Detective / Amateur Sleuth"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC024000",
+     "name": "Fiction / Occult & Supernatural"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC027000",
+     "name": "Fiction / Romance / General"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC027020",
+     "name": "Fiction / Romance / Contemporary"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC027030",
+     "name": "Fiction / Romance / Fantasy"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC027070",
+     "name": "Fiction / Romance / Historical / Regency"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC027250",
+     "name": "Fiction / Romance / Romantic Comedy"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC027320",
+     "name": "Fiction / Romance / Paranormal / Vampires "
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC028010",
+     "name": "Fiction / Science Fiction / Action & Adventure"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC031020",
+     "name": "Fiction / Thrillers / Historical"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC050000",
+     "name": "Fiction / Crime"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "FIC055000",
+     "name": "Fiction / Dystopian"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "POL062000",
+     "name": "Political Science / Geopolitics"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "POL064000",
+     "name": "Political Science / Corruption & Misconduct"
+    }
+   ]
+  },
+  "languages": {
+   "name": "Language",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 8,
+     "totalItemsText": "8",
+     "id": "de",
+     "name": "German"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 7,
+     "totalItemsText": "7",
+     "id": "en",
+     "name": "English"
+    }
+   ]
+  },
+  "boolean": {
+   "name": "Boolean properties",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 15,
+     "totalItemsText": "15",
+     "id": "f",
+     "name": "Does not have audio synchronized text"
+    }
+   ]
+  },
+  "addedDates": {
+   "name": "Date added",
+   "items": []
+  },
+  "atosLevels": {
+   "name": "ATOS Level",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "5-6",
+     "name": "5.0-6.0"
+    }
+   ]
+  },
+  "lexileScores": {
+   "name": "Lexile Score",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "600-800",
+     "name": "600L - 800L"
+    }
+   ]
+  },
+  "interestLevels": {
+   "name": "Interest Level",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "upper-grades",
+     "name": "Upper Grades"
+    }
+   ]
+  },
+  "gradeLevels": {
+   "name": "Text Difficulty",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "grade-3",
+     "name": "Grade 3"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "grade-4",
+     "name": "Grade 4"
+    }
+   ]
+  },
+  "awards": {
+   "name": "Award",
+   "items": []
+  },
+  "jurisdiction": {
+   "name": "Jurisdiction",
+   "items": []
+  },
+  "practiceArea": {
+   "name": "Practice Area",
+   "items": []
+  },
+  "classification": {
+   "name": "Classification",
+   "items": []
+  },
+  "audiobookDuration": {
+   "name": "Audiobook Duration",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "3-4",
+     "name": "3.0-4.0"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "5-6",
+     "name": "5.0-6.0"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "7-8",
+     "name": "7.0-8.0"
+    }
+   ]
+  },
+  "freshStart": {
+   "name": "Fresh Start",
+   "items": [
+    {
+     "isApplied": false,
+     "totalItems": 5,
+     "totalItemsText": "5",
+     "id": "standalone",
+     "name": "Standalone"
+    },
+    {
+     "isApplied": false,
+     "totalItems": 1,
+     "totalItemsText": "1",
+     "id": "firstinseries",
+     "name": "FirstInSeries"
+    }
+   ]
+  },
+  "appliedCount": 0
+ },
+ "sortOptions": [
+  {
+   "isApplied": false,
+   "id": "mostpopular",
+   "name": "Popularity"
+  },
+  {
+   "isApplied": false,
+   "id": "relevance",
+   "name": "Relevance"
+  },
+  {
+   "isApplied": false,
+   "id": "releasedate",
+   "name": "Release date"
+  },
+  {
+   "isApplied": false,
+   "id": "title",
+   "name": "Title"
+  },
+  {
+   "isApplied": false,
+   "id": "author",
+   "name": "Author"
+  },
+  {
+   "isApplied": false,
+   "id": "default",
+   "name": "Publish Date"
+  },
+  {
+   "isApplied": false,
+   "id": "audiobookdurationasc",
+   "name": "Audiobook Duration, Ascending"
+  },
+  {
+   "isApplied": false,
+   "id": "audiobookdurationdsc",
+   "name": "Audiobook Duration, Descending"
+  },
+  {
+   "isApplied": false,
+   "id": "random",
+   "name": "Randomized"
+  },
+  {
+   "isApplied": false,
+   "id": "newlyadded",
+   "name": "Date added"
+  },
+  {
+   "isApplied": false,
+   "id": "lowcirculating",
+   "name": "Low circulating"
+  },
+  {
+   "isApplied": true,
+   "id": "mostpopular-site",
+   "name": "Popularity (library)"
+  }
+ ],
+ "items": [
+  {
+   "reserveId": "3d9c6b5c-232d-4edb-848c-a5d3aa78397e",
+   "subjects": [
+    {
+     "id": "24",
+     "name": "Fantasy"
+    },
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "80",
+     "name": "Science Fiction"
+    },
+    {
+     "id": "100",
+     "name": "Thriller"
+    }
+   ],
+   "bisacCodes": [
+    "FIC002000",
+    "FIC028010",
+    "FIC055000"
+   ],
+   "bisac": [
+    {
+     "code": "FIC002000",
+     "description": "Fiction / Action & Adventure"
+    },
+    {
+     "code": "FIC028010",
+     "description": "Fiction / Science Fiction / Action & Adventure"
+    },
+    {
+     "code": "FIC055000",
+     "description": "Fiction / Dystopian"
+    }
+   ],
+   "levels": [
+    {
+     "value": "5",
+     "id": "atos",
+     "name": "ATOS"
+    },
+    {
+     "value": "710",
+     "id": "lexile",
+     "name": "Lexile Score"
+    },
+    {
+     "value": "9-12(UG)",
+     "id": "interest-level",
+     "name": "Interest Level"
+    },
+    {
+     "low": "300",
+     "high": "400",
+     "value": "3-4",
+     "id": "reading-level",
+     "name": "Reading Level"
+    }
+   ],
+   "creators": [
+    {
+     "id": 657485,
+     "name": "Pierce Brown",
+     "role": "Author",
+     "sortName": "Brown, Pierce",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "imprint": {
+    "id": "158458",
+    "name": "Del Rey"
+   },
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 5,
+    "publisherSupplier": 3
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2016-02-09T05:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=3d9c6b5c-232d-4edb-848c-a5d3aa78397e&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "319972",
+    "name": "Random House Worlds"
+   },
+   "series": "Red Rising Saga",
+   "description": "<b>#1 <i>NEW YORK TIMES </i>BESTSELLER &bull; <i>Red Rising</i> thrilled readers and announced the presence of a talented new author. <i>Golden Son </i>changed the game and took the story of Darrow to the next level. Now comes the exhilarating...",
+   "availableCopies": 0,
+   "ownedCopies": 1,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 8,
+   "holdsRatio": 8,
+   "estimatedWaitDays": 126,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-150/0111-1/3D9/C6B/5C/{3D9C6B5C-232D-4EDB-848C-A5D3AA78397E}Img150.jpg",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#000116",
+      "rgb": {
+       "red": 0,
+       "green": 1,
+       "blue": 22
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/0111-1/3D9/C6B/5C/{3D9C6B5C-232D-4EDB-848C-A5D3AA78397E}Img400.jpg",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#000116",
+      "rgb": {
+       "red": 0,
+       "green": 1,
+       "blue": 22
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-100/0111-1/{3D9C6B5C-232D-4EDB-848C-A5D3AA78397E}Img100.jpg",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#000116",
+      "rgb": {
+       "red": 0,
+       "green": 1,
+       "blue": 22
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "2349341",
+   "firstCreatorName": "Pierce Brown",
+   "firstCreatorId": 657485,
+   "firstCreatorSortName": "Brown, Pierce",
+   "title": "Morning Star",
+   "sortTitle": "Morning Star",
+   "starRating": 4.5,
+   "starRatingCount": 1859,
+   "publishDate": "2016-02-09T00:00:00Z",
+   "publishDateText": "02/09/2016",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9780345539854"
+      },
+      {
+       "type": "PublisherCatalogNumber",
+       "value": "221584"
+      }
+     ],
+     "rights": [],
+     "fileSize": 9558316,
+     "onSaleDateUtc": "2016-02-09T05:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9780345539854",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=3d9c6b5c-232d-4edb-848c-a5d3aa78397e&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9780345539854"
+      },
+      {
+       "type": "PublisherCatalogNumber",
+       "value": "221584"
+      }
+     ],
+     "rights": [],
+     "fileSize": 10924832,
+     "onSaleDateUtc": "2016-02-09T05:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9780345539854",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "ModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "MeetsStandards"
+      ],
+      "navigation": [
+       "TableOfContents"
+      ],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": [
+       "PageBreaks",
+       "HighContrastText",
+       "NonColorMeansOfConveyingInformation"
+      ],
+      "certifiedBy": "Penguin Random House LLC",
+      "epubVersion": "1.1",
+      "wcagVersion": "2.1",
+      "wcagLevel": "AA",
+      "summaryStatement": "This ebook features mark-up that supports accessibility and enables compatibility with assistive technology. It has been designed to allow display properties to be modified by the reader. The file includes a table of contents, a defined reading order, and ARIA roles to identify key sections and improve the reading experience. A page list and page break locations help readers coordinate with the print edition. Images are well described in conformance with WCAG 2.1 Level AA. Colors meet WCAG 2.1 Level AA contrast standards. There are no hazards."
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "PublisherCatalogNumber",
+       "value": "221584"
+      },
+      {
+       "type": "KoboBookID",
+       "value": "dd7cce33-0b96-3b26-b3e3-1c6e1cf82bea"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2016-02-09T05:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "221",
+    "name": "Random House, Inc."
+   },
+   "detailedSeries": {
+    "seriesId": 532674,
+    "seriesName": "Red Rising Saga",
+    "readingOrder": "3",
+    "rank": 35
+   }
+  },
+  {
+   "reserveId": "e303cf88-104f-4564-8fbf-85de6410c0c8",
+   "subjects": [
+    {
+     "id": "24",
+     "name": "Fantasy"
+    },
+    {
+     "id": "26",
+     "name": "Fiction"
+    }
+   ],
+   "bisacCodes": [
+    "FIC009020",
+    "FIC009100",
+    "FIC009140"
+   ],
+   "bisac": [
+    {
+     "code": "FIC009020",
+     "description": "Fiction / Fantasy / Epic"
+    },
+    {
+     "code": "FIC009100",
+     "description": "Fiction / Fantasy / Action & Adventure"
+    },
+    {
+     "code": "FIC009140",
+     "description": "Fiction / Fantasy / Military"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 367755,
+     "name": "Brandon Sanderson",
+     "role": "Author",
+     "sortName": "Sanderson, Brandon",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "imprint": {
+    "id": "161289",
+    "name": "Tor Books"
+   },
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 1,
+    "publisherSupplier": 0
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2024-12-06T05:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=e303cf88-104f-4564-8fbf-85de6410c0c8&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "329930",
+    "name": "Tor Publishing Group"
+   },
+   "series": "The Stormlight Archive",
+   "description": "<p><b>The long-awaited explosive climax to the first arc of the #1 <i>New York Times </i>bestselling Stormlight Archive&#8212;the iconic epic fantasy masterpiece that has sold more than 10 million copies, from acclaimed bestselling author Brandon...",
+   "availableCopies": 1,
+   "ownedCopies": 3,
+   "luckyDayAvailableCopies": 2,
+   "luckyDayOwnedCopies": 2,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 5,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-150/2390-1/{E303CF88-104F-4564-8FBF-85DE6410C0C8}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#2D4281",
+      "rgb": {
+       "red": 45,
+       "green": 66,
+       "blue": 129
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-400/2390-1/{E303CF88-104F-4564-8FBF-85DE6410C0C8}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#405594",
+      "rgb": {
+       "red": 64,
+       "green": 85,
+       "blue": 148
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-100/2390-1/{E303CF88-104F-4564-8FBF-85DE6410C0C8}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#475A9E",
+      "rgb": {
+       "red": 71,
+       "green": 90,
+       "blue": 158
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "10346311",
+   "firstCreatorName": "Brandon Sanderson",
+   "firstCreatorId": 367755,
+   "firstCreatorSortName": "Sanderson, Brandon",
+   "title": "Wind and Truth",
+   "sortTitle": "Wind and Truth",
+   "starRating": 4.4,
+   "starRatingCount": 11,
+   "publishDate": "2024-12-06T00:00:00Z",
+   "publishDateText": "12/06/2024",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781250319173"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2024-12-06T05:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781250319173",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=e303cf88-104f-4564-8fbf-85de6410c0c8&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781250319173"
+      }
+     ],
+     "rights": [],
+     "fileSize": 351716841,
+     "onSaleDateUtc": "2024-12-06T05:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781250319173",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "NoInfoForModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": []
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "7114933d-8e31-3f1c-8e7d-150f516ac643"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2024-12-06T05:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "6222",
+    "name": "Macmillan Publishers"
+   },
+   "detailedSeries": {
+    "seriesId": 504367,
+    "seriesName": "The Stormlight Archive",
+    "readingOrder": "5",
+    "rank": 97
+   }
+  },
+  {
+   "reserveId": "fa93087d-dace-47f9-9e83-6f7763457959",
+   "subjects": [
+    {
+     "id": "12",
+     "name": "Comic and Graphic Books"
+    },
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "57",
+     "name": "Mystery"
+    },
+    {
+     "id": "115",
+     "name": "Historical Fiction"
+    }
+   ],
+   "bisacCodes": [
+    "CGN004010",
+    "CGN004050",
+    "CGN010010"
+   ],
+   "bisac": [
+    {
+     "code": "CGN004010",
+     "description": "Comics & Graphic Novels / Crime & Mystery"
+    },
+    {
+     "code": "CGN004050",
+     "description": "COMICS & GRAPHIC NOVELS / East Asian Style / Manga / General"
+    },
+    {
+     "code": "CGN010010",
+     "description": "COMICS & GRAPHIC NOVELS / Historical Fiction / Ancient"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 2131559,
+     "name": "Natsu Hyuuga",
+     "role": "Author",
+     "sortName": "Hyuuga, Natsu",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 2131560,
+     "name": "Nekokurage",
+     "role": "Author",
+     "sortName": "Nekokurage",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 2131561,
+     "name": "Itsuki Nanao",
+     "role": "Compiler",
+     "sortName": "Nanao, Itsuki",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 2340786,
+     "name": "Touco Shino",
+     "role": "Artist",
+     "sortName": "Touco Shino",
+     "roleDiscipline": "Graphics",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "imprint": {
+    "id": "132746",
+    "name": "Square Enix Manga"
+   },
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2025-10-07T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=fa93087d-dace-47f9-9e83-6f7763457959&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "225630",
+    "name": "Square Enix"
+   },
+   "series": "The Apothecary Diaries Manga",
+   "description": "<b>After breaking a &ldquo;curse&rdquo;&nbsp;on the imperial heirs, a palace servant with training in herbal medicine is promoted up the ranks to food taster...and right into the thick of palace intrigue in this lushly illustrated historical...",
+   "availableCopies": 0,
+   "ownedCopies": 2,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 2,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 7,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-150/0111-1/{FA93087D-DACE-47F9-9E83-6F7763457959}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#FBFBFB",
+      "rgb": {
+       "red": 251,
+       "green": 251,
+       "blue": 251
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-400/0111-1/{FA93087D-DACE-47F9-9E83-6F7763457959}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#FDFDFD",
+      "rgb": {
+       "red": 253,
+       "green": 253,
+       "blue": 253
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-100/0111-1/{FA93087D-DACE-47F9-9E83-6F7763457959}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#FDFDFD",
+      "rgb": {
+       "red": 253,
+       "green": 253,
+       "blue": 253
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "11510043",
+   "firstCreatorName": "Natsu Hyuuga",
+   "firstCreatorId": 2131559,
+   "firstCreatorSortName": "Hyuuga, Natsu",
+   "title": "The Apothecary Diaries, Volume 14",
+   "sortTitle": "Apothecary Diaries Volume 14",
+   "publishDate": "2025-10-07T00:00:00Z",
+   "publishDateText": "10/07/2025",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781646098842"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2025-10-07T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781646098842",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=fa93087d-dace-47f9-9e83-6f7763457959&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "82b03a01-91d7-31d3-8549-a0ec81f716fb"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2025-10-07T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "221",
+    "name": "Random House, Inc."
+   },
+   "detailedSeries": {
+    "seriesId": 1577092,
+    "seriesName": "The Apothecary Diaries Manga",
+    "readingOrder": "14",
+    "rank": 14
+   }
+  },
+  {
+   "reserveId": "7a9b15c0-aa07-4d6d-b073-317c5899cf86",
+   "subjects": [
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "77",
+     "name": "Romance"
+    },
+    {
+     "id": "123",
+     "name": "Humor (Fiction)"
+    }
+   ],
+   "bisacCodes": [
+    "FIC027000",
+    "FIC027020",
+    "FIC027250"
+   ],
+   "bisac": [
+    {
+     "code": "FIC027000",
+     "description": "Fiction / Romance / General"
+    },
+    {
+     "code": "FIC027020",
+     "description": "Fiction / Romance / Contemporary"
+    },
+    {
+     "code": "FIC027250",
+     "description": "Fiction / Romance / Romantic Comedy"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 3326075,
+     "name": "Bal Khabra",
+     "role": "Author",
+     "sortName": "Khabra, Bal",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 1
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2025-10-14T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=7a9b15c0-aa07-4d6d-b073-317c5899cf86&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "2262",
+    "name": "Bloomsbury Publishing"
+   },
+   "series": "Off the Ice",
+   "description": "<b>WELCOME BACK TO THE DALTON UNIVERSITY SETTING OF BAL KHABRA'S SMASH HIT <i>COLLIDE</i>!</b><br/><b><br/></b><b>He's a wild card. She's a seasoned pro. Together, they might just be the perfect match</b><b> in this sweeping romance between a...",
+   "availableCopies": 0,
+   "ownedCopies": 1,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 9,
+   "holdsRatio": 9,
+   "estimatedWaitDays": 140,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-150/1559-1/{7A9B15C0-AA07-4D6D-B073-317C5899CF86}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#314290",
+      "rgb": {
+       "red": 49,
+       "green": 66,
+       "blue": 144
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-400/1559-1/{7A9B15C0-AA07-4D6D-B073-317C5899CF86}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#2E4287",
+      "rgb": {
+       "red": 46,
+       "green": 66,
+       "blue": 135
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-100/1559-1/{7A9B15C0-AA07-4D6D-B073-317C5899CF86}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#314383",
+      "rgb": {
+       "red": 49,
+       "green": 67,
+       "blue": 131
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "11526339",
+   "firstCreatorName": "Bal Khabra",
+   "firstCreatorId": 3326075,
+   "firstCreatorSortName": "Khabra, Bal",
+   "title": "Revolve",
+   "sortTitle": "Revolve",
+   "publishDate": "2025-10-14T00:00:00Z",
+   "publishDateText": "10/14/2025",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781526677952"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2025-10-14T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781526677952",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=7a9b15c0-aa07-4d6d-b073-317c5899cf86&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781526677952"
+      }
+     ],
+     "rights": [],
+     "fileSize": 2113956,
+     "onSaleDateUtc": "2025-10-14T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781526677952",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "ModifiableDisplay",
+       "SomeNonVisualReadingSupport",
+       "AlternativeText"
+      ],
+      "conformance": [
+       "MeetsStandards"
+      ],
+      "navigation": [
+       "StructuredNavigation"
+      ],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": [
+       "PageBreaks"
+      ],
+      "epubVersion": "1.1",
+      "wcagVersion": "2.2",
+      "wcagLevel": "AA",
+      "publisherContact": "accessibility@bloomsbury.com"
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "d63e055b-bce8-3f51-8d65-9f4a31d720d0"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2025-10-14T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "3811",
+    "name": "Bloomsbury GB Trade"
+   },
+   "detailedSeries": {
+    "seriesId": 1787835,
+    "seriesName": "Off the Ice",
+    "readingOrder": "3",
+    "rank": 20
+   }
+  },
+  {
+   "reserveId": "71a5e6ae-10a7-4bbd-8185-80e11a9708b6",
+   "subjects": [
+    {
+     "id": "24",
+     "name": "Fantasy"
+    },
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "49",
+     "name": "Literature"
+    },
+    {
+     "id": "77",
+     "name": "Romance"
+    }
+   ],
+   "bisacCodes": [
+    "FIC024000",
+    "FIC027320",
+    "FIC031020"
+   ],
+   "bisac": [
+    {
+     "code": "FIC024000",
+     "description": "Fiction / Occult & Supernatural"
+    },
+    {
+     "code": "FIC027320",
+     "description": "Fiction / Romance / Paranormal / Vampires "
+    },
+    {
+     "code": "FIC031020",
+     "description": "Fiction / Thrillers / Historical"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 498509,
+     "name": "Deborah Harkness",
+     "role": "Author",
+     "sortName": "Harkness, Deborah",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "imprint": {
+    "id": "65148",
+    "name": "Penguin Books"
+   },
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 3,
+    "publisherSupplier": 0
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2012-07-10T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=71A5E6AE-10A7-4BBD-8185-80E11A9708B6&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "97289",
+    "name": "Penguin Publishing Group"
+   },
+   "series": "All Souls",
+   "description": "<b>The #1 <i>New York Times</i> bestselling second installment in the All Souls series, from the author of <i>The Discovery of Witches</i> and <i>The Black Bird Oracle.</i><br>Look for the hit series &ldquo;A Discovery of Witches,&rdquo; now...",
+   "availableCopies": 0,
+   "ownedCopies": 1,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 1,
+   "holdsRatio": 1,
+   "estimatedWaitDays": 28,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-150/1523-1/{71A5E6AE-10A7-4BBD-8185-80E11A9708B6}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#080808",
+      "rgb": {
+       "red": 8,
+       "green": 8,
+       "blue": 8
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-400/1523-1/{71A5E6AE-10A7-4BBD-8185-80E11A9708B6}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#080808",
+      "rgb": {
+       "red": 8,
+       "green": 8,
+       "blue": 8
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-100/1523-1/{71A5E6AE-10A7-4BBD-8185-80E11A9708B6}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#080808",
+      "rgb": {
+       "red": 8,
+       "green": 8,
+       "blue": 8
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "718016",
+   "firstCreatorName": "Deborah Harkness",
+   "firstCreatorId": 498509,
+   "firstCreatorSortName": "Harkness, Deborah",
+   "title": "Shadow of Night",
+   "sortTitle": "Shadow of Night",
+   "starRating": 4.3,
+   "starRatingCount": 2835,
+   "publishDate": "2012-07-10T00:00:00Z",
+   "publishDateText": "07/10/2012",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781101578933"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2012-07-10T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781101578933",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=71A5E6AE-10A7-4BBD-8185-80E11A9708B6&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781101578933"
+      }
+     ],
+     "rights": [],
+     "fileSize": 3496175,
+     "onSaleDateUtc": "2012-07-10T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781101578933",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://excerpts.cdn.overdrive.com/FormatType-410/1523-1/71A/5E6/AE/ShadowofNight9781101578933.epub"
+     },
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "ModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [
+       "TableOfContents",
+       "StructuredNavigation"
+      ],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": [
+       "HighContrastText",
+       "NonColorMeansOfConveyingInformation"
+      ],
+      "summaryStatement": "Accessibility features highlighted in metadata are based on this ebook's content and format."
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "f06280f4-f49e-49ea-99de-b8972fafb0e0"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2012-07-10T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "3738",
+    "name": "Penguin Group (USA), Inc."
+   },
+   "detailedSeries": {
+    "seriesId": 530105,
+    "seriesName": "All Souls",
+    "readingOrder": "2",
+    "rank": 26
+   }
+  },
+  {
+   "reserveId": "8ee5bd39-e966-4c08-a66c-9e2d4c507d2f",
+   "subjects": [
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "57",
+     "name": "Mystery"
+    },
+    {
+     "id": "77",
+     "name": "Romance"
+    },
+    {
+     "id": "115",
+     "name": "Historical Fiction"
+    }
+   ],
+   "bisacCodes": [
+    "FIC022060",
+    "FIC022100",
+    "FIC027070"
+   ],
+   "bisac": [
+    {
+     "code": "FIC022060",
+     "description": "Fiction / Mystery & Detective / Historical"
+    },
+    {
+     "code": "FIC022100",
+     "description": "Fiction / Mystery & Detective / Amateur Sleuth"
+    },
+    {
+     "code": "FIC027070",
+     "description": "Fiction / Romance / Historical / Regency"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 604047,
+     "name": "Andrea Penrose",
+     "role": "Author",
+     "sortName": "Penrose, Andrea",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 2,
+    "publisherSupplier": 0
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2024-09-24T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=8ee5bd39-e966-4c08-a66c-9e2d4c507d2f&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "212012",
+    "name": "Kensington Books"
+   },
+   "series": "Wrexford & Sloane Mystery",
+   "description": "<P><B>When the murder of a scientific genius on the verge of a momentous discovery upsets the wedding of their dear friends, Wrexford and Charlotte must risk all they hold dear to deconstruct a sinister conspiracy in the latest installment of...",
+   "availableCopies": 0,
+   "ownedCopies": 1,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 14,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-150/6852-1/{8EE5BD39-E966-4C08-A66C-9E2D4C507D2F}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#542F37",
+      "rgb": {
+       "red": 84,
+       "green": 47,
+       "blue": 55
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/6852-1/{8EE5BD39-E966-4C08-A66C-9E2D4C507D2F}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#502D34",
+      "rgb": {
+       "red": 80,
+       "green": 45,
+       "blue": 52
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-100/6852-1/{8EE5BD39-E966-4C08-A66C-9E2D4C507D2F}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#3D2227",
+      "rgb": {
+       "red": 61,
+       "green": 34,
+       "blue": 39
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "10375286",
+   "firstCreatorName": "Andrea Penrose",
+   "firstCreatorId": 604047,
+   "firstCreatorSortName": "Penrose, Andrea",
+   "title": "Murder at King's Crossing",
+   "sortTitle": "Murder at Kings Crossing",
+   "starRating": 3.8,
+   "starRatingCount": 25,
+   "publishDate": "2024-09-24T00:00:00Z",
+   "publishDateText": "09/24/2024",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781496739988"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2024-09-24T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781496739988",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=8ee5bd39-e966-4c08-a66c-9e2d4c507d2f&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781496739988"
+      }
+     ],
+     "rights": [],
+     "fileSize": 7418904,
+     "onSaleDateUtc": "2024-09-24T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781496739988",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "NoInfoForModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": []
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "e3acc19c-3fe3-3511-9275-eb5808ec2f97"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2024-09-24T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "36087",
+    "name": "Lightning Source Inc"
+   },
+   "detailedSeries": {
+    "seriesId": 576857,
+    "seriesName": "Wrexford & Sloane Mystery",
+    "readingOrder": "8",
+    "rank": 18
+   }
+  },
+  {
+   "reserveId": "4f997d15-eb86-4901-9617-06794ff79e76",
+   "subjects": [
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "49",
+     "name": "Literature"
+    }
+   ],
+   "bisacCodes": [
+    "FIC000000"
+   ],
+   "bisac": [
+    {
+     "code": "FIC000000",
+     "description": "Fiction / General"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 1365493,
+     "name": "Leïla Slimani",
+     "role": "Author",
+     "sortName": "Slimani, Leïla",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 281889,
+     "name": "Amelie Thoma",
+     "role": "Translator",
+     "sortName": "Thoma, Amelie",
+     "roleDiscipline": "Translation",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "imprint": {
+    "id": "166042",
+    "name": "Luchterhand Literaturverlag"
+   },
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2022-09-21T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=4f997d15-eb86-4901-9617-06794ff79e76&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "348957",
+    "name": "Penguin Random House Verlagsgruppe GmbH"
+   },
+   "subtitle": "Roman",
+   "description": "<b>Der neue große Roman des literarischen Weltstars Leïla Slimani. Die faszinierende Fortsetzung des Bestsellers »Das Land der Anderen«.<br />Eine junge Ärztin – und die Sehnsucht einer ganzen Generation nach einem neuen Leben.</b><br />Wie viel...",
+   "availableCopies": 0,
+   "ownedCopies": 5,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 13,
+   "holdsRatio": 3,
+   "estimatedWaitDays": 40,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-150/3363-1/{4F997D15-EB86-4901-9617-06794FF79E76}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#252122",
+      "rgb": {
+       "red": 37,
+       "green": 33,
+       "blue": 34
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-400/3363-1/{4F997D15-EB86-4901-9617-06794FF79E76}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#242021",
+      "rgb": {
+       "red": 36,
+       "green": 32,
+       "blue": 33
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-100/3363-1/{4F997D15-EB86-4901-9617-06794FF79E76}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#242021",
+      "rgb": {
+       "red": 36,
+       "green": 32,
+       "blue": 33
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "9910264",
+   "firstCreatorName": "Leïla Slimani",
+   "firstCreatorId": 1365493,
+   "firstCreatorSortName": "Slimani, Leïla",
+   "title": "Schaut, wie wir tanzen",
+   "sortTitle": "Schaut wie wir tanzen Roman",
+   "starRating": 3.5,
+   "starRatingCount": 2,
+   "publishDate": "2022-09-21T00:00:00Z",
+   "publishDateText": "09/21/2022",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783641264079"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2022-09-21T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783641264079",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=4f997d15-eb86-4901-9617-06794ff79e76&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783641264079"
+      }
+     ],
+     "rights": [],
+     "fileSize": 1644417,
+     "onSaleDateUtc": "2022-09-21T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783641264079",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "NoInfoForModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [],
+      "richContent": [],
+      "hazards": [
+       "HazardsUnknown"
+      ],
+      "legalConsiderations": [],
+      "additionalInformation": [],
+      "publisherContact": "barrierefreiheit@penguinrandomhouse.de"
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "b73ffb6f-0258-3d33-8f23-24580be5649e"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2022-09-21T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "9258",
+    "name": "Penguin Random House Verlagsgruppe GmbH"
+   }
+  },
+  {
+   "reserveId": "92d2a749-006b-4798-98e5-86fa1f940ce6",
+   "subjects": [
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "49",
+     "name": "Literature"
+    }
+   ],
+   "bisacCodes": [
+    "FIC019000"
+   ],
+   "bisac": [
+    {
+     "code": "FIC019000",
+     "description": "Fiction / Literary"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 606734,
+     "name": "Wlada Kolosowa",
+     "role": "Author",
+     "sortName": "Kolosowa, Wlada",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 3154775,
+     "name": "Raùl Soria",
+     "role": "Illustrator",
+     "sortName": "Soria, Raùl",
+     "roleDiscipline": "Graphics",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2022-07-28T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=92d2a749-006b-4798-98e5-86fa1f940ce6&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "283209",
+    "name": "Leykam Buchverlag"
+   },
+   "subtitle": "Roman mit Graphic Novel",
+   "description": "»Plötzlich Randlage.« Bei Tim und Thea verdient sie das Geld, er macht den Haushalt. Kein Problem eigentlich, bis ihr günstiger Mietvertrag gekündigt wird und sie an den Stadtrand ziehen müssen. Das neue Haus ist voller Kippenstummel und prekärer...",
+   "availableCopies": 0,
+   "ownedCopies": 10,
+   "luckyDayAvailableCopies": 44,
+   "luckyDayOwnedCopies": 50,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 2,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-150/6251-1/{92D2A749-006B-4798-98E5-86FA1F940CE6}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#FEF373",
+      "rgb": {
+       "red": 254,
+       "green": 243,
+       "blue": 115
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/6251-1/{92D2A749-006B-4798-98E5-86FA1F940CE6}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#FEF373",
+      "rgb": {
+       "red": 254,
+       "green": 243,
+       "blue": 115
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-100/6251-1/{92D2A749-006B-4798-98E5-86FA1F940CE6}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#FEF373",
+      "rgb": {
+       "red": 254,
+       "green": 243,
+       "blue": 115
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "9159487",
+   "firstCreatorName": "Wlada Kolosowa",
+   "firstCreatorId": 606734,
+   "firstCreatorSortName": "Kolosowa, Wlada",
+   "title": "Der Hausmann",
+   "sortTitle": "Der Hausmann Roman mit Graphic Novel",
+   "starRating": 4.5,
+   "starRatingCount": 8,
+   "publishDate": "2022-07-28T00:00:00Z",
+   "publishDateText": "07/28/2022",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783701182657"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2022-07-28T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783701182657",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=92d2a749-006b-4798-98e5-86fa1f940ce6&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783701182657"
+      }
+     ],
+     "rights": [],
+     "fileSize": 17484908,
+     "onSaleDateUtc": "2022-07-28T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783701182657",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "NoInfoForModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": []
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "2b0b65cb-2c65-3e65-bfb7-8ba98aaed657"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2022-07-28T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "27350",
+    "name": "Bookwire GmbH"
+   }
+  },
+  {
+   "reserveId": "c1de191f-a0f5-4ade-8698-08ce96e097d6",
+   "subjects": [
+    {
+     "id": "24",
+     "name": "Fantasy"
+    },
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "77",
+     "name": "Romance"
+    }
+   ],
+   "bisacCodes": [
+    "FIC009100",
+    "FIC027030"
+   ],
+   "bisac": [
+    {
+     "code": "FIC009100",
+     "description": "Fiction / Fantasy / Action & Adventure"
+    },
+    {
+     "code": "FIC027030",
+     "description": "Fiction / Romance / Fantasy"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 198227,
+     "name": "Cornelia Funke",
+     "role": "Author",
+     "sortName": "Funke, Cornelia",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 670046,
+     "name": "Lionel Wigram",
+     "role": "Author",
+     "sortName": "Wigram, Lionel",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 198227,
+     "name": "Cornelia Funke",
+     "role": "Illustrator",
+     "sortName": "Funke, Cornelia",
+     "roleDiscipline": "Graphics",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 2382011,
+     "name": "Mirada",
+     "role": "Artist",
+     "sortName": "Mirada",
+     "roleDiscipline": "Graphics",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": false,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2020-03-19T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=c1de191f-a0f5-4ade-8698-08ce96e097d6&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "452648",
+    "name": "Dressler"
+   },
+   "series": "Reckless",
+   "description": "Treten Sie ein in die Welt hinter dem Spiegel! Obwohl Jacob Reckless stets darauf geachtet hat, die Welt hinter dem Spiegel vor seinem Bruder Will geheim zu halten, ist dieser ihm gefolgt und gerät in tödliche Gefahr: Will wird von einem Goyl...",
+   "availableCopies": 0,
+   "ownedCopies": 2,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 7,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-150/6251-1/{C1DE191F-A0F5-4ADE-8698-08CE96E097D6}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#AF938F",
+      "rgb": {
+       "red": 175,
+       "green": 147,
+       "blue": 143
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-400/6251-1/{C1DE191F-A0F5-4ADE-8698-08CE96E097D6}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#A98D89",
+      "rgb": {
+       "red": 169,
+       "green": 141,
+       "blue": 137
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-100/6251-1/{C1DE191F-A0F5-4ADE-8698-08CE96E097D6}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#A68A86",
+      "rgb": {
+       "red": 166,
+       "green": 138,
+       "blue": 134
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "8456286",
+   "firstCreatorName": "Cornelia Funke",
+   "firstCreatorId": 198227,
+   "firstCreatorSortName": "Funke, Cornelia",
+   "title": "Steinernes Fleisch",
+   "sortTitle": "Steinernes Fleisch",
+   "publishDate": "2020-03-19T00:00:00Z",
+   "publishDateText": "03/19/2020",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783862721252"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2020-03-19T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783862721252",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=c1de191f-a0f5-4ade-8698-08ce96e097d6&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783862721252"
+      }
+     ],
+     "rights": [],
+     "fileSize": 15266938,
+     "onSaleDateUtc": "2020-03-19T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783862721252",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "NoInfoForModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": [],
+      "summaryStatement": "EPUB2 format is limited accessible"
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "3d74d7c4-a2fc-38d8-ace2-c6f0554c0307"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2020-03-19T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "27350",
+    "name": "Bookwire GmbH"
+   },
+   "detailedSeries": {
+    "seriesId": 1817267,
+    "seriesName": "Reckless",
+    "readingOrder": "1",
+    "rank": 7
+   }
+  },
+  {
+   "reserveId": "ef82533a-a279-4fde-afc9-7a7d69c1677d",
+   "subjects": [
+    {
+     "id": "12",
+     "name": "Comic and Graphic Books"
+    },
+    {
+     "id": "24",
+     "name": "Fantasy"
+    },
+    {
+     "id": "26",
+     "name": "Fiction"
+    }
+   ],
+   "bisacCodes": [
+    "CGN004030"
+   ],
+   "bisac": [
+    {
+     "code": "CGN004030",
+     "description": "COMICS & GRAPHIC NOVELS / Fantasy / General"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 935860,
+     "name": "Brian K. Vaughan",
+     "role": "Author",
+     "sortName": "Vaughan Brian K.",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 978691,
+     "name": "Fiona Staples",
+     "role": "Illustrator",
+     "sortName": "Staples, Fiona",
+     "roleDiscipline": "Graphics",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "en",
+     "name": "English"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2025-04-30T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=ef82533a-a279-4fde-afc9-7a7d69c1677d&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "158444",
+    "name": "Image Comics"
+   },
+   "series": "Saga (2012)",
+   "description": "<p>In the epic twelfth volume of SAGA, Alana takes on a dangerous new role, her 12-year-old daughter Hazel forges an important friendship, and the galaxy's balance of power begins to shift.Romeo & Juliet meets Star Wars in this genre-blending,...",
+   "availableCopies": 1,
+   "ownedCopies": 2,
+   "luckyDayAvailableCopies": 2,
+   "luckyDayOwnedCopies": 2,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 7,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-150/7860-1/{EF82533A-A279-4FDE-AFC9-7A7D69C1677D}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#7AB3BE",
+      "rgb": {
+       "red": 122,
+       "green": 179,
+       "blue": 190
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-400/7860-1/{EF82533A-A279-4FDE-AFC9-7A7D69C1677D}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#7AB4BF",
+      "rgb": {
+       "red": 122,
+       "green": 180,
+       "blue": 191
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-100/7860-1/{EF82533A-A279-4FDE-AFC9-7A7D69C1677D}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#7AB4BF",
+      "rgb": {
+       "red": 122,
+       "green": 180,
+       "blue": 191
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "11818138",
+   "firstCreatorName": "Brian K. Vaughan",
+   "firstCreatorId": 935860,
+   "firstCreatorSortName": "Vaughan Brian K.",
+   "title": "Saga (2012), Volume 12",
+   "sortTitle": "Saga (2012) Volume 12",
+   "edition": "Collected Issues",
+   "publishDate": "2025-04-30T00:00:00Z",
+   "publishDateText": "04/30/2025",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781534328785"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2025-04-30T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781534328785",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=ef82533a-a279-4fde-afc9-7a7d69c1677d&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9781534328785"
+      }
+     ],
+     "rights": [],
+     "fileSize": 171495755,
+     "onSaleDateUtc": "2025-04-30T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9781534328785",
+     "bundledContent": [],
+     "fulfillmentType": "pdf",
+     "id": "ebook-pdf-adobe",
+     "name": "PDF eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "39024",
+    "name": "Image Comics"
+   },
+   "detailedSeries": {
+    "seriesId": 947501,
+    "seriesName": "Saga (2012)",
+    "readingOrder": "67-72",
+    "rank": 62
+   }
+  },
+  {
+   "reserveId": "6b8826e4-036d-4841-814d-6c48c324ae2a",
+   "subjects": [
+    {
+     "id": "67",
+     "name": "Politics"
+    },
+    {
+     "id": "111",
+     "name": "Nonfiction"
+    }
+   ],
+   "bisacCodes": [
+    "POL062000"
+   ],
+   "bisac": [
+    {
+     "code": "POL062000",
+     "description": "Political Science / Geopolitics"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 733058,
+     "name": "Carlo Masala",
+     "role": "Author",
+     "sortName": "Masala, Carlo",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 1531395,
+     "name": "Jonas Baeck",
+     "role": "Narrator",
+     "sortName": "Baeck, Jonas",
+     "roleDiscipline": "Audio",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2025-03-20T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=6b8826e4-036d-4841-814d-6c48c324ae2a&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "202152",
+    "name": "C.H.Beck"
+   },
+   "subtitle": "Ein Szenario",
+   "description": "März 2028: Russische Truppen erobern die estnische Kleinstadt Narwa und die Insel Hiiumaa in der Ostsee. Der Angriff auf das Baltikum hat begonnen. Jetzt rächt sich, dass Europa nach dem Ende des Krieges in der Ukraine nicht aufgerüstet hat und...",
+   "availableCopies": 1,
+   "ownedCopies": 5,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 3,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "audiobook",
+    "name": "Audiobook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-150/6251-1/{6B8826E4-036D-4841-814D-6C48C324AE2A}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#F7F7F7",
+      "rgb": {
+       "red": 247,
+       "green": 247,
+       "blue": 247
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/6251-1/{6B8826E4-036D-4841-814D-6C48C324AE2A}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#F6F4F5",
+      "rgb": {
+       "red": 246,
+       "green": 244,
+       "blue": 245
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-100/6251-1/{6B8826E4-036D-4841-814D-6C48C324AE2A}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#F6F4F5",
+      "rgb": {
+       "red": 246,
+       "green": 244,
+       "blue": 245
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "11732290",
+   "firstCreatorName": "Carlo Masala",
+   "firstCreatorId": 733058,
+   "firstCreatorSortName": "Masala, Carlo",
+   "title": "Wenn Russland gewinnt",
+   "sortTitle": "Wenn Russland gewinnt Ein Szenario",
+   "edition": "Unabridged",
+   "publishDate": "2025-03-20T00:00:00Z",
+   "publishDateText": "03/20/2025",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783406835056"
+      }
+     ],
+     "rights": [],
+     "fileSize": 87982886,
+     "onSaleDateUtc": "2025-03-20T04:00:00+00:00",
+     "duration": "03:03:17",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783406835056",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=6b8826e4-036d-4841-814d-6c48c324ae2a&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "audiobook-overdrive",
+     "name": "OverDrive Listen audiobook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783406835056"
+      }
+     ],
+     "rights": [],
+     "fileSize": 88037891,
+     "onSaleDateUtc": "2025-03-20T04:00:00+00:00",
+     "partCount": 19,
+     "duration": "03:03:10",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783406835056",
+     "bundledContent": [],
+     "fulfillmentType": "odm",
+     "id": "audiobook-mp3",
+     "name": "MP3 audiobook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "27350",
+    "name": "Bookwire GmbH"
+   }
+  },
+  {
+   "reserveId": "b86f0c4b-3eaf-47de-ac40-f1bdaa2df773",
+   "subjects": [
+    {
+     "id": "26",
+     "name": "Fiction"
+    },
+    {
+     "id": "57",
+     "name": "Mystery"
+    }
+   ],
+   "bisacCodes": [
+    "FIC050000"
+   ],
+   "bisac": [
+    {
+     "code": "FIC050000",
+     "description": "Fiction / Crime"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 1950403,
+     "name": "Karsten Dusse",
+     "role": "Author",
+     "sortName": "Dusse, Karsten",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 1950403,
+     "name": "Karsten Dusse",
+     "role": "Narrator",
+     "sortName": "Dusse, Karsten",
+     "roleDiscipline": "Audio",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2024-01-09T05:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=b86f0c4b-3eaf-47de-ac40-f1bdaa2df773&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "126395",
+    "name": "Random House Audio"
+   },
+   "series": "Achtsam morden-Reihe",
+   "description": "<b>Guten Appetot!</b><br />Dank Achtsamkeit hat Björn Diemel seine Mitte gefunden. Seine Problemzonen sind nun allerdings die Ränder seines Körpers, die sich immer weiter von dieser Mitte entfernen. Björn erkennt, dass In-sich-Ruhen und Mangel an...",
+   "availableCopies": 2,
+   "ownedCopies": 7,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 2,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 2,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "audiobook",
+    "name": "Audiobook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-150/3363-1/{B86F0C4B-3EAF-47DE-AC40-F1BDAA2DF773}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#FDFDFD",
+      "rgb": {
+       "red": 253,
+       "green": 253,
+       "blue": 253
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/3363-1/{B86F0C4B-3EAF-47DE-AC40-F1BDAA2DF773}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#FFFFFF",
+      "rgb": {
+       "red": 255,
+       "green": 255,
+       "blue": 255
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-100/3363-1/{B86F0C4B-3EAF-47DE-AC40-F1BDAA2DF773}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#FFFFFF",
+      "rgb": {
+       "red": 255,
+       "green": 255,
+       "blue": 255
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "11227642",
+   "firstCreatorName": "Karsten Dusse",
+   "firstCreatorId": 1950403,
+   "firstCreatorSortName": "Dusse, Karsten",
+   "title": "Achtsam morden durch bewusste Ernährung",
+   "sortTitle": "Achtsam morden durch bewusste Ernährung",
+   "edition": "Abridged",
+   "publishDate": "2024-01-09T00:00:00Z",
+   "publishDateText": "01/09/2024",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783837164770"
+      }
+     ],
+     "rights": [],
+     "fileSize": 223178416,
+     "onSaleDateUtc": "2024-01-09T05:00:00+00:00",
+     "duration": "07:44:53",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783837164770",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=b86f0c4b-3eaf-47de-ac40-f1bdaa2df773&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "audiobook-overdrive",
+     "name": "OverDrive Listen audiobook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783837164770"
+      }
+     ],
+     "rights": [],
+     "fileSize": 223532284,
+     "onSaleDateUtc": "2024-01-09T05:00:00+00:00",
+     "partCount": 111,
+     "duration": "07:44:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783837164770",
+     "bundledContent": [],
+     "fulfillmentType": "odm",
+     "id": "audiobook-mp3",
+     "name": "MP3 audiobook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "9258",
+    "name": "Penguin Random House Verlagsgruppe GmbH"
+   },
+   "detailedSeries": {
+    "seriesId": 577518,
+    "seriesName": "Achtsam morden-Reihe",
+    "readingOrder": "5",
+    "rank": 14
+   }
+  },
+  {
+   "reserveId": "ea47bdb3-341b-4b76-aa35-dd21200020f7",
+   "subjects": [
+    {
+     "id": "67",
+     "name": "Politics"
+    },
+    {
+     "id": "111",
+     "name": "Nonfiction"
+    }
+   ],
+   "bisacCodes": [
+    "POL000000",
+    "POL064000"
+   ],
+   "bisac": [
+    {
+     "code": "POL000000",
+     "description": "Political Science / General"
+    },
+    {
+     "code": "POL064000",
+     "description": "Political Science / Corruption & Misconduct"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 462302,
+     "name": "Anne Applebaum",
+     "role": "Author",
+     "sortName": "Applebaum, Anne",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    },
+    {
+     "id": 1971398,
+     "name": "Sandra Voss",
+     "role": "Narrator",
+     "sortName": "Voss, Sandra",
+     "roleDiscipline": "Audio",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2024-10-10T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=ea47bdb3-341b-4b76-aa35-dd21200020f7&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "201568",
+    "name": "Der Audio Verlag"
+   },
+   "subtitle": "Wie Diktatoren sich gegenseitig an der Macht halten (Ungekürzt)",
+   "description": "Autokratische Herrschaft besteht im 21. Jahrhundert nicht länger nur aus einem Tyrannen an der Spitze, der mit Gewalt sein Volk unterdrückt: Heute werden Autokratien durch ausgeklügelte Netzwerke geführt, es hat sich eine neue internationale...",
+   "availableCopies": 1,
+   "ownedCopies": 9,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 2,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "audiobook",
+    "name": "Audiobook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-150/5518-1/{EA47BDB3-341B-4B76-AA35-DD21200020F7}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#1D1D1B",
+      "rgb": {
+       "red": 29,
+       "green": 29,
+       "blue": 27
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/5518-1/{EA47BDB3-341B-4B76-AA35-DD21200020F7}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#1B1B19",
+      "rgb": {
+       "red": 27,
+       "green": 27,
+       "blue": 25
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-100/5518-1/{EA47BDB3-341B-4B76-AA35-DD21200020F7}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#1D1D1B",
+      "rgb": {
+       "red": 29,
+       "green": 29,
+       "blue": 27
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "11166982",
+   "firstCreatorName": "Anne Applebaum",
+   "firstCreatorId": 462302,
+   "firstCreatorSortName": "Applebaum, Anne",
+   "title": "Die Achse der Autokraten. Korruption, Kontrolle, Propaganda",
+   "sortTitle": "Die Achse der Autokraten Korruption Kontrolle Propaganda Wie Diktatoren sich gegenseitig an der Macht halten (Ungekürzt)",
+   "edition": "Unabridged",
+   "publishDate": "2024-10-10T00:00:00Z",
+   "publishDateText": "10/10/2024",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783742434081"
+      }
+     ],
+     "rights": [],
+     "fileSize": 165781632,
+     "onSaleDateUtc": "2024-10-10T04:00:00+00:00",
+     "duration": "05:45:22",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783742434081",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=ea47bdb3-341b-4b76-aa35-dd21200020f7&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "audiobook-overdrive",
+     "name": "OverDrive Listen audiobook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783742434081"
+      }
+     ],
+     "rights": [],
+     "fileSize": 165812488,
+     "onSaleDateUtc": "2024-10-10T04:00:00+00:00",
+     "partCount": 5,
+     "duration": "05:48:20",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783742434081",
+     "bundledContent": [],
+     "fulfillmentType": "odm",
+     "id": "audiobook-mp3",
+     "name": "MP3 audiobook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "21337",
+    "name": "Zebralution GmbH"
+   }
+  },
+  {
+   "reserveId": "4b384869-f02c-4cd3-b6d8-076b0375104e",
+   "subjects": [
+    {
+     "id": "67",
+     "name": "Politics"
+    },
+    {
+     "id": "111",
+     "name": "Nonfiction"
+    }
+   ],
+   "bisacCodes": [
+    "POL000000"
+   ],
+   "bisac": [
+    {
+     "code": "POL000000",
+     "description": "Political Science / General"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 524775,
+     "name": "Steffen Mau",
+     "role": "Author",
+     "sortName": "Mau, Steffen",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 11
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2024-06-19T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=4b384869-f02c-4cd3-b6d8-076b0375104e&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "340712",
+    "name": "Suhrkamp Verlag"
+   },
+   "subtitle": "Warum der Osten anders bleibt",
+   "series": "edition suhrkamp",
+   "description": "<p><strong>»Wer in der Ost-West-Debatte mit Schuldbegriffen operiert, ist schon auf dem Holzweg.«</strong></p>\n<p>Die Diskussion über Ostdeutschland und das Verhältnis zwischen Ost und West flammt immer wieder auf. Sei es anlässlich runder...",
+   "availableCopies": 2,
+   "ownedCopies": 19,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 3,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 1,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-150/6869-1/{4B384869-F02C-4CD3-B6D8-076B0375104E}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#01506E",
+      "rgb": {
+       "red": 1,
+       "green": 80,
+       "blue": 110
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-400/6869-1/{4B384869-F02C-4CD3-B6D8-076B0375104E}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#01506E",
+      "rgb": {
+       "red": 1,
+       "green": 80,
+       "blue": 110
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-100/6869-1/{4B384869-F02C-4CD3-B6D8-076B0375104E}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#01506E",
+      "rgb": {
+       "red": 1,
+       "green": 80,
+       "blue": 110
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "10630014",
+   "firstCreatorName": "Steffen Mau",
+   "firstCreatorId": 524775,
+   "firstCreatorSortName": "Mau, Steffen",
+   "title": "Ungleich vereint",
+   "sortTitle": "Ungleich vereint Warum der Osten anders bleibt",
+   "starRating": 5.0,
+   "starRatingCount": 1,
+   "publishDate": "2024-06-19T00:00:00Z",
+   "publishDateText": "06/19/2024",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783518781227"
+      },
+      {
+       "type": "UPC",
+       "value": "9783518781227"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2024-06-19T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783518781227",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=4b384869-f02c-4cd3-b6d8-076b0375104e&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783518781227"
+      },
+      {
+       "type": "UPC",
+       "value": "9783518781227"
+      }
+     ],
+     "rights": [],
+     "fileSize": 1483029,
+     "onSaleDateUtc": "2024-06-19T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783518781227",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "ModifiableDisplay",
+       "SomeNonVisualReadingSupport"
+      ],
+      "conformance": [
+       "NoInfoForStandards"
+      ],
+      "navigation": [],
+      "richContent": [],
+      "hazards": [
+       "HazardsUnknown"
+      ],
+      "legalConsiderations": [],
+      "additionalInformation": []
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "bb0dd6c5-99fe-3bb5-9a2e-4dcf8a776cc7"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2024-06-19T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "36119",
+    "name": "Libreka GmbH"
+   },
+   "detailedSeries": {
+    "seriesId": 1373862,
+    "seriesName": "edition suhrkamp",
+    "rank": 3
+   }
+  },
+  {
+   "reserveId": "6d47eaf7-1c99-41b5-bd62-1a98cd99d0db",
+   "subjects": [
+    {
+     "id": "14",
+     "name": "Cooking & Food"
+    },
+    {
+     "id": "111",
+     "name": "Nonfiction"
+    }
+   ],
+   "bisacCodes": [
+    "CKB039000"
+   ],
+   "bisac": [
+    {
+     "code": "CKB039000",
+     "description": "Cooking / Health & Healing / General"
+    }
+   ],
+   "levels": [],
+   "creators": [
+    {
+     "id": 2819425,
+     "name": "Jessie Inchauspé",
+     "role": "Author",
+     "sortName": "Inchauspé, Jessie",
+     "roleDiscipline": "Text",
+     "intelligenceType": "Unknown"
+    }
+   ],
+   "languages": [
+    {
+     "id": "de",
+     "name": "German"
+    }
+   ],
+   "imprint": {
+    "id": "166016",
+    "name": "Heyne Verlag"
+   },
+   "isBundledChild": false,
+   "ratings": {
+    "maturityLevel": {
+     "id": "generalcontent",
+     "name": "General content"
+    },
+    "naughtyScore": {
+     "id": "GeneralContent",
+     "name": "General content"
+    }
+   },
+   "constraints": {
+    "isDisneyEulaRequired": false
+   },
+   "reviewCounts": {
+    "premium": 0,
+    "publisherSupplier": 0
+   },
+   "isAvailable": true,
+   "isPreReleaseTitle": false,
+   "estimatedReleaseDate": "2023-05-24T04:00:00Z",
+   "sample": {
+    "href": "https://samples.overdrive.com/?crid=6d47eaf7-1c99-41b5-bd62-1a98cd99d0db&.epub-sample.overdrive.com"
+   },
+   "publisher": {
+    "id": "348957",
+    "name": "Penguin Random House Verlagsgruppe GmbH"
+   },
+   "subtitle": "Mit dem Vier-Wochen-Programm gegen Heißhunger und Stimmungstiefs für ein Leben voller Energie--Mit 100 einfachen Rezepten, The Glucose Goddess, SPIEGEL-Bestseller",
+   "description": "<b>Der perfekte Einstieg in ein Leben mit ausgeglichenem Glukose-Spiegel</b><br />Wie gehen wir energiegeladen durch den Tag, statt müde am Morgen und nachmittags erschöpft zu sein? Wie essen wir entspannt worauf wir Lust haben, ohne uns gegen...",
+   "availableCopies": 1,
+   "ownedCopies": 9,
+   "luckyDayAvailableCopies": 1,
+   "luckyDayOwnedCopies": 1,
+   "holdsCount": 0,
+   "holdsRatio": 0,
+   "estimatedWaitDays": 2,
+   "isFastlane": false,
+   "availabilityType": "normal",
+   "isRecommendableToLibrary": true,
+   "isOwned": true,
+   "isHoldable": true,
+   "isAdvantageFiltered": false,
+   "isRestricted": false,
+   "visitorEligible": false,
+   "juvenileEligible": false,
+   "youngAdultEligible": false,
+   "contentAccessLevels": 0,
+   "classifications": {},
+   "type": {
+    "id": "ebook",
+    "name": "eBook"
+   },
+   "covers": {
+    "cover150Wide": {
+     "href": "https://img1.od-cdn.com/ImageType-150/3363-1/{6D47EAF7-1C99-41B5-BD62-1A98CD99D0DB}IMG150.JPG",
+     "height": 200,
+     "width": 150,
+     "primaryColor": {
+      "hex": "#F5F5EB",
+      "rgb": {
+       "red": 245,
+       "green": 245,
+       "blue": 235
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover300Wide": {
+     "href": "https://img2.od-cdn.com/ImageType-400/3363-1/{6D47EAF7-1C99-41B5-BD62-1A98CD99D0DB}IMG400.JPG",
+     "height": 400,
+     "width": 300,
+     "primaryColor": {
+      "hex": "#EFEFE5",
+      "rgb": {
+       "red": 239,
+       "green": 239,
+       "blue": 229
+      }
+     },
+     "isPlaceholderImage": false
+    },
+    "cover510Wide": {
+     "href": "https://img3.od-cdn.com/ImageType-100/3363-1/{6D47EAF7-1C99-41B5-BD62-1A98CD99D0DB}IMG100.JPG",
+     "height": 680,
+     "width": 510,
+     "primaryColor": {
+      "hex": "#EFEFE5",
+      "rgb": {
+       "red": 239,
+       "green": 239,
+       "blue": 229
+      }
+     },
+     "isPlaceholderImage": false
+    }
+   },
+   "id": "10509175",
+   "firstCreatorName": "Jessie Inchauspé",
+   "firstCreatorId": 2819425,
+   "firstCreatorSortName": "Inchauspé, Jessie",
+   "title": "Der Glukose-Trick – Das Praxisbuch",
+   "sortTitle": "Der GlukoseTrick  Das Praxisbuch Mit dem VierWochenProgramm gegen Heißhunger und Stimmungstiefs für ein Leben voller EnergieMit 100 einfachen Rezepten The Glucose Goddess SPIEGELBestseller",
+   "starRating": 4.0,
+   "starRatingCount": 1,
+   "publishDate": "2023-05-24T00:00:00Z",
+   "publishDateText": "05/24/2023",
+   "formats": [
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783641307905"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2023-05-24T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783641307905",
+     "bundledContent": [],
+     "sample": {
+      "href": "https://samples.overdrive.com/?crid=6d47eaf7-1c99-41b5-bd62-1a98cd99d0db&.epub-sample.overdrive.com"
+     },
+     "fulfillmentType": "bifocal",
+     "id": "ebook-overdrive",
+     "name": "OverDrive Read"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "ISBN",
+       "value": "9783641307905"
+      }
+     ],
+     "rights": [],
+     "fileSize": 16057743,
+     "onSaleDateUtc": "2023-05-24T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "isbn": "9783641307905",
+     "bundledContent": [],
+     "fulfillmentType": "epub",
+     "accessibilityStatements": {
+      "waysOfReading": [
+       "ModifiableDisplay",
+       "FullNonVisualReadingSupport",
+       "AlternativeText"
+      ],
+      "conformance": [
+       "MeetsStandards"
+      ],
+      "navigation": [
+       "TableOfContents",
+       "StructuredNavigation"
+      ],
+      "richContent": [],
+      "hazards": [],
+      "legalConsiderations": [],
+      "additionalInformation": [],
+      "epubVersion": "1.1",
+      "wcagVersion": "2.1",
+      "wcagLevel": "AA",
+      "summaryStatement": "Dieses E-Book verfügt über ein Markup, das die Zugänglichkeit unterstützt und die Kompatibilität mit assistiver Technologie ermöglicht. Es wurde so konzipiert, dass die Anzeigeeigenschaften durch den Leser geändert werden können. Die Datei enthält ein Inhaltsverzeichnis und eine definierte Lesereihenfolge. Überschriften ermöglichen dem Leser eine schnelle Navigation durch das E-Book. Bilder sind gut beschrieben und entsprechen den WCAG 2.1 Level AA. Es gibt keine Gefährdungen.",
+      "publisherContact": "barrierefreiheit@penguinrandomhouse.de"
+     },
+     "id": "ebook-epub-adobe",
+     "name": "EPUB eBook"
+    },
+    {
+     "identifiers": [
+      {
+       "type": "KoboBookID",
+       "value": "0df4f23f-5829-3245-8332-0837c15e0633"
+      }
+     ],
+     "rights": [],
+     "onSaleDateUtc": "2023-05-24T04:00:00+00:00",
+     "hasAudioSynchronizedText": false,
+     "isBundleParent": false,
+     "bundledContent": [],
+     "fulfillmentType": "kobo",
+     "id": "ebook-kobo",
+     "name": "Kobo eBook"
+    }
+   ],
+   "publisherAccount": {
+    "id": "9258",
+    "name": "Penguin Random House Verlagsgruppe GmbH"
+   }
+  }
+ ],
+ "totalItems": 15,
+ "totalItemsText": "15",
+ "links": {
+  "self": {
+   "page": 1,
+   "pageText": "1"
+  },
+  "first": {
+   "page": 1,
+   "pageText": "1"
+  },
+  "last": {
+   "page": 1,
+   "pageText": "1"
+  }
+ }
+}

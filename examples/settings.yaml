@@ -58,8 +58,13 @@ sources:
     media: [ebook]
   # Die zweite Plattform desselben Verbunds, mit eigenem Bestand: was die
   # Onleihe nicht führt, steht hier mitunter sehr wohl. Nur deutsche
-  # EPUB-E-Books, keine Optionen.
+  # EPUB-E-Books. Einstellbar sind Sammlungen, aus denen Vorschläge kommen
+  # (#74): „Lucky Day" ist sofort ausleihbar. ``bisac`` engt auf Genres ein
+  # (voreingestellt FIC, Belletristik), etwa [FIC031, FIC028] für Thriller
+  # und Science-Fiction.
   overdrive:
+    collections:
+    - {id: 1572172, name: Lucky Day}
   beam:
   # Eine zweite Quelle derselben Bauart braucht einen eigenen Namen: sonst
   # hieße sie wie ihre Nachbarin, und die Oberfläche könnte beide nicht

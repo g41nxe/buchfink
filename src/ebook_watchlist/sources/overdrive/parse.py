@@ -16,7 +16,7 @@ import json
 import re
 from dataclasses import dataclass
 
-from ...models import Availability
+from ...models import Availability, MatchReason, Observation
 from ..base import SourceStructureError
 from . import selectors as sel
 
@@ -136,6 +136,77 @@ def _cover(item: dict) -> str | None:
     bilder = bilder if isinstance(bilder, dict) else {}
     gross = bilder.get("cover510Wide") or bilder.get("cover300Wide") or {}
     return gross.get("href") if isinstance(gross, dict) else None
+
+
+@dataclass(frozen=True, slots=True)
+class Collection:
+    """Eine Sammlung der Bibliothek als Vorschlagsquelle (#74), etwa „Lucky Day".
+
+    ``bisac`` sind Präfixe der BISAC-Codes, von denen ein Titel einen tragen
+    muss: voreingestellt ``FIC``, also Belletristik — eine Sammlung führt auch
+    Kochbücher und Politik. Den Geschmack prüft das Tor, nicht die Quelle.
+    """
+
+    id: str
+    name: str
+    bisac: tuple[str, ...] = ("FIC",)
+
+
+def _count(item: dict, field: str) -> int:
+    wert = item.get(field)
+    return wert if isinstance(wert, int) and not isinstance(wert, bool) else 0
+
+
+def parse_collection(
+    data: dict, collection: Collection, *, source: str = "overdrive"
+) -> list[Observation]:
+    """Die Titel einer Sammlung als Funde: deutsch, E-Book, im Rahmen der Codes.
+
+    Ein Fund aus *Lucky Day* ist sofort ausleihbar — ohne Wartezeit, sieben
+    Tage —, auch wenn die gewöhnlichen Exemplare verliehen sind: es zählen die
+    Lucky-Day-Exemplare (*Der Hausmann*: 0 frei, 44 im Lucky Day).
+    """
+    items = data.get("items")
+    if not isinstance(items, list):
+        raise SourceStructureError(
+            f"OverDrive: Sammlung {collection.id!r} ohne items — die Antwort hat sich geändert"
+        )
+    funde = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        art = item.get("type")
+        if not isinstance(art, dict) or art.get("id") != sel.COLLECTION_TYPE:
+            continue
+        sprachen = {s.get("id") for s in item.get("languages") or [] if isinstance(s, dict)}
+        if sel.COLLECTION_LANGUAGE not in sprachen:
+            continue
+        codes = [c for c in item.get("bisacCodes") or [] if isinstance(c, str)]
+        if collection.bisac and not any(
+            c.startswith(prefix) for c in codes for prefix in collection.bisac
+        ):
+            continue
+        titel = _text(item, "title")
+        if titel is None:
+            continue
+        kennung = title_id(item)
+        frei = _count(item, "luckyDayAvailableCopies") or _count(item, "availableCopies")
+        funde.append(
+            Observation(
+                source=source,
+                source_item_id=kennung,
+                title=titel,
+                author=_text(item, "firstCreatorName"),
+                match_reason=MatchReason.GENRE_CATEGORY,
+                category=collection.name,
+                isbn=_isbn(item),
+                availability=Availability.AVAILABLE if frei else Availability.UNAVAILABLE,
+                cover_url=_cover(item),
+                blurb=_text(item, "description"),
+                url=sel.TITLE_URL.format(title_id=kennung),
+            )
+        )
+    return funde
 
 
 def title_id(item: dict) -> str:

@@ -17,15 +17,19 @@ Kontaktadresse, und bei 429 haelt der HttpClient hart an.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from urllib.parse import urljoin
 
-from ...config import WatchlistEntry
+from ...config import Settings, WatchlistEntry
 from ...http import HttpClient, NotFound
 from ...matching import Candidate, Confidence, Query, Resolution, match
 from ...models import MatchReason, Observation
-from ..base import LibrarySource, SourceStructureError
+from ..base import LibrarySource, RunContext, SourceStructureError
 from . import parse
 from . import selectors as sel
+from .parse import Collection
+
+__all__ = ["Collection", "OverdriveSource", "require_title_id", "title_id_from_url"]
 
 SOURCE_NAME = "overdrive"
 
@@ -60,11 +64,38 @@ class OverdriveSource(LibrarySource):
         name: str = SOURCE_NAME,
         base: str = sel.BASE,
         library: str = sel.LIBRARY,
+        collections: tuple[Collection, ...] = (),
     ) -> None:
         self.client = client
         self.name = name
         self.base = base
         self.library = library
+        #: Sammlungen, aus denen Vorschläge kommen (#74), etwa „Lucky Day".
+        self.collections = tuple(collections)
+
+    # --- Vorschläge aus Sammlungen (#74) -----------------------------------
+
+    def collect(
+        self, settings: Settings, watchlist: Sequence[WatchlistEntry], context: RunContext
+    ) -> list[Observation]:
+        """Die Watchlist wie jede Bibliothek, dazu die Titel der Sammlungen.
+
+        Ein Aufruf je Sammlung und Lauf. Was die Watchlist schon abdeckt oder
+        die Leserin für immer verworfen hat, kommt nicht noch einmal — dieselbe
+        Regel wie beim Shop.
+        """
+        observations = self.watch(watchlist, context)
+        seen = {o.source_item_id for o in observations}
+        for collection in self.collections:
+            text = self.client.get(self._url(sel.COLLECTION_PATH, collection=collection.id))
+            for fund in parse.parse_collection(
+                parse.payload(text), collection, source=self.name
+            ):
+                if fund.source_item_id in seen or context.is_dismissed(fund):
+                    continue
+                seen.add(fund.source_item_id)
+                observations.append(fund)
+        return observations
 
     # --- Pruefung ----------------------------------------------------------
 

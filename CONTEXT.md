@@ -160,6 +160,16 @@ carries it: *Scythe* has none, but its DNB title reads „Scythe – Die Hüter 
 Todes". Resolution therefore compares the typed title with every name the DNB
 gives the book, and with each part of a title split at a dash or colon.
 
+### Library Collection
+*deutsch: Sammlung*
+
+A list a library curates itself, used as a source of Discoveries (#74): OverDrive's
+*Lucky Day* (instantly borrowable, seven days, no holds). One request per Run; only
+German e-books, fiction by default (BISAC `FIC`, configurable per collection in
+`settings.yaml`). A find from a collection counts as a shelf find (Thema) named
+after the collection, passes the same Rating Gate, and reads "sofort ausleihbar aus
+„Lucky Day"". Taste is judged by the gate, never filtered at the source.
+
 ### Thunder
 *deutsch: die Schnittstelle von OverDrive*
 
