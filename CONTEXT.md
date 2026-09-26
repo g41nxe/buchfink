@@ -496,7 +496,11 @@ How well a book suits the reader, computed by the code from the book's
 Steckbrief and her Taste Form (ADR 33): since 26.09.2026 by **Form Overlap**
 (#79); until then a noisy-OR over Facets, Liked Terms and Counterweights. The
 percentage orders; stars summarise it. No model is asked, so a new profile
-version or a newly rated book recomputes every Fit at once.
+version or a newly rated book recomputes every Fit at once. Shown the same way on the book
+page, in the Pile and in the Digest: stars with the percentage beside them (#54).
+The reader's own stars stand apart as *deine Sterne* and override it (ADR 17). The
+strength scale (*schwach* … *sehr stark*) belongs to Facets and families, never to
+a Fit — one scale for two different things would read as one.
 
 Not a **Profile Match** (*Profiltreffer*): that is the older, author-based way a
 Discovery came in.
