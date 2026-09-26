@@ -157,6 +157,10 @@ def _count(item: dict, field: str) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
 
 
+#: Die BISAC-Präfixe der Belletristik: für Erwachsene und für Jugendliche.
+FICTION_CODES = ("FIC", "YAF")
+
+
 def observation_of(
     item: dict,
     *,
@@ -237,9 +241,19 @@ def parse_collection(
 def parse_finds(
     data: dict, *, source: str, reason: MatchReason, category: str | None = None
 ) -> list[Observation]:
-    """Die Treffer einer Suche als Funde — für Autor:innen und Themen (#74)."""
+    """Die Treffer einer Suche als Funde — für Autor:innen und Themen (#74).
+
+    Ein Thema der Leserin ist Belletristik: dort zählt nur, was einen Code der
+    Belletristik trägt (``FIC``, für Jugendbücher ``YAF``). Das Thema „Science
+    Fiction" bei OverDrive führt auch Sachbücher über das Universum.
+    """
     funde = []
     for item in _items(data, "Suche"):
+        codes = [c for c in item.get("bisacCodes") or [] if isinstance(c, str)]
+        if reason is MatchReason.GENRE_CATEGORY and not any(
+            c.startswith(FICTION_CODES) for c in codes
+        ):
+            continue
         fund = observation_of(item, source=source, reason=reason, category=category)
         if fund is not None:
             funde.append(fund)

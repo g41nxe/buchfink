@@ -499,3 +499,18 @@ def test_childrens_books_and_markup_do_not_become_finds() -> None:
                                 reason=MatchReason.GENRE_CATEGORY) is None
     assert parse.observation_of(markiert, source="overdrive",
                                 reason=MatchReason.GENRE_CATEGORY).title == "Star WarsTM Herrschaft"
+
+
+def test_a_genre_category_find_must_be_fiction() -> None:
+    """Im Thema Science-Fiction stand ein Sachbuch über den Ursprung des
+    Universums (Lauf vom 26.09.2026): ein Thema der Leserin ist Belletristik."""
+    from ebook_watchlist.sources.overdrive.parse import parse_finds
+
+    data = parse.payload(fixture("collection-lucky-day.json"))
+    funde = parse_finds(data, source="overdrive", reason=MatchReason.GENRE_CATEGORY,
+                        category="belletristik/science-fiction")
+
+    titel = {f.title for f in funde}
+    # Ein deutsches E-Book, aber ein Sachbuch (POL) — und eines über Ernährung (CKB).
+    assert "Ungleich vereint" not in titel and "Der Glukose-Trick" not in " ".join(titel)
+    assert "Der Hausmann" in titel
