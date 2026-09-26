@@ -118,10 +118,27 @@ def test_a_short_find_is_a_short_story() -> None:
     assert not is_short_story(replace(shelf("Der Schwarm"), pages=SHORT_STORY_PAGES))
 
 
-def test_without_a_page_count_nothing_is_a_short_story() -> None:
+def test_without_a_page_count_only_the_title_can_say_short_story() -> None:
     from ebook_watchlist.junk import is_short_story
 
     assert not is_short_story(shelf("BattleTech - Onikuma"))
+
+
+def test_a_title_that_says_short_story_is_one_even_without_pages() -> None:
+    """„Der Wendepunkt — Eine David-Hunter-Kurzgeschichte" und „Die letzte
+    Einheit, Episode 12" standen im Stapel (26.09.2026): beide von
+    Autor:innen der Leserin, beide ohne Seitenzahl. Titel und Untertitel sagen
+    es; der Klappentext nicht, der spricht von „über 100 Kurzgeschichten"."""
+    from dataclasses import replace
+
+    from ebook_watchlist.junk import is_short_story
+
+    assert is_short_story(replace(by_author("Der Wendepunkt"),
+                                  subtitle="Eine David-Hunter-Kurzgeschichte"))
+    assert is_short_story(by_author(
+        "Die letzte Einheit,  - Episode 12: Die kultivierte Kunst, Köpfe zu knacken -"))
+    assert not is_short_story(replace(by_author("Die letzte Einheit"), subtitle="Roman",
+                                      blurb="Er schrieb über 100 Kurzgeschichten."))
 
 
 def test_a_short_title_she_chose_herself_stays() -> None:

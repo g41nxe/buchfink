@@ -82,15 +82,26 @@ def is_junk(observation: Observation) -> bool:
 SHORT_STORY_PAGES = 80
 
 
-def is_short_story(observation: Observation) -> bool:
-    """Eine Kurzgeschichte: ein Fund mit bekanntem Umfang unter der Schwelle.
+#: Was ein Titel oder Untertitel über seine Form sagt: „Eine
+#: David-Hunter-Kurzgeschichte", „Die letzte Einheit, Episode 12".
+_SHORT_WORDS = re.compile(r"Kurzgeschichte|Kurzkrimi|\bShort Story\b", re.IGNORECASE)
 
-    Nur nach dem Umfang, den die Detailseite nennt. Wörter im Text taugen
+
+def is_short_story(observation: Observation) -> bool:
+    """Eine Kurzgeschichte: ein Fund mit bekanntem Umfang unter der Schwelle —
+    oder einer, dessen Titel es selbst sagt.
+
+    Vor allem nach dem Umfang, den die Detailseite nennt. Der Klappentext taugt
     nicht: „Kurzgeschichten" steht meist in der Autorenbiografie („über 100
     Kurzgeschichten"), und die kurzen *BattleTech*-Titel sagen es nirgends
-    (gemessen an 370 Funden, 26.09.2026). Ohne Umfang ist nichts eine
-    Kurzgeschichte. Ein Watchlist-Titel geht immer durch.
+    (gemessen an 370 Funden, 26.09.2026). Titel und Untertitel aber sprechen
+    vom Buch selbst, und die Seitenzahl kennen nur wenige Funde (19 von 556).
+    Ein Fortsetzungsheft ist auch von einer Autorin der Leserin keine
+    Gelegenheit, anders als ein Sammelband. Ein Watchlist-Titel geht immer durch.
     """
     if observation.match_reason is MatchReason.WATCHLIST:
         return False
-    return observation.pages is not None and observation.pages < SHORT_STORY_PAGES
+    if observation.pages is not None and observation.pages < SHORT_STORY_PAGES:
+        return True
+    named = f"{observation.title or ''} {observation.subtitle or ''}"
+    return bool(_SHORT_WORDS.search(named) or _EPISODE.search(named))
