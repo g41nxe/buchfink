@@ -117,7 +117,8 @@ def test_the_profile_page_draws_the_form(data_dir) -> None:
     body = TestClient(create_app()).get("/profile").text
 
     assert 'data-spider="Merkmale"' in body and 'data-spider="Erzählmuster"' in body
-    assert "egal — innen" in body
+    # Die Legende erklärt den Ring: außen gemocht, innen abgelehnt.
+    assert "außen: gemocht" in body and "innen: abgelehnt" in body
 
 
 def test_the_book_spider_shows_the_value_the_verdict_used(vocabulary, weights) -> None:

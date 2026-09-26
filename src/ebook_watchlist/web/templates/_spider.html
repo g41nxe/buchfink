@@ -38,11 +38,14 @@
 
 {% macro _tone(a) %}{{ 'danger' if a.value < 0 else 'ink' if a.book else 'soft' }}{% endmacro %}
 
-{% macro spider(s) %}
+{# `caption=false`, wo ein Umschalter die Überschrift schon trägt (Profilseite). #}
+{% macro spider(s, caption=true, width="max-w-md") %}
 {% set label %}{{ s.title }}: {% for a in s.axes %}{{ a.name }} {{ '%+.1f' | format(a.value) }}{% if a.book is not none %}, im Buch {{ '%.1f' | format(a.book) }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}{% endset %}
-<figure class="w-full max-w-md" data-spider="{{ s.title }}">
+<figure class="mx-auto w-full {{ width }}" data-spider="{{ s.title }}">
+  {% if caption %}
   <figcaption class="mb-1 text-xs font-semibold uppercase tracking-wide text-soft">
     {{ s.title }}</figcaption>
+  {% endif %}
   {# Breit: die Namen an den Achsen. #}
   <svg viewBox="-70 22 440 256" class="h-auto w-full max-sm:hidden" role="img"
        aria-label="{{ label }}">
@@ -75,14 +78,25 @@
 </figure>
 {% endmacro %}
 
-{% macro legend(with_book=false, unknown=0) %}
-<p class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft">
+{# `sides`: „außen gemocht" und „innen abgelehnt" als eigene Punkte — die
+   Profilseite hat oben keinen Satz, der es erklärt, die Buchseite schon. #}
+{% macro legend(with_book=false, unknown=0, sides=false, classes="mt-1") %}
+<p class="{{ classes }} flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-soft">
   <span class="inline-flex items-center gap-1">
     <span class="inline-block h-2.5 w-4 rounded-sm border border-accent bg-accent/15"></span>
     deine Geschmacksform</span>
+  {% if sides %}
+  <span class="inline-flex items-center gap-1">
+    <span class="inline-block w-4 border-t border-dashed border-soft"></span>egal</span>
+  <span class="inline-flex items-center gap-1.5">
+    <span class="size-2 rounded-full bg-accent"></span>außen: gemocht</span>
+  <span class="inline-flex items-center gap-1.5">
+    <span class="size-2 rounded-full bg-danger"></span>innen: abgelehnt</span>
+  {% else %}
   <span class="inline-flex items-center gap-1">
     <span class="inline-block w-4 border-t border-dashed border-soft"></span>egal — innen
     abgelehnt, außen gemocht</span>
+  {% endif %}
   {% if with_book %}
   <span class="inline-flex items-center gap-1">
     <span class="inline-block h-2.5 w-4 rounded-sm border border-dashed border-amber

@@ -1,0 +1,25 @@
+{# Eine Karte mit Kopf: Zeichen, Titel, eine Zeile darunter und rechts ein
+   Steckplatz (etwa ein Umschalter). Zuerst auf der Profilseite; gebaut, damit
+   andere Seiten dieselbe Form bekommen können, statt sie nachzubauen.
+
+   Ruhig wie die übrigen Flächen der Anwendung: Rand, kein Schatten. Der Kopf
+   bricht um, wenn der Steckplatz neben dem Titel keinen Platz hat — auf dem
+   Telefon steht er dann darunter, statt den Titel zu überdecken.
+
+   Aufruf: `{% raw %}{% call card("Titel", "ic-heart", sub="…", extra=html) %}…{% endcall %}{% endraw %}` #}
+{% macro card(title, icon, sub=none, extra=none, attrs="") %}
+<section class="rounded-xl border border-rule bg-card p-5" {{ attrs | safe }}>
+  <header class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div class="flex min-w-56 flex-1 items-start gap-3">
+      <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-hair text-accent">
+        <svg class="i"><use href="#{{ icon }}"/></svg></span>
+      <div>
+        <h2 class="text-sm font-semibold text-ink">{{ title }}</h2>
+        {% if sub %}<p class="mt-0.5 text-xs text-soft">{{ sub }}</p>{% endif %}
+      </div>
+    </div>
+    {% if extra %}{{ extra }}{% endif %}
+  </header>
+  {{ caller() }}
+</section>
+{% endmacro %}

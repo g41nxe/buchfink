@@ -9,7 +9,7 @@ und nennt den Weg, auf dem er sich ändert.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 import yaml
@@ -92,6 +92,33 @@ class Shelf:
     @property
     def count(self) -> int:
         return len(self.books)
+
+
+def merge_genres(lines: tuple[FacetLine, ...]) -> tuple[FacetLine, ...]:
+    """Ein Gegengewicht, das nur in mehreren Genres gilt, als eine Pille.
+
+    „witzig · nur bei Cosy" und „· nur bei Cozy" sind eine Sache in zwei
+    Schreibweisen; die Seite zeigt sie einmal, mit beiden Genres. Ein
+    Gegengewicht ohne Genre bleibt für sich — es gilt überall.
+    """
+    merged: list[FacetLine] = []
+    at: dict[str, int] = {}
+    for line in lines:
+        if line.genre is None:
+            merged.append(line)
+            continue
+        if line.name in at:
+            first = merged[at[line.name]]
+            merged[at[line.name]] = replace(
+                first,
+                genre=f"{first.genre} / {line.genre}",
+                books=tuple(dict.fromkeys((*first.books, *line.books))),
+                book_id=first.book_id or line.book_id,
+            )
+            continue
+        at[line.name] = len(merged)
+        merged.append(line)
+    return tuple(merged)
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,14 +305,14 @@ def _facet_profile(store: Store, settings: Settings):
         book = store.book(relation.book_id)
         if book is not None:
             disliked_by_title.setdefault(book.title, book.id)
-    counterweights = tuple(
+    counterweights = merge_genres(tuple(
         FacetLine(
             family_names(c.families, vocabulary), c.books, genre=c.genre,
             book_id=next((disliked_by_title[t] for t in c.books if t in disliked_by_title),
                          None),
         )
         for c in profile.counterweights
-    )
+    ))
     liked = tuple(
         LikedLine(
             family_name(g.family, vocabulary), is_pattern(g.family, vocabulary), g.boosted,

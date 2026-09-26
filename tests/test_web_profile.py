@@ -177,3 +177,20 @@ def test_a_relation_to_a_vanished_book_is_skipped(client: TestClient, db: Store)
     shelf = next(r for r in view.build(db, load_settings()).counts if r.kind == "owned")
 
     assert shelf.count == 0
+
+
+def test_one_counterweight_in_two_spellings_is_one_line() -> None:
+    """„witzig · nur bei Cosy" und „witzig · nur bei Cozy" sind eine Sache in
+    zwei Schreibweisen — auf der Seite eine Pille (26.09.2026)."""
+    lines = (
+        view.FacetLine("witzig", ("x",), genre="Cosy"),
+        view.FacetLine("witzig", ("x",), genre="Cozy"),
+        view.FacetLine("witzig", ("y",)),
+        view.FacetLine("große Welt", ("z",), genre="Fantasy", book_id=4),
+    )
+
+    merged = view.merge_genres(lines)
+
+    assert [(m.name, m.genre) for m in merged] == [
+        ("witzig", "Cosy / Cozy"), ("witzig", None), ("große Welt", "Fantasy")]
+    assert merged[2].book_id == 4

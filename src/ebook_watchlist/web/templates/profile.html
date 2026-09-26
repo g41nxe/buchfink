@@ -2,20 +2,37 @@
 {% block title %}Profil — Buchfink{% endblock %}
 
 {% block content %}
-{% from "_section.html" import section %}
-<h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Profil</h1>
-<p class="mb-6 max-w-xl text-sm text-soft">
-  Was das Werkzeug über dich zu wissen glaubt.
-  <strong class="text-ink">Nur zum Lesen</strong> — geändert wird das anderswo,
-  und warum, steht unten.
-</p>
+{% from "_card.html" import card %}
+{#- Die Profilseite als Übersicht in Karten (26.09.2026): oben der Kopf und die
+    Regale, darunter links die Geschmacksform und rechts, was sie trägt, unten
+    worauf Buchfink achtet und wann es sich meldet. Nur zum Lesen — geändert
+    wird am Buch (#51); eine Pille, die an einem Buch hängt, führt dorthin. -#}
+
+{#- Die Regale bekommen je ein Zeichen; die Namen stehen in `profile_page`. -#}
+{% set shelf_icons = {"watching": "ic-binoculars", "owned": "ic-lib", "liked": "ic-heart",
+                      "disliked": "ic-x", "dismissed": "ic-ban"} %}
+
+{#- `data-reading-profile` nur, wenn es eins gibt; die Tests lesen die Seite
+    ab hier. -#}
+<div x-data="{ openShelf: null, spiderTab: 1 }"
+     {% if view.facet_profile is not none %}data-reading-profile{% endif %}>
+
+<header class="mb-8">
+  <p class="mb-1 text-xs font-medium tracking-wider text-accent uppercase">
+    Profil{% if view.facet_profile is not none %} · Fassung {{ view.facet_profile }}{% endif %}</p>
+  <h1 class="font-serif text-3xl font-semibold tracking-tight">Dein Leseprofil</h1>
+  <p class="mt-2 max-w-xl text-sm text-soft">
+    Was Buchfink über dich zu wissen glaubt — gelernt aus den Büchern, die du bewertet hast.
+    <strong class="font-medium text-ink">Nur zum Lesen</strong>: ändern lässt es sich an jedem Buch.
+  </p>
+</header>
 
 {# Der Weg zum neuen Leseprofil aus Büchern (ADR 33, #47). Nur solange es
    keines gibt: danach ändert es sich beim Nachschärfen, nicht durch eine
    zweite Erstaufnahme. #}
 {% if view.facet_profile is none %}
 <a href="/intake" data-intake
-   class="tap mb-6 flex items-center gap-3 rounded-lg border border-accent/40 bg-accent/5
+   class="tap mb-8 flex items-center gap-3 rounded-xl border border-accent/40 bg-accent/5
           px-5 py-4 hover:bg-accent/10">
   <svg class="i shrink-0 text-accent"><use href="#ic-heart"/></svg>
   <span class="text-sm">
@@ -27,152 +44,50 @@
 </a>
 {% endif %}
 
-{# Das Leseprofil aus Facetten (ADR 33, #50), sobald es eins gibt. Nur zu
-   lesen; abwählen und nachschärfen kommt mit #51. #}
-{% if view.facet_profile is not none %}
-{% from "_family_pill.html" import title_row %}
-<section class="mb-6 rounded-lg border border-rule bg-card px-5 py-4" data-reading-profile>
-  <p class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-    <span class="font-semibold text-accent">Dein Leseprofil</span>
-    <span class="text-xs text-soft">Fassung {{ view.facet_profile }}</span>
-  </p>
-
-  {# Die Geschmacksform als Spinnen (#79): gelernt aus deinen Büchern, das
-     Getippte als Start. Darunter, was du angetippt hast. #}
-  {% if view.spiders %}
-  {% from "_spider.html" import spider, legend %}
-  <div class="mb-5">
-    <div class="grid gap-4 lg:grid-cols-2">
-      {% for s in view.spiders %}{{ spider(s) }}{% endfor %}
-    </div>
-    {{ legend() }}
-  </div>
-  {% endif %}
-
-  {% if view.liked %}
-  <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Gemocht</p>
-  <ul class="mb-4 flex flex-wrap gap-1.5">
-    {% for g in view.liked %}
-    <li>
-      {# Ein Link zum Buch, an dem es sich abwählen lässt (#51) — die Seite
-         selbst bleibt zum Lesen. #}
-      <a {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening"
-         title="beim Buch ändern"{% endif %}
-         class="inline-flex h-7 items-center gap-1 rounded-full border px-3 text-xs
-                {{ 'border-amber/60 text-amber' if g.boosted else 'border-accent/40 text-accent' }}
-                {{ 'hover:bg-hair' if g.book_id else '' }}">
-      {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>
-      {% else %}<svg class="i"><use href="#ic-heart"/></svg>{% endif %}
-      {{ g.name }}{% if g.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}</a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-
-  {% if view.facets %}
-  <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Erkannte Kombinationen</p>
-  <ul class="mb-4 grid gap-3 sm:grid-cols-2">
-    {% for f in view.facets %}
-    <li class="rounded border border-accent/40 px-3 py-2">
-      <ul class="space-y-1">
-        {% for name, sentence in f.parts %}
-        <li class="text-xs"><span class="font-semibold text-accent">{{ name }}</span>
-          <span class="text-soft">— {{ sentence }}</span></li>
-        {% endfor %}
-      </ul>
-      <p class="mt-1.5 flex items-center gap-2 text-xs text-soft" aria-label="Stärke: {{ f.strength }}">
-        <span class="inline-flex gap-0.5">
-          {% for i in range(1, 5) %}
-          <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>
-          {% endfor %}
-        </span>{{ f.strength }}</p>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-  {% if view.counterweights %}
-  <p class="mt-4 mb-2 text-xs font-medium uppercase tracking-wide text-soft">Zählt gegen ein Buch</p>
-  <ul class="flex flex-wrap gap-2">
-    {% for c in view.counterweights %}
-    <li>
-      <a {% if c.book_id %}href="/book/{{ c.book_id }}#sharpening"
-         title="beim Buch zurücknehmen"{% endif %}
-         class="inline-flex h-7 items-center gap-1 rounded-full border border-danger/40 px-3
-                text-xs text-danger {{ 'hover:bg-danger/10' if c.book_id else '' }}">
-      <svg class="i"><use href="#ic-ban"/></svg>{{ c.name }}{% if c.genre %}
-      <span class="opacity-70">· nur bei {{ c.genre }}</span>{% endif %}</a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-</section>
-{% endif %}
-
-{# Die Zahlen bleiben der Ueberblick — dahinter stehen jetzt die Buecher.
-   Bis Ticket 49 stand hier nur die Zahl, und was Ticket 48 aus der Watchlist
-   entfernt, war danach nur ueber seine Buch-Nummer zu finden.
-
-   Alpine statt fuenf `details`: die Zahlen sollen ihr Raster behalten, und
-   die Liste soll darunter in voller Breite aufgehen statt in einer Spalte
-   (ADR 20 — lokaler Zustand ohne Serverwissen). #}
-{# Die Zahlen bleiben der Ueberblick — dahinter stehen jetzt die Buecher.
-   Bis Ticket 49 stand hier nur die Zahl, und was Ticket 48 aus der Watchlist
-   entfernt, war danach nur ueber seine Buch-Nummer zu finden.
-
-   Als **Reiter** dargestellt: dass ein Klick unten etwas oeffnet, sagt hier
-   die Anordnung und nicht die Farbe — die Zahlen sitzen auf einer Linie, und
-   der offene Reiter durchbricht sie. Vorher waren es fuenf stille Zahlen, die
-   nach nichts aussahen, worauf man klicken koennte.
-
-   Alpine statt fuenf `details`: die Liste soll darunter in voller Breite
-   aufgehen statt in einer Rasterspalte (ADR 20). #}
-<div x-data="{ openShelf: null }"
-     class="rounded-lg border border-rule bg-card px-5 pt-4 pb-4">
-  {# Die Linie traegt die Reiter — und erscheint deshalb erst, wenn einer
-     offen ist. Zugeklappt lag sie sonst als freischwebender Strich unter den
-     Zahlen und trennte nichts von nichts. #}
-  <div class="flex flex-wrap justify-center gap-x-6"
-       :class="openShelf ? 'border-b border-rule' : ''">
+{# Die Regale: eine Kachel je Regal, ein Klick öffnet die Bücher darunter in
+   voller Breite (Ticket 49). Am Schreibtisch mit Zeichen, auf dem Telefon als
+   kompakte Zeile — sonst wären fünf Kacheln fünf halbe Bildschirme. Alpine
+   statt `details`: die Liste soll unter allen Kacheln aufgehen, nicht in
+   einer Rasterzelle (ADR 20). #}
+<div class="mb-8">
+  <div class="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
     {% for shelf in view.counts %}
-    <button type="button"
-            class="-mb-px rounded-t border-b-2 px-3 pt-1 pb-2 text-center transition
-                   {{ 'cursor-pointer hover:bg-hair' if shelf.count else 'cursor-default' }}"
-            {# Neutral, nicht gruen: Gruen heisst auf dieser Seite "Autor:in"
-               und Amber "Thema". Welcher Reiter offen ist, ist keine
-               Kategorie, sondern ein Zustand der Bedienung — er nimmt keine
-               der beiden Bedeutungen in Anspruch. #}
-            :class="openShelf === '{{ shelf.kind }}'
-                    ? 'border-ink bg-hair text-ink'
-                    {# Leere Regale gedaempft, aber lesbar: `text-rule` stand
-                       auf `paper` bei einem Kontrast von 1,4 zu 1 und war
-                       damit nicht gedaempft, sondern weg. `text-soft` steht
-                       bei 5,9. Dass hier nichts zu holen ist, sagen die Null
-                       und der abgeschaltete Knopf. #}
-                    : 'border-transparent {{ 'text-soft hover:text-ink' if shelf.count else 'text-soft' }}'"
+    <button type="button" aria-controls="shelf-{{ shelf.kind }}"
+            {% if shelf.count %}:aria-expanded="openShelf === '{{ shelf.kind }}'"{% endif %}
             @click="openShelf = openShelf === '{{ shelf.kind }}' ? null : '{{ shelf.kind }}'"
+            {# Neutral, nicht grün: welche Kachel offen ist, ist ein Zustand
+               der Bedienung und keine der Kategorien Autor:in oder Thema. #}
+            :class="openShelf === '{{ shelf.kind }}' ? 'border-ink/60 bg-hair'
+                                                     : '{{ 'hover:border-soft' if shelf.count else '' }}'"
+            class="group flex items-baseline gap-2 rounded-xl border border-rule bg-card px-3 py-2.5
+                   text-left transition disabled:cursor-default
+                   sm:flex-col sm:items-start sm:gap-2 sm:p-4"
             {{ 'disabled' if not shelf.count }}>
-      <div class="font-serif text-xl font-semibold tabular-nums">{{ shelf.count }}</div>
-      <div class="text-xs">{{ shelf.label }}</div>
+      <span class="hidden size-8 place-items-center rounded-lg bg-hair text-soft sm:grid">
+        <svg class="i"><use href="#{{ shelf_icons.get(shelf.kind, 'ic-doc') }}"/></svg></span>
+      <span class="font-serif text-xl leading-none font-semibold tabular-nums sm:text-2xl
+                   {{ '' if shelf.count else 'text-soft' }}">{{ shelf.count }}</span>
+      <span class="min-w-0 truncate text-xs text-soft">{{ shelf.label }}</span>
     </button>
     {% endfor %}
   </div>
 
   {% for shelf in view.counts %}
   {% if shelf.count %}
-  <div x-show="openShelf === '{{ shelf.kind }}'" x-cloak class="pt-3">
-    {% if shelf.kind == "owned" %}
-    {# Die ganze Liste mit Titelbild, Suche und Sortierung (#71). #}
-    <p class="mb-2 text-right text-xs"><a href="/owned"
-       class="text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent"
-       >Meine Bücher — alle ansehen</a></p>
-    {% endif %}
+  <div id="shelf-{{ shelf.kind }}" x-show="openShelf === '{{ shelf.kind }}'" x-cloak
+       class="mt-3 rounded-xl border border-rule bg-card px-5 py-3">
+    <p class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-soft">
+      <span>{{ shelf.count }} {{ "Buch" if shelf.count == 1 else "Bücher" }} · {{ shelf.label }}</span>
+      {% if shelf.kind == "owned" %}
+      {# Die ganze Liste mit Titelbild, Suche und Sortierung (#71). #}
+      <a href="/owned" class="text-accent underline decoration-accent/40 underline-offset-2
+                              hover:decoration-accent">Meine Bücher — alle ansehen</a>
+      {% endif %}
+    </p>
     <ul class="divide-y divide-hair">
       {% for book in shelf.books %}
       <li class="flex items-baseline justify-between gap-3 py-1.5">
-        {# Kein Akzentgruen: auf dieser Seite bedeutet Gruen "Autor:in" und
-           Amber "Thema" (siehe die Farbtokens). Ein Buch ist keine dritte
-           Kategorie daneben, sondern der Gegenstand — es traegt deshalb die
-           Serifenschrift, so wie ueberall sonst auch, und eine gedaempfte
+        {# Ein Buch trägt die Serifenschrift wie überall; die gedämpfte
            Unterstreichung sagt, dass man darauf klicken kann. #}
         <a href="/book/{{ book.book_id }}"
            class="truncate font-serif text-sm underline decoration-rule
@@ -184,64 +99,184 @@
   </div>
   {% endif %}
   {% endfor %}
-
 </div>
 
-{{ section("Autor:innen", "ic-user") }}
-{% if not view.authors %}
-<p class="py-2 text-sm text-soft italic">Keine hinterlegt.</p>
-{% endif %}
-<ul class="flex flex-wrap gap-2">
-  {% for interest in view.authors %}
-  <li class="tap inline-flex h-7 items-center rounded-full border px-3 text-sm
-             {{ 'border-rule text-soft line-through' if not interest.active
-                else 'border-accent/40 text-accent' }}">
-    {{ interest.value }}
-    {% if interest.weekly %}
-    {# core wird jeden Lauf gefegt, extended einmal die Woche — der lange
-       Ausläufer, bei dem ein verpasster Tag nichts kostet (ADR 11). #}
-    <span class="ml-1 text-xs text-soft">wöchentlich</span>
+{# Das Leseprofil aus Facetten (ADR 33, #50), sobald es eins gibt. #}
+{% if view.facet_profile is not none %}
+<div class="grid gap-6 sm:grid-cols-[minmax(0,1fr)_19rem] sm:items-start">
+  <div class="grid gap-6">
+    {# Die Geschmacksform als Spinne (#79): eine zur Zeit, der Umschalter
+       wählt Merkmale oder Erzählmuster. Gedrückte Knöpfe, keine Reiter — es
+       gibt keine Reiterfläche, nur zwei Ansichten derselben Karte. #}
+    {% if view.spiders %}
+    {% from "_spider.html" import spider, legend %}
+    {% set switch %}
+    {% if view.spiders | length > 1 %}
+    <div role="group" aria-label="Ansicht" class="inline-flex shrink-0 rounded-lg bg-hair p-0.5 text-xs">
+      {% for s in view.spiders %}
+      <button type="button" @click="spiderTab = {{ loop.index }}"
+              :aria-pressed="spiderTab === {{ loop.index }}"
+              :class="spiderTab === {{ loop.index }} ? 'bg-card text-ink shadow-sm' : 'text-soft hover:text-ink'"
+              class="rounded-md px-3 py-1.5 font-medium transition">{{ s.title }}</button>
+      {% endfor %}
+    </div>
     {% endif %}
-  </li>
-  {% endfor %}
-</ul>
+    {% endset %}
+    {% call card("Geschmacksform", "ic-radar",
+                 sub="Gelernt aus deinen Büchern; was du angetippt hast, war der Anfang.",
+                 extra=switch) %}
+      {% for s in view.spiders %}
+      <div x-show="spiderTab === {{ loop.index }}" {{ '' if loop.first else 'x-cloak' }}>{{ spider(s, caption=false, width="max-w-lg") }}</div>
+      {% endfor %}
+      {{ legend(sides=true, classes="mt-3 border-t border-hair pt-3") }}
+    {% endcall %}
+    {% endif %}
 
-{{ section("Themen", "ic-tag") }}
-{% if not view.genre_categories %}
-<p class="py-2 text-sm text-soft italic">Keine hinterlegt.</p>
+    {% if view.facets %}
+    {% call card("Erkannte Kombinationen", "ic-link",
+                 sub="Was in deinen Lieblingsbüchern zusammen auftritt.") %}
+    <ul class="divide-y divide-hair">
+      {% for f in view.facets %}
+      <li class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+        <div class="min-w-0">
+          <p class="flex flex-wrap items-center gap-x-1.5 text-sm font-medium">
+            {% for name, sentence in f.parts %}{% if not loop.first %}<span class="text-soft">+</span>{% endif %}<span>{{ name }}</span>{% endfor %}</p>
+          <ul class="mt-0.5 space-y-0.5">
+            {% for name, sentence in f.parts %}
+            <li class="text-xs text-soft">{{ sentence }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="flex shrink-0 flex-col items-end gap-1" aria-label="Stärke: {{ f.strength }}">
+          <span class="inline-flex gap-0.5">
+            {% for i in range(1, 5) %}
+            <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>
+            {% endfor %}
+          </span>
+          <span class="text-xs text-soft">{{ f.strength }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endcall %}
+    {% endif %}
+  </div>
+
+  <aside class="grid gap-6">
+    {% if view.liked %}
+    {% set traits = view.liked | rejectattr("pattern") | list %}
+    {% set patterns = view.liked | selectattr("pattern") | list %}
+    {% call card("Das magst du", "ic-heart",
+                 sub="★ verstärkt · was an einem Buch hängt, änderst du dort") %}
+      {% for group, title in ((traits, "Merkmale"), (patterns, "Erzählmuster")) if group %}
+      <p class="mb-2 text-xs font-medium tracking-wider text-soft uppercase
+                {{ '' if loop.first else 'mt-4' }}">{{ title }}</p>
+      <ul class="flex flex-wrap gap-1.5">
+        {% for g in group %}
+        <li>
+          {# Ein Link zum Buch, an dem es sich abwählen lässt (#51); was an
+             keinem Buch hängt, sieht nicht klickbar aus. #}
+          <{{ 'a' if g.book_id else 'span' }}
+             {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening" title="beim Buch ändern"{% endif %}
+             class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1
+                    ring-inset {{ 'bg-amber-bg text-amber ring-amber/30' if g.boosted
+                                  else 'bg-accent-bg text-accent ring-accent/20' }}
+                    {{ ('hover:ring-amber/60' if g.boosted else 'hover:ring-accent/50') if g.book_id }}">
+            {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>{% endif %}
+            {{ g.name }}</{{ 'a' if g.book_id else 'span' }}>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+    {% endcall %}
+    {% endif %}
+
+    {% if view.counterweights %}
+    {% call card("Zählt gegen ein Buch", "ic-ban", sub="Senkt das Urteil, wo es zutrifft.") %}
+    <ul class="flex flex-wrap gap-1.5">
+      {% for c in view.counterweights %}
+      <li>
+        <{{ 'a' if c.book_id else 'span' }}
+           {% if c.book_id %}href="/book/{{ c.book_id }}#sharpening" title="beim Buch zurücknehmen"{% endif %}
+           class="inline-flex h-8 items-center gap-1.5 rounded-full bg-danger/10 px-3 text-xs
+                  font-medium text-danger ring-1 ring-danger/20 ring-inset
+                  {{ 'hover:ring-danger/50' if c.book_id }}">
+          <svg class="i"><use href="#ic-ban"/></svg>{{ c.name }}
+          {% if c.genre %}<span class="rounded-full bg-card/70 px-1.5 py-px font-normal text-soft">nur bei {{ c.genre }}</span>{% endif %}
+        </{{ 'a' if c.book_id else 'span' }}>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endcall %}
+    {% endif %}
+  </aside>
+</div>
 {% endif %}
-<ul class="flex flex-wrap gap-2">
-  {% for interest in view.genre_categories %}
-  <li class="tap inline-flex h-7 items-center rounded-full border px-3 text-sm
-             {{ 'border-rule text-soft line-through' if not interest.active
-                else 'border-amber/40 text-amber' }}"
-      title="{{ interest.value }}">{{ interest.label }}</li>
-  {% endfor %}
-</ul>
 
-{{ section("Wann etwas gemeldet wird", "ic-clock") }}
-<dl class="space-y-2 text-sm">
-  <div class="flex flex-wrap gap-x-3">
-    <dt class="w-52 shrink-0 text-soft">Schnäppchen ohne Nachfrage</dt>
-    <dd>unter <span class="font-medium text-amber">{{ view.strong_deal }}</span></dd>
-  </div>
-  <div class="flex flex-wrap gap-x-3">
-    <dt class="w-52 shrink-0 text-soft">Mittleres Band</dt>
-    <dd>{{ view.strong_deal }} bis {{ view.deal }}, aber nur bei
-      mindestens {{ view.min_discount }} % Nachlass</dd>
-  </div>
-  <div class="flex flex-wrap gap-x-3">
-    <dt class="w-52 shrink-0 text-soft">Wöchentlicher Durchgang</dt>
-    <dd>{{ view.next_sweep }}</dd>
-  </div>
-  {# Wie streng das Tor ist (Bewertungsschema, ADR 19): darunter bleibt ein
-     Vorschlag aus dem Stapel. Eine Zahl, die sich nach den ersten echten
-     Funden verstellen lässt, und deshalb sichtbar. #}
-  {% if view.gate_stars %}
-  <div class="flex flex-wrap gap-x-3">
-    <dt class="w-52 shrink-0 text-soft">Vorschläge</dt>
-    <dd>ab <span class="font-medium text-ink">{{ view.gate_stars }}</span> Sternen</dd>
-  </div>
-  {% endif %}
-</dl>
+<div class="mt-6 grid gap-6 sm:grid-cols-2 sm:items-start">
+  {% call card("Worauf Buchfink achtet", "ic-binoculars",
+               sub="Neue Bücher dieser Autor:innen und Themen werden gemeldet.") %}
+    <p class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">
+      Autor:innen{% if view.authors %} <span class="tracking-normal normal-case">· {{ view.authors | length }}</span>{% endif %}</p>
+    {% if not view.authors %}
+    <p class="mb-4 text-sm text-soft italic">Keine hinterlegt.</p>
+    {% else %}
+    <ul class="mb-4 flex flex-wrap gap-1.5">
+      {% for interest in view.authors %}
+      {# Grün heißt Autor:in. Wer nur einmal die Woche gefegt wird, steht
+         mit Rand statt Fläche — der lange Ausläufer (ADR 11). #}
+      <li class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium
+                 {{ 'border border-rule text-soft line-through' if not interest.active
+                    else 'border border-accent/30 text-accent' if interest.weekly
+                    else 'bg-accent-bg text-accent' }}">
+        <svg class="i"><use href="#ic-user"/></svg>{{ interest.value }}
+        {% if interest.weekly %}<span class="font-normal text-soft">· wöchentlich</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <p class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">Themen</p>
+    {% if not view.genre_categories %}
+    <p class="text-sm text-soft italic">Keine hinterlegt.</p>
+    {% else %}
+    <ul class="flex flex-wrap gap-1.5">
+      {% for interest in view.genre_categories %}
+      <li class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium
+                 {{ 'border border-rule text-soft line-through' if not interest.active
+                    else 'bg-amber-bg text-amber' }}"
+          title="{{ interest.value }}"><svg class="i"><use href="#ic-tag"/></svg>{{ interest.label }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  {% endcall %}
+
+  {% call card("Wann gemeldet wird", "ic-clock") %}
+  {# Der Wert bricht nicht um („5,00 €"); lieber rutscht er unter seinen Namen. #}
+  <dl class="divide-y divide-hair">
+    {# Wie streng das Tor ist (Bewertungsschema, ADR 19): darunter bleibt ein
+       Vorschlag aus dem Stapel. Eine Zahl, die sich nach den ersten echten
+       Funden verstellen lässt, und deshalb sichtbar. #}
+    {% if view.gate_stars %}
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 py-2.5 first:pt-0 last:pb-0">
+      <dt class="flex items-center gap-2 text-sm text-soft"><svg class="i shrink-0"><use href="#ic-star"/></svg>Vorschläge</dt>
+      <dd class="ml-auto text-right text-sm whitespace-nowrap">ab <span class="font-semibold text-ink">{{ view.gate_stars }}</span> Sternen</dd>
+    </div>
+    {% endif %}
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 py-2.5 first:pt-0 last:pb-0">
+      <dt class="flex items-center gap-2 text-sm text-soft"><svg class="i shrink-0"><use href="#ic-shop"/></svg>Schnäppchen ohne Nachfrage</dt>
+      <dd class="ml-auto text-right text-sm whitespace-nowrap">unter <span class="font-semibold text-amber">{{ view.strong_deal }}</span></dd>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 py-2.5 first:pt-0 last:pb-0">
+      <dt class="flex items-center gap-2 text-sm text-soft"><svg class="i shrink-0"><use href="#ic-tag"/></svg>Mittleres Band</dt>
+      <dd class="ml-auto text-right text-sm whitespace-nowrap">{{ view.strong_deal }} bis {{ view.deal }}, ab {{ view.min_discount }} % Nachlass</dd>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 py-2.5 first:pt-0 last:pb-0">
+      <dt class="flex items-center gap-2 text-sm text-soft"><svg class="i shrink-0"><use href="#ic-clock"/></svg>Wöchentlicher Durchgang</dt>
+      <dd class="ml-auto text-right text-sm whitespace-nowrap">{{ view.next_sweep }}</dd>
+    </div>
+  </dl>
+  {% endcall %}
+</div>
+
+</div>
 {% endblock %}
