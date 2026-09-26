@@ -77,6 +77,23 @@ class TasteForm:
 
 
 @dataclass(frozen=True, slots=True)
+class Step:
+    """Ein Schritt der Rechnung: wie viel ein Teil zur Übereinstimmung beiträgt.
+
+    ``kind``: ``baseline`` (der Grundwert der Glättung), ``family`` (eine
+    Merkmalsfamilie des Buchs), ``pattern_baseline`` und ``pattern`` (die
+    Erzählmuster), ``facet`` (eine getroffene Kombination), ``pattern_against``
+    und ``genre`` (was abzieht), ``floor`` und ``ceiling`` (die Grenzen 0 und 1).
+    Die Schritte ergeben zusammen genau ``Overlap.share`` — die Buchseite zeigt
+    sie als Wasserfall.
+    """
+
+    kind: str
+    delta: float
+    family: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Overlap:
     """Die Übereinstimmung eines Buchs mit der Geschmacksform."""
 
@@ -86,6 +103,8 @@ class Overlap:
     stars: int
     #: Die Begründung, Zeile für Zeile.
     reasons: tuple[Reason, ...]
+    #: Wie ``share`` entsteht, Schritt für Schritt.
+    steps: tuple[Step, ...] = ()
 
 
 def book_terms(portrait: Portrait, vocabulary: Vocabulary, weights: Weights) -> dict[str, float]:
@@ -235,6 +254,9 @@ def overlap(
     inside = outside = mass = 0.0
     p_inside = p_outside = p_mass = 0.0
     named: dict[str, float] = {}
+    # Je Familie ihr Beitrag, für die Schritte: ``w·v`` bei Merkmalen, ``v`` bei Mustern.
+    family_effect: dict[str, float] = {}
+    pattern_effect: dict[str, float] = {}
     for term, w in terms.items():
         f = vocabulary.family_of(term).id
         if f not in form.known:
@@ -250,25 +272,42 @@ def overlap(
             p_mass += 1.0
             p_inside += max(v, 0.0)
             p_outside += max(-v, 0.0)
+            pattern_effect[f] = pattern_effect.get(f, 0.0) + v
         else:
             mass += w
             inside += w * max(v, 0.0)
             outside += w * max(-v, 0.0)
+            family_effect[f] = family_effect.get(f, 0.0) + w * v
 
     # Geglättet: ein dünner Steckbrief bleibt vorsichtig (Z6).
     a, p0 = weights.smoothing, weights.baseline
-    share = max(0.0, (inside - outside + a * p0) / (mass + a))
+    raw = (inside - outside + a * p0) / (mass + a)
+    steps = [Step("baseline", a * p0 / (mass + a))]
+    steps += [Step("family", e / (mass + a), f)
+              for f, e in sorted(family_effect.items(), key=lambda fe: -abs(fe[1]))]
+    share = max(0.0, raw)
+    if share != raw:
+        steps.append(Step("floor", share - raw))
     pattern = 0.0
     if p_mass:
         ap = weights.pattern_smoothing
         pattern = (p_inside - p_outside + ap * p0) / (p_mass + ap)
+        if pattern > 0:
+            # Das Muster hebt den Rest bis 1 an; verteilt auf seine Teile.
+            scale = (1 - share) * weights.pattern_for / (p_mass + ap)
+            steps.append(Step("pattern_baseline", scale * ap * p0))
+            steps += [Step("pattern", scale * e, f) for f, e in pattern_effect.items()]
     share = 1 - (1 - share) * (1 - weights.pattern_for * max(pattern, 0.0))
 
     families = {vocabulary.family_of(t).id for t in terms}
     hits = [facet for facet in profile.facets if set(facet.families) <= families]
     if hits:
+        steps.append(Step("facet", (1 - share) * weights.facet_bonus))
         share = 1 - (1 - share) * (1 - weights.facet_bonus)
-    share *= 1 - weights.pattern_against * max(-pattern, 0.0)
+    if pattern < 0:
+        after = share * (1 - weights.pattern_against * -pattern)
+        steps.append(Step("pattern_against", after - share))
+        share = after
     rules = [c for c in form.genre_rules if set(c.families) <= families
              and genre_matches(c, portrait)]
     for rule in rules:
@@ -276,13 +315,19 @@ def overlap(
             max(w for t, w in terms.items() if vocabulary.family_of(t).id == f)
             for f in rule.families
         )
-        share *= 1 - weights.genre_counterweight * strength
-    share = max(0.0, min(1.0, share))
+        after = share * (1 - weights.genre_counterweight * strength)
+        steps.append(Step("genre", after - share, ",".join(rule.families)))
+        share = after
+    clamped = max(0.0, min(1.0, share))
+    if clamped != share:
+        steps.append(Step("ceiling" if share > 1 else "floor", clamped - share))
+    share = clamped
 
     return Overlap(
         share=share,
         stars=weights.stars(share),
         reasons=_reasons(portrait, profile, hits, named, rules, vocabulary),
+        steps=tuple(steps),
     )
 
 

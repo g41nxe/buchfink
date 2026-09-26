@@ -338,3 +338,35 @@ def test_an_added_family_the_book_already_carries_counts_once(vocabulary, weight
     twice = learn(TAPPED, (doubled,), vocabulary, weights)
 
     assert twice.family == once.family
+
+
+# --- wie das Urteil entsteht (Wasserfall, 26.09.2026) --------------------------------
+
+
+@pytest.mark.parametrize("book", [
+    THRILLER,
+    EPIC,
+    portrait("brooding", "gritty", "leisurely", "pursuit", "quest", genre="Thriller"),
+    portrait("leisurely", "lyrical"),
+])
+def test_the_steps_add_up_to_the_verdict(vocabulary, weights, book) -> None:
+    """Die Buchseite zeigt, wie die Prozentzahl entsteht. Die Schritte kommen
+    aus derselben Rechnung und ergeben genau das Urteil — nicht ungefähr."""
+    liked_patterns = ReadingProfile(
+        facets=TAPPED.facets, counterweights=TAPPED.counterweights,
+        liked=(*TAPPED.liked, Liked("pursuit")),
+    )
+
+    result = verdict(book, liked_patterns, (), vocabulary, weights)
+
+    assert result.steps[0].kind == "baseline"
+    assert sum(s.delta for s in result.steps) == pytest.approx(result.share)
+
+
+def test_each_family_of_the_book_is_one_step(vocabulary, weights) -> None:
+    result = verdict(THRILLER, TAPPED, (), vocabulary, weights)
+    families = [s.family for s in result.steps if s.kind == "family"]
+
+    assert len(families) == len(set(families))
+    assert "harsh" in families and "brooding" in families
+    assert any(s.kind == "facet" for s in result.steps)
