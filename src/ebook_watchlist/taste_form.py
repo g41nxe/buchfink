@@ -198,7 +198,9 @@ def learn(
     # Ein typisches Gemochtes zählt voll: skaliert wird auf ein Quantil der
     # Vorlieben, nicht auf die stärkste, sonst drückte ein Ausreißer alles.
     positive = sorted(v for v in family.values() if v > 0.02)
-    top = positive[int(len(positive) * weights.full_quantile)] if positive else 1.0
+    # Höchstens der letzte Index: bei 1.0 ist das die stärkste Vorliebe.
+    at = min(int(len(positive) * weights.full_quantile), len(positive) - 1)
+    top = positive[at] if positive else 1.0
 
     def scaled(v: float) -> float:
         return max(-1.0, min(1.0, v / top))

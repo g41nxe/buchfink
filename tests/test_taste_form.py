@@ -92,6 +92,20 @@ def test_the_families_of_a_facet_start_as_liked(vocabulary, weights) -> None:
     assert verdict(portrait("brooding", "gritty"), facet_only, (), vocabulary, weights) is not None
 
 
+def test_scaling_to_the_strongest_liking_does_not_break(vocabulary, weights) -> None:
+    """``voll_ab_quantil: 1.0`` heißt: auf die stärkste Vorliebe skalieren. Der
+    Index lief dabei eins hinter die Liste (Recherche zur Spinne, 26.09.2026)."""
+    from dataclasses import replace
+
+    strongest = replace(weights, full_quantile=1.0)
+    otherland = read_book("Otherland", 1, portrait("world_building", "intricate"),
+                          vocabulary, strongest)
+
+    form = learn(TAPPED, (otherland,), vocabulary, strongest)
+
+    assert max(form.family.values()) == pytest.approx(1.0)
+
+
 def test_a_liked_book_lifts_what_it_carries(vocabulary, weights) -> None:
     book = portrait("world_building", "thought_provoking", "intricate")
     without = verdict(book, TAPPED, (), vocabulary, weights)
