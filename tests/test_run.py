@@ -735,3 +735,31 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
 
     assert kept == [good]
     assert (report.held_back, report.unrated) == (1, 1)
+
+
+# --- die Kommandozeile: --watchlist -----------------------------------------
+
+
+def test_the_watchlist_flag_is_parsed() -> None:
+    """``--watchlist`` (nur die Watchlist abrufen, ohne Autor:innen, Themen
+    oder Bibliothekslisten zu fegen): False in der Voreinstellung."""
+    from ebook_watchlist.run import _parse_args
+
+    assert _parse_args([]).only_watchlist is False
+    assert _parse_args(["--watchlist"]).only_watchlist is True
+
+
+def test_watchlist_only_does_not_mark_the_extended_sweep_done(data_dir: Path) -> None:
+    """``--watchlist`` fegt nichts. „Keine Fehler, weil nichts versucht
+    wurde" darf den langen Auslaeufer nicht faelschlich als erledigt eintragen."""
+    from ebook_watchlist import run as run_module
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.store import Store
+
+    store = Store(paths.db_path())
+    store.put_interest("test", "author", "Wöchentliche Autorin", now=datetime.now(),
+                       tier="extended")
+
+    assert main(["--watchlist"]) == EXIT_OK
+
+    assert store.get_state(load_settings().slug, run_module.EXTENDED_SWEEP_KEY) is None

@@ -147,6 +147,15 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--watchlist",
+        dest="only_watchlist",
+        action="store_true",
+        help=(
+            "nur die Watchlist abrufen — kein Fegen nach Autor:innen, Themen "
+            "oder Bibliothekslisten"
+        ),
+    )
+    parser.add_argument(
         "--trigger",
         default="cli",
         choices=["cli", "cron", "ui"],
@@ -469,6 +478,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 client=client,
                 trigger=args.trigger,
                 skip_probes=args.skip_probes,
+                only_watchlist=args.only_watchlist,
             )
         except NotSeeded as exc:
             # Kein stiller Rückfall auf YAML: sonst liefe der Lauf monatelang
@@ -951,6 +961,7 @@ def _run(
     client: HttpClient,
     trigger: str,
     skip_probes: bool = False,
+    only_watchlist: bool = False,
 ) -> int:
     store = Store(paths.db_path())
     started_at = datetime.now()
@@ -975,7 +986,10 @@ def _run(
     if not skip_probes:
         sources, probe_failures = _probe(sources, store, started_at)
 
-    sweep_extended = _should_sweep_extended(settings, store, started_at)
+    # Bei --watchlist wird ohnehin nicht gefegt (RunContext.only_watchlist);
+    # sonst hielte "keine Fehler, weil nichts versucht wurde" den langen
+    # Auslaeufer faelschlich fuer erledigt.
+    sweep_extended = not only_watchlist and _should_sweep_extended(settings, store, started_at)
     context = RunContext(
         profile_slug=settings.slug,
         store=store,
@@ -995,6 +1009,7 @@ def _run(
         original_titles=OriginalTitles(
             store, Dnb(client=client), budget=settings.dnb_budget, now=started_at
         ),
+        only_watchlist=only_watchlist,
     )
     observations, failures = _collect(sources, settings, watchlist, context)
     # Der Umfang von der Detailseite gilt weiter, auch wenn die Trefferliste

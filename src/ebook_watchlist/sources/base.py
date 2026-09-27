@@ -102,6 +102,12 @@ class RunContext:
     #: antwortet nur, was schon in ``dnb_record`` steht — es wird dann keine
     #: einzige Anfrage gestellt.
     original_titles: OriginalTitles | None = None
+    #: ``--watchlist``: nur pruefen, was die Leserin selbst eingetragen hat —
+    #: kein Fegen nach Autor:innen, Themen oder Bibliothekslisten. Weder
+    #: gefegt noch angesaet zaehlt dann als geschehen (``swept`` bleibt leer),
+    #: damit ein spaeterer vollstaendiger Lauf sich verhaelt, als waere dieser
+    #: nie gelaufen.
+    only_watchlist: bool = False
 
     def original_title_lookup(self) -> OriginalTitles:
         return self.original_titles or OriginalTitles(self.store)
@@ -390,6 +396,8 @@ def sweep_interests(
     Bibliothek, deren Hauptaufgabe die Watchlist ist. Eine Drosselung (429)
     geht immer durch (ADR 7).
     """
+    if context.only_watchlist:
+        return observations
     # Discoveries must not collide with what the Watchlist already covers:
     # two Observations of one item in a single Run would leave the diff with
     # no single "latest" to compare against next time.

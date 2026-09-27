@@ -203,3 +203,30 @@ def test_a_watchlisted_title_is_not_also_reported_as_a_discovery(tmp_path: Path)
     watchlisted = [o for o in observations if o.source_item_id == "606983"]
     assert len(watchlisted) == 1
     assert watchlisted[0].match_reason is MatchReason.WATCHLIST
+
+
+def test_only_watchlist_skips_the_author_sweep(tmp_path: Path) -> None:
+    """``--watchlist`` (Ticket: nur die Watchlist abrufen): kein Fund von
+    einer Autorin, der die Leserin folgt — nur, was sie selbst benennt."""
+    beam = source(
+        {
+            "606983/krieg-der-klone": fixture("product-detail.html"),
+            "autor-innenwelt/john-scalzi": fixture("author-hub.html"),
+        }
+    )
+    entry = WatchlistEntry(
+        title="Krieg der Klone",
+        author="John Scalzi",
+        resolved_links={"beam": "https://www.beam-shop.de/x/y/z/606983/krieg-der-klone"},
+    )
+    settings = Settings(slug="t", name="T", reference_authors=["John Scalzi"])
+    context = RunContext(
+        profile_slug="t", store=Store(tmp_path / "s.db"), now=NOW, only_watchlist=True
+    )
+
+    observations = beam.collect(settings, [entry], context)
+
+    assert [o.source_item_id for o in observations] == ["606983"]
+    # Der Autor:innenfegen hätte "autor-innenwelt" angefragt — die Route ist
+    # da, aber ``RoutingClient`` hätte sie sonst auch benutzt.
+    assert not any("autor-innenwelt" in url for url in beam.client.requests)  # type: ignore[attr-defined]
