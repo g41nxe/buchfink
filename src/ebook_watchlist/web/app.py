@@ -306,19 +306,28 @@ def create_app() -> FastAPI:
             portrait_again.add(key)
         portrait_jobs.start(key)
 
-    def _portrait_status(request: Request, key, url: str) -> Response:
+    def _portrait_status(
+        request: Request, key, url: str, *, dom_id: str = "portrait-status",
+        compact: bool = False,
+    ) -> Response:
         """Das Fragment neben *Steckbrief*, solange einer entsteht.
 
         Ist der Job fertig, kommt keine Zeile zurück, sondern die Bitte, die
         Seite neu zu laden: danach hat sich nicht eine Zeile geändert, sondern
         der ganze Abschnitt. Solange er läuft, fragt die Seite alle zwei
         Sekunden nach (ADR 3, kein Websocket).
+
+        ``dom_id``/``compact``: der kompakte Hammer-Knopf in Watchlist- und
+        Vorschlagszeilen (viele auf einer Seite) braucht eine eigene Kennung
+        je Zeile, statt der festen auf Buch- und Fundseite (je eine Seite,
+        ein Steckbrief).
         """
         job = portrait_jobs.state(key)
         if job is None or not job.busy:
             return Response(status_code=204, headers={"HX-Refresh": "true"})
+        template = "_judge_button.html" if compact else "_portrait_status.html"
         return TEMPLATES.TemplateResponse(
-            request, "_portrait_status.html", {"url": url, "job": job, "present": False}
+            request, template, {"url": url, "job": job, "present": False, "dom_id": dom_id}
         )
 
     def _run_in_progress(store: Store, settings) -> bool:
@@ -445,6 +454,12 @@ def create_app() -> FastAPI:
                 "settings": settings,
                 "asset_version": asset_version(),
                 "entries": [e for e in rows if e.needs_choice] if only_unsure else rows,
+                # Der Hammer-Knopf je Zeile: ob gerade ein Steckbrief entsteht
+                # (26.09.2026) — ein Zugriff fuer die ganze Liste, wie beim
+                # engen Lauf.
+                "portrait_jobs_by_book": {
+                    e.book_id: portrait_jobs.state(("book", e.book_id)) for e in rows
+                },
                 "message": message,
                 "open_choices": open_count,
                 "only_unsure": only_unsure,
@@ -454,6 +469,11 @@ def create_app() -> FastAPI:
                 "existing": watchlist.existing_notice(
                     store, settings.slug, existing, already_watched=already == "1"
                 ),
+                # Dieselbe Statuszeile wie auf der Startseite (`_status_bar.html`):
+                # die Watchlist ist genau der Ort, an dem man "nur die Quellen
+                # dazu abfragen" will, ohne erst auf die Uebersicht zu wechseln.
+                "status": home.last_run_status(store, settings.slug, datetime.now()),
+                "run_state": launcher.state(store, settings.slug),
                 "orders": sorting.WATCHLIST,
                 "sort": order.slug,
                 "links": {
@@ -608,6 +628,7 @@ def create_app() -> FastAPI:
                 "settings": settings,
                 "closings": watchlist.CLOSINGS,
                 "icons": symbols.RELATION_ICONS,
+                "portrait_jobs_by_book": {book_id: portrait_jobs.state(("book", book_id))},
                 # Die nachgeladene Zeile muss wissen, auf welcher Seite sie steht:
                 # sonst fuehrt der Weg zurueck von der Startseite auf die
                 # Watchlist (#22).
@@ -811,7 +832,10 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/book/{book_id}/portrait")
-    def book_portray(request: Request, book_id: int, again: str = "") -> Response:
+    def book_portray(
+        request: Request, book_id: int, again: str = "",
+        dom_id: str = "portrait-status", compact: bool = False,
+    ) -> Response:
         """Den Steckbrief dieses Buchs anlegen lassen (#45).
 
         Im Hintergrund wie das Urteil. Gibt es schon einen, kostet der Klick
@@ -819,12 +843,21 @@ def create_app() -> FastAPI:
         denn, die Leserin bittet mit ``again=1`` ausdrücklich um einen neuen.
         """
         _start_portrait(("book", book_id), again)
-        return _portrait_status(request, ("book", book_id), f"/book/{book_id}/portrait")
+        return _portrait_status(
+            request, ("book", book_id), f"/book/{book_id}/portrait",
+            dom_id=dom_id, compact=compact,
+        )
 
     @app.get("/book/{book_id}/portrait")
-    def book_portray_status(request: Request, book_id: int) -> Response:
+    def book_portray_status(
+        request: Request, book_id: int, dom_id: str = "portrait-status",
+        compact: bool = False,
+    ) -> Response:
         """Hier fragt die Seite nach, solange der Steckbrief entsteht."""
-        return _portrait_status(request, ("book", book_id), f"/book/{book_id}/portrait")
+        return _portrait_status(
+            request, ("book", book_id), f"/book/{book_id}/portrait",
+            dom_id=dom_id, compact=compact,
+        )
 
     @app.post("/book/{book_id}/edit")
     def book_edit(
@@ -1026,17 +1059,27 @@ def create_app() -> FastAPI:
 
     @app.post("/discovery/{source}/{item_id}/portrait")
     def discovery_portray(
-        request: Request, source: str, item_id: str, again: str = ""
+        request: Request, source: str, item_id: str, again: str = "",
+        dom_id: str = "portrait-status", compact: bool = False,
     ) -> Response:
         """Einen Fund beschreiben lassen — derselbe Weg wie auf der Buchseite (#48)."""
         key = ("item", source, item_id)
         _start_portrait(key, again)
-        return _portrait_status(request, key, f"/discovery/{source}/{item_id}/portrait")
+        return _portrait_status(
+            request, key, f"/discovery/{source}/{item_id}/portrait",
+            dom_id=dom_id, compact=compact,
+        )
 
     @app.get("/discovery/{source}/{item_id}/portrait")
-    def discovery_portray_status(request: Request, source: str, item_id: str) -> Response:
+    def discovery_portray_status(
+        request: Request, source: str, item_id: str,
+        dom_id: str = "portrait-status", compact: bool = False,
+    ) -> Response:
         key = ("item", source, item_id)
-        return _portrait_status(request, key, f"/discovery/{source}/{item_id}/portrait")
+        return _portrait_status(
+            request, key, f"/discovery/{source}/{item_id}/portrait",
+            dom_id=dom_id, compact=compact,
+        )
 
     # --- Triage (Ticket 08) -------------------------------------------------
 
@@ -1078,6 +1121,14 @@ def create_app() -> FastAPI:
                 "pile": pile,
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
+                # Der Hammer-Knopf je Zeile: ob gerade ein Steckbrief entsteht
+                # (26.09.2026).
+                "portrait_jobs_by_item": {
+                    (i.source, i.source_item_id): portrait_jobs.state(
+                        ("item", i.source, i.source_item_id)
+                    )
+                    for i in pile.items
+                },
                 "reason": reason,
                 "orders": sorting.SUGGESTIONS,
                 "sort": order.slug,

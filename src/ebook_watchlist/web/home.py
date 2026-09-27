@@ -102,7 +102,7 @@ def build(store: Store, settings: Settings, *, now: datetime) -> HomeView:
     # Werkzeug. Der Rest haengt am Verweis darunter.
     pile = triage.pending(store, settings, limit=settings.home_suggestions)
     return HomeView(
-        status=_status(store, settings.slug, now),
+        status=last_run_status(store, settings.slug, now),
         offers=tuple(offers[:settings.home_offers]),
         offers_total=len(offers),
         watchlist_total=len(entries),
@@ -155,9 +155,14 @@ def undo(store: Store, settings: Settings, key: str, kind: str, *, now: datetime
     return True
 
 
-def _status(store: Store, profile_slug: str, now: datetime) -> Status | None:
-    # Der jüngste *abgeschlossene* Rundgang. Ein Lauf, der gerade läuft oder
-    # abgeschossen wurde, hat kein Ende — über den spricht die Übersicht.
+def last_run_status(store: Store, profile_slug: str, now: datetime) -> Status | None:
+    """Der juengste *abgeschlossene* Rundgang, so wie die Statuszeile ihn
+    braucht — auf der Startseite und auf der Watchlist (`_status_bar.html`,
+    27.09.2026).
+
+    Ein Lauf, der gerade laeuft oder abgeschossen wurde, hat kein Ende —
+    ueber den spricht die Uebersicht.
+    """
     for run in store.recent_runs(profile_slug, limit=5):
         if run.finished_at is not None:
             return Status(run.finished_at, run.delta_count or 0, run.error, now)

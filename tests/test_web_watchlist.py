@@ -16,6 +16,7 @@ from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, sorting
 from ebook_watchlist.web import watchlist as view
+from test_web_home import finished_run
 
 NOW = datetime(2026, 9, 4, 20, 0)
 
@@ -156,32 +157,65 @@ def test_a_paused_entry_still_shows_on_the_page(client: TestClient, db: Store) -
 
     body = client.get("/watchlist").text
     assert book.title in body
-    assert 'aria-label="fortsetzen"' in body
+    assert "· pausiert" in body
 
 
-# --- die vier Zeichen der Zeile (#22) ---------------------------------------
+# --- die Statuszeile (dieselbe wie auf der Startseite) ----------------------
 
 
-def test_the_row_offers_four_actions_instead_of_a_menu(client: TestClient) -> None:
-    """Dieselben Zeichen wie auf der Vorschlagsseite, nur zwei mehr: das Menue
+def test_the_watchlist_page_shows_when_it_was_last_checked(
+    client: TestClient, db: Store
+) -> None:
+    finished_run(db, finished_at=datetime.now())
+
+    body = client.get("/watchlist").text
+
+    assert "zuletzt geprüft" in body
+
+
+def test_the_watchlist_page_does_not_show_the_home_only_counts(
+    client: TestClient, db: Store
+) -> None:
+    """Aenderungen und offene Vorschlaege gehoeren zur Startseite — hier waeren
+    sie ein zweiter Grund, dieselbe Zeile zu bauen (27.09.2026)."""
+    finished_run(db, finished_at=datetime.now(), deltas=3)
+
+    body = client.get("/watchlist").text
+
+    assert "Änderung" not in body
+    assert "Vorschläge offen" not in body
+
+
+def test_a_failed_last_run_is_named_on_the_watchlist_too(
+    client: TestClient, db: Store
+) -> None:
+    finished_run(db, finished_at=datetime.now(), error="beam: kaputt")
+
+    body = client.get("/watchlist").text
+
+    assert "letzter Lauf fehlgeschlagen" in body
+
+
+# --- die Zeichen der Zeile (#22) ---------------------------------------
+
+
+def test_the_row_offers_actions_instead_of_a_menu(client: TestClient) -> None:
+    """Dieselben Zeichen wie auf der Vorschlagsseite, nur eines mehr: das Menue
     verbarg, was man tun kann, und niemand oeffnet es zum Nachsehen."""
     body = client.get("/watchlist").text
 
-    for label in ("Ausschließen", "Hab ich", "jetzt nachsehen", "pausieren"):
+    for label in ("Ausschließen", "Hab ich", "jetzt nachsehen"):
         assert f'aria-label="{label}"' in body
     assert "ic-dots" not in body
 
 
-def test_a_paused_entry_offers_resuming_instead_of_pausing(
-    client: TestClient, db: Store
-) -> None:
+def test_a_paused_entry_is_marked_as_such(client: TestClient, db: Store) -> None:
     book = db.books()[0]
     client.post(f"/watchlist/{book.id}/active", data={"active": "0"})
 
     body = client.get("/watchlist").text
 
-    assert 'aria-label="fortsetzen"' in body
-    assert "ic-play" in body
+    assert "· pausiert" in body
 
 
 def test_finishing_an_entry_offers_to_take_it_back(client: TestClient, db: Store) -> None:

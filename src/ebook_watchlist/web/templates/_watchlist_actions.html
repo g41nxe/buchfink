@@ -1,10 +1,11 @@
-{# Was man mit einem beobachteten Buch tun kann, als fünf Zeichen (#22, #72).
+{# Was man mit einem beobachteten Buch tun kann, als Zeichen in einer Zeile
+   (#22, #72).
 
    Eine Stelle für Watchlist und Startseite: dieselbe Zeile soll überall
    dasselbe anbieten. Auf der Startseite fehlten die Zeichen ganz, während
    direkt darunter die Vorschlagszeilen welche trugen.
 
-   Vier Zeichen statt eines Aufklappmenüs. Ein Menü verbirgt, was möglich ist,
+   Zeichen statt eines Aufklappmenüs. Ein Menü verbirgt, was möglich ist,
    und niemand öffnet es, um nachzusehen. Wie ein solcher Knopf aussieht,
    steht in `_icon_button.html` — derselbe wie auf der Vorschlagsseite, und
    die zwei ersten Zeichen stehen dort in derselben Reihenfolge.
@@ -15,14 +16,13 @@
    sie im Menü hinter einer Trennlinie; offen in der Zeile brauchen sie einen
    Weg zurück statt einer Nachfrage (ADR 30) — gelöscht wird nichts (ADR 18).
    `back` sagt, auf welcher Seite dieser Weg angeboten wird.
-
-   Bei einem pausierten Eintrag wird aus ⏸ ein ▶. Nachsehen bleibt auch dort
-   möglich: ein Lauf hängt nicht daran, ob der Eintrag ruht.
 #}
 {% from "_icon_button.html" import icon_button %}
 
-{% macro watchlist_actions(entry, closings, icons, back="/watchlist") %}
-<span class="grid w-full grid-cols-5 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
+{% macro watchlist_actions(entry, closings, icons, back="/watchlist", extra="") %}
+{# Fünf Spalten mit dem Hammer, vier ohne — sonst bleibt auf dem Telefon eine
+   Spalte leer und die Zeichen füllen die Zeile nicht mehr (26.09.2026). #}
+<span class="grid w-full {{ 'grid-cols-5' if extra else 'grid-cols-4' }} gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in closings %}
   <form method="post" action="/watchlist/{{ entry.book_id }}/finish"
         class="contents">
@@ -44,14 +44,10 @@
     hx-target="#entry-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
   {{ icon_button("jetzt nachsehen", "ic-refresh", attrs=recheck) }}
 
-  <form method="post" action="/watchlist/{{ entry.book_id }}/active"
-        class="contents">
-    <input type="hidden" name="active" value="{{ '0' if entry.active else '1' }}">
-    <input type="hidden" name="back" value="{{ back }}">
-    {% set toggle %}type="submit"{% endset %}
-    {{ icon_button("pausieren" if entry.active else "fortsetzen",
-                   "ic-pause" if entry.active else "ic-play",
-                   attrs=toggle) }}
-  </form>
+  {# Ein weiteres Zeichen, das nicht zu den obigen gehoert (etwa der Hammer),
+     kommt hier herein — als Kind desselben Grids, nicht als Geschwister
+     danach: sonst bricht die Zeile in `sm:flex-col`-Eltern auf zwei Zeilen
+     um (26.09.2026). #}
+  {{ extra }}
 </span>
 {% endmacro %}

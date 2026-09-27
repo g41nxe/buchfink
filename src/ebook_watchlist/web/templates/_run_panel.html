@@ -42,6 +42,10 @@
       <span class="text-sm text-soft italic">Läuft schon – bitte warten</span>
       {% else %}
       <span class="flex flex-wrap items-center gap-2">
+        {# Auf der Watchlist-Seite selbst ist die Frage schon beantwortet: nur
+           die eigenen Titel, kein Fegen nach neuen Vorschlaegen. Der grosse
+           Knopf gehoert deshalb nur auf die Uebersicht (27.09.2026). #}
+        {% if not only_watchlist_button %}
         <button type="button"
                 hx-post="/run"
                 hx-target="#run-panel"
@@ -52,6 +56,7 @@
                        focus-visible:outline-accent">
           Jetzt prüfen
         </button>
+        {% endif %}
         {# Nur die Watchlist bei den Quellen abfragen — kein Fegen nach
            Autor:innen, Themen oder Bibliothekslisten (``--watchlist``). #}
         <button type="button"
@@ -60,10 +65,13 @@
                 hx-swap="outerHTML"
                 title="Nur die Watchlist bei den Quellen abfragen — kein Fegen nach
                        Autor:innen, Themen oder Bibliothekslisten"
-                class="rounded-md border border-rule bg-card tap inline-flex h-9 items-center justify-center px-3 text-sm
-                       text-soft hover:border-accent hover:text-accent
-                       focus-visible:outline-2 focus-visible:outline-offset-2
-                       focus-visible:outline-accent">
+                class="rounded-md border tap inline-flex h-9 items-center justify-center px-3 text-sm
+                       focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+                       {% if only_watchlist_button %}
+                       border-accent/40 bg-accent-bg font-medium text-accent hover:border-accent
+                       {% else %}
+                       border-rule bg-card text-soft hover:border-accent hover:text-accent
+                       {% endif %}">
           Nur Watchlist
         </button>
       </span>

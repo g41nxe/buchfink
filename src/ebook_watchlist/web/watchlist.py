@@ -195,6 +195,9 @@ class Entry:
     stars: int | None = None
     percent: int | None = None
     pitch: str | None = None
+    #: Steht schon ein Steckbrief? Der Hammer-Knopf fragt dann mit
+    #: ``again=1`` neu, statt zum ersten Mal (26.09.2026).
+    described: bool = False
     #: Wann dieser Titel auf die Watchlist kam. Der Zeitstempel der Beziehung,
     #: und der wird nur beim Anlegen gesetzt — ein Pausieren und Fortsetzen
     #: macht einen alten Eintrag also nicht zu einem neuen (#37).
@@ -505,11 +508,9 @@ def entries(
             )
             for link in sources.get(book.id, ())
         )
-        verdict = (
-            judge.verdict_among(portraits, _portrait_subjects(book, latest.get(book.id, ())))
-            if judge is not None
-            else None
-        )
+        subjects = _portrait_subjects(book, latest.get(book.id, ()))
+        verdict = judge.verdict_among(portraits, subjects) if judge is not None else None
+        described = any(subject in portraits for subject in subjects)
         rows.append(
             Entry(
                 book_id=book.id,
@@ -531,6 +532,7 @@ def entries(
                 stars=verdict.stars if verdict else None,
                 percent=verdict.percent if verdict else None,
                 pitch=(verdict.pitch or None) if verdict else None,
+                described=described,
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

@@ -62,8 +62,19 @@
     {% endif %}
     {% endset %}
 
+    {# Der Hammer: dieses Buch neu beurteilen lassen, ohne die Buchseite zu
+       oeffnen (26.09.2026). ``portrait_jobs_by_book`` fehlt keiner Seite, die
+       diese Zeile einbindet — leer heisst „kein Job“, nicht „kein Wissen“.
+       Als Steckplatz in `watchlist_actions()` selbst, nicht danach: sonst
+       bricht die Zeile in zwei Zeilen um. #}
+    {% set url = "/book/" ~ entry.book_id ~ "/portrait" %}
+    {% set present = entry.described %}
+    {% set dom_id = "judge-book-" ~ entry.book_id %}
+    {% set job = (portrait_jobs_by_book or {}).get(entry.book_id) %}
+    {% set judge_button %}{% include "_judge_button.html" %}{% endset %}
+
     {% set actions %}
-    {{ watchlist_actions(entry, closings, icons, back=back | default("/watchlist")) }}
+    {{ watchlist_actions(entry, closings, icons, back=back | default("/watchlist"), extra=judge_button) }}
     {% endset %}
 
     {# Dieselbe Spalte wie im Stapel (#16): was das Werkzeug urteilt, steht

@@ -307,6 +307,22 @@ def test_the_dashboard_offers_a_watchlist_only_run(client: TestClient) -> None:
     assert 'hx-post="/run?only_watchlist=true"' in body
 
 
+def test_the_watchlist_page_offers_a_watchlist_only_run(client: TestClient) -> None:
+    """Genau hier stellt sich die Frage "nur die Watchlist abfragen" — nicht
+    erst auf der Uebersicht (27.09.2026)."""
+    body = client.get("/watchlist").text
+
+    assert 'hx-post="/run?only_watchlist=true"' in body
+
+
+def test_the_watchlist_page_does_not_offer_the_full_sweep(client: TestClient) -> None:
+    """Der grosse Knopf gehoert auf die Uebersicht — hier waere er ein
+    zweiter Weg zum selben Sweep-Lauf (27.09.2026)."""
+    body = client.get("/watchlist").text
+
+    assert 'hx-post="/run"' not in body
+
+
 def test_pressing_the_watchlist_button_only_checks_the_watchlist(
     client: TestClient, store: Store
 ) -> None:

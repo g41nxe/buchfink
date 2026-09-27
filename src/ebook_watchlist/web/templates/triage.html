@@ -161,8 +161,17 @@
     {% endif %}
     {% endset %}
 
+    {# Der Hammer: diesen Fund neu beurteilen lassen, ohne die Fundseite zu
+       oeffnen (26.09.2026). Dieselbe Route wie dort. Als Steckplatz in
+       `decisions()` selbst, nicht danach: sonst bricht die Zeile um. #}
+    {% set url = "/discovery/" ~ item.source ~ "/" ~ item.source_item_id ~ "/portrait" %}
+    {% set present = item.described %}
+    {% set dom_id = "judge-item-" ~ item.source ~ "-" ~ item.source_item_id %}
+    {% set job = (portrait_jobs_by_item or {}).get((item.source, item.source_item_id)) %}
+    {% set judge_button %}{% include "_judge_button.html" %}{% endset %}
+
     {% set row_actions %}
-    {{ decisions(item.source, item.source_item_id, actions, icons) }}
+    {{ decisions(item.source, item.source_item_id, actions, icons, extra=judge_button) }}
     {% endset %}
 
     {{ row(

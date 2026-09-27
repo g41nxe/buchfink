@@ -232,7 +232,7 @@ def test_an_offer_carries_the_same_actions_as_on_the_watchlist(
 
     body = client.get("/").text
 
-    for label in ("Ausschließen", "Hab ich", "jetzt nachsehen", "pausieren"):
+    for label in ("Ausschließen", "Hab ich", "jetzt nachsehen"):
         assert f'aria-label="{label}"' in body
 
 

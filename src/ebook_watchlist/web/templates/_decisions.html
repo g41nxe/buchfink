@@ -23,11 +23,14 @@
 {% from "_icon_button.html" import icon_button %}
 
 {% macro decisions(source, item_id, actions, icons, target="closest li",
-                   submit=false) %}
+                   submit=false, extra="") %}
 {# Auf dem Telefon eine Reihe über die volle Breite der Zeile, am Schreibtisch
    eine Reihe unter dem Preis: dort kostet die Handlungszone nur die Breite
-   des Preises (96 px statt 136), und die 40 gehen an Titel und Pitch. #}
-<span class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
+   des Preises (96 px statt 136), und die 40 gehen an Titel und Pitch.
+   Eine Spalte mehr, sobald ein viertes Zeichen (der Hammer) mitkommt
+   (26.09.2026) — sonst faellt es auf dem Telefon in eine zweite Reihe;
+   ohne `extra` bleibt es bei den drei Entscheidungen. #}
+<span class="grid w-full {{ 'grid-cols-4' if extra else 'grid-cols-3' }} gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
   {% for kind, label in actions %}
   {% set tone = "danger" if kind == "dismissed" else ("amber" if kind == "owned" else "accent") %}
   {% set attrs %}
@@ -39,5 +42,9 @@
   {% endset %}
   {{ icon_button(label, icons[kind], tone=tone, attrs=attrs) }}
   {% endfor %}
+  {# Ein weiteres Zeichen (der Hammer) kommt als Kind desselben Grids herein,
+     nicht als Geschwister danach — sonst bricht die Zeile in `sm:flex-col`-
+     Eltern auf zwei Zeilen um, wie in der Watchlist (26.09.2026). #}
+  {{ extra }}
 </span>
 {% endmacro %}

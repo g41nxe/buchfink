@@ -36,6 +36,17 @@
   Preisgrenze gilt nur für Vorschläge.
 </p>
 
+{# Dieselbe Statuszeile wie auf der Startseite (`_status_bar.html`), nur ohne
+   Aenderungen/offene-Vorschlaege (die gehoeren nicht zu dieser Seite) und mit
+   dem Watchlist-eigenen Lauf-Knopf statt des grossen: "nur die Watchlist bei
+   den Quellen abfragen" ist genau die Frage, die diese Seite stellt
+   (27.09.2026). ``only_watchlist_button`` reicht bis in `_run_panel.html`
+   durch, falls der Lauf mit Problemen endet und die Karte erscheint. #}
+{% set only_watchlist_button = true %}
+{% set run_url = "/run?only_watchlist=true" %}
+{% set run_label = "Nur Watchlist" %}
+{% include "_status_bar.html" %}
+
 <form method="post" action="/watchlist/add"
       class="mb-8 flex flex-wrap items-end gap-3 rounded-lg border border-rule bg-card p-4">
   {# Auf dem Telefon volle Breite: mit fester Breite blieben rechts neben

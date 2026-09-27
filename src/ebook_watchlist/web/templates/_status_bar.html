@@ -1,0 +1,71 @@
+{# Die Statuszeile: wann zuletzt geprüft wurde, und der Lauf-Knopf daneben.
+   Zuerst auf der Startseite gebaut (#5), jetzt auch auf der Watchlist
+   (27.09.2026) — eine Datei, damit "wann zuletzt geprüft" überall gleich
+   aussieht, statt einmal als Satz und einmal als Karte.
+
+   Nur Werte mit Vergleich oder Zustand, keine Kacheln. Alt und
+   fehlgeschlagen stehen ausgeschrieben da — eine Farbe allein wäre für
+   jemanden mit Farbsehschwäche keine Information.
+
+   ``status`` (``home.Status`` oder nichts), ``run_state`` sind Pflicht.
+   ``digest``/``suggestions_total`` sind der Startseite eigen: nur wenn
+   ``suggestions_total`` mitkommt, zeigt die Zeile auch Änderungen und
+   offene Vorschläge — die Watchlist braucht nur "zuletzt geprüft" und den
+   Knopf. ``run_url``/``run_label`` unterscheiden "Jetzt prüfen" (Startseite,
+   Übersicht) von "Nur Watchlist". ``target`` ist die Kennung des Feldes, in
+   das der Lauf sein Fragment schreibt (ADR 3), falls mehr als eine Zeile auf
+   derselben Seite steht. #}
+{% set run_url = run_url | default("/run") %}
+{% set run_label = run_label | default("Jetzt prüfen") %}
+{% set target = target | default("run-slot") %}
+<div class="mb-6 flex flex-col items-stretch gap-3 rounded-lg border border-hair bg-card
+            px-5 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
+{% if status %}
+{# Auf dem Telefon untereinander und mittig: eine Angabe je Zeile. Nebeneinander
+   brachen die Angaben an zufaelligen Stellen um, und die Trennpunkte standen
+   am Zeilenanfang. Ab `sm` wieder ein Satz in einer Reihe. #}
+<p class="flex flex-col items-center gap-1 text-center text-sm text-soft
+          sm:flex-row sm:flex-wrap sm:gap-x-2 sm:gap-y-1 sm:text-left">
+  <span class="inline-flex items-center gap-2">
+  <svg class="i"><use href="#ic-clock"/></svg>
+  {# Der Zeitpunkt fuehrt auf die Uebersicht: dort stehen die Laeufe, aus
+     denen er kommt. #}
+  <a href="/overview" title="Läufe, Quellen und Tagesberichte"
+     class="{{ 'font-medium text-amber' if status.stale }} underline
+            decoration-rule underline-offset-2 hover:decoration-current">zuletzt geprüft {{ status.when }}{% if status.stale %} — vor {{ status.age_days }} {{ 'Tag' if status.age_days == 1 else 'Tagen' }}{% endif %}</a>
+  </span>
+  {% if status.failed %}
+  <span aria-hidden="true" class="hidden sm:inline">·</span>
+  <span class="font-medium text-danger">letzter Lauf fehlgeschlagen</span>
+  {% elif suggestions_total is defined %}
+  <span aria-hidden="true" class="hidden sm:inline">·</span>
+  {% if digest %}
+  <a href="/digest/{{ digest.name }}"
+     class="text-accent underline decoration-accent/30 underline-offset-2 hover:decoration-accent"
+     title="Tagesbericht vom {{ digest.label }}">{{ status.delta_count }} {{ 'Änderung' if status.delta_count == 1 else 'Änderungen' }}</a>
+  {% else %}
+  <span>{{ status.delta_count }} {{ 'Änderung' if status.delta_count == 1 else 'Änderungen' }}</span>
+  {% endif %}
+  {% endif %}
+  {% if suggestions_total is defined %}
+  <span aria-hidden="true" class="hidden sm:inline">·</span>
+  <span>{{ suggestions_total }} {{ 'Vorschlag' if suggestions_total == 1 else 'Vorschläge' }} offen</span>
+  {% endif %}
+</p>
+{% endif %}
+{% if not run_state.busy %}
+{# Kein zweiter Lauf: der Knopf ist weg, solange einer läuft. Ein zweiter
+   Klick prallt am Panel ab ("Läuft schon"). #}
+<form hx-post="{{ run_url }}" hx-target="#{{ target }}" hx-swap="innerHTML"
+      hx-disabled-elt="find button" class="w-full sm:w-auto">
+  <button type="submit"
+          class="tap inline-flex h-9 w-full items-center justify-center gap-1 rounded border
+                 border-accent bg-accent/10 px-2 text-sm font-medium text-accent
+                 hover:bg-accent/25 sm:h-7 sm:w-auto sm:text-xs">
+    <svg class="i"><use href="#ic-refresh"/></svg>{{ run_label }}</button>
+</form>
+{% endif %}
+</div>
+<div id="{{ target }}">
+  {% if run_state.busy or run_state.trouble %}{% include "_run_panel.html" %}{% endif %}
+</div>

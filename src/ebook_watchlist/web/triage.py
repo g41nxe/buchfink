@@ -101,6 +101,9 @@ class Suggestion:
     from_list: bool = False
     #: Das Urteil liegt knapp an der Schwelle (#81).
     borderline: bool = False
+    #: Steht schon ein Steckbrief? Der Hammer-Knopf fragt dann mit
+    #: ``again=1`` neu, statt zum ersten Mal (26.09.2026).
+    described: bool = False
 
     @property
     def is_bundle(self) -> bool:
@@ -221,6 +224,7 @@ def _suggestion(
     verdict=None,
     bundle=None,
     covers: CoverStore | None = None,
+    described: bool = False,
 ) -> Suggestion:
     return Suggestion(
         source=observation.source,
@@ -247,6 +251,7 @@ def _suggestion(
         observed_at=observation.observed_at,
         from_list=is_library_list(observation),
         borderline=bool(verdict and verdict.borderline),
+        described=described,
     )
 
 
@@ -384,14 +389,16 @@ def pending(
         # Dieselbe Schwelle wie im Digest: was das Tor zurückhält, ist keine
         # Aufgabe. Ein Fund **ohne** Urteil bleibt — "noch nicht beurteilt" ist
         # etwas anderes als "passt nicht".
-        verdict = judge.verdict(portraits.get(subject_of(observation))) if judge else None
+        subject = subject_of(observation)
+        verdict = judge.verdict(portraits.get(subject)) if judge else None
         if verdict is not None and verdict.withholds(judge.threshold):
             hidden_weak += 1
             continue
         if reason and _origin(observation) != reason:
             continue
         items.append(
-            _suggestion(observation, settings, verdict, advantage, covers)
+            _suggestion(observation, settings, verdict, advantage, covers,
+                       described=subject in portraits)
         )
 
     items = _one_per_book(items)

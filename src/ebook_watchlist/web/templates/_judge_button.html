@@ -1,0 +1,57 @@
+{# Der Hammer-Knopf: dieses eine Buch neu beurteilen lassen, direkt aus der
+   Zeile — auf Watchlist und Vorschlägen (26.09.2026).
+
+   Dieselbe Mechanik wie `_portrait_status.html` auf Buch- und Fundseite
+   (derselbe Steckbrief-Job, dieselben Routen, ``?again=1`` fragt das Modell
+   noch einmal), aber im Aussehen wie `_icon_button.html`: ein Quadrat neben
+   den anderen Zeichen der Zeile, kein sichtbares Wort. Anders als dort
+   bekommt sie ``dom_id``, weil auf einer Liste viele Zeilen zugleich diesen
+   Knopf tragen — eine feste Kennung wie auf den Detailseiten (eine Seite,
+   ein Steckbrief) gäbe es mehrfach im selben Dokument.
+
+   Das Urteil selbst steht nirgends im Zwischenspeicher (ADR 33): es wird bei
+   jeder Anzeige frisch aus dem Steckbrief gerechnet. Neu *beurteilen* heißt
+   deshalb: einen neuen Steckbrief anfragen (oder, wo noch keiner steht,
+   den ersten) — danach ist die Zahl auf der Seite automatisch aktuell.
+
+   Erwartet: `url` (ohne Abfrage), `job` (der Stand, oder nichts), `present`
+   (steht schon ein Steckbrief?), `dom_id`. #}
+<span id="{{ dom_id }}" class="group relative flex"
+      {% if job and job.busy %}
+      hx-get="{{ url }}?dom_id={{ dom_id }}&compact=true"
+      hx-trigger="every 2s"
+      hx-target="this"
+      hx-swap="outerHTML"
+      {% endif %}>
+  {% if job and job.busy %}
+  <span aria-label="wird beurteilt" title="wird beurteilt"
+        class="tap inline-flex h-10 w-full items-center justify-center rounded border
+               border-rule text-soft sm:h-9 sm:w-9">
+    <svg class="i animate-spin text-accent"><use href="#ic-refresh"/></svg>
+  </span>
+  {% else %}
+  {% set label = "neu beurteilen" if present else "jetzt beurteilen" %}
+  <button type="button" aria-label="{{ label }}"
+          hx-post="{{ url }}{{ '?again=1&' if present else '?' }}dom_id={{ dom_id }}&compact=true"
+          hx-target="#{{ dom_id }}" hx-swap="outerHTML"
+          {% if present %}
+          hx-confirm="Neu beurteilen? Das fragt das Modell noch einmal nach einem Steckbrief;
+                     die Sterne rechnen sich danach neu."
+          {% endif %}
+          class="tap inline-flex h-10 w-full items-center justify-center rounded border
+                 border-rule text-soft transition hover:border-accent hover:text-accent
+                 sm:h-9 sm:w-9">
+    <svg class="i"><use href="#ic-gavel"/></svg>
+  </button>
+  <span class="pointer-events-none absolute top-full left-1/2 z-30 mt-1 hidden
+               -translate-x-1/2 rounded bg-ink px-1.5 py-0.5 text-xs whitespace-nowrap
+               text-paper opacity-0 transition group-hover:opacity-100
+               group-focus-within:opacity-100 sm:block">{{ label }}</span>
+  {% if job and job.trouble %}
+  <span class="pointer-events-none absolute top-full left-1/2 z-30 mt-6 hidden
+               -translate-x-1/2 rounded bg-danger px-1.5 py-0.5 text-xs whitespace-nowrap
+               text-paper opacity-0 transition group-hover:opacity-100 sm:block"
+        >{{ job.trouble }}</span>
+  {% endif %}
+  {% endif %}
+</span>
