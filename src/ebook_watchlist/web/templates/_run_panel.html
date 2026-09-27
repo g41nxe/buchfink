@@ -41,16 +41,32 @@
          den Klick, der ohnehin abprallen wuerde. #}
       <span class="text-sm text-soft italic">Läuft schon – bitte warten</span>
       {% else %}
-      <button type="button"
-              hx-post="/run"
-              hx-target="#run-panel"
-              hx-swap="outerHTML"
-              class="rounded-md border border-accent/40 bg-accent-bg tap inline-flex h-9 items-center justify-center px-3 text-sm
-                     font-medium text-accent hover:border-accent
-                     focus-visible:outline-2 focus-visible:outline-offset-2
-                     focus-visible:outline-accent">
-        Jetzt prüfen
-      </button>
+      <span class="flex flex-wrap items-center gap-2">
+        <button type="button"
+                hx-post="/run"
+                hx-target="#run-panel"
+                hx-swap="outerHTML"
+                class="rounded-md border border-accent/40 bg-accent-bg tap inline-flex h-9 items-center justify-center px-3 text-sm
+                       font-medium text-accent hover:border-accent
+                       focus-visible:outline-2 focus-visible:outline-offset-2
+                       focus-visible:outline-accent">
+          Jetzt prüfen
+        </button>
+        {# Nur die Watchlist bei den Quellen abfragen — kein Fegen nach
+           Autor:innen, Themen oder Bibliothekslisten (``--watchlist``). #}
+        <button type="button"
+                hx-post="/run?only_watchlist=true"
+                hx-target="#run-panel"
+                hx-swap="outerHTML"
+                title="Nur die Watchlist bei den Quellen abfragen — kein Fegen nach
+                       Autor:innen, Themen oder Bibliothekslisten"
+                class="rounded-md border border-rule bg-card tap inline-flex h-9 items-center justify-center px-3 text-sm
+                       text-soft hover:border-accent hover:text-accent
+                       focus-visible:outline-2 focus-visible:outline-offset-2
+                       focus-visible:outline-accent">
+          Nur Watchlist
+        </button>
+      </span>
       {% endif %}
     </div>
   </div>

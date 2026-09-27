@@ -1472,14 +1472,21 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/run", response_class=HTMLResponse)
-    def start_run(request: Request) -> HTMLResponse:
+    def start_run(request: Request, only_watchlist: bool = False) -> HTMLResponse:
         """Einen Lauf starten — als eigener Prozess, nie hier drin (ADR 3).
+
+        ``only_watchlist``: der zweite Knopf auf der Übersicht, „nur
+        Watchlist prüfen" — kein Fegen nach Autor:innen, Themen oder
+        Bibliothekslisten (``ebw run --watchlist``).
 
         Antwortet mit demselben Bruchstueck, das auch die Abfrage liefert: so
         koennen der Knopf und der Zustand, den er erzeugt, sich nicht
         widersprechen.
         """
-        return _run_panel(request, lambda store, slug: launcher.start(store, slug))
+        return _run_panel(
+            request,
+            lambda store, slug: launcher.start(store, slug, only_watchlist=only_watchlist),
+        )
 
     @app.get("/run/status", response_class=HTMLResponse)
     def run_status(request: Request) -> HTMLResponse:

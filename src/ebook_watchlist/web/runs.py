@@ -168,8 +168,16 @@ class RunLauncher:
 
     # -- starting ----------------------------------------------------------
 
-    def start(self, store: Store, profile_slug: str) -> RunState:
+    def start(
+        self, store: Store, profile_slug: str, *, only_watchlist: bool = False
+    ) -> RunState:
         """Start a Run, unless one is already going.
+
+        ``only_watchlist``: die Übersicht bietet neben dem vollen Lauf einen
+        zweiten Knopf an, der nur prüft, was auf der Watchlist steht — ohne
+        nach Autor:innen, Themen oder Bibliothekslisten zu fegen (``ebw run
+        --watchlist``). Derselbe Prozess, dieselbe Dateisperre: ein Klick auf
+        den einen Knopf sperrt den anderen genauso.
 
         The check below is for the *message*, not for correctness: between
         asking and spawning, a cron Run could take the lock. That is harmless —
@@ -179,10 +187,12 @@ class RunLauncher:
         state = self.state(store, profile_slug)
         if state.busy:
             return state
-        self._launch = _Launch(process=self._spawn(), at=datetime.now())
+        self._launch = _Launch(
+            process=self._spawn(only_watchlist=only_watchlist), at=datetime.now()
+        )
         return self.state(store, profile_slug)
 
-    def _spawn(self) -> subprocess.Popen:
+    def _spawn(self, *, only_watchlist: bool = False) -> subprocess.Popen:
         log = _log_path()
         log.parent.mkdir(parents=True, exist_ok=True)
         environment = dict(os.environ, EBW_DATA_DIR=str(paths.data_dir()))
@@ -202,13 +212,16 @@ class RunLauncher:
             }
         else:
             extra = {"start_new_session": True}
+        argv = [sys.executable, "-m", "ebook_watchlist.run", "--trigger", "ui"]
+        if only_watchlist:
+            argv.append("--watchlist")
         with log.open("wb") as sink:
             return subprocess.Popen(  # noqa: S603 - fixed argv, no user input
                 # ``--trigger ui`` ist hier nicht nur eine Notiz fuer das
                 # Journal: der Mindestabstand zwischen zwei Rundgaengen
                 # (``run.MIN_RUN_GAP``) gilt nur ``cron``. Hier hat ein Mensch
                 # gedrueckt, und der meint es.
-                [sys.executable, "-m", "ebook_watchlist.run", "--trigger", "ui"],
+                argv,
                 stdin=subprocess.DEVNULL,
                 stdout=sink,
                 stderr=subprocess.STDOUT,

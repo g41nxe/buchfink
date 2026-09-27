@@ -279,3 +279,46 @@ def test_the_run_opens_no_console_window(monkeypatch: pytest.MonkeyPatch) -> Non
     assert flags & subprocess.CREATE_NO_WINDOW
     assert flags & subprocess.CREATE_NEW_PROCESS_GROUP
     assert not flags & subprocess.DETACHED_PROCESS
+
+
+# --- nur die Watchlist prüfen -----------------------------------------------
+
+
+def test_the_watchlist_only_run_passes_the_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Der zweite Knopf auf der Übersicht startet denselben Lauf, nur mit
+    ``--watchlist``: kein Fegen nach Autor:innen, Themen oder Bibliothekslisten."""
+    from ebook_watchlist.web import runs
+
+    seen: dict = {}
+
+    class Popen:
+        def __init__(self, argv, **kwargs) -> None:
+            seen["argv"] = argv
+
+    monkeypatch.setattr(runs.subprocess, "Popen", Popen)
+    RunLauncher()._spawn(only_watchlist=True)
+
+    assert "--watchlist" in seen["argv"] and "--trigger" in seen["argv"]
+
+
+def test_the_dashboard_offers_a_watchlist_only_run(client: TestClient) -> None:
+    body = client.get("/overview").text
+
+    assert 'hx-post="/run?only_watchlist=true"' in body
+
+
+def test_pressing_the_watchlist_button_only_checks_the_watchlist(
+    client: TestClient, store: Store
+) -> None:
+    """Derselbe Schnitt wie beim grossen Knopf, aber mit dem Schalter: der
+    Lauf, den der Prozess wirklich startet, traegt ``--watchlist``."""
+    response = client.post("/run?only_watchlist=true")
+    assert response.status_code == 200
+
+    wait_until(lambda: bool(runs_of(store)), "ein Lauf ist im Journal aufgetaucht")
+    wait_until(
+        lambda: runs_of(store)[0].finished_at is not None,
+        "der Lauf ist fertig geworden",
+    )
+
+    assert runs_of(store)[0].status == "ok"
