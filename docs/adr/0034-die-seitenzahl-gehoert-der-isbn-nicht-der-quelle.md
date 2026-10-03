@@ -60,3 +60,24 @@ Die DNB nennt die Seitenzahl in Feld 300 manchmal („Online-Ressource,
   Seitenzahl (Glossar).
 - Eine Kurzgeschichte von OverDrive wird nur erkannt, wenn beam oder die DNB sie
   kennen oder ihr Titel es sagt.
+
+## Nachtrag aus #83 (03.10.2026): dasselbe gilt für den Band
+
+Ein Folgeband wird an der DNB, am Titel oder am Untertitel erkannt. OverDrive
+nennt den Band als `detailedSeries.readingOrder` schon in den Trefferlisten, die
+der Lauf ohnehin holt (im Lucky-Day-Fixture 10 von 15 Titeln); gelesen wurde er
+nicht. Er wird jetzt ein Zeuge, zwischen DNB und Titel, und wie die Seitenzahl
+gilt er für jeden Fund mit derselben ISBN. Weichen DNB und OverDrive ab,
+gewinnt die DNB: sie spricht über genau diese ISBN, OverDrive vielleicht über
+das Werk. Den Reihennamen nimmt OverDrive mit, damit die Ausnahme „eine Reihe,
+die sie schon verfolgt" auch ohne DNB greift.
+
+Der Anlass im Ticket war keiner: *Ein Schrei, den niemand hört* ist laut
+OverDrive Band 1 der Kett-Reihe und stand zu Recht im Stapel.
+
+**Verworfen: den Band im Steckbrief erfragen.** Anders als die Form steht er
+nicht im Klappentext; das Modell müsste ihn wissen und riete bei deutschen
+Ausgaben mit eigenem Titel. Ein geratener Folgeband verschluckt einen Vorschlag
+still, ein übersehener zeigt einen zu viel — der zweite Fehler ist der
+harmlosere. Die Lücke bei beam- und Onleihe-Funden ohne DNB-Eintrag und ohne
+Gegenstück bei OverDrive bleibt.

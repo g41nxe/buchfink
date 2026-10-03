@@ -164,8 +164,11 @@ gives the book, and with each part of a title split at a dash or colon.
 *deutsch: Folgeband*
 
 A Discovery that is volume two or later of a series (`series.MidSeries`): the
-DNB names the volume for its ISBN, the title names it with a word („Band 2"),
-or the subtitle ends in a number („Bobby Dollar 2"). A bare number at the end of
+DNB names the volume for its ISBN, OverDrive names it as `readingOrder` (#83),
+the title names it with a word („Band 2"), or the subtitle ends in a number
+(„Bobby Dollar 2"). In that order; like the Page Count, a volume a Source names
+holds for every Source with the same ISBN, and where DNB and OverDrive
+disagree, the DNB wins. A bare number at the end of
 a title does not count — *Station 11* is a standalone. Not suggested, like a
 short story or a book in another language: the reader does not start in the
 middle of a series. Two exceptions, both from the old reading profile: an author
