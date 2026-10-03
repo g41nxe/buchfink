@@ -64,6 +64,9 @@ class Detail:
     #: Die Seitenzahl aus „Umfang: 320 S." — an ihr wird eine Kurzgeschichte
     #: erkannt (#82).
     pages: int | None = None
+    #: Die Nummer der Reihenliste aus dem Link „Reihe:" — die Adresse, unter
+    #: der die Onleihe die Reihe zeigt (ADR 35).
+    series_ref: str | None = None
 
     @property
     def availability(self) -> Availability:
@@ -129,7 +132,22 @@ def parse_detail(html: str) -> Detail:
         sample_url=_sample(page),
         publisher=_publisher(page),
         pages=_pages(_labelled_value(page, sel.LABEL_PAGES)),
+        series_ref=_series_ref(page),
     )
+
+
+#: ``simpleMediaList,0-0-0-109-0-0-0-0-0-1730790992-0.html`` → 1730790992.
+_SERIES_LIST = re.compile(r"simpleMediaList,[\d-]*-(\d+)-\d+\.html")
+
+
+def _series_ref(page: BeautifulSoup) -> str | None:
+    for row in page.select(sel.DESCRIPTION_ROW):
+        bold = row.find("b")
+        if bold and bold.get_text(strip=True) == sel.LABEL_SERIES:
+            link = row.find("a", href=True)
+            hit = _SERIES_LIST.search(link["href"]) if link else None
+            return hit.group(1) if hit else None
+    return None
 
 
 def _pages(value: str | None) -> int | None:

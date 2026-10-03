@@ -92,6 +92,23 @@ def test_the_detail_page_names_the_page_count() -> None:
     assert parse.parse_detail(fixture("detail-unavailable.html")).pages == 576
 
 
+def test_the_detail_page_links_its_series() -> None:
+    """Der Link „Reihe:" trägt die Nummer der Reihenliste — die Adresse, unter
+    der die Onleihe eine Reihe zeigt (ADR 35)."""
+    detail = parse.parse_detail(fixture("detail-unavailable.html"))
+
+    assert detail.series == "Die sieben Schwestern"
+    assert detail.series_ref == "1730790992"
+    assert parse.parse_detail(fixture("detail-available.html")).series_ref is None
+
+
+def test_the_item_carries_the_series() -> None:
+    item = OnleiheSource(StubClient(fixture("detail-unavailable.html"))).item("1")
+
+    assert item is not None
+    assert (item.series, item.series_ref) == ("Die sieben Schwestern", "1730790992")
+
+
 def test_the_item_carries_the_page_count() -> None:
     item = OnleiheSource(StubClient(fixture("detail-available.html"))).item("373164461")
 

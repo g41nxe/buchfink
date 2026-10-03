@@ -205,6 +205,8 @@ class OnleiheSource(LibrarySource):
             sample_url=detail.sample_url,
             publisher=detail.publisher,
             pages=detail.pages,
+            series=detail.series,
+            series_ref=detail.series_ref,
         )
 
     def probe(self) -> None:

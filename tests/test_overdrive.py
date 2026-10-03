@@ -372,6 +372,21 @@ def test_lucky_day_yields_german_fiction_ebooks_only() -> None:
         assert discovery.isbn and discovery.url.startswith("https://voebb.overdrive.com/media/")
 
 
+def test_a_find_names_its_series_and_volume() -> None:
+    """OverDrive nennt Reihe, Band und die eigene Nummer der Reihe schon in der
+    Trefferliste (#83) — die Nummer ist die Adresse, unter der sich die Reihe
+    später fegen lässt (ADR 35)."""
+    from ebook_watchlist.sources.overdrive.source import Collection
+
+    by_title = {f.title: f for f in parse.parse_collection(
+        parse.payload(lucky_day()), Collection("1572172", "Lucky Day"))}
+
+    reckless = by_title["Steinernes Fleisch"]
+    assert (reckless.series, reckless.series_index, reckless.series_ref) == (
+        "Reckless", "1", "1817267")
+    assert by_title["Der Hausmann"].series is None
+
+
 def test_a_collection_can_narrow_to_genres() -> None:
     """Die BISAC-Präfixe engen weiter ein: FIC009 ist Fantasy."""
     from ebook_watchlist.sources.overdrive.source import Collection

@@ -98,6 +98,13 @@ class Observation:
     pages: int | None = None
     #: Nur gesetzt, wo eine Source die Reihe ausdrücklich benennt.
     series: str | None = None
+    #: Der Band, wo die Quelle ihn nennt (OverDrive ``readingOrder``) — Text
+    #: wie bei der DNB: „3", „6.1", „67-72" (#83). Nicht im Journal: er landet
+    #: in der Reihenzuordnung je ISBN (ADR 35).
+    series_index: str | None = None
+    #: Die eigene Nummer der Reihe bei der Quelle — die Adresse, unter der sie
+    #: sich fegen lässt (ADR 35). Ebenfalls nur in der Reihenzuordnung.
+    series_ref: str | None = None
     observed_at: datetime | None = None
     # --- Belege fuer den `Portrayer` (#17) ---------------------------------
     # Nicht gespeichert und nicht verglichen: sie werden erst unmittelbar vor

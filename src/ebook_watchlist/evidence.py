@@ -116,12 +116,16 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             publisher=item.publisher,
             pages=item.pages or observation.pages,
             sample_url=item.sample_url,
+            series=item.series or observation.series,
+            series_ref=item.series_ref or observation.series_ref,
         )
         fetched[observation.key] = fuller
         # Auch die Seitenzahl kommt ins Journal: der Stapel liest die letzte
         # Beobachtung und erkennt daran Kurzgeschichten (#73).
-        before = (observation.blurb, observation.cover_url, observation.pages)
-        if (fuller.blurb, fuller.cover_url, fuller.pages) != before:
+        # Die Reihe ebenso: sie landet über das Journal in der Zuordnung (#83).
+        before = (observation.blurb, observation.cover_url, observation.pages,
+                  observation.series)
+        if (fuller.blurb, fuller.cover_url, fuller.pages, fuller.series) != before:
             fresh.append(replace(fuller, observed_at=now))
 
     _journal(store, settings, fresh, run_id, now)

@@ -191,6 +191,7 @@ def observation_of(
     frei = _count(item, "availableCopies")
     if lucky_day:
         frei = _count(item, "luckyDayAvailableCopies") or frei
+    series, series_index, series_ref = _series(item)
     return Observation(
         source=source,
         source_item_id=kennung,
@@ -203,6 +204,28 @@ def observation_of(
         cover_url=_cover(item),
         blurb=_text(item, "description"),
         url=sel.TITLE_URL.format(title_id=kennung),
+        series=series,
+        series_index=series_index,
+        series_ref=series_ref,
+    )
+
+
+def _series(item: dict) -> tuple[str | None, str | None, str | None]:
+    """Reihe, Band und Nummer der Reihe aus ``detailedSeries`` (#83).
+
+    Steht schon in jedem Treffer; *Steinernes Fleisch* ist Band 1 von
+    „Reckless". Fehlt ``detailedSeries``, nennt ``series`` oft noch den Namen.
+    """
+    detail = item.get("detailedSeries")
+    if not isinstance(detail, dict):
+        return _text(item, "series"), None, None
+    name = detail.get("seriesName") if isinstance(detail.get("seriesName"), str) else None
+    order = detail.get("readingOrder")
+    ref = detail.get("seriesId")
+    return (
+        (name or _text(item, "series")),
+        str(order).strip() or None if isinstance(order, (str, int)) else None,
+        str(ref) if isinstance(ref, (str, int)) and not isinstance(ref, bool) else None,
     )
 
 

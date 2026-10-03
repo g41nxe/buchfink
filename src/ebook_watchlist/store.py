@@ -28,6 +28,7 @@ from sqlalchemy import (
     func,
     or_,
     select,
+    update,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
@@ -42,6 +43,7 @@ from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
 from .ratings import RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
+from .series import series_key
 
 #: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
 _VERSION_ATTEMPTS = 20
@@ -217,6 +219,61 @@ class DnbContainsRow(Base):
 
     isbn: Mapped[str] = mapped_column(String, primary_key=True)
     contained: Mapped[str] = mapped_column(String, primary_key=True)
+
+
+class SeriesRow(Base):
+    """Eine Reihe, gleich unter welchem Namen eine Quelle sie führt (ADR 35).
+
+    ``key`` ist der Schlüssel des ersten Namens (`series.series_key`), ``name``
+    der, unter dem sie zuerst kam. Die Adressen sind die eigenen Nummern der
+    Reihe bei den Quellen, unter denen sie sich fegen lässt (#85).
+    """
+
+    __tablename__ = "series"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String, index=True)
+    name: Mapped[str] = mapped_column(String)
+    author_key: Mapped[str] = mapped_column(String, default="")
+    overdrive_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    onleihe_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class SeriesNameRow(Base):
+    """Ein Schlüssel einer Autor:in, und zu welcher Reihe er gehört.
+
+    Zwei Schlüssel zeigen auf dieselbe Reihe, wenn zwei Quellen sie für dieselbe
+    ISBN nennen. Die Autor:in steht im Schlüssel, damit „Die Chroniken" zweier
+    Leute zwei Reihen bleiben.
+    """
+
+    __tablename__ = "series_name"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    author_key: Mapped[str] = mapped_column(String, primary_key=True)
+    series_id: Mapped[int] = mapped_column(Integer, index=True)
+
+
+class SeriesEntryRow(Base):
+    """Zu welcher Reihe eine ISBN gehört und als welcher Band — je Herkunft.
+
+    Je ISBN und nicht am Buch: die Reihe wird schon für Funde gebraucht, und
+    ein Buch entsteht erst durch eine Entscheidung der Leserin (ADR 18, 35). Die
+    Herkunft bleibt, damit die Rangfolge beim Lesen entschieden wird.
+    """
+
+    __tablename__ = "series_entry"
+
+    isbn: Mapped[str] = mapped_column(String, primary_key=True)
+    origin: Mapped[str] = mapped_column(String, primary_key=True)
+    series_id: Mapped[int] = mapped_column(Integer, index=True)
+    #: Text wie ``series_index``: „3", „6.1", „Sonderband".
+    volume: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+#: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
+#: ISBN, OverDrive vielleicht über das Werk (ADR 35).
+SERIES_ORIGINS = ("dnb", "overdrive", "onleihe")
 
 
 class BookSourceRow(Base):
@@ -1032,6 +1089,9 @@ class Store:
                 row.keywords = json.dumps(list(record.keywords), ensure_ascii=False)
                 row.publisher = record.publisher
                 row.pages = record.pages
+                if record.series:
+                    _file_series(session, isbn, record.series, record.author,
+                                 record.series_index, "dnb")
                 for contained in record.contains:
                     if session.get(DnbContainsRow, (isbn, contained)) is None:
                         session.add(DnbContainsRow(isbn=isbn, contained=contained))
@@ -1156,16 +1216,72 @@ class Store:
                 for isbn, found, original, title, index in rows
             }
 
-    def dnb_series(self) -> dict[str, tuple[str | None, str | None]]:
-        """ISBN -> (Reihe, Band), wo die DNB einen Band nennt — für die
-        Reihenregel (`series.MidSeries`)."""
+    def series_known(self) -> dict[str, tuple[str, str | None]]:
+        """ISBN -> (Schlüssel der Reihe, Band), nach Herkunft entschieden.
+
+        Die Reihe von der ersten Herkunft, die eine nennt; der Band von der
+        ersten, die einen nennt — ein DNB-Satz ohne Band lässt OverDrives Band
+        gelten (ADR 35).
+        """
+        rank = {origin: i for i, origin in enumerate(SERIES_ORIGINS)}
         with self.session() as session:
-            rows = session.execute(
-                select(DnbRecordRow.isbn, DnbRecordRow.series, DnbRecordRow.series_index).where(
-                    DnbRecordRow.found.is_(True), DnbRecordRow.series_index.is_not(None)
-                )
+            keys = dict(session.execute(select(SeriesRow.id, SeriesRow.key)).all())
+            rows = sorted(
+                session.execute(
+                    select(SeriesEntryRow.isbn, SeriesEntryRow.origin,
+                           SeriesEntryRow.series_id, SeriesEntryRow.volume)
+                ).all(),
+                key=lambda row: rank.get(row[1], len(rank)),
             )
-            return {isbn: (series, index) for isbn, series, index in rows}
+        known: dict[str, tuple[str, str | None]] = {}
+        for isbn, _, series_id, volume in rows:
+            if isbn not in known:
+                known[isbn] = (keys[series_id], volume)
+            elif known[isbn][1] is None and volume:
+                known[isbn] = (known[isbn][0], volume)
+        return known
+
+    def series_refs(self, key: str) -> dict[str, str]:
+        """Quelle -> die eigene Nummer der Reihe dort, für den Schlüssel ``key``."""
+        with self.session() as session:
+            ids = list(session.scalars(
+                select(SeriesNameRow.series_id).where(SeriesNameRow.key == key)
+            ))
+            refs: dict[str, str] = {}
+            for row in session.scalars(select(SeriesRow).where(SeriesRow.id.in_(ids))):
+                if row.overdrive_ref:
+                    refs["overdrive"] = row.overdrive_ref
+                if row.onleihe_ref:
+                    refs["onleihe"] = row.onleihe_ref
+            return refs
+
+    def series_rows(self) -> list[SeriesRow]:
+        with self.session() as session:
+            return list(session.scalars(select(SeriesRow)))
+
+    def series_keys_for(self, isbns: Iterable[str], names: Iterable[str]) -> frozenset[str]:
+        """Die Schlüssel der Reihen zu diesen ISBNs und Namen.
+
+        Für „eine Reihe, die sie schon liest": ein Name gilt über jeden
+        Schlüssel, unter dem er geführt wird, gleich welche Autor:in.
+        """
+        wanted_isbns = {isbn for isbn in isbns if isbn}
+        wanted_keys = {series_key(name) for name in names if name}
+        with self.session() as session:
+            ids = set(session.scalars(
+                select(SeriesEntryRow.series_id).where(SeriesEntryRow.isbn.in_(wanted_isbns))
+            ))
+            ids |= set(session.scalars(
+                select(SeriesNameRow.series_id).where(SeriesNameRow.key.in_(wanted_keys))
+            ))
+            keys = set(session.scalars(select(SeriesRow.key).where(SeriesRow.id.in_(ids))))
+        return frozenset(keys | wanted_keys)
+
+    def forget_series_entries(self) -> None:
+        """Nur für Tests: der Stand vor der Reihen-Tabelle."""
+        with self.session() as session:
+            session.execute(delete(SeriesEntryRow))
+            session.commit()
 
     def dnb_languages(self) -> dict[str, str]:
         """ISBN -> Sprache, fuer jede ISBN, zu der die DNB eine nennt (#10)."""
@@ -1421,6 +1537,18 @@ class Store:
                 book.series = record.series
                 book.series_index = record.series_index
                 filled += 1
+            # Antworten von vor der Reihen-Tabelle (ADR 35): ohne neue Frage
+            # zugeordnet, einmal und dann nie wieder.
+            filed = select(SeriesEntryRow.isbn).where(SeriesEntryRow.origin == "dnb")
+            for record in session.scalars(
+                select(DnbRecordRow).where(
+                    DnbRecordRow.found.is_(True),
+                    DnbRecordRow.series.is_not(None),
+                    DnbRecordRow.isbn.not_in(filed),
+                )
+            ).all():
+                _file_series(session, record.isbn, record.series, record.author,
+                             record.series_index, "dnb")
             session.commit()
             return filled
 
@@ -2354,4 +2482,69 @@ class Store:
                 )
                 for obs in observations
             )
+            for obs in observations:
+                if obs.isbn and obs.series:
+                    _file_series(session, obs.isbn, obs.series, obs.author,
+                                 obs.series_index, obs.source, obs.series_ref)
             session.commit()
+
+
+def _file_series(
+    session: Session,
+    isbn: str,
+    name: str,
+    author: str | None,
+    volume: str | None,
+    origin: str,
+    ref: str | None = None,
+) -> None:
+    """Eine Angabe zur Reihe festhalten — und Namen zusammenführen (ADR 35).
+
+    Ein Name gilt je Autor:in. Nennt eine andere Herkunft für dieselbe ISBN
+    schon eine Reihe, ist es diese: „Ein Hunter-und-Garcia-Thriller" (DNB) und
+    „Robert Hunter" (OverDrive) werden eine Reihe, ohne dass eine Regel sie
+    gleich machen müsste.
+    """
+    key = series_key(name)
+    writer = author_key(author) if author else ""
+    session.flush()
+    named = session.get(SeriesNameRow, (key, writer))
+    elsewhere = session.scalars(
+        select(SeriesEntryRow.series_id).where(
+            SeriesEntryRow.isbn == isbn, SeriesEntryRow.origin != origin
+        )
+    ).first()
+    if named is None:
+        series_id = elsewhere
+        if series_id is None:
+            row = SeriesRow(key=key, name=name, author_key=writer)
+            session.add(row)
+            session.flush()
+            series_id = row.id
+        session.add(SeriesNameRow(key=key, author_key=writer, series_id=series_id))
+    else:
+        series_id = named.series_id
+        if elsewhere is not None and elsewhere != series_id:
+            series_id = _merge_series(session, keep=min(series_id, elsewhere),
+                                      drop=max(series_id, elsewhere))
+    entry = session.get(SeriesEntryRow, (isbn, origin))
+    if entry is None:
+        session.add(SeriesEntryRow(isbn=isbn, origin=origin, series_id=series_id, volume=volume))
+    else:
+        entry.series_id = series_id
+        entry.volume = volume or entry.volume
+    if ref and origin in ("overdrive", "onleihe"):
+        setattr(session.get(SeriesRow, series_id), f"{origin}_ref", ref)
+
+
+def _merge_series(session: Session, *, keep: int, drop: int) -> int:
+    """Zwei Reihen sind eine: Namen, Bände und Adressen gehen auf ``keep``."""
+    session.execute(update(SeriesNameRow).where(SeriesNameRow.series_id == drop)
+                    .values(series_id=keep))
+    session.execute(update(SeriesEntryRow).where(SeriesEntryRow.series_id == drop)
+                    .values(series_id=keep))
+    kept, dropped = session.get(SeriesRow, keep), session.get(SeriesRow, drop)
+    kept.overdrive_ref = kept.overdrive_ref or dropped.overdrive_ref
+    kept.onleihe_ref = kept.onleihe_ref or dropped.onleihe_ref
+    session.delete(dropped)
+    return keep

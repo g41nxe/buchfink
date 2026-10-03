@@ -62,6 +62,9 @@ class Item:
     publisher: str | None = None
     #: Die Seitenzahl, wo die Quelle sie nennt (#73).
     pages: int | None = None
+    #: Reihe und ihre Nummer bei der Quelle, wo die Detailseite sie nennt (#83).
+    series: str | None = None
+    series_ref: str | None = None
 
 
 @dataclass(slots=True)
