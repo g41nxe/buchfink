@@ -959,9 +959,29 @@ def test_a_short_story_is_known_by_its_isbn(db: Store) -> None:
     pile = view.pending(db, load_settings())
 
     assert not pile.items
-    # Gezählt wird je Fund, wie bei den anderen Zählern über dem Stapel.
-    assert pile.hidden_short == 2
+    # Ein Buch, eine Kurzgeschichte — nicht eine je Quelle.
+    assert pile.hidden_short == 1
 
+
+
+def test_a_book_shown_from_one_source_is_not_counted_as_hidden(db: Store) -> None:
+    """*Broken House* bei beam zu teuer, bei OverDrive frei: es steht im Stapel
+    und zählt deshalb nicht als „zu teuer" ausgeblendet."""
+    from dataclasses import replace
+
+    from ebook_watchlist.models import Availability
+
+    at_shop = found(db, item_id="605720", title="Broken House", isbn="9783104038230",
+                    price=1099, reason=MatchReason.PROFILE_AUTHOR)
+    today = datetime.now()
+    db.append(db.start_run("test", "cli", today), "test", [replace(
+        at_shop, source="overdrive", source_item_id="4927425", price_cents=None,
+        availability=Availability.AVAILABLE, observed_at=today)], today)
+
+    pile = view.pending(db, load_settings())
+
+    assert [s.source for s in pile.items] == ["overdrive"]
+    assert pile.hidden_priced == 0
 
 
 def test_an_old_library_availability_does_not_count(client: TestClient, db: Store) -> None:

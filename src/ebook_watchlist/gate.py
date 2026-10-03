@@ -59,6 +59,17 @@ class GateReport:
     #: Der Digest zeigt es: die Begründung ist der Grund, den ein Vorschlag
     #: mitbringt (ADR 19, Ticket 14).
     judgements: dict[tuple[str, str], Verdict] = field(default_factory=dict)
+    #: Je Zahl die Bücher, die schon mitzählen. Dasselbe Buch bei zwei Quellen
+    #: ist im Tagesbericht ein zurückgehaltener Vorschlag, nicht zwei.
+    counted: dict[str, set[str]] = field(default_factory=dict, repr=False)
+
+    def count(self, name: str, observation: Observation) -> None:
+        """Eine der Zahlen um eins erhöhen — einmal je Buch (`subject_of`)."""
+        books = self.counted.setdefault(name, set())
+        subject = subject_of(observation)
+        if subject not in books:
+            books.add(subject)
+            setattr(self, name, getattr(self, name) + 1)
 
 
 def unrated_report(deltas: list[Delta]) -> GateReport:
@@ -90,7 +101,7 @@ def _decide(
     hatte. Ein zweites Mal ist es dieselbe Funktion.
     """
     if verdict.withholds(threshold):
-        report.held_back += 1
+        report.count("held_back", delta.current)
         return
     report.judgements[delta.current.key] = verdict
     kept.append(delta)
@@ -211,7 +222,7 @@ def apply(
             delta.current.match_reason is not MatchReason.WATCHLIST
             and is_short_story(delta.current)
         ):
-            report.short_stories += 1
+            report.count("short_stories", delta.current)
             continue
         if delta.current.match_reason is MatchReason.WATCHLIST:
             # Von der Leserin selbst gewählt; sie gegen ihr eigenes Profil
@@ -240,12 +251,12 @@ def apply(
                     # dem Modell unbekannt, oder es ist kein `Portrayer`
                     # eingerichtet: unbewertet und trotzdem gezeigt — ein Tor,
                     # das im Zweifel schließt, verschluckt Neuzugänge.
-                    report.unrated += 1
+                    report.count("unrated", observation)
                 else:
                     # Über dem Budget und deshalb gar nicht erst gefragt:
                     # gezeigt, und der nächste Lauf sieht ihn nicht wieder —
                     # nachgeholt wird von Hand (#84).
-                    report.over_budget += 1
+                    report.count("over_budget", observation)
             # Ein Preissturz ohne Urteil bleibt, wie er ist: er kostet nie
             # einen neuen Steckbrief.
             kept.append(delta)
@@ -256,7 +267,7 @@ def apply(
         # beim nächsten Nachlass doch: streng an der Vordertür, offen an der
         # Hintertür.
         if observation.key not in created:
-            report.reused += 1
+            report.count("reused", observation)
         _decide(verdict, delta, threshold, kept, report)
     return kept, report
 

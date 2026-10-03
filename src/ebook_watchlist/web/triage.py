@@ -358,13 +358,12 @@ def pending(
     mid_series = mid_series_finder(store, settings.slug)
 
     items: list[Suggestion] = []
-    hidden_junk = 0
-    hidden_priced = 0
-    hidden_weak = 0
-    hidden_language = 0
-    hidden_ai = 0
-    hidden_short = 0
-    hidden_series = 0
+    # Je Grund die *Bücher*, nicht die Funde: dasselbe Buch bei zwei Quellen
+    # ist eine Kurzgeschichte, nicht zwei — und ein Buch, das eine andere
+    # Quelle zeigt, ist gar nicht ausgeblendet.
+    hidden: dict[str, set[str]] = {
+        why: set() for why in ("junk", "priced", "weak", "language", "ai", "short", "series")
+    }
     now = datetime.now()
     library_sources = {name for name, kind in source_kinds().items() if kind == "library"}
     for observation in found:
@@ -373,25 +372,25 @@ def pending(
         if observation.isbn and observation.isbn in decided_isbns:
             continue
         if is_junk(observation):
-            hidden_junk += 1
+            hidden["junk"].add(subject_of(observation))
             continue
         # Wie ein Sammelband eine Frage der Form, nicht des Geschmacks (#73).
         if is_short_story(observation):
-            hidden_short += 1
+            hidden["short"].add(subject_of(observation))
             continue
         # Vor der Preisregel und vor dem Urteil: ein Fund in fremder Sprache
         # ist kein Kandidat, gleich was er kostet oder wie er bewertet wurde.
         if is_foreign(observation, settings, language_of):
-            hidden_language += 1
+            hidden["language"].add(subject_of(observation))
             continue
         # Aus demselben Grund und an derselben Stelle: wer seine Texte von
         # einer Maschine schreiben laesst, ist kein Kandidat (#31).
         if is_ai_authored(observation, ai_author_names):
-            hidden_ai += 1
+            hidden["ai"].add(subject_of(observation))
             continue
         # Nicht mitten in einer Reihe anfangen — dieselbe Regel wie im Lauf.
         if mid_series(observation):
-            hidden_series += 1
+            hidden["series"].add(subject_of(observation))
             continue
         # Dieselbe Regel wie im Digest, aus einer Stelle: was dich nie
         # erreichen würde, ist keine Aufgabe. Und was hier nicht steht, kostet
@@ -399,7 +398,7 @@ def pending(
         advantage = find_advantage(observation)
         observation = _fresh(observation, library_sources, now)
         if not worth_announcing(observation, settings, bundle_advantage=advantage):
-            hidden_priced += 1
+            hidden["priced"].add(subject_of(observation))
             continue
         # Dieselbe Schwelle wie im Digest: was das Tor zurückhält, ist keine
         # Aufgabe. Ein Fund **ohne** Urteil bleibt — "noch nicht beurteilt" ist
@@ -407,7 +406,7 @@ def pending(
         subject = subject_of(observation)
         verdict = judge.verdict(portraits.get(subject)) if judge else None
         if verdict is not None and verdict.withholds(judge.threshold):
-            hidden_weak += 1
+            hidden["weak"].add(subject_of(observation))
             continue
         if reason and _origin(observation) != reason:
             continue
@@ -426,16 +425,18 @@ def pending(
     # keine Empfehlung, sondern eine offene Frage (#37).
     ordered = sorting.apply(sorting.SUGGESTIONS, items, sort)
 
+    shown = {_subject_of_item(item) for item in items}
+    counts = {why: len(books - shown) for why, books in hidden.items()}
     return Pile(
         items=tuple(ordered[:limit]),
         total=len(items),
-        hidden_junk=hidden_junk,
-        hidden_priced=hidden_priced,
-        hidden_weak=hidden_weak,
-        hidden_language=hidden_language,
-        hidden_ai=hidden_ai,
-        hidden_short=hidden_short,
-        hidden_series=hidden_series,
+        hidden_junk=counts["junk"],
+        hidden_priced=counts["priced"],
+        hidden_weak=counts["weak"],
+        hidden_language=counts["language"],
+        hidden_ai=counts["ai"],
+        hidden_short=counts["short"],
+        hidden_series=counts["series"],
         threshold=judge.threshold if judge else 3,
         # Nur, wenn es wirklich kein Profil gibt: ein unlesbares Vokabular ist
         # etwas anderes, und "erst die Erstaufnahme machen" wäre dann falsch.
@@ -506,3 +507,10 @@ def decide(
             store.set_cover(book.id, cover)
         decided += 1
     return decided
+
+
+def _subject_of_item(item: Suggestion) -> str:
+    """Dieselbe Identität wie `ratings.subject_of`, für eine fertige Zeile."""
+    if item.isbn:
+        return f"isbn:{item.isbn}"
+    return f"item:{item.source}:{item.source_item_id}"
