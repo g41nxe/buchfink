@@ -242,9 +242,9 @@ def apply(
                     # das im Zweifel schließt, verschluckt Neuzugänge.
                     report.unrated += 1
                 else:
-                    # Über dem Budget und deshalb gar nicht erst gefragt: der
-                    # Rest wartet auf den nächsten Lauf und wird solange
-                    # gezeigt.
+                    # Über dem Budget und deshalb gar nicht erst gefragt:
+                    # gezeigt, und der nächste Lauf sieht ihn nicht wieder —
+                    # nachgeholt wird von Hand (#84).
                     report.over_budget += 1
             # Ein Preissturz ohne Urteil bleibt, wie er ist: er kostet nie
             # einen neuen Steckbrief.

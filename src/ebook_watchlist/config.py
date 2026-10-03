@@ -38,8 +38,10 @@ class Settings:
     min_discount_pct: int = 25
     #: Wie viele Urteile ein Lauf höchstens einholt (ADR 19, Ticket 20). Der
     #: erste Lauf mit einem Schlüssel trifft einen Rückstand von dreihundert
-    #: Entdeckungen; er soll ihn über Tage abarbeiten, nicht am Stück. Was das
-    #: Budget übrig lässt, gilt als unbewertet und wird gezeigt.
+    #: Entdeckungen; der soll nicht am Stück abgefeuert werden. Was das Budget
+    #: übrig lässt, gilt als unbewertet und wird gezeigt — und kommt nicht von
+    #: selbst wieder: nachgeholt wird mit ``ebw rate`` oder dem Hammer-Knopf
+    #: (#84). Ein normaler Lauf bleibt weit unter 40.
     rating_budget: int = 40
     #: Wie viele ISBNs ein Lauf hoechstens bei der DNB nachschlaegt. Die
     #: DNB dokumentiert keine zulaessige Anfragefrequenz — der Rueckstand

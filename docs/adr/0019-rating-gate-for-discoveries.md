@@ -214,6 +214,23 @@ and never costs history.
 > Datenverzeichnis wäre eine weitere Stelle, an der ein Geheimnis in ein Backup
 > geraten kann.
 
+> **Nachtrag aus #84 (03.10.2026): der Rückstand arbeitet sich nicht von
+> selbst ab, und 40 bleiben.** Der Satz oben stimmt nicht: das Tor sieht nur
+> die Änderungen eines Laufs, und ein Fund ist genau einmal eine Erstsichtung.
+> Was über dem Budget lag, kommt im nächsten Lauf nicht wieder vorbei; es
+> bleibt unbewertet in der Oberfläche stehen, bis es von Hand nachgeholt wird
+> (Hammer-Knopf, `ebw rate --anzahl N`) oder sein Preis fällt.
+>
+> Zurückhalten, bis es beurteilt ist, wurde erwogen und verworfen: das
+> verlangte eine eigene Warteschlange, einen neuen Zustand im Store — für einen
+> Fall, der im Betrieb nicht mehr vorkommt. Der Anlass war der erste volle Lauf
+> mit den Bibliotheksquellen (26.09.2026, 34 über dem Budget), und der lag an
+> einer Aussaat, die nur je Interesse galt statt je Quelle und Interesse (#74,
+> inzwischen behoben). Die Läufe danach blieben weit darunter: am 02.10. nach
+> vier Tagen Pause 19 Steckbriefe, nichts über dem Budget. Ein höheres Budget
+> hätte nur den Sonderfall verbilligt und den nächsten Ausreißer teurer gemacht
+> (30–45 s je Steckbrief).
+
 ### The cheap filters stand in front of the gate
 
 Bundles and collections, and anything priced at zero, are dropped before the
