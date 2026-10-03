@@ -181,6 +181,17 @@ she follows, and a series she already has a book of. Filtered before the Gate,
 so it costs no Portrait, and counted on the Suggestion Pile as „mitten in einer
 Reihe". A Watchlist Entry is never one.
 
+### Work
+*deutsch: Werk*
+
+What a translation and its original have in common (ADR 36): normalised author
+plus normalised Original Title — the DNB's for a translation, the edition's own
+title where the DNB names none. *Gestohlene Erinnerung* and *Recursion* are one
+Work. Portrait and stars belong to the Work; Books stay one per edition. A
+Discovery whose Work the reader already has a relation to is not suggested; a
+Watchlist Entry is left alone and only says „hast du schon als …". Never derived
+from a Portrait's original title.
+
 ### Series
 *deutsch: Reihe*
 
