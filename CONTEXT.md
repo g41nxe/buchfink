@@ -173,6 +173,26 @@ she follows, and a series she already has a book of. Filtered before the Gate,
 so it costs no Portrait, and counted on the Suggestion Pile as „mitten in einer
 Reihe". A Watchlist Entry is never one.
 
+### Short Story
+*deutsch: Kurzgeschichte*
+
+A Discovery under 80 pages, or one whose title or subtitle says so
+(„Kurzgeschichte", „Episode"; `junk.is_short_story`, #73). Not suggested and
+not portrayed; counted on the Digest as „Kurzgeschichte (unter 80 Seiten)". A
+Watchlist Entry is never one. Without a known Page Count a book counts as a
+novel — unknown is not short.
+
+### Page Count
+*deutsch: Seitenzahl*
+
+How many pages an edition has (`pages`). Belongs to the ISBN, not to the Source:
+a Page Count one Source names holds for every Source with the same ISBN (#82).
+Read from a detail page (beam „Seitenzahl", Onleihe „Umfang: 320 S.") or from
+the DNB (field 300, „Online-Ressource, 416 Seiten"); the Source's own comes
+first, the DNB last, because its figure sometimes belongs to the print edition.
+OverDrive names none. Not *Umfang*: that word belongs to a Counterweight's
+scope.
+
 ### Library Collection
 *deutsch: Sammlung*
 
