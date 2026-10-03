@@ -92,6 +92,17 @@ class OverdriveSource(LibrarySource):
             if author_matches(author, fund.author)
         ]
 
+    def by_series(self, name: str, author: str | None, ref: str | None) -> list[Observation]:
+        """Die ganze Reihe über ``seriesId`` — auch verliehene Bände: auf der
+        Watchlist zählt ein Band, nicht ob er heute frei ist (#85)."""
+        if ref is None:
+            return []
+        query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **sel.LANGUAGE_PARAMS,
+                     seriesId=ref)
+        text = self.client.get(self._url(sel.SEARCH_PATH), params=query)
+        return parse.parse_finds(parse.payload(text), source=self.name,
+                                 reason=MatchReason.WATCHLIST)
+
     def by_category(self, category_path: str) -> list[Observation]:
         """Die Neuzugänge zu einem Thema der Leserin, frei und auf Deutsch."""
         slug = category_path.strip("/").rsplit("/", 1)[-1]

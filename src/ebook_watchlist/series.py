@@ -69,6 +69,20 @@ def _dnb_volume(index: str | None) -> int | None:
 
 
 @dataclass(frozen=True, slots=True)
+class SeriesOf:
+    """Zu welcher Reihe ein Buch gehört, für die Oberfläche (#85)."""
+
+    id: int
+    name: str
+    volume: str | None
+
+    @property
+    def label(self) -> str:
+        """„Red Rising Saga · Band 3"."""
+        return f"{self.name} · Band {self.volume}" if self.volume else self.name
+
+
+@dataclass(frozen=True, slots=True)
 class MidSeries:
     """Ob ein Fund ein späterer Band einer Reihe ist, die die Leserin nicht verfolgt."""
 

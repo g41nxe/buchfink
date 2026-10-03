@@ -34,7 +34,7 @@ from ..reasons import (
     why_shown,
 )
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
-from ..series import mid_series_finder
+from ..series import SeriesOf, mid_series_finder
 from ..sources import registry
 from ..store import Store
 from . import sorting
@@ -104,6 +104,15 @@ class Suggestion:
     #: Steht schon ein Steckbrief? Der Hammer-Knopf fragt dann mit
     #: ``again=1`` neu, statt zum ersten Mal (26.09.2026).
     described: bool = False
+    #: Zu welcher Reihe der Fund gehört, als welcher Band (#85).
+    series: SeriesOf | None = None
+
+    @property
+    def byline(self) -> str | None:
+        """„Pierce Brown · Red Rising Saga · Band 1"."""
+        if self.series is None:
+            return self.author
+        return f"{self.author or 'unbekannt'} · {self.series.label}"
 
     @property
     def is_bundle(self) -> bool:
@@ -405,6 +414,8 @@ def pending(
         )
 
     items = _one_per_book(items)
+    named = store.series_of(item.isbn for item in items if item.isbn)
+    items = [replace(item, series=named.get(item.isbn or "")) for item in items]
 
     # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
     # ersten fuenfzig einer zufaelligen Reihe, nur huebsch geordnet.

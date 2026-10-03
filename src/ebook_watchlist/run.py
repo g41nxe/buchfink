@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 from filelock import FileLock, Timeout
 
-from . import gate, paths
+from . import gate, paths, series_watch
 from .bundle_deal import advantage_finder
 from .cleaning import clean_blurb
 from .config import (
@@ -985,6 +985,11 @@ def _run(
     probe_failures: list[SourceFailure] = []
     if not skip_probes:
         sources, probe_failures = _probe(sources, store, started_at)
+
+    # Beobachtete Reihen zuerst (#85): ein neuer Band steht danach auf der
+    # Watchlist und wird in diesem Lauf geprüft und gemeldet wie jeder andere.
+    if series_watch.sweep(store, settings.slug, sources, now=started_at):
+        watchlist = load_configuration(store, settings).watchlist
 
     # Bei --watchlist wird ohnehin nicht gefegt (RunContext.only_watchlist);
     # sonst hielte "keine Fehler, weil nichts versucht wurde" den langen

@@ -74,6 +74,14 @@ class OnleiheSource(LibrarySource):
             source=self.name,
         )
 
+    def by_series(self, name: str, author: str | None, ref: str | None) -> list[Observation]:
+        """Die Reihenliste, die der Link „Reihe:" einer Detailseite nennt (#85)."""
+        if ref is None:
+            return []
+        html = self.client.get(urljoin(self.base, sel.SERIES_LIST_PATH.format(series_id=ref)))
+        return parse.series_volumes(html, name, media=self.media, base=self.base,
+                                    source=self.name)
+
     def extra_discoveries(self) -> list[Observation]:
         """Die erste Seite jeder Liste, etwa „zuletzt zurückgegeben" oder die
         Neuzugänge der Belletristik. Eine Liste, die es nicht mehr gibt,

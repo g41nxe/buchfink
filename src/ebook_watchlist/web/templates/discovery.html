@@ -51,7 +51,9 @@
      cover_file=page.cover_file,
      deal=page.deal,
      tiles=tiles,
-     run_in_progress=run_in_progress) }}
+     run_in_progress=run_in_progress,
+     series_view=page.series_view,
+     back="/discovery/" ~ page.source ~ "/" ~ page.source_item_id) }}
 
 {# Die drei Entscheidungen, dieselben wie im Stapel und auf der Startseite.
    Hier mit Wort: eine Detailseite hat Platz, und wer hier gelandet ist, ist

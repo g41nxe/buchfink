@@ -246,6 +246,15 @@ class Source(ABC):
         """Known-good self-check for ``ebw doctor`` (ticket 08). Raises on failure."""
         return None
 
+    def by_series(self, name: str, author: str | None, ref: str | None) -> list[Observation]:
+        """Die Bände einer Reihe, die die Leserin beobachtet (#85).
+
+        ``ref`` ist die eigene Nummer der Reihe bei dieser Quelle; ohne sie
+        wird nicht gefragt — gesucht wird die Adresse nicht (ADR 35). Eine
+        Quelle, die keine Reihen kennt, lässt das hier stehen.
+        """
+        return []
+
     def item(self, source_item_id: str) -> Item | None:
         """Which book this Source's own id means. ``None`` if it no longer knows.
 

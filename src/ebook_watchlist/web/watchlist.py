@@ -26,6 +26,7 @@ from ..relations import (
     label_of,
     labelled_actions,
 )
+from ..series import SeriesOf
 from ..sources import registry
 from ..store import Store
 from . import sorting
@@ -207,6 +208,16 @@ class Entry:
     #: Watchlist-Titel wird auch ohne Sprachfilter gesucht, und "ausleihbar"
     #: hiesse sonst stillschweigend: auf Deutsch.
     other_languages: tuple[tuple[str, str], ...] = ()
+    #: Zu welcher Reihe der Titel gehört, als welcher Band (#85).
+    series: SeriesOf | None = None
+
+    @property
+    def byline(self) -> str:
+        """„Pierce Brown · Red Rising Saga · Band 1" — und ob er ruht."""
+        parts = [self.author or "unbekannt"]
+        if self.series is not None:
+            parts.append(self.series.label)
+        return " · ".join(parts) + ("" if self.active else " · pausiert")
 
     @property
     def is_bundle(self) -> bool:
@@ -431,6 +442,30 @@ def _portrait_subjects(book, observations: Sequence[Observation]) -> list[str]:
     return subjects
 
 
+@dataclass(frozen=True, slots=True)
+class SeriesChoice:
+    """Eine Reihe im Auswahlfeld über der Watchlist (#85)."""
+
+    id: int
+    name: str
+    count: int
+
+
+def series_choices(rows: Sequence[Entry]) -> list[SeriesChoice]:
+    """Die Reihen der beobachteten Titel, nach Name — gleich, ob sie die Reihe
+    beobachtet oder einen Band einzeln gesetzt hat."""
+    counts: dict[int, int] = {}
+    names: dict[int, str] = {}
+    for row in rows:
+        if row.series is not None:
+            counts[row.series.id] = counts.get(row.series.id, 0) + 1
+            names[row.series.id] = row.series.name
+    return sorted(
+        (SeriesChoice(sid, names[sid], count) for sid, count in counts.items()),
+        key=lambda choice: choice.name.casefold(),
+    )
+
+
 def entries(
     store: Store,
     settings: Settings,
@@ -468,6 +503,7 @@ def entries(
     # Eintraege kosteten so 9 der 25 ms, die diese Funktion braucht.
     books = store.books_by_id(book_ids)
     sources = store.book_sources_of(book_ids)
+    named = store.series_of(book.isbn for book in books.values() if book.isbn)
     # Das Urteil rechnet der Code aus dem Steckbrief (ADR 33, #48). Steckbriefe
     # hängen am *Fund* (ADR 18): an der ISBN, wo es eine gibt, sonst an der
     # Produktnummer, und ein Titel ohne Fund trägt seinen am Buch (#38). Ein
@@ -533,6 +569,7 @@ def entries(
                 percent=verdict.percent if verdict else None,
                 pitch=(verdict.pitch or None) if verdict else None,
                 described=described,
+                series=named.get(book.isbn or ""),
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

@@ -651,7 +651,8 @@ def test_a_tile_asks_for_its_own_source_not_for_its_label() -> None:
 
 
 def test_the_book_page_names_series_and_volume(client: TestClient, db: Store) -> None:
-    """Reihe und Band stehen im Kopf neben der Autor:in (#10)."""
+    """Reihe und Band stehen im Kopf neben der Autor:in (#10), so geschrieben
+    wie überall: „Reihe · Band n" (ADR 35)."""
     from ebook_watchlist.dnb import Record
 
     book = db.find_or_create_book(isbn="9783426306406", title="Autorität",
@@ -659,7 +660,7 @@ def test_the_book_page_names_series_and_volume(client: TestClient, db: Store) ->
     db.save_dnb("9783426306406", Record(series="Southern Reach", series_index="2"), NOW)
     db.series_from_dnb()
 
-    assert "Southern Reach, Band 2" in client.get(f"/book/{book.id}").text
+    assert "Southern Reach · Band 2" in client.get(f"/book/{book.id}").text
 
 
 # --- je Quellenart eine Kachel (#33) ----------------------------------------

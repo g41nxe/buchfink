@@ -69,7 +69,9 @@
      deal=page.deal,
      tiles=tiles,
      origin=origin,
-     run_in_progress=run_in_progress) }}
+     run_in_progress=run_in_progress,
+     series_view=page.series_view,
+     back="/book/" ~ page.book_id) }}
 
 {% if page.note %}
 {# Die wertvollste Zeile des Eintrags, und bis Ticket 52 unsichtbar: bei 15

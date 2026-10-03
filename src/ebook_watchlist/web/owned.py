@@ -60,16 +60,19 @@ def build(store: Store, settings: Settings, sort: str | None = None) -> list[Own
         if judge is not None
         else {}
     )
+    # „Reihe · Band n" wie überall (#85); ohne Zuordnung je ISBN der Name am Buch.
+    named = store.series_of(b.isbn for b in books.values() if b.isbn)
     rows = []
     for book_id, book in books.items():
         own = ratings.get((book_subject(book_id), BY_READER))
+        series = named.get(book.isbn or "")
         verdict = judge.verdict_among(portraits, subjects[book_id]) if judge else None
         rows.append(
             OwnedBook(
                 book_id,
                 book.title,
                 book.author,
-                book.series,
+                series.label if series else book.series,
                 book.cover_file,
                 since.get(book_id),
                 round(own.stars) if own is not None else None,

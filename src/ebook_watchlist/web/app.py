@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from .. import paths
+from .. import paths, series_watch
 from ..config import ConfigError, load_settings
 from ..facets import GENERAL
 from ..models import LinkOutcome
@@ -250,6 +250,10 @@ def source_trouble(runs: list[RunRow]) -> list[str]:
     return []
 
 
+#: Wohin „Reihe beobachten" zurückführt: Buch-, Fundseite oder Watchlist.
+SERIES_BACK = re.compile(r"/book/\d+|/discovery/[a-z]+/[\w-]+|/watchlist")
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Buchfink", docs_url=None, redoc_url=None)
     # Build output is not in the repository (ADR 20), so say so plainly rather
@@ -438,6 +442,7 @@ def create_app() -> FastAPI:
         sort: str = "",
         existing: int | None = None,
         already: str = "",
+        series: int | None = None,
     ) -> HTMLResponse:
         settings = load_settings()
         store = _store_for(paths.db_path())
@@ -445,6 +450,11 @@ def create_app() -> FastAPI:
         # auch bei einem Tippfehler die Reihenfolge anzeigen, die sie benutzt.
         order, chosen = sorting.chosen(sorting.WATCHLIST, sort)
         rows = watchlist.entries(store, settings, sort=order.slug)
+        # Die Auswahl aus der ganzen Liste, der Filter danach (#85): sonst
+        # verschwände mit dem Filter die Möglichkeit, ihn zu wechseln.
+        series_choices = watchlist.series_choices(rows)
+        if series is not None:
+            rows = [e for e in rows if e.series is not None and e.series.id == series]
         open_count = sum(1 for entry in rows if entry.needs_choice)
         only_unsure = only == UNSURE
         return TEMPLATES.TemplateResponse(
@@ -476,6 +486,8 @@ def create_app() -> FastAPI:
                 "run_state": launcher.state(store, settings.slug),
                 "orders": sorting.WATCHLIST,
                 "sort": order.slug,
+                "series_choices": series_choices,
+                "series": series,
                 "links": {
                     "all": _link("/watchlist", sort=chosen),
                     "unsure": _link("/watchlist", only=UNSURE, sort=chosen),
@@ -494,6 +506,7 @@ def create_app() -> FastAPI:
         already: str = "",
         old_only: str = Query("", alias="nur"),
         old_sort: str = Query("", alias="sortiert"),
+        series: str = "",
     ) -> HTMLResponse:
         # `nur=unklar` und `sortiert` sind die alten Namen (#70); ein
         # Lesezeichen führt weiter zur selben Liste.
@@ -503,6 +516,8 @@ def create_app() -> FastAPI:
             return _watchlist_page(
                 request, only=only, undo=undo, kind=kind, sort=sort,
                 existing=existing, already=already,
+                # „Alle Reihen" schickt einen leeren Wert.
+                series=int(series) if series.isdigit() else None,
             )
         except ConfigError as exc:
             return TEMPLATES.TemplateResponse(
@@ -714,6 +729,25 @@ def create_app() -> FastAPI:
         """
         target = OLD_WATCHLIST_BACK.get(target, target)
         return target if target in ("/watchlist", WATCHLIST_UNSURE) else "/watchlist"
+
+    @app.post("/series/{series_id}/watch")
+    def series_watch_toggle(
+        series_id: int, watch: str = Form("1"), back: str = Form("/watchlist")
+    ) -> RedirectResponse:
+        """Eine Reihe beobachten oder nicht mehr (#85). Gesucht wird nichts:
+        die Bände stehen danach auf der Watchlist, der nächste Lauf prüft sie
+        (ADR 3)."""
+        store = _store_for(paths.db_path())
+        settings = load_settings()
+        if watch == "1":
+            series_watch.watch(store, settings.slug, series_id, now=datetime.now())
+        else:
+            series_watch.unwatch(store, settings.slug, series_id, now=datetime.now())
+        return RedirectResponse(_series_back(back), status_code=303)
+
+    def _series_back(target: str) -> str:
+        """Zurück auf die Seite, von der aus beobachtet wurde — nur eine eigene."""
+        return target if SERIES_BACK.fullmatch(target) else "/watchlist"
 
     @app.post("/watchlist/{book_id}/rename")
     def watchlist_rename(

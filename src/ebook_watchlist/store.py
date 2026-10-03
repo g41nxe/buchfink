@@ -43,7 +43,7 @@ from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
 from .ratings import RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
-from .series import series_key
+from .series import SeriesOf, series_key
 
 #: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
 _VERSION_ATTEMPTS = 20
@@ -269,6 +269,21 @@ class SeriesEntryRow(Base):
     series_id: Mapped[int] = mapped_column(Integer, index=True)
     #: Text wie ``series_index``: „3", „6.1", „Sonderband".
     volume: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class SeriesWatchRow(Base):
+    """Dass die Leserin eine Reihe beobachtet (#85).
+
+    Wie eine Buchbeziehung abgeschaltet statt gelöscht: „beobachtet bis …"
+    bleibt eine Auskunft (ADR 18).
+    """
+
+    __tablename__ = "series_watch"
+
+    profile_slug: Mapped[str] = mapped_column(String, primary_key=True)
+    series_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    since: Mapped[datetime] = mapped_column(DateTime)
 
 
 #: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
@@ -1216,30 +1231,49 @@ class Store:
                 for isbn, found, original, title, index in rows
             }
 
-    def series_known(self) -> dict[str, tuple[str, str | None]]:
-        """ISBN -> (Schlüssel der Reihe, Band), nach Herkunft entschieden.
+    def _series_entries(
+        self, isbns: Iterable[str] | None = None
+    ) -> dict[str, tuple[int, str | None]]:
+        """ISBN -> (Reihe, Band), nach Herkunft entschieden.
 
         Die Reihe von der ersten Herkunft, die eine nennt; der Band von der
         ersten, die einen nennt — ein DNB-Satz ohne Band lässt OverDrives Band
         gelten (ADR 35).
         """
         rank = {origin: i for i, origin in enumerate(SERIES_ORIGINS)}
+        stmt = select(SeriesEntryRow.isbn, SeriesEntryRow.origin,
+                      SeriesEntryRow.series_id, SeriesEntryRow.volume)
+        if isbns is not None:
+            stmt = stmt.where(SeriesEntryRow.isbn.in_({i for i in isbns if i}))
         with self.session() as session:
-            keys = dict(session.execute(select(SeriesRow.id, SeriesRow.key)).all())
-            rows = sorted(
-                session.execute(
-                    select(SeriesEntryRow.isbn, SeriesEntryRow.origin,
-                           SeriesEntryRow.series_id, SeriesEntryRow.volume)
-                ).all(),
-                key=lambda row: rank.get(row[1], len(rank)),
-            )
-        known: dict[str, tuple[str, str | None]] = {}
+            rows = sorted(session.execute(stmt).all(),
+                          key=lambda row: rank.get(row[1], len(rank)))
+        known: dict[str, tuple[int, str | None]] = {}
         for isbn, _, series_id, volume in rows:
             if isbn not in known:
-                known[isbn] = (keys[series_id], volume)
+                known[isbn] = (series_id, volume)
             elif known[isbn][1] is None and volume:
                 known[isbn] = (known[isbn][0], volume)
         return known
+
+    def series_known(self) -> dict[str, tuple[str, str | None]]:
+        """ISBN -> (Schlüssel der Reihe, Band), für `series.MidSeries`."""
+        entries = self._series_entries()
+        with self.session() as session:
+            keys = dict(session.execute(select(SeriesRow.id, SeriesRow.key)).all())
+        return {isbn: (keys[sid], volume) for isbn, (sid, volume) in entries.items()}
+
+    def series_of(self, isbns: Iterable[str]) -> dict[str, SeriesOf]:
+        """ISBN -> Reihe und Band, wie die Oberfläche sie zeigt (#85)."""
+        entries = self._series_entries(isbns)
+        with self.session() as session:
+            names = dict(session.execute(
+                select(SeriesRow.id, SeriesRow.name).where(
+                    SeriesRow.id.in_({sid for sid, _ in entries.values()})
+                )
+            ).all())
+        return {isbn: SeriesOf(sid, names[sid], volume)
+                for isbn, (sid, volume) in entries.items()}
 
     def series_refs(self, key: str) -> dict[str, str]:
         """Quelle -> die eigene Nummer der Reihe dort, für den Schlüssel ``key``."""
@@ -1254,6 +1288,66 @@ class Store:
                 if row.onleihe_ref:
                     refs["onleihe"] = row.onleihe_ref
             return refs
+
+    def series_volumes(self, series_id: int) -> list[tuple[str, str, str | None]]:
+        """Die bekannten Bände einer Reihe: ISBN, Titel, Autor:in.
+
+        Titel und Autor:in von der letzten Sichtung, sonst aus der DNB — eine
+        ISBN, die keine von beiden beim Namen nennt, wird kein Buch.
+        """
+        with self.session() as session:
+            isbns = set(session.scalars(
+                select(SeriesEntryRow.isbn).where(SeriesEntryRow.series_id == series_id)
+            ))
+            named: dict[str, tuple[str, str | None]] = {}
+            for isbn, title, author in session.execute(
+                select(ObservationRow.isbn, ObservationRow.title, ObservationRow.author)
+                .where(ObservationRow.isbn.in_(isbns))
+                .order_by(ObservationRow.id)
+            ):
+                named[isbn] = (title, author)
+            for isbn, title, author in session.execute(
+                select(DnbRecordRow.isbn, DnbRecordRow.title, DnbRecordRow.author).where(
+                    DnbRecordRow.isbn.in_(isbns - set(named)), DnbRecordRow.title.is_not(None)
+                )
+            ):
+                named[isbn] = (title, author)
+        return [(isbn, title, author) for isbn, (title, author) in sorted(named.items())]
+
+    def set_series_watch(
+        self, profile_slug: str, series_id: int, *, active: bool, now: datetime
+    ) -> None:
+        with self.session() as session:
+            row = session.get(SeriesWatchRow, (profile_slug, series_id))
+            if row is None:
+                session.add(SeriesWatchRow(profile_slug=profile_slug, series_id=series_id,
+                                           active=active, since=now))
+            elif row.active != active:
+                row.active, row.since = active, now
+            session.commit()
+
+    def watched_series(self, profile_slug: str) -> set[int]:
+        with self.session() as session:
+            return set(session.scalars(
+                select(SeriesWatchRow.series_id).where(
+                    SeriesWatchRow.profile_slug == profile_slug,
+                    SeriesWatchRow.active.is_(True),
+                )
+            ))
+
+    def series_row(self, series_id: int) -> SeriesRow | None:
+        with self.session() as session:
+            return session.get(SeriesRow, series_id)
+
+    def file_series(self, observations: Iterable[Observation]) -> None:
+        """Reihe, Band und Adresse festhalten, ohne die Sichtung ins Journal zu
+        schreiben — für das Fegen einer beobachteten Reihe (#85)."""
+        with self.session() as session:
+            for obs in observations:
+                if obs.isbn and obs.series:
+                    _file_series(session, obs.isbn, obs.series, obs.author,
+                                 obs.series_index, obs.source, obs.series_ref)
+            session.commit()
 
     def series_rows(self) -> list[SeriesRow]:
         with self.session() as session:

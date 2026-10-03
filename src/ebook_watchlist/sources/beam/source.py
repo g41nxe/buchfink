@@ -13,6 +13,7 @@ from ...config import WatchlistEntry
 from ...http import HttpClient, NotFound
 from ...matching import Candidate, Query, Resolution, author_matches, match
 from ...models import MatchReason, Observation
+from ...series import series_key
 from ..base import Item, ShopSource, SourceStructureError
 from . import parse
 from . import selectors as sel
@@ -165,6 +166,36 @@ class BeamSource(ShopSource):
             )
         return observations
 
+    def by_series(self, name: str, author: str | None, ref: str | None) -> list[Observation]:
+        """beam hat keine Reihenseite: gesucht wird der Name (#85).
+
+        Behalten wird nur, was von derselben Autor:in ist **und** die Reihe in
+        Titel oder Untertitel trägt — die Suche ist unscharf, und ohne die
+        zweite Bedingung stünde ihr halbes Werk auf der Watchlist.
+        """
+        if not author:
+            return []
+        key = series_key(name)
+        found = []
+        for tile in self.search(_search_name(key), page_size=sel.MAX_PAGE_SIZE, page=1):
+            named = series_key(f"{tile.title} {tile.subtitle or ''}")
+            if not author_matches(author, tile.author) or key not in named:
+                continue
+            found.append(Observation(
+                source=self.name,
+                source_item_id=tile.product_id,
+                title=tile.title,
+                author=tile.author,
+                match_reason=MatchReason.WATCHLIST,
+                price_cents=tile.price_cents,
+                subtitle=tile.subtitle,
+                isbn=tile.isbn,
+                cover_url=tile.cover_url,
+                url=tile.url,
+                series=name,
+            ))
+        return found
+
     # --- genre discovery (ticket 07) ---------------------------------------
 
     def by_category(self, category_path: str) -> list[Observation]:
@@ -297,3 +328,8 @@ def _product_id_from_url(url: str) -> str:
         if part.isdigit():
             return part
     raise SourceStructureError(f"beam-shop: no product id in {url!r}")
+
+
+def _search_name(key: str) -> str:
+    """„wayward pines" → „Wayward Pines": so sucht ein Mensch."""
+    return " ".join(word[:1].upper() + word[1:] for word in key.split())

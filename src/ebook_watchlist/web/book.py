@@ -12,6 +12,7 @@ import json
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+from .. import series_watch
 from ..cleaning import is_truncated
 from ..config import Settings
 from ..deals import is_strong_deal
@@ -42,6 +43,7 @@ from ..ratings import (
 from ..reasons import is_library_list, short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sample import fetcher
+from ..series_watch import SeriesView
 from ..sources import build_sources, registry
 from ..store import Store
 from .comparison import Comparison, compare
@@ -218,10 +220,12 @@ HISTORY_ROWS = 5
 
 
 def _series_label(series: str | None, index: str | None) -> str | None:
-    """"Southern Reach, Band 2" — oder nur die Reihe, wenn niemand den Band kennt."""
+    """„Southern Reach · Band 2" — oder nur die Reihe, wenn niemand den Band
+    kennt. Der Rückfall für Bücher ohne Zuordnung je ISBN; dieselbe Form wie
+    `series.SeriesOf.label`."""
     if not series:
         return None
-    return f"{series}, Band {index}" if index else series
+    return f"{series} · Band {index}" if index else series
 
 
 @dataclass(frozen=True, slots=True)
@@ -534,6 +538,8 @@ class Page:
             if mine and theirs and not (mine & theirs):
                 odd.append(state)
         return tuple(odd)
+    #: Die Reihe aus der Zuordnung je ISBN, mit dem Knopf zum Beobachten (#85).
+    series_view: SeriesView | None = None
 
 
 def _words(text: str) -> set[str]:
@@ -701,11 +707,13 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
             fit_view = _fit_view(store, settings, stored)
             portrait_retry = worth_asking_again(stored, text_now=bool(book.blurb))
 
+    series = series_watch.view(store, settings.slug, book.isbn)
     return Page(
         book_id=book.id,
         title=book.title,
         author=book.author,
-        series=_series_label(book.series, book.series_index),
+        series=series.label if series else _series_label(book.series, book.series_index),
+        series_view=series,
         isbn=book.isbn,
         cover_file=book.cover_file,
         relations=relations,

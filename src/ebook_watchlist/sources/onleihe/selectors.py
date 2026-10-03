@@ -100,6 +100,8 @@ LABEL_YEAR = "Jahr:"
 LABEL_SERIES = "Reihe:"
 LABEL_ISBN = "ISBN:"
 LABEL_PAGES = "Umfang:"
+#: Die Liste einer Reihe, wie der Link „Reihe:" sie nennt (#85).
+SERIES_LIST_PATH = "simpleMediaList,0-0-0-109-0-0-0-0-0-{series_id}-0.html"
 
 # --- doctor probe ---------------------------------------------------------
 

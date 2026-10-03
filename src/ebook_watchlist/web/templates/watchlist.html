@@ -96,7 +96,7 @@
   Nichts offen — <a href="{{ links.all }}" class="text-accent underline">alle zeigen</a>.</p>
 {% endif %}
 
-{% if not entries %}
+{% if not entries and not series %}
 <p class="py-3 text-sm text-soft italic">Noch nichts auf der Watchlist.</p>
 {% else %}
 {# Die Reihenfolge gilt wörtlich: nach Preis sortiert stehen auch offene
@@ -104,9 +104,36 @@
    ihre Zahl und filtert mit einem Klick auf genau sie (#37). #}
 {% set sort_fields %}
 {% if only_unsure %}<input type="hidden" name="only" value="unsure">{% endif %}
+{% if series %}<input type="hidden" name="series" value="{{ series }}">{% endif %}
 {% endset %}
 <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-rule pb-3">
   {{ sort_select(orders, sort, "/watchlist", sort_fields) }}
+  {# Nach Reihe filtern (#85): ein Auswahlfeld wie die Sortierung, ein
+     GET-Formular — die Adresse trägt die Wahl. Nur, wo es Reihen gibt. #}
+  {% if series_choices %}
+  <form method="get" action="/watchlist" class="flex w-full items-center gap-2 sm:w-auto">
+    {% if only_unsure %}<input type="hidden" name="only" value="unsure">{% endif %}
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <label class="flex w-full items-center gap-2 sm:w-auto">
+      <span class="shrink-0 text-xs text-soft">Reihe</span>
+      <select name="series" onchange="this.form.submit()"
+              class="h-10 w-full rounded border border-rule bg-card px-2 text-sm text-ink
+                     outline-none focus:border-accent sm:h-8 sm:w-auto">
+        <option value="">alle</option>
+        {% for choice in series_choices %}
+        <option value="{{ choice.id }}"{% if choice.id == series %} selected{% endif %}>
+          {{ choice.name }} ({{ choice.count }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <noscript>
+      <button type="submit"
+              class="tap inline-flex h-10 items-center rounded border border-rule px-3
+                     text-sm text-soft hover:border-accent hover:text-accent
+                     sm:h-8">los</button>
+    </noscript>
+  </form>
+  {% endif %}
   <span class="ml-auto text-xs text-soft">
     {{ entries | length }} Titel</span>
 </div>

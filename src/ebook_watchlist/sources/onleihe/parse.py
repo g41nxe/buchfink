@@ -13,6 +13,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 
+from ...matching.normalize import volume_of
 from ...models import Availability, MatchReason, Observation
 from ..base import SourceStructureError
 from . import selectors as sel
@@ -441,6 +442,44 @@ def parse_list(
             )
         )
     return found_items
+
+
+def series_volumes(
+    html: str,
+    series: str,
+    *,
+    media: tuple[str, ...] = sel.DEFAULT_MEDIA,
+    base: str = sel.BASE,
+    source: str = "onleihe",
+) -> list[Observation]:
+    """Die Karten einer Reihenliste als Bände: E-Books, auch verliehene.
+
+    Der Band steht im Untertitel der Karte („Roman - Die sieben Schwestern 7").
+    """
+    volumes = []
+    for card in parse_search_results(html, base) or []:
+        item_id = _title_id(card.url)
+        if card.medium not in media or item_id is None:
+            continue
+        isbn = _COVER_ISBN.search(card.cover_url or "")
+        # „Roman - Die sieben Schwestern 7": der Band steht im letzten Abschnitt.
+        number = volume_of((card.subtitle or "").split(" - ")[-1])
+        volumes.append(
+            Observation(
+                source=source,
+                source_item_id=item_id,
+                title=card.title,
+                author=_natural_author(card.author),
+                match_reason=MatchReason.WATCHLIST,
+                isbn=isbn.group(1) if isbn else None,
+                availability=Availability.AVAILABLE if card.available else Availability.UNAVAILABLE,
+                cover_url=card.cover_url,
+                url=card.url,
+                series=series,
+                series_index=str(number) if number else None,
+            )
+        )
+    return volumes
 
 
 def _title_id(url: str) -> str | None:

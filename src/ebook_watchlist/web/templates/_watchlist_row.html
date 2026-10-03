@@ -85,7 +85,7 @@
     {{ row(
          entry.title,
          title_url="/book/" ~ entry.book_id,
-         author=(entry.author or "unbekannt") ~ ("" if entry.active else " · pausiert"),
+         author=entry.byline,
          cover_file=entry.cover_file,
          borrowable=entry.borrowable,
          deal=entry.deal,

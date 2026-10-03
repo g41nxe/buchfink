@@ -105,3 +105,16 @@ def test_two_series_that_meet_at_an_isbn_become_one(store: Store) -> None:
     assert known["9783000000022"][0] == known["9783000000011"][0]
     assert len(store.series_rows()) == 1
     assert store.series_refs(known["9783000000011"][0]) == {"overdrive": "1656"}
+
+
+def test_a_book_names_its_series_and_volume(store: Store) -> None:
+    """„Reihe · Band n" überall, wo ein Buch steht (#85)."""
+    seen(store, at_overdrive("9780000000003", "Red Rising Saga", "3"),
+         at_overdrive("9780000000009", "Red Rising Saga"))
+
+    named = store.series_of(["9780000000003", "9780000000009", "9780000000000"])
+
+    assert named["9780000000003"].label == "Red Rising Saga · Band 3"
+    assert named["9780000000009"].label == "Red Rising Saga"
+    assert named["9780000000003"].id == named["9780000000009"].id
+    assert "9780000000000" not in named

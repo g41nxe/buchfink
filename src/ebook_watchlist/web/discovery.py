@@ -18,11 +18,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from .. import series_watch
 from ..config import Settings
 from ..deals import is_strong_deal
 from ..portrait import VocabularyError, fingerprint, load_vocabulary
 from ..ratings import subject_of
 from ..reasons import genre_category_name
+from ..series_watch import SeriesView
 from ..sources import registry
 from ..store import Store
 from .book import (
@@ -96,6 +98,8 @@ class Page:
     @property
     def hidden_history(self) -> int:
         return max(0, len(self.history) - HISTORY_ROWS)
+    #: Die Reihe aus der Zuordnung je ISBN, mit dem Knopf zum Beobachten (#85).
+    series_view: SeriesView | None = None
 
 
 def portray(
@@ -155,12 +159,14 @@ def build(store: Store, settings: Settings, source: str, item_id: str) -> Page |
         if stored is not None:
             fit = _fit_view(store, settings, stored)
 
+    series = series_watch.view(store, settings.slug, newest.isbn)
     return Page(
         source=source,
         source_item_id=item_id,
         title=newest.title,
         author=newest.author,
-        series=newest.series,
+        series=series.label if series else newest.series,
+        series_view=series,
         isbn=newest.isbn,
         cover_file=_cover_file(newest),
         blurb=newest.blurb,

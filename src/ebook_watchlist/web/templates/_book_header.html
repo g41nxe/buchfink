@@ -15,7 +15,7 @@
 
 {% macro header(title, author=none, series=none, cover_file=none, borrowable=false,
                 deal=false, pill=none, tiles=none, origin=none,
-                run_in_progress=false) %}
+                run_in_progress=false, series_view=none, back="/watchlist") %}
 {# Zwei Breiten, eine Vorlage — dieselben zwei wie ueberall (`sm`, 48rem).
 
    Telefon: Cover links, Titel und Autor:in rechts daneben, die Kacheln
@@ -46,6 +46,22 @@
       {{ title }}</h1>
     <p class="mt-0.5 text-sm text-soft sm:text-base">{{ author or "unbekannt" }}
       {%- if series %} · {{ series }}{% endif %}</p>
+    {# Die ganze Reihe auf die Watchlist (#85): ihre Bände stehen danach dort,
+       neue kommen von selbst dazu. #}
+    {% if series_view %}
+    <form method="post" action="/series/{{ series_view.id }}/watch" class="mt-1.5">
+      <input type="hidden" name="watch" value="{{ '0' if series_view.watched else '1' }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      <button type="submit"
+              class="tap inline-flex h-8 items-center gap-1.5 rounded border px-2.5 text-xs
+                     font-medium {{ 'border-accent bg-accent text-white hover:opacity-90'
+                                    if series_view.watched
+                                    else 'border-rule bg-card hover:border-accent hover:text-accent' }}">
+        <svg class="i"><use href="#ic-binoculars"/></svg>
+        {{ 'Reihe beobachtet · Nicht mehr beobachten' if series_view.watched
+           else 'Reihe beobachten' }}</button>
+    </form>
+    {% endif %}
 
     {% if pill %}<div class="mt-2 flex flex-wrap items-center gap-2">{{ pill }}</div>{% endif %}
   </div>
