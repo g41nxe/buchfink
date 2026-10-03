@@ -42,6 +42,11 @@ One watched item. From Phase 2 this is a Book Relation of kind `watching`
 `book_source`, and current price/availability in the Snapshot as Observations.
 Never on the entry itself.
 
+A watched Series puts each of its volumes on the Watchlist as an entry of its
+own, marked as coming from the series — except volumes the reader already has
+another relation to. Unwatching the series deactivates only those entries
+(ADR 35).
+
 ### Book
 *deutsch: Buch*
 
@@ -175,6 +180,18 @@ middle of a series. Two exceptions, both from the old reading profile: an author
 she follows, and a series she already has a book of. Filtered before the Gate,
 so it costs no Portrait, and counted on the Suggestion Pile as „mitten in einer
 Reihe". A Watchlist Entry is never one.
+
+### Series
+*deutsch: Reihe*
+
+A run of books an author tells in order (`series`, ADR 35). One row per series
+with a normalised key: lower case, hyphens as spaces, no leading article, no
+trailing „-Reihe", „-Thriller", „ermittelt" and the like — „Die
+Cormoran-Strike-Reihe" is `cormoran strike`. Two names a Source gives for the
+same ISBN are the same series. Membership is kept per ISBN with its
+**volume** (*Band*: text, „2", „6.1", „Sonderband") and where it came from; the
+DNB outranks OverDrive, OverDrive the Onleihe, all of them the title. A series
+can be watched: its volumes then stand on the Watchlist (see Watchlist Entry).
 
 ### Short Story
 *deutsch: Kurzgeschichte*
