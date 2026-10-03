@@ -210,6 +210,9 @@ class Entry:
     other_languages: tuple[tuple[str, str], ...] = ()
     #: Zu welcher Reihe der Titel gehört, als welcher Band (#85).
     series: SeriesOf | None = None
+    #: Der Titel einer anderen Ausgabe desselben Werks, die sie schon hat —
+    #: „hast du schon als …" (ADR 36). Abgeschaltet wird nichts.
+    owned_as: str | None = None
 
     @property
     def byline(self) -> str:
@@ -504,6 +507,7 @@ def entries(
     books = store.books_by_id(book_ids)
     sources = store.book_sources_of(book_ids)
     named = store.series_of(book.isbn for book in books.values() if book.isbn)
+    owned_as = store.owned_as(profile_slug, (b.isbn for b in books.values() if b.isbn))
     # Das Urteil rechnet der Code aus dem Steckbrief (ADR 33, #48). Steckbriefe
     # hängen am *Fund* (ADR 18): an der ISBN, wo es eine gibt, sonst an der
     # Produktnummer, und ein Titel ohne Fund trägt seinen am Buch (#38). Ein
@@ -570,6 +574,7 @@ def entries(
                 pitch=(verdict.pitch or None) if verdict else None,
                 described=described,
                 series=named.get(book.isbn or ""),
+                owned_as=owned_as.get(book.isbn or ""),
                 # Der Preis der juengsten Quelle, die einen nennt — nicht der
                 # der juengsten Beobachtung: eine Bibliothek nennt keinen, und
                 # seit es zwei gibt, war das oft die neueste.

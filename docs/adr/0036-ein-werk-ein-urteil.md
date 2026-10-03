@@ -70,3 +70,23 @@ je ISBN mit Herkunft.
   sie bewusst zwei Sprachen will.
 - **Der Steckbrief mit dem längsten Text** oder **das Mittel**: der Text sagt
   über die Güte wenig, das Mittel half nicht (#81).
+
+## Nachtrag aus der Umsetzung (03.10.2026)
+
+**Kein neuer Schlüssel `work:<…>`.** Die Steckbriefe und Sterne bleiben, wo sie
+sind (`isbn:…`, `book:…`); der Store sucht beim Nachschlagen über alle Ausgaben
+desselben Werks (`work_entry`, je ISBN mit Herkunft `dnb` oder `title`). Die
+Wirkung ist dieselbe — eine zweite Ausgabe findet den Steckbrief der ersten und
+kostet keinen Aufruf, ihre Sterne gelten für jede —, aber kein vorhandener
+Schlüssel muss umgeschrieben werden, und eine falsche Zuordnung lässt sich
+zurücknehmen, ohne Steckbriefe zu verschieben. Die Regel „mit Text vor ohne"
+galt schon je Schlüssel; sie gilt jetzt über das Werk.
+
+**Der ganze Titel, nicht der gekürzte.** Der erste Entwurf schnitt den
+Untertitel ab wie die Zuordnung (`normalize_title`). Gemessen an einer Kopie
+des Bestands ergab das 18 Werke mit mehreren Ausgaben, darunter fünf Bände von
+„The Heritage Universe - Band 1: …" als eines und einen Sammelband als seinen
+ersten Band. Mit dem ganzen Titel sind es 4, und alle stimmen: *Recursion* mit
+*Gestohlene Erinnerung* (über den Originaltitel der DNB) und drei Bücher, die
+unter zwei ISBNs denselben Titel tragen. Übersetzung und Original treffen sich
+über die DNB, nicht über einen gekürzten Titel.

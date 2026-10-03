@@ -44,6 +44,7 @@ from .portrait import Portrait, Trait
 from .ratings import RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
 from .series import SeriesOf, series_key
+from .work import work_key
 
 #: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
 _VERSION_ATTEMPTS = 20
@@ -284,6 +285,21 @@ class SeriesWatchRow(Base):
     series_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     since: Mapped[datetime] = mapped_column(DateTime)
+
+
+class WorkEntryRow(Base):
+    """Zu welchem Werk eine ISBN gehört — je Herkunft (ADR 36, #80).
+
+    ``dnb``: Autor:in und Originaltitel aus der DNB, bei einer Übersetzung.
+    ``title``: Autor:in und eigener Titel, wie eine Quelle ihn nennt. Die DNB
+    geht vor; über die ISBN treffen sich so Übersetzung und Original.
+    """
+
+    __tablename__ = "work_entry"
+
+    isbn: Mapped[str] = mapped_column(String, primary_key=True)
+    origin: Mapped[str] = mapped_column(String, primary_key=True)
+    key: Mapped[str] = mapped_column(String, index=True)
 
 
 #: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
@@ -1107,6 +1123,8 @@ class Store:
                 if record.series:
                     _file_series(session, isbn, record.series, record.author,
                                  record.series_index, "dnb")
+                if record.original_title:
+                    _file_work(session, isbn, record.author, record.original_title, "dnb")
                 for contained in record.contains:
                     if session.get(DnbContainsRow, (isbn, contained)) is None:
                         session.add(DnbContainsRow(isbn=isbn, contained=contained))
@@ -1370,6 +1388,61 @@ class Store:
             ))
             keys = set(session.scalars(select(SeriesRow.key).where(SeriesRow.id.in_(ids))))
         return frozenset(keys | wanted_keys)
+
+    # --- Werke (ADR 36) ---------------------------------------------------------
+
+    def work_siblings(self, isbns: Iterable[str]) -> dict[str, set[str]]:
+        """ISBN -> alle ISBNs desselben Werks, sie selbst eingeschlossen."""
+        with self.session() as session:
+            return _work_siblings(session, isbns)
+
+    def owned_as(self, profile_slug: str, isbns: Iterable[str]) -> dict[str, str]:
+        """ISBN -> Titel einer *anderen* Ausgabe desselben Werks, die sie besitzt.
+
+        Für „hast du schon als …" auf der Watchlist (ADR 36).
+        """
+        wanted = {isbn for isbn in isbns if isbn}
+        with self.session() as session:
+            siblings = _work_siblings(session, wanted)
+            others = {o for group in siblings.values() for o in group} - wanted
+            owned = dict(session.execute(
+                select(BookRow.isbn, BookRow.title)
+                .join(BookRelationRow, BookRelationRow.book_id == BookRow.id)
+                .where(
+                    BookRelationRow.profile_slug == profile_slug,
+                    BookRelationRow.kind == "owned",
+                    BookRelationRow.active.is_(True),
+                    BookRow.isbn.in_(others),
+                )
+            ).all())
+        out = {}
+        for isbn, group in siblings.items():
+            title = next((owned[o] for o in sorted(group) if o != isbn and o in owned), None)
+            if title is not None:
+                out[isbn] = title
+        return out
+
+    def decided_works(self, profile_slug: str) -> set[str]:
+        """Die ISBNs aller Ausgaben eines Werks, das sie hat, mag, doof fand
+        oder ausgeschlossen hat — für den Stapel (ADR 36)."""
+        with self.session() as session:
+            isbns = set(session.scalars(
+                select(BookRow.isbn)
+                .join(BookRelationRow, BookRelationRow.book_id == BookRow.id)
+                .where(
+                    BookRelationRow.profile_slug == profile_slug,
+                    BookRelationRow.kind.in_(("owned", "liked", "disliked", "dismissed")),
+                    BookRelationRow.active.is_(True),
+                    BookRow.isbn.is_not(None),
+                )
+            ))
+            return {o for group in _work_siblings(session, isbns).values() for o in group}
+
+    def forget_work_entries(self) -> None:
+        """Nur für Tests: der Stand vor ADR 36."""
+        with self.session() as session:
+            session.execute(delete(WorkEntryRow))
+            session.commit()
 
     def forget_series_entries(self) -> None:
         """Nur für Tests: der Stand vor der Reihen-Tabelle."""
@@ -1643,6 +1716,28 @@ class Store:
             ).all():
                 _file_series(session, record.isbn, record.series, record.author,
                              record.series_index, "dnb")
+            # Ebenso das Werk (ADR 36): Originaltitel aus der DNB, eigene Titel
+            # aus dem Journal — je ISBN einmal.
+            known = select(WorkEntryRow.isbn).where(WorkEntryRow.origin == "dnb")
+            for record in session.scalars(
+                select(DnbRecordRow).where(
+                    DnbRecordRow.found.is_(True),
+                    DnbRecordRow.original_title.is_not(None),
+                    DnbRecordRow.isbn.not_in(known),
+                )
+            ).all():
+                _file_work(session, record.isbn, record.author, record.original_title, "dnb")
+            titled = select(WorkEntryRow.isbn).where(WorkEntryRow.origin == "title")
+            latest = (
+                select(func.max(ObservationRow.id))
+                .where(ObservationRow.isbn.is_not(None), ObservationRow.isbn.not_in(titled))
+                .group_by(ObservationRow.isbn)
+            )
+            for isbn, title, author in session.execute(
+                select(ObservationRow.isbn, ObservationRow.title, ObservationRow.author)
+                .where(ObservationRow.id.in_(latest))
+            ).all():
+                _file_work(session, isbn, author, title, "title")
             session.commit()
             return filled
 
@@ -1903,11 +1998,18 @@ class Store:
         einer neuen Profilfassung, und deshalb fragt niemand mehr nach einer.
         """
         with self.session() as session:
-            row = session.scalars(
-                select(RatingRow).where(
-                    RatingRow.subject == subject, RatingRow.origin == origin
+            # Ihre Sterne gelten dem Werk (ADR 36): steht an dieser Ausgabe
+            # keiner, zählt der einer anderen.
+            group = _work_book_subjects(session, [subject])[subject]
+            rows = {
+                row.subject: row
+                for row in session.scalars(
+                    select(RatingRow).where(
+                        RatingRow.subject.in_(group), RatingRow.origin == origin
+                    )
                 )
-            ).first()
+            }
+            row = rows.get(subject) or next((rows[s] for s in sorted(rows)), None)
             if row is None:
                 return None
             session.expunge(row)
@@ -1919,12 +2021,22 @@ class Store:
         if not wanted:
             return {}
         with self.session() as session:
+            groups = _work_book_subjects(session, wanted)
+            members = {member for group in groups.values() for member in group}
             rows = list(
-                session.scalars(select(RatingRow).where(RatingRow.subject.in_(wanted)))
+                session.scalars(select(RatingRow).where(RatingRow.subject.in_(members)))
             )
             for row in rows:
                 session.expunge(row)
-            return {(row.subject, row.origin): row for row in rows}
+        found = {(row.subject, row.origin): row for row in rows}
+        # Die eigene zuerst, sonst die einer anderen Ausgabe desselben Werks.
+        out = {key: row for key, row in found.items() if key[0] in wanted}
+        for asked, group in groups.items():
+            for member in sorted(group - {asked}):
+                for (subject, origin), row in found.items():
+                    if subject == member:
+                        out.setdefault((asked, origin), row)
+        return out
 
     def drop_rating(self, subject: str, origin: str) -> bool:
         """Ein Urteil zurücknehmen; ``True``, wenn eines dastand.
@@ -2033,9 +2145,11 @@ class Store:
         Matter* (26.09.2026). Unter Gleichen gilt der jüngste.
         """
         with self.session() as session:
+            # Ein Werk, ein Steckbrief (ADR 36): auch der einer anderen Ausgabe.
+            group = _work_subjects(session, [subject])[subject]
             row = session.scalars(
                 select(PortraitRow)
-                .where(PortraitRow.subject == subject, PortraitRow.fingerprint == fingerprint)
+                .where(PortraitRow.subject.in_(group), PortraitRow.fingerprint == fingerprint)
                 .order_by(*_BEST_PORTRAIT_FIRST)
             ).first()
             return _portrait_of(row) if row is not None else None
@@ -2047,16 +2161,25 @@ class Store:
         if not wanted:
             return {}
         with self.session() as session:
+            # Je Schlüssel alle Ausgaben seines Werks (ADR 36).
+            groups = _work_subjects(session, wanted)
+            asked_by: dict[str, set[str]] = {}
+            for asked, group in groups.items():
+                for member in group:
+                    asked_by.setdefault(member, set()).add(asked)
             rows = session.scalars(
                 select(PortraitRow)
-                .where(PortraitRow.subject.in_(wanted), PortraitRow.fingerprint == fingerprint)
+                .where(PortraitRow.subject.in_(set(asked_by)),
+                       PortraitRow.fingerprint == fingerprint)
                 .order_by(*_BEST_PORTRAIT_FIRST)
             )
             # Der beste je Schlüssel kommt zuerst und bleibt — dieselbe Regel
             # wie bei :meth:`portrait`.
             best: dict[str, Portrait] = {}
             for row in rows:
-                best.setdefault(row.subject, _portrait_of(row))
+                for asked in asked_by[row.subject]:
+                    if asked not in best:
+                        best[asked] = _portrait_of(row)
             return best
 
     # --- Leseprofil aus Facetten (#46) ---------------------------------------
@@ -2580,6 +2703,8 @@ class Store:
                 if obs.isbn and obs.series:
                     _file_series(session, obs.isbn, obs.series, obs.author,
                                  obs.series_index, obs.source, obs.series_ref)
+                if obs.isbn and session.get(WorkEntryRow, (obs.isbn, "title")) is None:
+                    _file_work(session, obs.isbn, obs.author, obs.title, "title")
             session.commit()
 
 
@@ -2642,3 +2767,89 @@ def _merge_series(session: Session, *, keep: int, drop: int) -> int:
     kept.onleihe_ref = kept.onleihe_ref or dropped.onleihe_ref
     session.delete(dropped)
     return keep
+
+
+def _file_work(
+    session: Session, isbn: str, author: str | None, title: str | None, origin: str
+) -> None:
+    """Das Werk einer ISBN festhalten, je Herkunft (ADR 36)."""
+    key = work_key(author, title)
+    if key is None:
+        return
+    entry = session.get(WorkEntryRow, (isbn, origin))
+    if entry is None:
+        session.add(WorkEntryRow(isbn=isbn, origin=origin, key=key))
+    else:
+        entry.key = key
+
+
+def _work_keys(session: Session, isbns: Iterable[str]) -> dict[str, str]:
+    """ISBN -> Werk; die DNB geht dem eigenen Titel vor."""
+    wanted = {isbn for isbn in isbns if isbn}
+    if not wanted:
+        return {}
+    session.flush()
+    keys: dict[str, str] = {}
+    for isbn, origin, key in session.execute(
+        select(WorkEntryRow.isbn, WorkEntryRow.origin, WorkEntryRow.key)
+        .where(WorkEntryRow.isbn.in_(wanted))
+    ):
+        if origin == "dnb" or isbn not in keys:
+            keys[isbn] = key
+    return keys
+
+
+def _work_siblings(session: Session, isbns: Iterable[str]) -> dict[str, set[str]]:
+    """ISBN -> alle ISBNs desselben Werks, sie selbst eingeschlossen."""
+    wanted = {isbn for isbn in isbns if isbn}
+    keys = _work_keys(session, wanted)
+    candidates = set(session.scalars(
+        select(WorkEntryRow.isbn).where(WorkEntryRow.key.in_(set(keys.values())))
+    ))
+    # Ein Kandidat zählt nur mit dem Werk, das für *ihn* gilt: eine
+    # Übersetzung, deren eigener Titel zufällig passt, gehört trotzdem zu ihrem
+    # Original.
+    theirs = _work_keys(session, candidates)
+    return {
+        isbn: {other for other in candidates if theirs.get(other) == keys[isbn]} | {isbn}
+        if isbn in keys else {isbn}
+        for isbn in wanted
+    }
+
+
+def _work_subjects(session: Session, subjects: Iterable[str]) -> dict[str, set[str]]:
+    """Schlüssel eines Steckbriefs -> die Schlüssel aller Ausgaben seines Werks.
+
+    Nur ``isbn:`` hat ein Werk; eine Produktnummer oder Buchnummer bleibt für
+    sich.
+    """
+    wanted = set(subjects)
+    isbns = {s.removeprefix("isbn:") for s in wanted if s.startswith("isbn:")}
+    siblings = _work_siblings(session, isbns)
+    return {
+        s: {f"isbn:{o}" for o in siblings[s.removeprefix("isbn:")]}
+        if s.startswith("isbn:") else {s}
+        for s in wanted
+    }
+
+
+def _work_book_subjects(session: Session, subjects: Iterable[str]) -> dict[str, set[str]]:
+    """``book:<id>`` -> die Buchschlüssel aller Ausgaben seines Werks."""
+    wanted = set(subjects)
+    id_of = {s: int(s.removeprefix("book:")) for s in wanted
+             if s.startswith("book:") and s.removeprefix("book:").isdigit()}
+    ids = set(id_of.values())
+    isbn_of = dict(session.execute(
+        select(BookRow.id, BookRow.isbn).where(BookRow.id.in_(ids), BookRow.isbn.is_not(None))
+    ).all())
+    siblings = _work_siblings(session, isbn_of.values())
+    others = {o for group in siblings.values() for o in group}
+    book_of = {isbn: book_id for book_id, isbn in session.execute(
+        select(BookRow.id, BookRow.isbn).where(BookRow.isbn.in_(others))
+    )}
+    out: dict[str, set[str]] = {}
+    for s in wanted:
+        isbn = isbn_of.get(id_of[s]) if s in id_of else None
+        group = {f"book:{book_of[o]}" for o in siblings.get(isbn, ()) if o in book_of}
+        out[s] = group | {s}
+    return out

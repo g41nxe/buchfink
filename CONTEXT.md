@@ -185,8 +185,9 @@ Reihe". A Watchlist Entry is never one.
 *deutsch: Werk*
 
 What a translation and its original have in common (ADR 36): normalised author
-plus normalised Original Title — the DNB's for a translation, the edition's own
-title where the DNB names none. *Gestohlene Erinnerung* and *Recursion* are one
+plus the whole Original Title, subtitle included — the DNB's for a translation,
+the edition's own title where the DNB names none. Cut to the head, volumes of
+one series and a bundle with its first volume would become one Work. *Gestohlene Erinnerung* and *Recursion* are one
 Work. Portrait and stars belong to the Work; Books stay one per edition. A
 Discovery whose Work the reader already has a relation to is not suggested; a
 Watchlist Entry is left alone and only says „hast du schon als …". Never derived

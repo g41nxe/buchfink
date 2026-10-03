@@ -41,6 +41,12 @@
 
     {% set under_author %}
     {{ source_icons(entry.source_groups, unresolved=entry.unresolved) }}
+    {# Dasselbe Werk in einer anderen Ausgabe (ADR 36): ein Hinweis, kein
+       Abschalten — zwei Sprachen zu wollen ist eine Absicht. #}
+    {% if entry.owned_as %}
+    <span class="mt-0.5 block text-xs text-soft">hast du schon als
+      <em class="not-italic text-ink">{{ entry.owned_as }}</em></span>
+    {% endif %}
     {% endset %}
 
     {% set price_body %}

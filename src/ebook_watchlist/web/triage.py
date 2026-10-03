@@ -334,6 +334,9 @@ def pending(
     """
     decided_items = store.decided_items(settings.slug)
     decided_isbns = set(store.books_with_relations(settings.slug))
+    # Ein Werk, das sie hat, mag, doof fand oder ausschloss, kommt auch in
+    # anderer Sprache nicht wieder (ADR 36).
+    decided_isbns |= store.decided_works(settings.slug)
     found = store.latest_discoveries(settings.slug)
     # Die Seitenzahl gehört der ISBN: was beam nennt, gilt auch für denselben
     # Fund bei OverDrive (ADR 34).
