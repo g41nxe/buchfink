@@ -110,7 +110,7 @@ class ObservationRow(Base):
     #: Der Schnitt der Leserstimmen dieser Quelle und ihre Anzahl (Ticket 54).
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rating_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    #: Der Umfang in Seiten, von der Detailseite (#73).
+    #: Die Seitenzahl, von der Detailseite (#73).
     pages: Mapped[int | None] = mapped_column(Integer, nullable=True)
     observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
 
@@ -165,8 +165,9 @@ class BookRow(Base):
 
 #: Die Fassung, in der ``dnb.parse`` einen Datensatz liest. Hochzaehlen, wenn
 #: es ein Feld mehr liest: dann werden die schon gefundenen einmal neu gefragt.
-#: 2 = Originaltitel und Schlagwoerter (#17), 3 = Verlag (#28).
-DNB_READING = 3
+#: 2 = Originaltitel und Schlagwoerter (#17), 3 = Verlag (#28),
+#: 4 = Seitenzahl (#82).
+DNB_READING = 4
 
 
 class DnbRecordRow(Base):
@@ -198,6 +199,8 @@ class DnbRecordRow(Base):
     #: JSON-Liste der Schlagwoerter aus ``653``.
     keywords: Mapped[str | None] = mapped_column(String, nullable=True)
     publisher: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Die Seitenzahl aus ``300 $a``, wo die DNB sie nennt (#82).
+    pages: Mapped[int | None] = mapped_column(Integer, nullable=True)
     #: Mit welcher Fassung des Auslesens die Antwort gelesen wurde. Liest der
     #: Parser mehr als frueher, wird ein altes Ja einmal neu gefragt (#17).
     reading: Mapped[int] = mapped_column(Integer, default=DNB_READING)
@@ -845,6 +848,29 @@ class Store:
             )
             return [_to_observation(row) for row in session.scalars(stmt)]
 
+    def sightings_by_isbn(
+        self, profile_slug: str, isbns: Iterable[str]
+    ) -> dict[str, list[Observation]]:
+        """ISBN -> die letzte Sichtung je Quelle und Nummer, die sie trägt.
+
+        Für die Seitenzahl, die eine andere Quelle zu derselben Ausgabe nennt
+        (ADR 34).
+        """
+        wanted = {isbn for isbn in isbns if isbn}
+        if not wanted:
+            return {}
+        latest_ids = (
+            select(func.max(ObservationRow.id))
+            .where(ObservationRow.profile_slug == profile_slug, ObservationRow.isbn.in_(wanted))
+            .group_by(ObservationRow.source, ObservationRow.source_item_id)
+        )
+        found: dict[str, list[Observation]] = {}
+        with self.session() as session:
+            stmt = select(ObservationRow).where(ObservationRow.id.in_(latest_ids))
+            for row in session.scalars(stmt):
+                found.setdefault(row.isbn, []).append(_to_observation(row))
+        return found
+
     def observations_for_item(
         self, profile_slug: str, source: str, source_item_id: str, limit: int = 200
     ) -> list[Observation]:
@@ -1005,6 +1031,7 @@ class Store:
                 row.original_title = record.original_title
                 row.keywords = json.dumps(list(record.keywords), ensure_ascii=False)
                 row.publisher = record.publisher
+                row.pages = record.pages
                 for contained in record.contains:
                     if session.get(DnbContainsRow, (isbn, contained)) is None:
                         session.add(DnbContainsRow(isbn=isbn, contained=contained))
@@ -1040,30 +1067,52 @@ class Store:
             return facts
 
     def with_known_pages(self, observations: Sequence[Observation]) -> list[Observation]:
-        """Den zuletzt bekannten Umfang je Fund nachtragen (#73).
+        """Die zuletzt bekannte Seitenzahl je Fund nachtragen (#73, #82).
 
-        Die Trefferliste nennt keinen Umfang, nur die Detailseite; ohne das
+        Die Trefferliste nennt keine Seitenzahl, nur die Detailseite; ohne das
         stünde eine Kurzgeschichte nach einem Tag wieder im Stapel, weil die
         neue Sichtung aus der Liste die ältere mit Seitenzahl überdeckt.
+
+        Die Seitenzahl gehört der ISBN, nicht der Quelle (ADR 34): zuerst der
+        Fund selbst, dann eine andere Quelle mit derselben ISBN, zuletzt die
+        DNB — deren Angabe gehört manchmal zur gedruckten Ausgabe.
         """
         missing = [o for o in observations if o.pages is None]
         if not missing:
             return list(observations)
         wanted = {(o.source, o.source_item_id) for o in missing}
+        isbns = {o.isbn for o in missing if o.isbn}
         with self.session() as session:
             rows = session.execute(
-                select(ObservationRow.source, ObservationRow.source_item_id, ObservationRow.pages)
+                select(
+                    ObservationRow.source,
+                    ObservationRow.source_item_id,
+                    ObservationRow.isbn,
+                    ObservationRow.pages,
+                )
                 .where(
                     ObservationRow.pages.is_not(None),
-                    ObservationRow.source_item_id.in_({item for _, item in wanted}),
+                    or_(
+                        ObservationRow.source_item_id.in_({item for _, item in wanted}),
+                        ObservationRow.isbn.in_(isbns),
+                    ),
                 )
                 .order_by(ObservationRow.id)
+            ).all()
+            dnb = dict(
+                session.execute(
+                    select(DnbRecordRow.isbn, DnbRecordRow.pages).where(
+                        DnbRecordRow.isbn.in_(isbns), DnbRecordRow.pages.is_not(None)
+                    )
+                ).all()
             )
-            known = {(src, item): pages for src, item, pages in rows if (src, item) in wanted}
-        return [
-            replace(o, pages=known[o.key]) if o.pages is None and o.key in known else o
-            for o in observations
-        ]
+        own = {(src, item): pages for src, item, _, pages in rows if (src, item) in wanted}
+        by_isbn = {isbn: pages for _, _, isbn, pages in rows if isbn}
+
+        def known(o: Observation) -> int | None:
+            return own.get(o.key) or by_isbn.get(o.isbn or "") or dnb.get(o.isbn or "")
+
+        return [replace(o, pages=known(o)) if o.pages is None else o for o in observations]
 
     def dnb_original_titles(self, isbns: Iterable[str]) -> dict[str, tuple[str, ...]]:
         """ISBN -> die Namen, die die DNB dem Buch gibt: Originaltitel und Titel.

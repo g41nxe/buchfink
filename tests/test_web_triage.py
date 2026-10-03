@@ -944,6 +944,25 @@ def test_a_short_story_is_hidden_and_counted(client: TestClient, db: Store) -> N
     assert "1 Kurzgeschichte" in client.get("/suggestions").text
 
 
+def test_a_short_story_is_known_by_its_isbn(db: Store) -> None:
+    """*Broken House* bei OverDrive ohne Seitenzahl; beam kennt dieselbe ISBN
+    mit 40 Seiten — auch dieser Fund verlässt den Stapel (ADR 34)."""
+    from dataclasses import replace
+
+    at_shop = found(db, item_id="605720", title="Broken House", isbn="9783104038230",
+                    price=1099, reason=MatchReason.PROFILE_AUTHOR)
+    db.append(db.start_run("test", "cli", NOW), "test",
+              [replace(at_shop, source="overdrive", source_item_id="4927425",
+                       price_cents=None, observed_at=NOW),
+               replace(at_shop, pages=40, observed_at=NOW)], NOW)
+
+    pile = view.pending(db, load_settings())
+
+    assert not pile.items
+    # Gezählt wird je Fund, wie bei den anderen Zählern über dem Stapel.
+    assert pile.hidden_short == 2
+
+
 
 def test_an_old_library_availability_does_not_count(client: TestClient, db: Store) -> None:
     """Ein Bibliotheksfund, der seit Tagen nicht mehr gesehen wurde, ist nicht

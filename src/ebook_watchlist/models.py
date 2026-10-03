@@ -93,8 +93,8 @@ class Observation:
     #: wertlos: 5,0 aus einer Stimme ist keine Auskunft (Ticket 54).
     rating: int | None = None
     rating_votes: int | None = None
-    #: Der Umfang in Seiten, wo die Detailseite ihn nennt — für das Erkennen
-    #: von Kurzgeschichten (#73). Die Kachel einer Trefferliste trägt ihn nicht.
+    #: Die Seitenzahl, wo die Detailseite sie nennt — für das Erkennen
+    #: von Kurzgeschichten (#73). Die Kachel einer Trefferliste trägt sie nicht.
     pages: int | None = None
     #: Nur gesetzt, wo eine Source die Reihe ausdrücklich benennt.
     series: str | None = None

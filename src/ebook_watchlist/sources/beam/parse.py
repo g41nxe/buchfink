@@ -230,7 +230,7 @@ class Detail:
     keywords: tuple[str, ...] = ()
     #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
     publisher: str | None = None
-    #: Der Umfang in Seiten (#73), aus der Angabe „Seitenzahl".
+    #: Die Seitenzahl (#73), aus der Angabe „Seitenzahl".
     pages: int | None = None
 
 
@@ -303,7 +303,7 @@ def parse_detail(html: str) -> Detail:
 
 
 def _pages(value: str | None) -> int | None:
-    """„800" → 800; was keine Zahl ist, ist kein Umfang."""
+    """„800" → 800; was keine Zahl ist, ist keine Seitenzahl."""
     digits = "".join(ch for ch in value or "" if ch.isdigit())
     return int(digits) if digits else None
 

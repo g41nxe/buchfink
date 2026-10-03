@@ -31,6 +31,10 @@ def gather(store: Store, settings: Settings, observations, sources):
     mit ihrem eigenen Budget.
     """
     observations = _with_details(store, settings, observations, sources)
+    # Die Seitenzahl gehört der ISBN (ADR 34): was eine andere Quelle oder
+    # die DNB — eben erst im Lauf gefragt — nennt, gilt auch hier.
+    observations = store.with_known_pages(observations)
+    observations = _borrowed_pages(store, settings, observations, sources)
     dnb = store.dnb_facts(o.isbn for o in observations if o.isbn)
     backed = []
     for observation in observations:
@@ -114,13 +118,63 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             sample_url=item.sample_url,
         )
         fetched[observation.key] = fuller
-        # Auch der Umfang kommt ins Journal: der Stapel liest die letzte
+        # Auch die Seitenzahl kommt ins Journal: der Stapel liest die letzte
         # Beobachtung und erkennt daran Kurzgeschichten (#73).
         before = (observation.blurb, observation.cover_url, observation.pages)
         if (fuller.blurb, fuller.cover_url, fuller.pages) != before:
             fresh.append(replace(fuller, observed_at=now))
 
+    _journal(store, settings, fresh, run_id, now)
+    return [fetched.get(o.key, o) for o in observations]
+
+
+def _borrowed_pages(store: Store, settings: Settings, observations, sources):
+    """Die Seitenzahl von der Detailseite einer anderen Quelle mit derselben ISBN.
+
+    OverDrive nennt nie eine Seitenzahl; *Broken House* kam von dort als
+    Autorenfund in den Stapel, beam führt es mit 40 Seiten (#82). Eine Anfrage
+    je Buch, und nur für die Bücher, die gleich beschrieben werden — der
+    Steckbrief einer Kurzgeschichte, den sie erspart, kostet mehr. Gefragt wird
+    nur eine Quelle, die die ISBN schon gezeigt hat; gesucht wird nicht.
+    """
+    by_name = {source.name: source for source in sources}
+    lacking = {o.isbn: o for o in observations if o.pages is None and o.isbn}
+    if not lacking or not by_name:
+        return observations
+    elsewhere = store.sightings_by_isbn(settings.slug, lacking)
+    now = datetime.now()
+    borrowed: dict[str, int] = {}
+    fresh: list[Observation] = []
+    for isbn, own in lacking.items():
+        for other in elsewhere.get(isbn, ()):
+            source = by_name.get(other.source)
+            if source is None or other.source == own.source:
+                continue
+            try:
+                item = source.item(other.source_item_id)
+            except RateLimited:
+                print("Seitenzahl: die Quelle drosselt — Rest übersprungen", file=sys.stderr)
+                break
+            except Exception as exc:  # noqa: BLE001 - ein Buch, nicht der Stapel
+                print(f"  {own.title[:44]}: {type(exc).__name__}", file=sys.stderr)
+                continue
+            if item is None or item.pages is None:
+                continue
+            borrowed[isbn] = item.pages
+            # Als Sichtung der anderen Quelle ins Journal: sie hat es gesagt,
+            # und der nächste Lauf findet es über die ISBN wieder.
+            fresh.append(replace(other, pages=item.pages, observed_at=now))
+            break
+    if fresh:
+        run_id = store.start_run(settings.slug, ENTRY_TRIGGER, now, pid=os.getpid())
+        _journal(store, settings, fresh, run_id, now)
+    return [
+        replace(o, pages=borrowed[o.isbn]) if o.isbn in borrowed and o.pages is None else o
+        for o in observations
+    ]
+
+
+def _journal(store: Store, settings: Settings, fresh, run_id: int, now: datetime) -> None:
     if fresh:
         store.append(run_id, settings.slug, fresh, now)
     store.finish_run(run_id, status="ok", delta_count=0, finished_at=datetime.now())
-    return [fetched.get(o.key, o) for o in observations]

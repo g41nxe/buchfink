@@ -161,7 +161,7 @@ class Pile:
     hidden_ai: int = 0
     #: Folgebände einer Reihe, die die Leserin nicht verfolgt (`series`).
     hidden_series: int = 0
-    #: Kurzgeschichten nach dem Umfang der Detailseite (#73).
+    #: Kurzgeschichten nach der Seitenzahl der Detailseite (#73).
     hidden_short: int = 0
 
     @property
@@ -326,6 +326,9 @@ def pending(
     decided_items = store.decided_items(settings.slug)
     decided_isbns = set(store.books_with_relations(settings.slug))
     found = store.latest_discoveries(settings.slug)
+    # Die Seitenzahl gehört der ISBN: was beam nennt, gilt auch für denselben
+    # Fund bei OverDrive (ADR 34).
+    found = store.with_known_pages(found)
     # Das Urteil rechnet der Code aus dem Steckbrief (ADR 33, #48): ein Zugriff
     # für den ganzen Stapel, nicht einer je Zeile.
     judge = load_judge(store, settings.slug)

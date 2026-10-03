@@ -56,6 +56,7 @@ _RECORDS = re.compile(r"numberOfRecords>(\d+)<")
 #: Die DNB schreibt Sortierzeichen um Artikel: ``&#152;Der&#156; Kruzifix``.
 _SORT_MARKS = re.compile(r"&#15[26];|[]")
 _ISBN13 = re.compile(r"^97[89]\d{10}$")
+_PAGES = re.compile(r"(\d+)\s*Seiten")
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +80,9 @@ class Record:
     #: Der Verlag, aus ``264 $b`` (aeltere Saetze: ``260 $b``) — die
     #: Rueckfallquelle fuer den Abzug bei Selbstverlag (#28).
     publisher: str | None = None
+    #: Die Seitenzahl aus ``300 $a`` („Online-Ressource, 416 Seiten") — oft
+    #: fehlt sie, dann steht dort nur „Online-Ressource" (#82).
+    pages: int | None = None
 
     @property
     def is_empty(self) -> bool:
@@ -115,6 +119,7 @@ def parse(xml: str) -> Record:
         return Record()
 
     title = subtitle = author = series = volume = language = original = publisher = None
+    pages: int | None = None
     contained: list[str] = []
     subjects: list[str] = []
 
@@ -132,6 +137,9 @@ def parse(xml: str) -> Record:
             volume = volume or first.get("v")
         elif tag in ("264", "260"):
             publisher = publisher or first.get("b")
+        elif tag == "300":
+            hit = _PAGES.search(first.get("a", ""))
+            pages = pages or (int(hit.group(1)) if hit else None)
         elif tag == "240":
             original = original or first.get("a")
         elif tag == "653":
@@ -160,6 +168,7 @@ def parse(xml: str) -> Record:
         original_title=original,
         keywords=tuple(dict.fromkeys(subjects)),
         publisher=publisher,
+        pages=pages,
     )
 
 

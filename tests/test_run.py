@@ -554,6 +554,73 @@ def test_the_portrayer_gets_keywords_and_original_title_but_no_sample(data_dir: 
     assert backed.original_title == "Dark Matter"
 
 
+def test_a_library_find_borrows_the_page_count_from_beam(data_dir: Path) -> None:
+    """OverDrive nennt keine Seitenzahl. Kennt beam dieselbe ISBN, wird dessen
+    Detailseite geholt — eine Anfrage statt eines Steckbriefs für eine
+    Kurzgeschichte (ADR 34). Gesucht wird bei beam nicht."""
+    from ebook_watchlist import paths
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.evidence import gather as _with_evidence
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.sources.base import Item
+    from ebook_watchlist.store import Store
+
+    store, settings = Store(paths.db_path()), load_settings()
+    earlier = datetime(2026, 9, 20, 12, 0)
+    store.append(store.start_run("test", "cli", earlier), "test", [Observation(
+        source="beam", source_item_id="605720", title="Broken House",
+        isbn="9783104038230", match_reason=MatchReason.GENRE_CATEGORY,
+        observed_at=earlier)], earlier)
+    asked: list[str] = []
+
+    class Beam:
+        name = "beam"
+
+        def item(self, source_item_id: str) -> Item:
+            asked.append(source_item_id)
+            return Item(source_item_id=source_item_id, title="Broken House", pages=40)
+
+    class OverDrive:
+        name = "overdrive"
+
+        def item(self, source_item_id: str) -> None:
+            return None
+
+    find = Observation(source="overdrive", source_item_id="4927425", title="Broken House",
+                       isbn="9783104038230", match_reason=MatchReason.PROFILE_AUTHOR)
+    stranger = Observation(source="overdrive", source_item_id="1", title="Unbekannt",
+                           isbn="9783000000009", match_reason=MatchReason.PROFILE_AUTHOR)
+
+    backed, unknown = _with_evidence(store, settings, [find, stranger], [Beam(), OverDrive()])
+
+    assert backed.pages == 40
+    assert unknown.pages is None
+    assert asked == ["605720"]
+    # Ins Journal, damit der nächste Lauf sie über die ISBN wiederfindet.
+    (later,) = store.with_known_pages([find])
+    assert later.pages == 40
+
+
+def test_the_dnb_page_count_reaches_the_portrayer(data_dir: Path) -> None:
+    """Die DNB wird im Lauf erst nach dem Nachtragen der Seitenzahl gefragt;
+    was sie dabei sagt, muss vor dem Tor noch ankommen (#82)."""
+    from ebook_watchlist import paths
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.dnb import Record
+    from ebook_watchlist.evidence import gather as _with_evidence
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.store import Store
+
+    store, settings = Store(paths.db_path()), load_settings()
+    store.save_dnb("9783000000001", Record(title="Kurz", pages=60), datetime.now())
+    find = Observation(source="onleihe", source_item_id="1", title="Kurz",
+                       isbn="9783000000001", match_reason=MatchReason.GENRE_CATEGORY)
+
+    (backed,) = _with_evidence(store, settings, [find], [])
+
+    assert backed.pages == 60
+
+
 def test_ai_authored_finds_cost_no_judgement(data_dir: Path) -> None:
     """Vor dem Tor, aus demselben Grund wie die Sprache (#31).
 

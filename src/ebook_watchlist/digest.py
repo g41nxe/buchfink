@@ -74,7 +74,7 @@ class GateNote:
     unrated: int = 0
     #: Es gibt noch kein Leseprofil: nichts wurde geurteilt (ADR 33, Punkt 8).
     no_profile: bool = False
-    #: Kurzgeschichten nach dem Umfang der Detailseite (#73): nicht gezeigt.
+    #: Kurzgeschichten nach der Seitenzahl der Detailseite (#73): nicht gezeigt.
     short_stories: int = 0
 
     @property

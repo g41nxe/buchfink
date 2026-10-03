@@ -52,7 +52,7 @@ class GateReport:
     #: Es gibt kein Leseprofil, und der Lauf hatte Funde: nichts wurde
     #: geurteilt, und das soll dastehen (ADR 33, Punkt 8).
     no_profile: bool = False
-    #: Kurzgeschichten nach dem Umfang der Detailseite: nicht beschrieben,
+    #: Kurzgeschichten nach der Seitenzahl der Detailseite: nicht beschrieben,
     #: nicht gezeigt, und der Bericht nennt ihre Zahl (#73).
     short_stories: int = 0
     #: Das Urteil zu jedem durchgelassenen Fund, am Schlüssel der Beobachtung.
@@ -174,7 +174,7 @@ def apply(
             # verschöbe sonst die Antworten gegen die Bücher.
             fuller = {o.key: o for o in evidence(wanted)}
             described = [fuller.get(o.key, o) for o in wanted]
-            # Erst jetzt ist der Umfang bekannt: eine Kurzgeschichte kostet
+            # Erst jetzt ist die Seitenzahl bekannt: eine Kurzgeschichte kostet
             # keinen Steckbrief und wird nicht gezeigt (#73).
             short = {o.key for o in described if is_short_story(o)}
             # Dieselbe ISBN bei einer zweiten Quelle ist dieselbe Kurzgeschichte.
@@ -206,7 +206,7 @@ def apply(
     kept: list[Delta] = []
     for delta in deltas:
         # Auch ein Preissturz oder ein Freiwerden bringt eine Kurzgeschichte
-        # nicht zurück: der Umfang reist mit der Beobachtung (#73).
+        # nicht zurück: die Seitenzahl reist mit der Beobachtung (#73).
         if delta.current.key in short or (
             delta.current.match_reason is not MatchReason.WATCHLIST
             and is_short_story(delta.current)

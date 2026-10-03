@@ -85,6 +85,19 @@ def test_the_detail_page_names_the_publisher() -> None:
     assert parse.parse_detail(fixture("detail-available.html")).publisher == "FISCHER E-Books"
 
 
+def test_the_detail_page_names_the_page_count() -> None:
+    """„Umfang: 320 S." — die Seitenzahl, an der eine Kurzgeschichte erkannt
+    wird (#82). Die Seite wird für den Steckbrief ohnehin geholt."""
+    assert parse.parse_detail(fixture("detail-available.html")).pages == 320
+    assert parse.parse_detail(fixture("detail-unavailable.html")).pages == 576
+
+
+def test_the_item_carries_the_page_count() -> None:
+    item = OnleiheSource(StubClient(fixture("detail-available.html"))).item("373164461")
+
+    assert item is not None and item.pages == 320
+
+
 def test_available_title_has_no_eta() -> None:
     detail = parse.parse_detail(fixture("detail-available.html"))
     assert detail.title == "Sieben Richtige"

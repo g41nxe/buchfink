@@ -1012,8 +1012,8 @@ def _run(
         only_watchlist=only_watchlist,
     )
     observations, failures = _collect(sources, settings, watchlist, context)
-    # Der Umfang von der Detailseite gilt weiter, auch wenn die Trefferliste
-    # ihn nicht nennt (#73).
+    # Die Seitenzahl von der Detailseite gilt weiter, auch wenn die Trefferliste
+    # sie nicht nennt (#73).
     observations = store.with_known_pages(observations)
     failures = [*probe_failures, *failures]
     if sweep_extended and not failures:

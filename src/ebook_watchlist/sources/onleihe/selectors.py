@@ -99,6 +99,7 @@ LABEL_AUTHOR = "Autor*in:"
 LABEL_YEAR = "Jahr:"
 LABEL_SERIES = "Reihe:"
 LABEL_ISBN = "ISBN:"
+LABEL_PAGES = "Umfang:"
 
 # --- doctor probe ---------------------------------------------------------
 

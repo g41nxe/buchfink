@@ -61,6 +61,17 @@ def test_the_series_comes_out_of_490() -> None:
     assert parse(answer("bundle-3in1.xml")).series == "David Hunter"
 
 
+def test_the_page_count_comes_out_of_300() -> None:
+    """„Online-Ressource, 416 Seiten" (#82)."""
+    assert parse(answer("translation.xml")).pages == 416
+    assert parse(answer("bundle-3in1.xml")).pages == 1280
+
+
+def test_a_record_without_a_page_count_says_nothing() -> None:
+    """Nur „Online-Ressource": unbekannt, nicht kurz."""
+    assert parse(answer("bundle-slash.xml")).pages is None
+
+
 def test_a_translation_names_its_original_title() -> None:
     """``240 $a`` ist der Einheitstitel — bei einer Übersetzung der Titel des
     Originals. Mit ihm findet sich das Buch auch dort, wo nur die englische

@@ -61,6 +61,9 @@ class Detail:
     sample_url: str | None = None
     #: Der Verlag, fuer den Abzug bei Selbstverlag (#28).
     publisher: str | None = None
+    #: Die Seitenzahl aus „Umfang: 320 S." — an ihr wird eine Kurzgeschichte
+    #: erkannt (#82).
+    pages: int | None = None
 
     @property
     def availability(self) -> Availability:
@@ -125,7 +128,14 @@ def parse_detail(html: str) -> Detail:
         blurb=_blurb(page),
         sample_url=_sample(page),
         publisher=_publisher(page),
+        pages=_pages(_labelled_value(page, sel.LABEL_PAGES)),
     )
+
+
+def _pages(value: str | None) -> int | None:
+    """„320 S." → 320; was keine Zahl nennt, ist keine Seitenzahl."""
+    hit = re.match(r"\s*(\d+)", value or "")
+    return int(hit.group(1)) if hit else None
 
 
 def _publisher(page) -> str | None:

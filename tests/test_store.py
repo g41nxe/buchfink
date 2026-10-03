@@ -271,6 +271,53 @@ def test_a_known_page_count_is_carried_to_the_next_sighting(store) -> None:
     assert weiter.pages == 48
 
 
+def test_a_page_count_belongs_to_the_isbn_not_the_source(store) -> None:
+    """beam kennt *Broken House* mit 40 Seiten, OverDrive nennt keine — dieselbe
+    ISBN ist dieselbe Ausgabe (ADR 34)."""
+    from datetime import datetime
+
+    from ebook_watchlist.models import MatchReason, Observation
+
+    now = datetime(2026, 9, 26, 12, 0)
+    beam = Observation(source="beam", source_item_id="605720", title="Broken House",
+                       isbn="9783104038230", pages=40,
+                       match_reason=MatchReason.GENRE_CATEGORY, observed_at=now)
+    store.append(store.start_run("test", "cli", now), "test", [beam], now)
+
+    (overdrive,) = store.with_known_pages([Observation(
+        source="overdrive", source_item_id="4927425", title="Broken House",
+        isbn="9783104038230", match_reason=MatchReason.PROFILE_AUTHOR)])
+
+    assert overdrive.pages == 40
+
+
+def test_the_dnb_page_count_comes_last(store) -> None:
+    """Die DNB zählt nur, wo keine Quelle etwas sagt — ihre Angabe gehört
+    manchmal zur gedruckten Ausgabe (ADR 34)."""
+    from datetime import datetime
+
+    from ebook_watchlist.dnb import Record
+    from ebook_watchlist.models import MatchReason, Observation
+
+    now = datetime(2026, 9, 26, 12, 0)
+    store.save_dnb("9783000000001", Record(title="Kurz", pages=60), now)
+    store.save_dnb("9783000000002", Record(title="Lang", pages=60), now)
+    eigene = Observation(source="onleihe", source_item_id="2", title="Lang",
+                         isbn="9783000000002", pages=300,
+                         match_reason=MatchReason.GENRE_CATEGORY, observed_at=now)
+    store.append(store.start_run("test", "cli", now), "test", [eigene], now)
+
+    kurz, lang = store.with_known_pages([
+        Observation(source="onleihe", source_item_id="1", title="Kurz",
+                    isbn="9783000000001", match_reason=MatchReason.GENRE_CATEGORY),
+        Observation(source="onleihe", source_item_id="2", title="Lang",
+                    isbn="9783000000002", match_reason=MatchReason.GENRE_CATEGORY),
+    ])
+
+    assert kurz.pages == 60
+    assert lang.pages == 300
+
+
 def test_a_later_volume_does_not_lend_its_series_name(store) -> None:
     """„Scythe – Der Zorn der Gerechten" ist Band 2: sein Titel trägt die Reihe,
     nicht das gesuchte Buch (#77)."""

@@ -88,10 +88,10 @@ _SHORT_WORDS = re.compile(r"Kurzgeschichte|Kurzkrimi|\bShort Story\b", re.IGNORE
 
 
 def is_short_story(observation: Observation) -> bool:
-    """Eine Kurzgeschichte: ein Fund mit bekanntem Umfang unter der Schwelle —
+    """Eine Kurzgeschichte: ein Fund mit bekannter Seitenzahl unter der Schwelle —
     oder einer, dessen Titel es selbst sagt.
 
-    Vor allem nach dem Umfang, den die Detailseite nennt. Der Klappentext taugt
+    Vor allem nach der Seitenzahl, die die Detailseite nennt. Der Klappentext taugt
     nicht: „Kurzgeschichten" steht meist in der Autorenbiografie („über 100
     Kurzgeschichten"), und die kurzen *BattleTech*-Titel sagen es nirgends
     (gemessen an 370 Funden, 26.09.2026). Titel und Untertitel aber sprechen

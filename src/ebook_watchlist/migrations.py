@@ -596,11 +596,17 @@ def _a_portrait_remembers_whether_a_text_went_along(connection: Connection) -> N
 
 
 def _an_observation_knows_its_page_count(connection: Connection) -> None:
-    """Der Umfang aus der Detailseite, für das Erkennen von Kurzgeschichten (#73).
+    """Die Seitenzahl aus der Detailseite, für das Erkennen von Kurzgeschichten (#73).
 
-    Alte Zeilen bekommen keinen Wert: ohne Umfang gilt nichts als Kurzgeschichte.
+    Alte Zeilen bekommen keinen Wert: ohne Seitenzahl gilt nichts als Kurzgeschichte.
     """
     add_column(connection, "observation", "pages", "INTEGER")
+
+
+def _the_dnb_names_the_page_count(connection: Connection) -> None:
+    """Die Seitenzahl aus ``300 $a`` (#82). Alte Antworten bekommen sie, wenn
+    sie über ``DNB_READING`` einmal neu gefragt werden."""
+    add_column(connection, "dnb_record", "pages", "INTEGER")
 
 
 def _a_portrait_remembers_whether_a_sample_went_along(connection: Connection) -> None:
@@ -661,6 +667,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _a_portrait_remembers_whether_a_text_went_along,
     _an_observation_knows_its_page_count,
     _a_portrait_remembers_whether_a_sample_went_along,
+    _the_dnb_names_the_page_count,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
