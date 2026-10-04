@@ -105,6 +105,9 @@ class Observation:
     #: Die eigene Nummer der Reihe bei der Quelle — die Adresse, unter der sie
     #: sich fegen lässt (ADR 35). Ebenfalls nur in der Reihenzuordnung.
     series_ref: str | None = None
+    #: Die BISAC-Codes, wo die Quelle sie nennt (OverDrive). Nicht im Journal:
+    #: sie landen in der Zuordnung je ISBN (ADR 37, #88).
+    bisac: tuple[str, ...] = ()
     observed_at: datetime | None = None
     # --- Belege fuer den `Portrayer` (#17) ---------------------------------
     # Nicht gespeichert und nicht verglichen: sie werden erst unmittelbar vor

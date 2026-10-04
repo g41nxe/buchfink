@@ -57,6 +57,7 @@ _RECORDS = re.compile(r"numberOfRecords>(\d+)<")
 _SORT_MARKS = re.compile(r"&#15[26];|[]")
 _ISBN13 = re.compile(r"^97[89]\d{10}$")
 _PAGES = re.compile(r"(\d+)\s*Seiten")
+_BISAC = re.compile(r"^\(BISAC Subject Heading\)\s*([A-Z]{3}\d{6})")
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +84,9 @@ class Record:
     #: Die Seitenzahl aus ``300 $a`` („Online-Ressource, 416 Seiten") — oft
     #: fehlt sie, dann steht dort nur „Online-Ressource" (#82).
     pages: int | None = None
+    #: Die BISAC-Codes des Verlags aus ``653`` („(BISAC Subject Heading)
+    #: FIC031080") — die Grundlage der Genre-Liste (ADR 37, #88).
+    bisac: tuple[str, ...] = ()
 
     @property
     def is_empty(self) -> bool:
@@ -122,6 +126,7 @@ def parse(xml: str) -> Record:
     pages: int | None = None
     contained: list[str] = []
     subjects: list[str] = []
+    bisac: list[str] = []
 
     for tag, parts in _fields(xml):
         first = {code: values[0] for code, values in parts.items() if values}
@@ -146,6 +151,9 @@ def parse(xml: str) -> Record:
             # "(BISAC Subject Heading)FIC050000", "(VLB-WN)9112": Codes fuer
             # den Handel. Was ohne Klammer beginnt, hat ein Mensch geschrieben.
             subjects += [w for w in parts.get("a", []) if w and not w.startswith("(")]
+            # Die BISAC-Codes des Verlags dagegen sind genau das, was die
+            # Genre-Liste braucht (ADR 37).
+            bisac += [hit.group(1) for w in parts.get("a", []) if (hit := _BISAC.match(w))]
         elif tag == "041":
             language = language or first.get("a")
         elif tag == "770":
@@ -169,6 +177,7 @@ def parse(xml: str) -> Record:
         keywords=tuple(dict.fromkeys(subjects)),
         publisher=publisher,
         pages=pages,
+        bisac=tuple(dict.fromkeys(bisac)),
     )
 
 

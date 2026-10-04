@@ -156,3 +156,14 @@ def test_every_question_is_counted() -> None:
 @pytest.mark.parametrize("name", ["bundle-3in1.xml", "bundle-slash.xml"])
 def test_a_real_answer_is_never_empty(name: str) -> None:
     assert not parse(answer(name)).is_empty
+
+
+def test_the_publishers_bisac_codes_come_out_of_653() -> None:
+    """Vom Verlag vergeben, nicht vom Modell: die Grundlage der Genre-Liste
+    (ADR 37, #88). Die Codes bleiben aus den Schlagwörtern draußen."""
+    record = parse(answer("bundle-slash.xml"))
+
+    assert record.bisac == ("FIC022020", "FIC031000")
+    assert not any(code in word for word in record.keywords for code in record.bisac)
+    assert parse(answer("translation.xml")).bisac == ("FIC050000",)
+    assert parse(answer("nothing.xml")).bisac == ()

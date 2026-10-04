@@ -169,8 +169,8 @@ class BookRow(Base):
 #: Die Fassung, in der ``dnb.parse`` einen Datensatz liest. Hochzaehlen, wenn
 #: es ein Feld mehr liest: dann werden die schon gefundenen einmal neu gefragt.
 #: 2 = Originaltitel und Schlagwoerter (#17), 3 = Verlag (#28),
-#: 4 = Seitenzahl (#82).
-DNB_READING = 4
+#: 4 = Seitenzahl (#82), 5 = BISAC-Codes (#88).
+DNB_READING = 5
 
 
 class DnbRecordRow(Base):
@@ -285,6 +285,27 @@ class SeriesWatchRow(Base):
     series_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     since: Mapped[datetime] = mapped_column(DateTime)
+
+
+class BisacEntryRow(Base):
+    """Die BISAC-Codes einer ISBN, je Herkunft (ADR 37, #88).
+
+    Vom Verlag vergeben und von der DNB oder OverDrive weitergereicht — nicht
+    vom Modell. Alle bleiben gespeichert; welche für das Genre zählen, sagt die
+    Liste (`genres.py`).
+    """
+
+    __tablename__ = "bisac_entry"
+
+    isbn: Mapped[str] = mapped_column(String, primary_key=True)
+    origin: Mapped[str] = mapped_column(String, primary_key=True)
+    code: Mapped[str] = mapped_column(String, primary_key=True)
+    #: Die Reihenfolge, in der die Herkunft sie nannte.
+    rank: Mapped[int] = mapped_column(Integer, default=0)
+
+
+#: Wessen BISAC-Codes zuerst stehen: die DNB spricht über genau diese ISBN.
+BISAC_ORIGINS = ("dnb", "overdrive")
 
 
 class WorkEntryRow(Base):
@@ -1125,6 +1146,7 @@ class Store:
                                  record.series_index, "dnb")
                 if record.original_title:
                     _file_work(session, isbn, record.author, record.original_title, "dnb")
+                _file_bisac(session, isbn, "dnb", record.bisac)
                 for contained in record.contains:
                     if session.get(DnbContainsRow, (isbn, contained)) is None:
                         session.add(DnbContainsRow(isbn=isbn, contained=contained))
@@ -1397,6 +1419,24 @@ class Store:
             ))
             names = self.series_names() if named else {}
         return frozenset(ids | {names[n] for n in named if n in names})
+
+    def bisac_codes(self, isbns: Iterable[str]) -> dict[str, tuple[str, ...]]:
+        """ISBN -> ihre BISAC-Codes, die der DNB zuerst, ohne Doppelte (#88)."""
+        wanted = {isbn for isbn in isbns if isbn}
+        if not wanted:
+            return {}
+        rank = {origin: i for i, origin in enumerate(BISAC_ORIGINS)}
+        with self.session() as session:
+            rows = session.execute(
+                select(BisacEntryRow.isbn, BisacEntryRow.origin, BisacEntryRow.code,
+                       BisacEntryRow.rank).where(BisacEntryRow.isbn.in_(wanted))
+            ).all()
+        rows.sort(key=lambda r: (rank.get(r.origin, len(rank)), r.origin, r.rank))
+        codes: dict[str, list[str]] = {}
+        for isbn, _, code, _ in rows:
+            if code not in codes.setdefault(isbn, []):
+                codes[isbn].append(code)
+        return {isbn: tuple(found) for isbn, found in codes.items()}
 
     def work_siblings(self, isbns: Iterable[str]) -> dict[str, set[str]]:
         """ISBN -> alle ISBNs desselben Werks, sie selbst eingeschlossen."""
@@ -2718,6 +2758,8 @@ class Store:
                                  obs.series_index, obs.source, obs.series_ref)
                 if obs.isbn and session.get(WorkEntryRow, (obs.isbn, "title")) is None:
                     _file_work(session, obs.isbn, obs.author, obs.title, "title")
+                if obs.isbn and obs.bisac:
+                    _file_bisac(session, obs.isbn, obs.source, obs.bisac)
             session.commit()
 
 
@@ -2917,3 +2959,12 @@ def _work_book_subjects(session: Session, subjects: Iterable[str]) -> dict[str, 
         group = {f"book:{book_of[o]}" for o in siblings.get(isbn, ()) if o in book_of}
         out[s] = group | {s}
     return out
+
+
+def _file_bisac(session: Session, isbn: str, origin: str, codes: Iterable[str]) -> None:
+    """Die Codes einer Herkunft ersetzen — eine neue Antwort gilt ganz (#88)."""
+    session.execute(
+        delete(BisacEntryRow).where(BisacEntryRow.isbn == isbn, BisacEntryRow.origin == origin)
+    )
+    for rank, code in enumerate(dict.fromkeys(codes)):
+        session.add(BisacEntryRow(isbn=isbn, origin=origin, code=code, rank=rank))

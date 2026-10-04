@@ -207,6 +207,7 @@ def observation_of(
         series=series,
         series_index=series_index,
         series_ref=series_ref,
+        bisac=tuple(c for c in item.get("bisacCodes") or [] if isinstance(c, str)),
     )
 
 

@@ -530,3 +530,14 @@ def test_a_genre_category_find_must_be_fiction() -> None:
     # Ein deutsches E-Book, aber ein Sachbuch (POL) — und eines über Ernährung (CKB).
     assert "Ungleich vereint" not in titel and "Der Glukose-Trick" not in " ".join(titel)
     assert "Der Hausmann" in titel
+
+
+def test_a_find_carries_the_publishers_bisac_codes() -> None:
+    """#88: OverDrive nennt BISAC zu jedem Titel."""
+    from ebook_watchlist.sources.overdrive.source import Collection
+
+    by_title = {f.title: f for f in parse.parse_collection(
+        parse.payload(lucky_day()), Collection("1572172", "Lucky Day"))}
+
+    assert by_title["Steinernes Fleisch"].bisac == ("FIC009100", "FIC027030")
+    assert by_title["Der Hausmann"].bisac == ("FIC019000",)
