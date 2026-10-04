@@ -25,6 +25,7 @@ from ..junk import is_junk, is_short_story
 from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
+from ..preferences import book_codes, excluded_by
 from ..ratings import subject_of
 from ..reasons import (
     genre_category_name,
@@ -172,6 +173,8 @@ class Pile:
     hidden_series: int = 0
     #: Kurzgeschichten nach der Seitenzahl der Detailseite (#73).
     hidden_short: int = 0
+    #: Ein Genre oder eine Autor:in, die sie nicht mag (#91).
+    hidden_disliked: int = 0
 
     @property
     def is_empty(self) -> bool:
@@ -201,6 +204,7 @@ class Pile:
             (self.hidden_ai, "KI-erzeugt"),
             (self.hidden_series, "mitten in einer Reihe"),
             (self.hidden_short, "Kurzgeschichten" if self.hidden_short != 1 else "Kurzgeschichte"),
+            (self.hidden_disliked, "nicht gemocht"),
         )
         return tuple((count, word) for count, word in pairs if count)
 
@@ -345,6 +349,10 @@ def pending(
     # für den ganzen Stapel, nicht einer je Zeile.
     judge = load_judge(store, settings.slug)
     portraits = judge.portraits(store, [subject_of(o) for o in found]) if judge else {}
+    # Was sie nicht mag, kommt nicht in den Stapel (#91): nach Autor:in, nach
+    # den BISAC-Codes des Verlags, sonst nach dem Code des Steckbriefs.
+    profile = store.reading_profile(settings.slug)
+    bisac = store.bisac_codes(o.isbn for o in found if o.isbn)
     # Einmal fuer den ganzen Stapel: Titel -> guenstigster bekannter Preis.
     # Der Buendelvorteil braucht die Preise *anderer* Buecher (ADR 24).
     # Eine Stelle rechnet den Buendelvorteil aus — dieselbe, die der
@@ -362,7 +370,8 @@ def pending(
     # ist eine Kurzgeschichte, nicht zwei — und ein Buch, das eine andere
     # Quelle zeigt, ist gar nicht ausgeblendet.
     hidden: dict[str, set[str]] = {
-        why: set() for why in ("junk", "priced", "weak", "language", "ai", "short", "series")
+        why: set()
+        for why in ("junk", "priced", "weak", "language", "ai", "short", "series", "disliked")
     }
     now = datetime.now()
     library_sources = {name for name, kind in source_kinds().items() if kind == "library"}
@@ -387,6 +396,12 @@ def pending(
         # einer Maschine schreiben laesst, ist kein Kandidat (#31).
         if is_ai_authored(observation, ai_author_names):
             hidden["ai"].add(subject_of(observation))
+            continue
+        portrait = portraits.get(subject_of(observation))
+        codes = book_codes(bisac.get(observation.isbn or "", ()),
+                           portrait.genre_code if portrait else None)
+        if excluded_by(profile, observation, codes):
+            hidden["disliked"].add(subject_of(observation))
             continue
         # Nicht mitten in einer Reihe anfangen — dieselbe Regel wie im Lauf.
         if mid_series(observation):
@@ -437,6 +452,7 @@ def pending(
         hidden_ai=counts["ai"],
         hidden_short=counts["short"],
         hidden_series=counts["series"],
+        hidden_disliked=counts["disliked"],
         threshold=judge.threshold if judge else 3,
         # Nur, wenn es wirklich kein Profil gibt: ein unlesbares Vokabular ist
         # etwas anderes, und "erst die Erstaufnahme machen" wäre dann falsch.

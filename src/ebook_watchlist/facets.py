@@ -91,6 +91,12 @@ class ReadingProfile:
     #: Die Fassung, wie sie der Speicher vergeben hat; 0 für eines, das nicht
     #: aus dem Speicher kommt.
     version: int = 0
+    #: Genres als Codes der Liste, die sie mag oder nicht mag (ADR 37, #91).
+    liked_genres: tuple[str, ...] = ()
+    disliked_genres: tuple[str, ...] = ()
+    #: Autor:innen, deren Bücher nicht vorgeschlagen werden. Gemochte stehen
+    #: bei den Interessen — sie sind Entdeckungskanäle.
+    disliked_authors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +134,9 @@ class Weights:
     pattern_against: float
     facet_bonus: float
     genre_counterweight: float
+    #: Was ein gemochtes Genre im Urteil hebt (ADR 37) — weniger als ein
+    #: verstärktes Merkmal.
+    genre_bonus: float
     #: (Sterne, ab welcher Übereinstimmung), absteigend.
     stars_from: tuple[tuple[int, float], ...]
     #: Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19).
@@ -209,6 +218,7 @@ def load_weights(path: Path | None = None) -> Weights:
         pattern_against=float(section["muster_dagegen"]),
         facet_bonus=float(section["facette_ganz"]),
         genre_counterweight=float(section["gegengewicht_mit_genre"]),
+        genre_bonus=float(section.get("genre_gemocht", 0.0)),
         stars_from=tuple(tiers),
         gate_stars=int(section["tor_ab_sternen"]),
         borderline=float(section.get("knapp_um", 0.0)),

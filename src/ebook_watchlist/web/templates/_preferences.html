@@ -1,0 +1,85 @@
+{# Genres und Autor:innen mögen und nicht mögen (ADR 37, #91).
+
+   Eine Stelle für Profilseite und Bildschirm 5 der Erstaufnahme. Ein Genre
+   kommt aus der festen Liste (docs/genres.yaml), eine Autor:in als Name.
+   Gemocht heißt beim Genre ein kleiner Bonus im Urteil, bei einer Autor:in
+   ein Entdeckungskanal (wöchentlich); nicht gemocht heißt: wird nicht
+   vorgeschlagen. Ein Genre gilt für die Untergenres darunter.
+#}
+
+{% macro genre_select(name, options, label) %}
+<select name="{{ name }}" aria-label="{{ label }}"
+        class="h-9 min-w-0 flex-1 rounded border border-rule bg-card px-2 text-sm text-ink
+               outline-none focus:border-accent sm:flex-none">
+  <option value="">{{ label }}</option>
+  {% for code, gname, sub in options %}
+  <option value="{{ code }}">{% if sub %}&emsp;{% endif %}{{ gname }}</option>
+  {% endfor %}
+</select>
+{% endmacro %}
+
+{% macro _chip(kind, value, label, tone) %}
+<li class="inline-flex h-8 items-center gap-1 rounded-full pl-3 pr-1 text-xs font-medium {{ tone }}">
+  {{ label }}
+  <form method="post" action="/profile/preference" class="inline">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="value" value="{{ value }}">
+    <input type="hidden" name="action" value="remove">
+    <button type="submit" aria-label="{{ label }} entfernen" title="entfernen"
+            class="tap inline-flex size-6 items-center justify-center rounded-full
+                   hover:bg-ink/10"><svg class="i"><use href="#ic-x"/></svg></button>
+  </form>
+</li>
+{% endmacro %}
+
+{% macro _group(title, kind, items, tone, adder) %}
+<div class="py-3 first:pt-0 last:pb-0">
+  <p class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">{{ title }}</p>
+  {% if items %}
+  <ul class="mb-2 flex flex-wrap gap-1.5">
+    {% for value, label in items %}{{ _chip(kind, value, label, tone) }}{% endfor %}
+  </ul>
+  {% else %}
+  <p class="mb-2 text-sm text-soft italic">Keine.</p>
+  {% endif %}
+  <form method="post" action="/profile/preference" class="flex flex-wrap items-center gap-2">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="action" value="add">
+    {{ adder }}
+    <button type="submit"
+            class="tap inline-flex h-9 items-center rounded border border-rule px-3 text-sm
+                   text-soft hover:border-accent hover:text-accent">Hinzufügen</button>
+  </form>
+</div>
+{% endmacro %}
+
+{% macro author_input(name, placeholder) %}
+<input type="text" name="{{ name }}" placeholder="{{ placeholder }}" autocomplete="off"
+       class="h-9 min-w-0 flex-1 rounded border border-rule bg-card px-2 text-sm text-ink
+              outline-none focus:border-accent sm:flex-none">
+{% endmacro %}
+
+{# Die Karte der Profilseite: anzeigen, hinzufügen, zurücknehmen. #}
+{% macro preferences_card(p) %}
+<section id="preferences" class="mt-6 rounded-xl border border-rule bg-card/40 p-4 sm:p-5">
+  <h2 class="font-serif text-lg font-semibold">Genres und Autor:innen</h2>
+  <p class="mb-3 text-sm text-soft">Ein gemochtes Genre hebt das Urteil ein wenig; was du nicht
+    magst, wird nicht vorgeschlagen. Autor:innen, denen du folgst, werden wöchentlich gesucht.</p>
+  <div class="divide-y divide-hair">
+    {% set liked_genre_select %}{{ genre_select("value", p.options, "Genre wählen …") }}{% endset %}
+    {% set disliked_genre_select %}{{ genre_select("value", p.options, "Genre wählen …") }}{% endset %}
+    {% set follow_input %}{{ author_input("value", "Name") }}{% endset %}
+    {% set block_input %}{{ author_input("value", "Name") }}{% endset %}
+    {{ _group("Genres, die du magst", "liked_genre", p.liked_genres,
+              "bg-accent-bg text-accent", liked_genre_select) }}
+    {{ _group("Genres, die du nicht magst", "disliked_genre", p.disliked_genres,
+              "bg-danger/10 text-danger", disliked_genre_select) }}
+    {{ _group("Autor:innen, denen du folgst", "liked_author",
+              p.liked_authors, "bg-accent-bg text-accent",
+              follow_input) }}
+    {{ _group("Autor:innen, die nicht vorgeschlagen werden", "disliked_author",
+              p.disliked_authors, "bg-danger/10 text-danger",
+              block_input) }}
+  </div>
+</section>
+{% endmacro %}

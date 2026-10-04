@@ -60,6 +60,10 @@ urteil_formueberdeckung:
   # Regel, keine Richtung der Form: im Genre zieht es so viel ab (mal dem
   # Gewicht des Merkmals im Buch).
   gegengewicht_mit_genre: 0.5
+  # Ein Genre, das die Leserin mag, hebt den Rest bis 1 um so viel an (ADR 37).
+  # Bewusst kleiner als ein verstärktes Merkmal: das Genre allein sagt wenig
+  # darüber, ob ein Buch passt.
+  genre_gemocht: 0.15
   # Ab wie vielen Sternen das Bewertungstor einen Fund durchlässt (ADR 19,
   # #48). Ein Fund ohne Urteil wird nie zurückgehalten.
   tor_ab_sternen: 3

@@ -557,3 +557,25 @@ def test_taking_back_a_genre_counterweight_leaves_the_general_one(client, db, pr
 
     assert db.reading_profile(slug()).counterweights == (
         Counterweight(("big_world",), None, ("Herr der Ringe",)),)
+
+
+def test_sharpening_keeps_her_genres_and_authors(client, db) -> None:
+    """Jede neue Fassung trägt die Genres und Autor:innen weiter (#91) — sonst
+    löschte ein Antippen beim Nachschärfen still, was sie ausgeschlossen hat."""
+
+    db.put_reading_profile(slug(), ReadingProfile(
+        facets=(), counterweights=(), liked=(Liked("harsh"),),
+        liked_genres=("FIC028030",), disliked_genres=("FIC027000",),
+        disliked_authors=("Rosamunde Pilcher",)), cause="test", now=NOW)
+    b = book(db, "Otherland", ["world_building", "intricate", "ensemble", "leisurely"])
+    b2 = book(db, "Herr der Ringe", ["world_building", "sweeping", "bittersweet", "descriptive"],
+              kind="disliked", subgenre="High Fantasy / Heroische Fantasy")
+
+    client.post(f"/book/{b}/sharpen/liked", data={"family": "big_world", "on": "1"})
+    client.post(f"/book/{b}/sharpen/boost", data={"family": "big_world", "on": "1"})
+    client.post(f"/book/{b2}/sharpen/counterweight", data={"family": ["sad"]})
+
+    new = db.reading_profile(slug())
+    assert new.version >= 2
+    assert (new.liked_genres, new.disliked_genres, new.disliked_authors) == (
+        ("FIC028030",), ("FIC027000",), ("Rosamunde Pilcher",))

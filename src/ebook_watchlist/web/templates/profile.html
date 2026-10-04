@@ -5,8 +5,9 @@
 {% from "_card.html" import card %}
 {#- Die Profilseite als Übersicht in Karten (26.09.2026): oben der Kopf und die
     Regale, darunter links die Geschmacksform und rechts, was sie trägt, unten
-    worauf Buchfink achtet und wann es sich meldet. Nur zum Lesen — geändert
-    wird am Buch (#51); eine Pille, die an einem Buch hängt, führt dorthin. -#}
+    worauf Buchfink achtet und wann es sich meldet. Zum Lesen — geändert wird
+    am Buch (#51); eine Pille, die an einem Buch hängt, führt dorthin. Die
+    Ausnahme ganz unten: Genres und Autor:innen (ADR 37, #91). -#}
 
 {#- Die Regale bekommen je ein Zeichen; die Namen stehen in `profile_page`. -#}
 {% set shelf_icons = {"watching": "ic-binoculars", "owned": "ic-lib", "liked": "ic-heart",
@@ -265,4 +266,7 @@
 </div>
 
 </div>
+{# Die eine Stelle, an der sich hier etwas ändern lässt (ADR 37, #91). #}
+{% from "_preferences.html" import preferences_card %}
+{{ preferences_card(preferences) }}
 {% endblock %}

@@ -104,7 +104,9 @@ def test_the_profile_page_names_the_genre_of_a_counterweight(data_dir: Path) -> 
     body = TestClient(create_app()).get("/profile").text
 
     assert "nur bei High Fantasy" in body
-    assert "FIC009020" not in body
+    # Der Code steht höchstens als Wert in der Genre-Auswahl, nie als Text.
+    assert "nur bei FIC009020" not in body
+    assert ">FIC009020<" not in body
 
 
 # --- aus dem Review (04.10.2026) ----------------------------------------------

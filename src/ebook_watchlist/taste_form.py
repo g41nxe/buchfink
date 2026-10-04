@@ -83,7 +83,8 @@ class Step:
 
     ``kind``: ``baseline`` (der Grundwert der Glättung), ``family`` (eine
     Merkmalsfamilie des Buchs), ``pattern_baseline`` und ``pattern`` (die
-    Erzählmuster), ``facet`` (eine getroffene Kombination), ``pattern_against``
+    Erzählmuster), ``facet`` (eine getroffene Kombination), ``liked_genre`` (ein
+    gemochtes Genre), ``pattern_against``
     und ``genre`` (was abzieht), ``floor`` und ``ceiling`` (die Grenzen 0 und 1).
     Die Schritte ergeben zusammen genau ``Overlap.share`` — die Buchseite zeigt
     sie als Wasserfall.
@@ -305,6 +306,13 @@ def overlap(
     if hits:
         steps.append(Step("facet", (1 - share) * weights.facet_bonus))
         share = 1 - (1 - share) * (1 - weights.facet_bonus)
+    # Ein gemochtes Genre hebt wenig: das Spiegelbild des Genre-Gegengewichts
+    # (ADR 37, #91).
+    from .preferences import book_codes, liked_genre
+
+    if profile.liked_genres and liked_genre(profile, book_codes((), portrait.genre_code)):
+        steps.append(Step("liked_genre", (1 - share) * weights.genre_bonus))
+        share = 1 - (1 - share) * (1 - weights.genre_bonus)
     if pattern < 0:
         after = share * (1 - weights.pattern_against * -pattern)
         steps.append(Step("pattern_against", after - share))

@@ -2268,6 +2268,9 @@ class Store:
                 for c in profile.counterweights
             ],
             "liked": [{"family": g.family, "boosted": g.boosted} for g in profile.liked],
+            "liked_genres": list(profile.liked_genres),
+            "disliked_genres": list(profile.disliked_genres),
+            "disliked_authors": list(profile.disliked_authors),
         }
         # Lesen und Schreiben sind zwei Schritte; zwei gleichzeitige Anfragen
         # (ein Doppelklick auf "Übernehmen") greifen nach derselben Nummer. Die
@@ -2324,6 +2327,9 @@ class Store:
                     Liked(g["family"], bool(g.get("boosted"))) for g in body.get("liked") or ()
                 ),
                 version=row.version,
+                liked_genres=tuple(body.get("liked_genres") or ()),
+                disliked_genres=tuple(body.get("disliked_genres") or ()),
+                disliked_authors=tuple(body.get("disliked_authors") or ()),
             )
 
     # --- Erstaufnahme (#47) --------------------------------------------------

@@ -329,6 +329,40 @@ def _without_ai_authors(store: Store, deltas) -> list:
     return kept
 
 
+def _without_disliked(store: Store, profile_slug: str, deltas) -> list:
+    """Was die Leserin nicht mag, fällt weg — Genre oder Autor:in (#91).
+
+    Zweimal im Lauf: vor dem Tor nach Autor:in und den BISAC-Codes des
+    Verlags, damit ein solcher Fund keinen Steckbrief kostet; danach noch einmal
+    mit dem Code, den der frische Steckbrief trägt. Ein Watchlist-Titel bleibt.
+    """
+    from .portrait import VocabularyError, fingerprint, load_vocabulary
+    from .preferences import book_codes, excluded_by
+    from .ratings import subject_of
+
+    profile = store.reading_profile(profile_slug)
+    if profile is None or not (profile.disliked_genres or profile.disliked_authors):
+        return list(deltas)
+    bisac = store.bisac_codes(d.current.isbn for d in deltas if d.current.isbn)
+    try:
+        stamp = fingerprint(load_vocabulary())
+    except VocabularyError:
+        stamp = None
+    portraits = (
+        store.portraits_for([subject_of(d.current) for d in deltas], stamp) if stamp else {}
+    )
+    kept = []
+    for d in deltas:
+        portrait = portraits.get(subject_of(d.current))
+        codes = book_codes(bisac.get(d.current.isbn or "", ()),
+                           portrait.genre_code if portrait else None)
+        if not excluded_by(profile, d.current, codes):
+            kept.append(d)
+    if gone := len(deltas) - len(kept):
+        print(f"Profil: {gone} Funde nicht gemocht (Genre oder Autor:in) uebergangen")
+    return kept
+
+
 def _without_mid_series(store: Store, profile_slug: str, deltas) -> list:
     """Ein Folgeband einer Reihe, die die Leserin nicht verfolgt, fällt weg.
 
@@ -1066,11 +1100,14 @@ def _run(
     deltas = _without_foreign_languages(store, deltas, settings)
     deltas = _without_ai_authors(store, deltas)
     deltas = _without_mid_series(store, settings.slug, deltas)
+    deltas = _without_disliked(store, settings.slug, deltas)
 
     # Das Tor sitzt hinter dem Snapshot: ein Ausfall kostet ein Urteil, nie
     # Geschichte. Und hinter der Preisregel: ein Buch zu bewerten, das ohnehin
     # niemand zu sehen bekommt, waere Verschwendung (ADR 19).
     deltas, gate_report = _apply_gate(store, deltas, settings, started_at, sources)
+    # Noch einmal mit dem Code der frischen Steckbriefe (#91).
+    deltas = _without_disliked(store, settings.slug, deltas)
 
     # Erst hinter dem Tor, denn erst dann steht fest, was im Stapel bleibt.
     # Bis hierher wurden Bilder fuer Funde nur beim Beurteilen des Rueckstands

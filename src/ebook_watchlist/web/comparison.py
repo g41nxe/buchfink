@@ -38,6 +38,7 @@ STEP_LABELS = {
     "baseline": "Grundwert",
     "pattern_baseline": "Grundwert der Muster",
     "facet": "Kombination getroffen",
+    "liked_genre": "Genre, das du magst",
     "pattern_against": "Muster dagegen",
     "genre": "Gegengewicht im Genre",
     "floor": "Untergrenze",

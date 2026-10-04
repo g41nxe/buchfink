@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from .. import paths, series_watch
+from .. import paths, preferences, series_watch
 from ..config import ConfigError, load_settings
 from ..facets import GENERAL
 from ..genres import genre_label
@@ -1312,11 +1312,10 @@ def create_app() -> FastAPI:
 
     @app.get("/profile", response_class=HTMLResponse)
     def profile_overview(request: Request) -> HTMLResponse:
-        """Nur lesend, und das ist die Entscheidung.
-
-        Der Massstab hat ein eigenes Aenderungsverfahren mit asymmetrischer
-        Beweislast (ADR 17). Ein Formular hier wuerde es umgehen — deshalb gibt
-        es zu dieser Seite keine schreibende Route.
+        """Fast nur lesend: Merkmale und Gegengewichte ändern sich am Buch, nie
+        hier (ADR 33). Die eine Ausnahme sind Genres und Autor:innen (ADR 37):
+        ein Genre ist eine Kategorie und eine Autor:in ein Name, keine
+        Eigenschaft eines Buchs — sie lassen sich hier mögen und nicht mögen.
         """
         try:
             settings = load_settings()
@@ -1334,8 +1333,20 @@ def create_app() -> FastAPI:
                 "settings": settings,
                 "asset_version": asset_version(),
                 "view": profile_page.build(_store_for(paths.db_path()), settings),
+                "preferences": preferences.view(_store_for(paths.db_path()), settings.slug),
             },
         )
+
+    @app.post("/profile/preference")
+    def profile_preference(
+        kind: str = Form(...), value: str = Form(""), action: str = Form("add")
+    ) -> RedirectResponse:
+        """Ein Genre oder eine Autor:in mögen, nicht mögen, zurücknehmen (#91)."""
+        preferences.change(
+            _store_for(paths.db_path()), load_settings().slug, kind, value,
+            add=action != "remove", now=datetime.now(),
+        )
+        return RedirectResponse("/profile#preferences", status_code=303)
 
     # --- Erstaufnahme (#47) --------------------------------------------------
 
@@ -1521,22 +1532,36 @@ def create_app() -> FastAPI:
     @app.get("/intake/profile", response_class=HTMLResponse)
     def intake_profile(request: Request) -> Response:
         """Bildschirm 5: dein Profil — bestätigen."""
-        choice = intake.choosing(_store_for(paths.db_path()), load_settings())
+        store, settings = _store_for(paths.db_path()), load_settings()
+        choice = intake.choosing(store, settings)
         return TEMPLATES.TemplateResponse(
             request, "intake_profile.html",
-            {"choice": choice, "step": 5, "asset_version": asset_version()},
+            {"choice": choice, "step": 5, "asset_version": asset_version(),
+             # Genres und Autor:innen der Bücher, zum Anhaken (#91).
+             "suggest": intake.book_suggestions(store, settings),
+             "preferences": preferences.view(store, settings.slug)},
         )
 
     @app.post("/intake/profile")
-    def intake_adopt() -> RedirectResponse:
+    async def intake_adopt(request: Request) -> RedirectResponse:
         """Bestätigt wird die erste Fassung; nichts gemocht heißt neu anfangen.
 
         Facetten wählt niemand aus: das Werkzeug bildet sie aus dem, was
         angetippt ist (24.09.2026). Auch Gegengewichte werden hier nicht mehr
         gewählt — was auf Schritt 4 angetippt ist, wird übernommen.
         """
-        adopted = intake.adopt(
+        # Asynchron nur, um die angehakten Listen zu lesen (wie beim
+        # Nachschärfen); die Arbeit läuft im Threadpool.
+        form_data = await request.form()
+
+        def listed(name: str) -> list[str]:
+            return [str(v) for v in form_data.getlist(name)]
+
+        adopted = await run_in_threadpool(
+            intake.adopt,
             _store_for(paths.db_path()), load_settings(), now=datetime.now(),
+            liked_genres=listed("liked_genre"), disliked_genres=listed("disliked_genre"),
+            liked_authors=listed("liked_author"), disliked_authors=listed("disliked_author"),
         )
         return RedirectResponse("/profile" if adopted else "/intake", status_code=303)
 

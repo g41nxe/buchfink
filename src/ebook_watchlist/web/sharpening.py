@@ -40,7 +40,6 @@ from ..facets import (
     Counterweight,
     Facet,
     Liked,
-    ReadingProfile,
     ScopeError,
     derive_facets,
     family_description,
@@ -344,7 +343,7 @@ def set_liked(
     updated_liked = tuple(Liked(f, b) for f, b in boost.items())
     facets = _facets_from(store, settings, vocabulary, updated_liked)
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(facets, profile.counterweights, updated_liked),
+        settings.slug, replace(profile, facets=facets, liked=updated_liked),
         cause=f"Nachschärfen: {shelf.title}", now=now,
     )
 
@@ -366,7 +365,7 @@ def set_boosted(
     boost[family_id] = on
     updated_liked = tuple(Liked(f, b) for f, b in boost.items())
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profile.facets, profile.counterweights, updated_liked),
+        settings.slug, replace(profile, liked=updated_liked),
         cause=f"Nachschärfen: {shelf.title}", now=now,
     )
 
@@ -396,7 +395,7 @@ def remove_counterweight(
     if not changed:
         return None
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profile.facets, tuple(kept), profile.liked),
+        settings.slug, replace(profile, counterweights=tuple(kept)),
         cause=f"Nachschärfen: {shelf.title}", now=now,
     )
 
@@ -433,6 +432,6 @@ def add_counterweights(
     if not changed:
         return None
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(profile.facets, counterweights, profile.liked),
+        settings.slug, replace(profile, counterweights=counterweights),
         cause=f"Nachschärfen: {shelf.title}", now=now,
     )

@@ -46,6 +46,7 @@ from ..facets import (
     strength,
     strength_level,
 )
+from ..genres import load_genres
 from ..portrait import (
     CLEAR,
     DEFINING,
@@ -57,7 +58,7 @@ from ..portrait import (
     load_vocabulary,
 )
 from ..portrayer import build_portrayer
-from ..relations import RelationKind
+from ..relations import InterestKey, RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait
 from .book import portrait_subject
@@ -738,7 +739,16 @@ def set_scope(store: Store, settings: Settings, family_id: str, scope: str) -> N
     store.set_intake_choice(settings.slug, LOST, family_id, active=True, scope=scope)
 
 
-def adopt(store: Store, settings: Settings, *, now: datetime) -> int | None:
+def adopt(
+    store: Store,
+    settings: Settings,
+    *,
+    now: datetime,
+    liked_genres: Iterable[str] = (),
+    disliked_genres: Iterable[str] = (),
+    liked_authors: Iterable[str] = (),
+    disliked_authors: Iterable[str] = (),
+) -> int | None:
     """Bestätigen: was angetippt und verstärkt ist, die erkannten Facetten und
     die Gegengewichte von Schritt 4 werden die erste Fassung des Leseprofils.
 
@@ -747,6 +757,7 @@ def adopt(store: Store, settings: Settings, *, now: datetime) -> int | None:
     3 und 4, Schritt 5 bestätigt nur.
     """
     state = choosing(store, settings)
+    previous = store.reading_profile(settings.slug)
     facets = tuple(Facet(f.families, f.books) for f in state.draft.facets)
     counterweights = tuple(
         Counterweight(w.families, w.genre, w.books) for w in state.draft.weights
@@ -759,7 +770,57 @@ def adopt(store: Store, settings: Settings, *, now: datetime) -> int | None:
             reader_reasons.mark_only_here(
                 store, settings.slug, book_id, str(RelationKind.DISLIKED), (family,), now=now
             )
+    # Genres und Autor:innen, die sie auf Bildschirm 5 angehakt hat (#91);
+    # was schon im Profil stand, bleibt.
+    genres = load_genres()
+    for author in liked_authors:
+        if author.strip():
+            store.put_interest(settings.slug, str(InterestKey.AUTHOR), " ".join(author.split()),
+                               now=now, tier="extended")
+
+    def merged(old: tuple[str, ...], new: Iterable[str], *, codes: bool) -> tuple[str, ...]:
+        fresh = [" ".join(v.split()) for v in new if v.strip()]
+        return tuple(dict.fromkeys(
+            [*old, *(v for v in fresh if not codes or v in genres)]))
+
     return store.put_reading_profile(
-        settings.slug, ReadingProfile(facets, counterweights, state.liked),
+        settings.slug,
+        ReadingProfile(
+            facets, counterweights, state.liked,
+            liked_genres=merged(previous.liked_genres if previous else (), liked_genres,
+                                codes=True),
+            disliked_genres=merged(previous.disliked_genres if previous else (),
+                                   disliked_genres, codes=True),
+            disliked_authors=merged(previous.disliked_authors if previous else (),
+                                    disliked_authors, codes=False),
+        ),
         cause="Erstaufnahme", now=now
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class BookSuggestions:
+    """Was Bildschirm 5 aus den Büchern vorschlägt — nichts davon angehakt (#91)."""
+
+    liked_genres: tuple[tuple[str, str], ...]
+    disliked_genres: tuple[tuple[str, str], ...]
+    liked_authors: tuple[str, ...]
+    disliked_authors: tuple[str, ...]
+
+
+def book_suggestions(store: Store, settings: Settings) -> BookSuggestions:
+    """Die Genres und Autor:innen der geliebten und der enttäuschenden Bücher."""
+    from ..preferences import from_books
+
+    vocabulary = load_vocabulary()
+    genres = load_genres()
+    loved = from_books(store, [b.book_id for b in _shelf_books(
+        store, settings, vocabulary, str(RelationKind.LIKED))])
+    lost = from_books(store, [b.book_id for b in _shelf_books(
+        store, settings, vocabulary, str(RelationKind.DISLIKED))])
+    return BookSuggestions(
+        liked_genres=tuple((c, genres.name(c) or c) for c in loved[0]),
+        disliked_genres=tuple((c, genres.name(c) or c) for c in lost[0] if c not in loved[0]),
+        liked_authors=loved[1],
+        disliked_authors=tuple(a for a in lost[1] if a not in loved[1]),
     )

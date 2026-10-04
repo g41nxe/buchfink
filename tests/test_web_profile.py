@@ -107,15 +107,16 @@ def test_the_gate_threshold_is_stated(client: TestClient) -> None:
     assert "Vorschläge" in body and "Sternen" in body
 
 
-def test_no_write_route_exists_for_the_profile(client: TestClient) -> None:
-    """Die Entscheidung steht im Ticket, also gehört sie geprüft."""
+def test_the_profile_writes_only_genres_and_authors(client: TestClient) -> None:
+    """Die Entscheidung steht im Ticket, also gehört sie geprüft. Seit ADR 37
+    gibt es genau eine schreibende Route: Genres und Autor:innen (#91)."""
     app = create_app()
     writable = [
         route.path
         for route in app.routes
         if getattr(route, "methods", set()) - {"GET", "HEAD"}
     ]
-    assert not any(path.startswith("/profile") for path in writable)
+    assert [p for p in writable if p.startswith("/profile")] == ["/profile/preference"]
 
 
 # --- die Bücher hinter den Zahlen (Ticket 49) -------------------------------
@@ -162,7 +163,10 @@ def test_the_shelves_stay_read_only(client: TestClient, db: Store) -> None:
 
     body = client.get("/profile").text
 
-    assert "<form" not in body
+    # Formulare gibt es nur für Genres und Autor:innen (ADR 37, #91).
+    before, _, after = body.partition('id="preferences"')
+    assert "<form" not in before
+    assert 'action="/profile/preference"' in after
 
 
 def test_a_relation_to_a_vanished_book_is_skipped(client: TestClient, db: Store) -> None:

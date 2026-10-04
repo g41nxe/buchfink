@@ -574,7 +574,8 @@ def test_the_profile_screen_confirms_and_summarises_without_choices(client, book
 
     body = client.get("/intake/profile").text
 
-    assert 'type="checkbox"' not in body
+    # Kästchen nur für Genres und Autor:innen (#91), keines für Merkmale.
+    assert 'name="family"' not in body
     assert "Zählt gegen ein Buch" in body and "gemächlich" in body
     assert "hart" in body
     assert "Übernehmen" in body
@@ -629,3 +630,28 @@ def test_a_counterweight_takes_the_code_of_its_subgenre(
     genre: str, subgenre: str | None, expected: str
 ) -> None:
     assert intake.counterweight_genre(genre, subgenre) == expected
+
+
+def test_screen_5_offers_the_genres_and_authors_of_her_books(client, books) -> None:
+    """Abgeleitet aus den Büchern, bestätigt von ihr — nichts ist vorausgewählt (#91)."""
+    body = client.get("/intake/profile").text
+
+    assert "Cyberpunk" in body  # Otherland, geliebt
+    assert "High Fantasy" in body  # Herr der Ringe, enttäuschend
+    assert 'name="liked_genre" value="FIC028100"' in body
+    assert 'name="disliked_genre" value="FIC009020"' in body
+    assert "checked" not in body.split('name="liked_genre"', 1)[1].split(">", 1)[0]
+
+
+def test_adopting_takes_the_ticked_genres_and_authors(client, db, books) -> None:
+    tap(client, "brooding")
+    client.post("/intake/profile", data={
+        "liked_genre": ["FIC028100"], "disliked_genre": ["FIC009020"],
+        "liked_author": ["Tad Williams"], "disliked_author": ["Rosamunde Pilcher"],
+    })
+
+    profile = db.reading_profile(load_settings().slug)
+    assert profile.liked_genres == ("FIC028100",)
+    assert profile.disliked_genres == ("FIC009020",)
+    assert profile.disliked_authors == ("Rosamunde Pilcher",)
+    assert "Tad Williams" in {r.value for r in db.interests(load_settings().slug, key="author")}

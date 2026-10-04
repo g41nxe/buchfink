@@ -32,9 +32,47 @@
     {% with confirmation=true %}{% include "_intake_draft.html" %}{% endwith %}
   </div>
 
-  <p class="mt-6 max-w-xl text-sm text-soft">
-    Autor:innen und Genres deiner Bücher kommen später dazu.
-  </p>
+  {# Genres und Autor:innen deiner Bücher (ADR 37, #91): vorgeschlagen,
+     nichts angehakt — gilt nur, was du anhakst. Weitere lassen sich dazunehmen. #}
+  {% from "_preferences.html" import genre_select, author_input %}
+  <section class="mt-8 max-w-2xl">
+    <h2 class="font-serif text-lg font-semibold">Genres und Autor:innen</h2>
+    <p class="mb-4 text-sm text-soft">Aus deinen Büchern vorgeschlagen. Hake an, was gelten
+      soll — ein gemochtes Genre hebt das Urteil ein wenig, was du nicht magst, wird nicht
+      vorgeschlagen, und Autor:innen, denen du folgst, werden wöchentlich gesucht.</p>
+    <div class="grid gap-5 sm:grid-cols-2">
+      <fieldset>
+        <legend class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">Magst du</legend>
+        {% for code, name in suggest.liked_genres %}
+        <label class="flex items-center gap-2 py-1 text-sm">
+          <input type="checkbox" name="liked_genre" value="{{ code }}"> {{ name }}</label>
+        {% endfor %}
+        {% for author in suggest.liked_authors %}
+        <label class="flex items-center gap-2 py-1 text-sm">
+          <input type="checkbox" name="liked_author" value="{{ author }}"> folgen: {{ author }}</label>
+        {% endfor %}
+        <div class="mt-2 flex flex-col gap-2">
+          {{ genre_select("liked_genre", preferences.options, "weiteres Genre …") }}
+          {{ author_input("liked_author", "weitere Autor:in") }}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">Magst du nicht</legend>
+        {% for code, name in suggest.disliked_genres %}
+        <label class="flex items-center gap-2 py-1 text-sm">
+          <input type="checkbox" name="disliked_genre" value="{{ code }}"> {{ name }}</label>
+        {% endfor %}
+        {% for author in suggest.disliked_authors %}
+        <label class="flex items-center gap-2 py-1 text-sm">
+          <input type="checkbox" name="disliked_author" value="{{ author }}"> {{ author }}</label>
+        {% endfor %}
+        <div class="mt-2 flex flex-col gap-2">
+          {{ genre_select("disliked_genre", preferences.options, "weiteres Genre …") }}
+          {{ author_input("disliked_author", "weitere Autor:in") }}
+        </div>
+      </fieldset>
+    </div>
+  </section>
 
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">
     <a href="{{ '/intake/lost' if choice.lost else '/intake/common' }}"
