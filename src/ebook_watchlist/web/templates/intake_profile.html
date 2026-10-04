@@ -37,48 +37,64 @@
 
      Zwei Blöcke, nicht eine gemischte Liste: eine gemochte Autor:in wirkt
      anders als ein gemochtes Genre (sie wird gesucht, das Genre hebt nur das
-     Urteil), und die Überschrift sagt das — ohne Präfix an jeder Zeile. #}
-  {% from "_preferences.html" import genre_select, author_input %}
-  {% macro checklist(name, items) %}
-  {% for value, label in items %}
-  <label class="flex items-center gap-2 py-1 text-sm">
-    <input type="checkbox" name="{{ name }}" value="{{ value }}"> {{ label }}</label>
-  {% endfor %}
+     Urteil), und die Überschrift sagt das — ohne Präfix an jeder Zeile.
+
+     Im Bild der übrigen Erstaufnahme: eine Karte wie „Dein Profil" darüber,
+     Pillen zum Antippen wie beim Nachschärfen — ♥ grün für gemocht, ⊘ rot für
+     nicht gemocht, das Personenzeichen bei Autor:innen —, und das Feld für ein
+     weiteres Genre oder eine weitere Autor:in so klein wie eine Pille. #}
+  {% macro pill(name, value, label, icon, gone=false) %}
+  <label class="tap inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border
+                border-rule px-3 text-xs text-soft transition
+                {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
+                   if gone else
+                   'has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:text-accent hover:border-accent hover:text-accent' }}">
+    <input type="checkbox" name="{{ name }}" value="{{ value }}" class="sr-only">
+    <svg class="i"><use href="#{{ icon }}"/></svg>{{ label }}</label>
   {% endmacro %}
-  {% macro column(title, hint) %}
-  <fieldset>
-    <legend class="mb-0.5 text-xs font-medium tracking-wider text-soft uppercase">{{ title }}</legend>
-    <p class="mb-2 text-xs text-soft">{{ hint }}</p>
-    {{ caller() }}
+  {% macro row(title, hint) %}
+  <fieldset class="mb-3 last:mb-0">
+    <legend class="mb-1.5 text-xs text-soft"><span class="text-ink">{{ title }}</span>
+      · {{ hint }}</legend>
+    <div class="flex flex-wrap items-center gap-1.5">{{ caller() }}</div>
   </fieldset>
   {% endmacro %}
-  <section class="mt-8 max-w-2xl">
-    <h2 class="font-serif text-lg font-semibold">Genres und Autor:innen</h2>
-    <p class="mb-5 text-sm text-soft">Aus deinen Büchern vorgeschlagen. Hake an, was gelten soll.</p>
+  {% macro more_genres(name) %}
+  <select name="{{ name }}" aria-label="weiteres Genre" class="h-7 rounded-full border border-dashed border-rule bg-transparent px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink">
+    <option value="">+ Genre …</option>
+    {% for code, gname, sub in preferences.options %}
+    <option value="{{ code }}">{% if sub %}&emsp;{% endif %}{{ gname }}</option>
+    {% endfor %}
+  </select>
+  {% endmacro %}
+  {% macro more_authors(name) %}
+  <input type="text" name="{{ name }}" placeholder="+ Autor:in" aria-label="weitere Autor:in"
+         autocomplete="off" class="h-7 rounded-full border border-dashed border-rule bg-transparent px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink w-36">
+  {% endmacro %}
 
-    <h3 class="mb-3 text-sm font-semibold">Genres</h3>
-    <div class="grid gap-5 sm:grid-cols-2">
-      {% call column("Magst du", "hebt das Urteil ein wenig") %}
-        {{ checklist("liked_genre", suggest.liked_genres) }}
-        <div class="mt-2 flex">{{ genre_select("liked_genre", preferences.options, "weiteres Genre …") }}</div>
-      {% endcall %}
-      {% call column("Magst du nicht", "wird nicht vorgeschlagen") %}
-        {{ checklist("disliked_genre", suggest.disliked_genres) }}
-        <div class="mt-2 flex">{{ genre_select("disliked_genre", preferences.options, "weiteres Genre …") }}</div>
-      {% endcall %}
-    </div>
+  <section class="mt-6 max-w-2xl rounded-lg border border-rule bg-card px-4 py-4">
+    <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Genres und Autor:innen</p>
+    <p class="mb-4 text-xs text-soft">Aus deinen Büchern vorgeschlagen — tipp an, was gelten soll.</p>
 
-    <h3 class="mt-7 mb-3 text-sm font-semibold">Autor:innen</h3>
-    <div class="grid gap-5 sm:grid-cols-2">
-      {% call column("Folgen", "neue Bücher werden wöchentlich gesucht") %}
-        {{ checklist("liked_author", suggest.liked_authors) }}
-        <div class="mt-2 flex">{{ author_input("liked_author", "weitere Autor:in") }}</div>
-      {% endcall %}
-      {% call column("Nicht vorschlagen", "ihre Bücher kommen nicht in den Stapel") %}
-        {{ checklist("disliked_author", suggest.disliked_authors) }}
-        <div class="mt-2 flex">{{ author_input("disliked_author", "weitere Autor:in") }}</div>
-      {% endcall %}
-    </div>
+    <p class="mb-2 text-xs font-medium text-ink">Genres</p>
+    {% call row("Magst du", "hebt das Urteil ein wenig") %}
+      {% for code, name in suggest.liked_genres %}{{ pill("liked_genre", code, name, "ic-heart") }}{% endfor %}
+      {{ more_genres("liked_genre") }}
+    {% endcall %}
+    {% call row("Magst du nicht", "wird nicht vorgeschlagen") %}
+      {% for code, name in suggest.disliked_genres %}{{ pill("disliked_genre", code, name, "ic-ban", gone=true) }}{% endfor %}
+      {{ more_genres("disliked_genre") }}
+    {% endcall %}
+
+    <p class="mt-4 mb-2 border-t border-rule pt-3 text-xs font-medium text-ink">Autor:innen</p>
+    {% call row("Folgen", "neue Bücher werden wöchentlich gesucht") %}
+      {% for value, name in suggest.liked_authors %}{{ pill("liked_author", value, name, "ic-user") }}{% endfor %}
+      {{ more_authors("liked_author") }}
+    {% endcall %}
+    {% call row("Nicht vorschlagen", "ihre Bücher kommen nicht in den Stapel") %}
+      {% for value, name in suggest.disliked_authors %}{{ pill("disliked_author", value, name, "ic-ban", gone=true) }}{% endfor %}
+      {{ more_authors("disliked_author") }}
+    {% endcall %}
   </section>
 
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">

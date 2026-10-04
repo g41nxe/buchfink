@@ -25,6 +25,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from .. import reader_reasons
+from ..cleaning import author_key
 from ..config import Settings
 from ..facets import (
     GENERAL,
@@ -819,9 +820,15 @@ def book_suggestions(store: Store, settings: Settings) -> BookSuggestions:
         store, settings, vocabulary, str(RelationKind.LIKED))])
     lost = from_books(store, [b.book_id for b in _shelf_books(
         store, settings, vocabulary, str(RelationKind.DISLIKED))])
+    # Wem sie schon folgt, wird nicht noch einmal vorgeschlagen — ein Haken
+    # hätte eine tägliche Autor:in auf wöchentlich gesetzt (Review 04.10.2026).
+    following = {
+        author_key(row.value)
+        for row in store.interests(settings.slug, key=str(InterestKey.AUTHOR))
+    }
     return BookSuggestions(
         liked_genres=tuple((c, genres.name(c) or c) for c in loved[0]),
         disliked_genres=tuple((c, genres.name(c) or c) for c in lost[0] if c not in loved[0]),
-        liked_authors=tuple((a, a) for a in loved[1]),
+        liked_authors=tuple((a, a) for a in loved[1] if author_key(a) not in following),
         disliked_authors=tuple((a, a) for a in lost[1] if a not in loved[1]),
     )

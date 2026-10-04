@@ -171,6 +171,26 @@ def from_books(store: Store, book_ids: Iterable[int]) -> tuple[tuple[str, ...], 
                                portrait.genre_code if portrait else None):
             if code not in codes:
                 codes.append(code)
-        if book.author and book.author not in authors:
-            authors.append(book.author)
+        name = display_author(book.author)
+        if name and name not in authors:
+            authors.append(name)
     return tuple(codes), tuple(authors)
+
+
+def display_author(field: str | None) -> str | None:
+    """Die erste Person eines Autorfelds, „Vorname Nachname" (Review 04.10.2026).
+
+    Das Feld trägt oft Übersetzer:innen mit („Michael Crichton, Norbert
+    Wölfl") oder die Sortierform („Crouch, Blake"). Vorgeschlagen roh, entstand
+    daraus eine zweite Interessen-Zeile neben „Blake Crouch".
+    """
+    from .matching.normalize import split_authors
+
+    names = split_authors(field or "")
+    if not names:
+        return None
+    first = names[0]
+    if first.count(",") == 1:
+        surname, given = (part.strip() for part in first.split(","))
+        first = f"{given} {surname}".strip()
+    return " ".join(first.split()) or None
