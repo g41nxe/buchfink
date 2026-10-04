@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from .http import FetchError, HttpClient, RateLimited
+from .http import HttpClient, RateLimited
 
 if TYPE_CHECKING:
     from .store import Store
@@ -196,24 +196,23 @@ class Dnb:
 
         ``None`` ist eine **Antwort**, kein Fehler: neun von dreißig Büchern
         kennt sie nicht, und der Aufrufer hält das fest, damit nicht jeder Lauf
-        dieselbe Frage stellt.
+        dieselbe Frage stellt. Eine Netzstörung ist deshalb **keine** Antwort und
+        geht als ``FetchError`` an den Aufrufer, der die eine Auskunft
+        überspringt: als „kennt sie nicht" gespeichert, machte sie einen
+        gefundenen Datensatz für immer zu einem nicht gefundenen (Review
+        04.10.2026).
         """
         self.asked += 1
-        try:
-            xml = self.client.get(
-                self.base,
-                params={
-                    "version": "1.1",
-                    "operation": "searchRetrieve",
-                    "query": f"WOE={isbn}",
-                    "recordSchema": "MARC21-xml",
-                    "maximumRecords": "1",
-                },
-            )
-        except FetchError:
-            # Eine unerreichbare Bibliothek ist kein Grund, einen Lauf zu
-            # beenden — dasselbe Zugestaendnis wie bei einem Titelbild.
-            return None
+        xml = self.client.get(
+            self.base,
+            params={
+                "version": "1.1",
+                "operation": "searchRetrieve",
+                "query": f"WOE={isbn}",
+                "recordSchema": "MARC21-xml",
+                "maximumRecords": "1",
+            },
+        )
         record = parse(xml)
         return None if record.is_empty else record
 

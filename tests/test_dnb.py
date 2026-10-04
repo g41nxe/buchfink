@@ -136,10 +136,41 @@ def test_an_unknown_book_answers_none() -> None:
     assert Dnb(client=StubClient(answer("nothing.xml"))).about("9780000000002") is None
 
 
-def test_an_unreachable_library_does_not_end_a_run() -> None:
-    """Dieselbe Zurückhaltung wie bei einem Titelbild: was hier schiefgeht,
-    darf höchstens diese eine Auskunft kosten."""
-    assert Dnb(client=StubClient(FetchError("weg"))).about("9783644025028") is None
+def test_an_unreachable_library_is_no_answer() -> None:
+    """Eine Netzstörung ist kein „kennt sie nicht": als Antwort gespeichert,
+    machte sie einen gefundenen Datensatz für immer zu einem nicht gefundenen
+    (Review 04.10.2026). Den Lauf beendet sie trotzdem nicht — die Aufrufer
+    überspringen die eine Auskunft."""
+    with pytest.raises(FetchError):
+        Dnb(client=StubClient(FetchError("weg"))).about("9783644025028")
+
+
+def test_a_network_failure_keeps_what_the_dnb_said_before(data_dir) -> None:
+    from datetime import datetime
+
+    from ebook_watchlist import paths
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.run import _ask_the_library
+    from ebook_watchlist.store import Store
+
+    store, settings = Store(paths.db_path()), load_settings()
+    now = datetime(2026, 10, 4, 12, 0)
+    store.append(store.start_run(settings.slug, "cli", now), settings.slug, [Observation(
+        source="beam", source_item_id="1", title="Dark Matter", isbn="9783641171421",
+        match_reason=MatchReason.GENRE_CATEGORY, observed_at=now)], now)
+    store.save_dnb("9783641171421", Record(title="Der Zeitenläufer",
+                                           original_title="Dark Matter"), now)
+    # Wie ein Satz aus der Zeit vor der jüngsten Fassung des Auslesens.
+    with store.session() as session:
+        from ebook_watchlist.store import DnbRecordRow
+
+        session.get(DnbRecordRow, "9783641171421").reading = 1
+        session.commit()
+
+    _ask_the_library(store, StubClient(FetchError("weg")), settings, spent=0)
+
+    assert store.dnb_facts(["9783641171421"])["9783641171421"].original_title == "Dark Matter"
 
 
 def test_every_question_is_counted() -> None:
