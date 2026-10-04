@@ -130,7 +130,9 @@ def test_the_run_sweeps_each_watched_series_where_its_address_is_known(store: St
 
     assert added == 1
     assert "Iron Gold" in watching(store)
-    assert store.series_known()["9783000000104"] == ("red rising", "4")
+    keys = {row.id: row.key for row in store.series_rows()}
+    sid, number = store.series_known()["9783000000104"]
+    assert (keys[sid], number) == ("red rising", "4")
     # Die Onleihe kennt die Reihe nicht und bekommt keine Adresse; dass sie
     # dann nicht fragt, entscheidet sie selbst (test_series_sweep).
     assert asked == [("Red Rising Saga", "532674"), ("Red Rising Saga", None)]

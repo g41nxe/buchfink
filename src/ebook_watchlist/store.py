@@ -1274,12 +1274,19 @@ class Store:
                 known[isbn] = (known[isbn][0], volume)
         return known
 
-    def series_known(self) -> dict[str, tuple[str, str | None]]:
-        """ISBN -> (Schlüssel der Reihe, Band), für `series.MidSeries`."""
-        entries = self._series_entries()
+    def series_known(self) -> dict[str, tuple[int, str | None]]:
+        """ISBN -> (Reihe, Band), für `series.MidSeries`."""
+        return self._series_entries()
+
+    def series_names(self) -> dict[tuple[str, str], int]:
+        """(Schlüssel, Autor:in) -> Reihe — der Name gilt je Autor:in (ADR 35)."""
         with self.session() as session:
-            keys = dict(session.execute(select(SeriesRow.id, SeriesRow.key)).all())
-        return {isbn: (keys[sid], volume) for isbn, (sid, volume) in entries.items()}
+            return {
+                (key, writer): series_id
+                for key, writer, series_id in session.execute(
+                    select(SeriesNameRow.key, SeriesNameRow.author_key, SeriesNameRow.series_id)
+                )
+            }
 
     def series_of(self, isbns: Iterable[str]) -> dict[str, SeriesOf]:
         """ISBN -> Reihe und Band, wie die Oberfläche sie zeigt (#85)."""
@@ -1371,25 +1378,25 @@ class Store:
         with self.session() as session:
             return list(session.scalars(select(SeriesRow)))
 
-    def series_keys_for(self, isbns: Iterable[str], names: Iterable[str]) -> frozenset[str]:
-        """Die Schlüssel der Reihen zu diesen ISBNs und Namen.
+    def series_ids_for(
+        self, books: Iterable[tuple[str | None, str | None, str | None]]
+    ) -> frozenset[int]:
+        """Die Reihen dieser Bücher, je (ISBN, Reihenname, Autor:in).
 
-        Für „eine Reihe, die sie schon liest": ein Name gilt über jeden
-        Schlüssel, unter dem er geführt wird, gleich welche Autor:in.
+        Über die ISBN, sonst über den Namen *dieser* Autor:in — „Die Chroniken"
+        zweier Leute bleiben zwei Reihen (ADR 35, Review 04.10.2026).
         """
-        wanted_isbns = {isbn for isbn in isbns if isbn}
-        wanted_keys = {series_key(name) for name in names if name}
+        books = list(books)
+        isbns = {isbn for isbn, _, _ in books if isbn}
+        named = {
+            (series_key(name), author_key(author or "")) for _, name, author in books if name
+        }
         with self.session() as session:
             ids = set(session.scalars(
-                select(SeriesEntryRow.series_id).where(SeriesEntryRow.isbn.in_(wanted_isbns))
+                select(SeriesEntryRow.series_id).where(SeriesEntryRow.isbn.in_(isbns))
             ))
-            ids |= set(session.scalars(
-                select(SeriesNameRow.series_id).where(SeriesNameRow.key.in_(wanted_keys))
-            ))
-            keys = set(session.scalars(select(SeriesRow.key).where(SeriesRow.id.in_(ids))))
-        return frozenset(keys | wanted_keys)
-
-    # --- Werke (ADR 36) ---------------------------------------------------------
+            names = self.series_names() if named else {}
+        return frozenset(ids | {names[n] for n in named if n in names})
 
     def work_siblings(self, isbns: Iterable[str]) -> dict[str, set[str]]:
         """ISBN -> alle ISBNs desselben Werks, sie selbst eingeschlossen."""
@@ -2733,7 +2740,9 @@ def _file_series(
     key = series_key(name)
     writer = author_key(author) if author else ""
     session.flush()
-    named = session.get(SeriesNameRow, (key, writer))
+    named = session.get(SeriesNameRow, (key, writer)) or _unknown_author_name(
+        session, key, writer
+    )
     elsewhere = session.scalars(
         select(SeriesEntryRow.series_id).where(
             SeriesEntryRow.isbn == isbn, SeriesEntryRow.origin != origin
@@ -2752,6 +2761,10 @@ def _file_series(
         if elsewhere is not None and elsewhere != series_id:
             series_id = _merge_series(session, keep=min(series_id, elsewhere),
                                       drop=max(series_id, elsewhere))
+        if named.author_key != writer and session.get(SeriesNameRow, (key, writer)) is None:
+            # Über eine unbekannte Autor:in gefunden: der Name gilt jetzt auch
+            # unter dieser, damit ihn ein Fund dieser Autor:in wiederfindet.
+            session.add(SeriesNameRow(key=key, author_key=writer, series_id=series_id))
     entry = session.get(SeriesEntryRow, (isbn, origin))
     if entry is None:
         session.add(SeriesEntryRow(isbn=isbn, origin=origin, series_id=series_id, volume=volume))
@@ -2760,6 +2773,33 @@ def _file_series(
         entry.volume = volume or entry.volume
     if ref and origin in ("overdrive", "onleihe"):
         setattr(session.get(SeriesRow, series_id), f"{origin}_ref", ref)
+
+
+def _unknown_author_name(session: Session, key: str, writer: str) -> SeriesNameRow | None:
+    """Eine unbekannte Autor:in trennt nichts (Review, 04.10.2026).
+
+    Eine DNB-Antwort ohne Autor:in legt „Ein Wayward-Pines-Thriller" unter
+    (Schlüssel, leer) ab; OverDrive nennt dieselbe Reihe mit „Blake Crouch".
+    Ohne Autor:in gilt die einzige Reihe dieses Schlüssels; mit Autor:in eine,
+    die bisher keine kannte — sie gehört danach dieser. Zwei *bekannte*
+    verschiedene bleiben zwei Reihen.
+    """
+    if writer:
+        anonymous = session.get(SeriesNameRow, (key, ""))
+        if anonymous is None:
+            return None
+        claimed = session.scalars(
+            select(SeriesNameRow.author_key).where(
+                SeriesNameRow.series_id == anonymous.series_id, SeriesNameRow.author_key != ""
+            )
+        ).first()
+        if claimed is not None:
+            return None
+        session.get(SeriesRow, anonymous.series_id).author_key = writer
+        return anonymous
+    rows = session.scalars(select(SeriesNameRow).where(SeriesNameRow.key == key)).all()
+    series = {row.series_id for row in rows}
+    return rows[0] if len(series) == 1 else None
 
 
 def _merge_series(session: Session, *, keep: int, drop: int) -> int:

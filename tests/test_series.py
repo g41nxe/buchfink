@@ -22,7 +22,7 @@ def find(title: str, *, subtitle: str | None = None, author: str = "Tad Williams
                        match_reason=MatchReason.GENRE_CATEGORY)
 
 
-NOBODY = MidSeries(known={}, authors=frozenset(), followed=frozenset())
+NOBODY = MidSeries(known={}, names={}, authors=frozenset(), followed=frozenset())
 
 
 @pytest.mark.parametrize(("name", "key"), [
@@ -64,11 +64,11 @@ def test_the_first_volume_and_a_standalone_are_not() -> None:
 
 def test_the_dnb_knows_the_volume_the_title_hides() -> None:
     """„Immerkalt — Thriller": dritter Band der Immermorde, sagt nur die DNB."""
-    series = MidSeries(known={"978": ("immermorde", "3")}, authors=frozenset(),
+    series = MidSeries(known={"978": (1, "3")}, names={}, authors=frozenset(),
                        followed=frozenset())
 
     assert series(find("Immerkalt", subtitle="Thriller", isbn="978"))
-    assert not MidSeries(known={"978": ("immermorde", "1")}, authors=frozenset(),
+    assert not MidSeries(known={"978": (1, "1")}, names={}, authors=frozenset(),
                          followed=frozenset())(find("Immerkalt", isbn="978"))
 
 
@@ -83,7 +83,7 @@ def test_the_library_names_the_volume_itself() -> None:
 def test_the_stored_volume_outranks_the_finds_own() -> None:
     """Was zur ISBN gespeichert ist, ist schon nach Herkunft entschieden —
     die DNB vor OverDrive (ADR 35)."""
-    series = MidSeries(known={"978": ("red rising", "1")}, authors=frozenset(),
+    series = MidSeries(known={"978": (1, "1")}, names={}, authors=frozenset(),
                        followed=frozenset())
 
     assert not series(find("Red Rising", isbn="978", series="Red Rising Saga",
@@ -92,26 +92,39 @@ def test_the_stored_volume_outranks_the_finds_own() -> None:
 
 def test_an_author_she_follows_may_continue_a_series() -> None:
     """„Reihen von Autor:innen, die ich ausdrücklich mag — dort kenne ich den Stand."""
-    series = MidSeries(known={}, authors=frozenset({"tad williams"}), followed=frozenset())
+    series = MidSeries(known={}, names={}, authors=frozenset({"tad williams"}),
+                       followed=frozenset())
 
     assert not series(find("Otherland. Band 2", author="Tad Williams"))
     assert series(find("Shadow. Band 2", author="Jemand Anderes"))
 
 
 def test_a_series_she_already_reads_may_continue() -> None:
-    series = MidSeries(known={"978": ("wayward pines", "2")},
-                       authors=frozenset(), followed=frozenset({"wayward pines"}))
+    series = MidSeries(known={"978": (3, "2")}, names={},
+                       authors=frozenset(), followed=frozenset({3}))
 
     assert not series(find("Wayward", author="Blake Crouch", isbn="978"))
 
 
 def test_a_followed_series_is_recognised_under_another_name() -> None:
     """Onleihe schreibt „Die Cormoran-Strike-Reihe", die eigenen Bücher stehen
-    unter „Cormoran Strike" — derselbe Schlüssel."""
-    series = MidSeries(known={}, authors=frozenset(), followed=frozenset({"cormoran strike"}))
+    unter „Cormoran Strike" — derselbe Schlüssel, und dieselbe Autorin."""
+    series = MidSeries(known={}, names={("cormoran strike", "robert galbraith"): 7},
+                       authors=frozenset(), followed=frozenset({7}))
 
-    assert not series(find("Böses Blut", series="Die Cormoran-Strike-Reihe",
-                           series_index="5"))
+    assert not series(find("Böses Blut", author="Robert Galbraith",
+                           series="Die Cormoran-Strike-Reihe", series_index="5"))
+
+
+def test_the_same_name_by_another_author_is_another_series() -> None:
+    """„Die Chroniken" von A liest sie; Band 4 von „Die Chroniken" einer
+    anderen Autorin ist trotzdem ein Folgeband (ADR 35, Review 04.10.2026)."""
+    series = MidSeries(known={}, names={("chroniken", "eine autorin"): 1,
+                                        ("chroniken", "ein anderer"): 2},
+                       authors=frozenset(), followed=frozenset({1}))
+
+    assert series(find("Der vierte Teil", author="Ein Anderer", series="Die Chroniken",
+                       series_index="4"))
 
 
 def test_a_watchlist_title_is_never_mid_series() -> None:

@@ -11,6 +11,12 @@ from ebook_watchlist.store import Store
 NOW = datetime(2026, 10, 3, 12, 0)
 
 
+def known(store: Store) -> dict[str, tuple[str, str | None]]:
+    """ISBN -> (Schlüssel, Band), lesbar: `series_known` liefert Ids."""
+    keys = {row.id: row.key for row in store.series_rows()}
+    return {isbn: (keys[sid], volume) for isbn, (sid, volume) in store.series_known().items()}
+
+
 def seen(store: Store, *observations: Observation) -> None:
     store.append(store.start_run("test", "cli", NOW), "test", list(observations), NOW)
 
@@ -26,7 +32,7 @@ def at_overdrive(isbn: str, series: str, volume: str | None = None, *,
 def test_a_sighting_files_its_volume_under_the_isbn(store: Store) -> None:
     seen(store, at_overdrive("9780000000003", "Red Rising Saga", "3", ref="532674"))
 
-    assert store.series_known() == {"9780000000003": ("red rising", "3")}
+    assert known(store) == {"9780000000003": ("red rising", "3")}
     assert store.series_refs("red rising") == {"overdrive": "532674"}
 
 
@@ -36,7 +42,7 @@ def test_the_dnb_outranks_the_library(store: Store) -> None:
     store.save_dnb("9780000000001", Record(title="Red Rising", series="Red Rising",
                                            series_index="1", author="Brown, Pierce"), NOW)
 
-    assert store.series_known()["9780000000001"] == ("red rising", "1")
+    assert known(store)["9780000000001"] == ("red rising", "1")
 
 
 def test_two_names_for_one_isbn_are_one_series(store: Store) -> None:
@@ -49,9 +55,9 @@ def test_two_names_for_one_isbn_are_one_series(store: Store) -> None:
          at_overdrive("9783000000011", "Robert Hunter", "1", author="Chris Carter"),
          at_overdrive("9783000000022", "Robert Hunter", "2", author="Chris Carter"))
 
-    known = store.series_known()
-    assert known["9783000000022"][0] == known["9783000000011"][0]
-    assert known["9783000000022"][1] == "2"
+    found = known(store)
+    assert found["9783000000022"][0] == found["9783000000011"][0]
+    assert found["9783000000022"][1] == "2"
 
 
 def test_the_same_name_by_two_authors_is_two_series(store: Store) -> None:
@@ -72,7 +78,22 @@ def test_an_old_dnb_answer_is_filed_on_the_next_run(store: Store) -> None:
 
     store.series_from_dnb()
 
-    assert store.series_known()["9783000000055"] == ("immermorde", "3")
+    assert known(store)["9783000000055"] == ("immermorde", "3")
+
+
+def test_her_series_is_not_a_namesake_by_another_author(store: Store) -> None:
+    """Sie besitzt einen Band von „Die Chroniken" (A); Band 4 von „Die
+    Chroniken" einer anderen Autorin bleibt ein Folgeband (Review 04.10.2026)."""
+    from ebook_watchlist.series import mid_series_finder
+
+    seen(store, at_overdrive("9783000000301", "Die Chroniken", "1", author="Eine Autorin"))
+    book = store.find_or_create_book(isbn="9783000000301", title="Erster Teil",
+                                     author="Eine Autorin", now=NOW)
+    store.put_relation("test", book.id, "owned", now=NOW)
+    namesake = at_overdrive("9783000000304", "Die Chroniken", "4", author="Ein Anderer")
+    seen(store, namesake)
+
+    assert mid_series_finder(store, "test")(namesake)
 
 
 def test_her_own_books_make_their_series_followed(store: Store) -> None:
@@ -101,10 +122,10 @@ def test_two_series_that_meet_at_an_isbn_become_one(store: Store) -> None:
                                            series_index="1", author="Carter, Chris"), NOW)
     seen(store, at_overdrive("9783000000011", "Robert Hunter", "1", author="Chris Carter"))
 
-    known = store.series_known()
-    assert known["9783000000022"][0] == known["9783000000011"][0]
+    found = known(store)
+    assert found["9783000000022"][0] == found["9783000000011"][0]
     assert len(store.series_rows()) == 1
-    assert store.series_refs(known["9783000000011"][0]) == {"overdrive": "1656"}
+    assert store.series_refs(found["9783000000011"][0]) == {"overdrive": "1656"}
 
 
 def test_a_book_names_its_series_and_volume(store: Store) -> None:
@@ -118,3 +139,16 @@ def test_a_book_names_its_series_and_volume(store: Store) -> None:
     assert named["9780000000009"].label == "Red Rising Saga"
     assert named["9780000000003"].id == named["9780000000009"].id
     assert "9780000000000" not in named
+
+
+def test_a_series_without_author_joins_the_one_with(store: Store) -> None:
+    """Eine DNB-Antwort ohne Autor:in und OverDrive mit Autor:in: eine Reihe —
+    aber zwei bekannte verschiedene Autor:innen bleiben zwei (Review 04.10.2026)."""
+    store.save_dnb("9783000000066", Record(title="Wayward", series="Ein Wayward-Pines-Thriller",
+                                           series_index="2"), NOW)
+    seen(store, at_overdrive("9783000000077", "Wayward Pines", "3", author="Blake Crouch"),
+         at_overdrive("9783000000088", "Wayward Pines", "1", author="Jemand Anderes"))
+
+    found = known(store)
+    assert found["9783000000077"][0] == found["9783000000066"][0] == "wayward pines"
+    assert len([r for r in store.series_rows() if r.key == "wayward pines"]) == 2

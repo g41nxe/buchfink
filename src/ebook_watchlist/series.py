@@ -25,6 +25,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .cleaning import author_key
 from .matching.normalize import named_volume, volume_of
 from .models import MatchReason, Observation
 from .relations import InterestKey
@@ -86,19 +87,24 @@ class SeriesOf:
 class MidSeries:
     """Ob ein Fund ein späterer Band einer Reihe ist, die die Leserin nicht verfolgt."""
 
-    #: ISBN → (Schlüssel der Reihe, Band), schon nach Herkunft entschieden.
-    known: Mapping[str, tuple[str | None, str | None]]
+    #: ISBN → (Reihe, Band), schon nach Herkunft entschieden.
+    known: Mapping[str, tuple[int | None, str | None]]
+    #: (Schlüssel, Autor:in) → Reihe, für einen Fund ohne Eintrag zur ISBN.
+    names: Mapping[tuple[str, str], int]
     #: Die Autor:innen, denen die Leserin folgt, klein geschrieben.
     authors: frozenset[str]
-    #: Die Schlüssel der Reihen ihrer eigenen Bücher.
-    followed: frozenset[str]
+    #: Die Reihen ihrer eigenen Bücher. Ids, nicht Schlüssel: „Die Chroniken"
+    #: zweier Autor:innen haben denselben Schlüssel und sind zwei Reihen.
+    followed: frozenset[int]
 
     def __call__(self, observation: Observation) -> bool:
         if observation.match_reason is MatchReason.WATCHLIST:
             return False
         series, index = self.known.get(observation.isbn or "", (None, None))
         if series is None and observation.series:
-            series = series_key(observation.series)
+            series = self.names.get(
+                (series_key(observation.series), author_key(observation.author or ""))
+            )
         volume = _dnb_volume(index)
         if volume is None:
             # Was die Quelle selbst nennt (OverDrive), wo zur ISBN nichts steht.
@@ -113,7 +119,7 @@ class MidSeries:
             return False
         if observation.author and _name(observation.author) in self.authors:
             return False
-        return not (series and series in self.followed)
+        return series is None or series not in self.followed
 
 
 def mid_series_finder(store: Store, profile_slug: str) -> Callable[[Observation], bool]:
@@ -123,7 +129,8 @@ def mid_series_finder(store: Store, profile_slug: str) -> Callable[[Observation]
         for row in store.interests(profile_slug, key=str(InterestKey.AUTHOR))
     )
     own = store.books_by_id(store.books_with_relations(profile_slug).values())
-    followed = store.series_keys_for(
-        (book.isbn for book in own.values()), (book.series for book in own.values())
+    followed = store.series_ids_for(
+        (book.isbn, book.series, book.author) for book in own.values()
     )
-    return MidSeries(known=store.series_known(), authors=authors, followed=followed)
+    return MidSeries(known=store.series_known(), names=store.series_names(),
+                     authors=authors, followed=followed)
