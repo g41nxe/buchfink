@@ -590,6 +590,9 @@ class InterestSeededRow(Base):
 
     interest_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String, primary_key=True)
+    #: Unter welcher Adresse (Regal, Thema) angesät wurde; ``None`` bei
+    #: Autor:innen und bei Zeilen von vor ADR 37.
+    address: Mapped[str | None] = mapped_column(String, nullable=True)
     seeded_at: Mapped[datetime] = mapped_column(DateTime)
 
 
@@ -2604,11 +2607,18 @@ class Store:
                 session.expunge(row)
             return rows
 
-    def is_interest_seeded(self, interest_id: int, source: str) -> bool:
+    def is_interest_seeded(
+        self, interest_id: int, source: str, *, address: str | None = None
+    ) -> bool:
+        """Angesät — und, bei einem Thema, unter dieser Adresse. Ein anderes
+        Regal ist ein anderer Bestand (Review 04.10.2026)."""
         with self.session() as session:
-            return session.get(InterestSeededRow, (interest_id, source)) is not None
+            row = session.get(InterestSeededRow, (interest_id, source))
+            return row is not None and row.address == address
 
-    def mark_interest_seeded(self, interest_id: int, source: str, *, now: datetime) -> None:
+    def mark_interest_seeded(
+        self, interest_id: int, source: str, *, now: datetime, address: str | None = None
+    ) -> None:
         """Pro Interesse, nicht pro Anlass.
 
         Der alte Schluessel liess ``category`` bei Autor:innen leer, so dass
@@ -2616,11 +2626,13 @@ class Store:
         jede weitere meldete ihre ganze Backlist als Neuzugaenge.
         """
         with self.session() as session:
-            if session.get(InterestSeededRow, (interest_id, source)) is None:
-                session.add(
-                    InterestSeededRow(interest_id=interest_id, source=source, seeded_at=now)
-                )
-                session.commit()
+            row = session.get(InterestSeededRow, (interest_id, source))
+            if row is None:
+                session.add(InterestSeededRow(interest_id=interest_id, source=source,
+                                              seeded_at=now, address=address))
+            elif row.address != address:
+                row.address, row.seeded_at = address, now
+            session.commit()
 
     # --- Quellen-Zustand (Ticket 03) ---------------------------------------
 

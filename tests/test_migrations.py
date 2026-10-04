@@ -481,3 +481,48 @@ def test_the_themes_become_genre_codes(tmp_path: Path) -> None:
 
     assert set(rows) == {"FIC031080", "FIC015000", "FIC028000", "belletristik/etwas-unbekanntes"}
     assert json.loads(rows["FIC031080"]) == {"tier": "core", "name": "Psychothriller"}
+
+
+def test_two_old_shelves_of_one_code_become_one_theme(tmp_path: Path) -> None:
+    """Review 04.10.2026: „science-fiction" und „…/science-fiction-allgemein"
+    ergeben beide FIC028000. Die Eindeutigkeit von (Profil, Schlüssel, Wert)
+    darf die Migration nicht sprengen; aktiv bleibt, was eines von beiden war."""
+    from sqlalchemy import create_engine, text
+
+    from ebook_watchlist.migrations import _themes_become_genre_codes
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE interest (id INTEGER PRIMARY KEY, profile_slug TEXT, key TEXT, "
+            "value TEXT, details TEXT, active BOOLEAN, "
+            "CONSTRAINT uq_interest UNIQUE (profile_slug, key, value))")
+        connection.exec_driver_sql(
+            "CREATE TABLE interest_seeded (interest_id INTEGER, source TEXT, seeded_at TEXT)")
+        for value, active in (("belletristik/science-fiction/science-fiction-allgemein", 0),
+                              ("belletristik/science-fiction", 1)):
+            connection.execute(text(
+                "INSERT INTO interest (profile_slug, key, value, details, active) "
+                "VALUES ('t', 'thema', :v, '{}', :a)"), {"v": value, "a": active})
+        _themes_become_genre_codes(connection)
+        rows = connection.exec_driver_sql("SELECT value, active FROM interest").all()
+
+    assert rows == [("FIC028000", 1)]
+
+
+def test_seed_and_migration_translate_every_old_shelf_alike() -> None:
+    """Sonst legte ein `ebw seed` nach der Migration ein zweites Thema an."""
+    from ebook_watchlist.migrations import THEME_SHELVES
+    from ebook_watchlist.seed import theme_code
+
+    for path, (code, _) in THEME_SHELVES.items():
+        assert theme_code(path) == code, path
+    assert theme_code("belletristik/krimi-thriller") == "FIC031000"
+
+
+def test_the_migration_knows_every_shelf_beam_translates() -> None:
+    """Was beam heute als Regal kennt, kann ein früheres Thema gewesen sein."""
+    from ebook_watchlist.migrations import THEME_SHELVES
+    from ebook_watchlist.sources.beam.selectors import GENRES
+
+    assert set(GENRES.values()) <= set(THEME_SHELVES)

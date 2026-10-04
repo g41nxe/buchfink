@@ -101,6 +101,9 @@ class RunContext:
     #: deren Titel alle schon auf der Watchlist stehen, saet nie an und
     #: flutet beim naechsten Mal erneut.
     swept: set[tuple[str, int]] = field(default_factory=set)
+    #: Unter welcher Adresse eine Quelle ein Thema gefegt hat — angesät ist es
+    #: nur dort (Review 04.10.2026). Autor:innen haben keine.
+    addresses: dict[tuple[str, int], str] = field(default_factory=dict)
     #: Wo der Originaltitel einer uebersetzten Ausgabe nachzuschlagen ist
     #: (#77). Der Lauf gibt eine mit, die die DNB fragen darf; ohne sie
     #: antwortet nur, was schon in ``dnb_record`` steht — es wird dann keine
@@ -461,11 +464,25 @@ def sweep_interests(
         if interest_id is not None:
             context.swept.add((source.name, interest_id))
         take(ask(source.by_author, author), interest_id)
+    from ..genres import load_genres
+
     for category in settings.genre_categories:
+        if category not in load_genres():
+            # Ein Pfad aus der Zeit vor ADR 37, den die Migration nicht kannte:
+            # er fegt nicht mehr, und das gehört gesagt.
+            print(f"{source.name}: Thema {category!r} ist kein Code der Genre-Liste "
+                  "— nicht gefegt", file=sys.stderr)
+            continue
+        address = source.genre_address(category)
+        if address is None:
+            # Keine Adresse, kein Fegen — und auch kein „angesät": käme die
+            # Adresse später dazu, flutete der erste Durchgang sonst.
+            continue
         # "thema" ist der gespeicherte Wert des Interesses (#70), kein Wort im Code.
         interest_id = context.interests.get(("thema", category))
         if interest_id is not None:
             context.swept.add((source.name, interest_id))
+            context.addresses[(source.name, interest_id)] = address
         take(ask(source.by_category, category), interest_id)
     take(source.extra_discoveries(), None)
     return observations

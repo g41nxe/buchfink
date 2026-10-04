@@ -69,3 +69,12 @@ def test_the_source_tables_only_name_listed_genres() -> None:
     for table in (beam.GENRES, overdrive.GENRES):
         unknown = set(table) - {genre.code for genre in GENRES}
         assert not unknown, unknown
+
+
+def test_overdrive_only_translates_what_its_parser_keeps() -> None:
+    """Review 04.10.2026: der Parser verwirft bei einem Thema alles ohne
+    FIC-/YAF-Code — eine Biografie fände dort nie etwas."""
+    from ebook_watchlist.sources.overdrive import parse
+    from ebook_watchlist.sources.overdrive import selectors as overdrive
+
+    assert all(code.startswith(parse.FICTION_CODES) for code in overdrive.GENRES)

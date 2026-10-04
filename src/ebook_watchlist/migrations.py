@@ -609,44 +609,94 @@ def _the_dnb_names_the_page_count(connection: Connection) -> None:
     add_column(connection, "dnb_record", "pages", "INTEGER")
 
 
+#: Die Regale, die vor ADR 37 als Thema gespeichert sein können, und ihr Code.
+#: Hier eingefroren, nicht aus der beam-Tabelle gelesen: eine Migration
+#: beschreibt die Welt, in der sie geschrieben wurde. Das Saatgut übersetzt
+#: mit derselben Tafel (`seed.theme_code`), sonst legte ein `ebw seed` nach der
+#: Migration ein zweites Thema an (Review 04.10.2026). Krimi und Thriller teilen
+#: bei beam ein Regal; ein Thema dort war ein Thriller.
+THEME_SHELVES: dict[str, tuple[str, str]] = {
+    "belletristik/krimi-thriller": ("FIC031000", "Thriller"),
+    "belletristik/krimi-thriller/krimi-thriller-allgemein": ("FIC031000", "Thriller"),
+    "belletristik/krimi-thriller/psychothriller": ("FIC031080", "Psychothriller"),
+    "belletristik/krimi-thriller/spionage": ("FIC006000", "Spionage"),
+    "belletristik/krimi-thriller/regionalkrimis": ("DE-REGIONALKRIMI", "Regionalkrimi"),
+    "belletristik/science-fiction": ("FIC028000", "Science-Fiction"),
+    "belletristik/science-fiction/science-fiction-allgemein": ("FIC028000", "Science-Fiction"),
+    "belletristik/science-fiction/space-opera": ("FIC028030", "Space Opera"),
+    "belletristik/science-fiction/military-sf": ("FIC028050", "Military SF"),
+    "belletristik/science-fiction/postapokalypse": ("FIC028070", "Postapokalypse"),
+    "belletristik/science-fiction/cyberpunk": ("FIC028100", "Cyberpunk"),
+    "belletristik/science-fiction/dystopie": ("FIC055000", "Dystopie"),
+    "belletristik/fantasy": ("FIC009000", "Fantasy"),
+    "belletristik/fantasy/fantasy-allgemein": ("FIC009000", "Fantasy"),
+    "belletristik/fantasy/high-fantasy": ("FIC009020", "High Fantasy"),
+    "belletristik/fantasy/urban-fantasy": ("FIC009060", "Urban Fantasy"),
+    "belletristik/fantasy/dark-fantasy": ("FIC009070", "Dark Fantasy"),
+    "belletristik/horror-mystery": ("FIC015000", "Horror"),
+    "belletristik/horror-mystery/horror-mystery-allgemein": ("FIC015000", "Horror"),
+    "belletristik/romance": ("FIC027000", "Liebesroman"),
+    "belletristik/romance/liebesromane-allgemein": ("FIC027000", "Liebesroman"),
+    "belletristik/romance/romantasy": ("FIC027030", "Romantasy"),
+    "belletristik/humor-satire": ("FIC016000", "Humor"),
+    "belletristik/historische-romane": ("FIC014000", "Historischer Roman"),
+    "belletristik/romane-erzaehlungen": ("FIC019000", "Gegenwartsliteratur"),
+    "belletristik/abenteuer-western/abenteuer": ("FIC002000", "Abenteuer"),
+    "belletristik/biographien": ("BIO000000", "Biografie & Erinnerungen"),
+}
+
+
 def _themes_become_genre_codes(connection: Connection) -> None:
     """Ein Thema war ein beam-Pfad und ist jetzt ein Code der Genre-Liste,
     mit seinem Namen (ADR 37).
 
-    Die Zuordnung steht hier fest und nicht in der beam-Tabelle: eine Migration
-    beschreibt die Welt, in der sie geschrieben wurde. Ein Pfad, den sie nicht
-    kennt, bleibt stehen — sichtbar falsch statt still verloren.
+    Ergeben zwei alte Pfade denselben Code, bleibt eines: (Profil, Schlüssel,
+    Wert) ist eindeutig, und aktiv ist es, wenn eines von beiden es war (Review
+    04.10.2026). Ein Pfad, den die Tafel nicht kennt, bleibt stehen; der Lauf
+    sagt dann, dass er ihn nicht fegt.
     """
     if not _has_table(connection, "interest"):
         return
     import json
 
-    known = {
-        "belletristik/krimi-thriller/psychothriller": ("FIC031080", "Psychothriller"),
-        "belletristik/krimi-thriller": ("FIC031000", "Thriller"),
-        "belletristik/krimi-thriller/spionage": ("FIC006000", "Spionage"),
-        "belletristik/krimi-thriller/regionalkrimis": ("DE-REGIONALKRIMI", "Regionalkrimi"),
-        "belletristik/science-fiction": ("FIC028000", "Science-Fiction"),
-        "belletristik/science-fiction/science-fiction-allgemein": ("FIC028000", "Science-Fiction"),
-        "belletristik/science-fiction/space-opera": ("FIC028030", "Space Opera"),
-        "belletristik/science-fiction/military-sf": ("FIC028050", "Military SF"),
-        "belletristik/science-fiction/dystopie": ("FIC055000", "Dystopie"),
-        "belletristik/horror-mystery": ("FIC015000", "Horror"),
-        "belletristik/horror-mystery/horror-mystery-allgemein": ("FIC015000", "Horror"),
-        "belletristik/fantasy": ("FIC009000", "Fantasy"),
-    }
+    has_active = "active" in _columns(connection, "interest")
     rows = connection.exec_driver_sql(
-        "SELECT id, value, details FROM interest WHERE key = 'thema'"
+        "SELECT id, profile_slug, value, details"
+        + (", active" if has_active else ", 1")
+        + " FROM interest WHERE key = 'thema' ORDER BY id"
     ).all()
-    for row_id, value, details in rows:
-        target = known.get((value or "").strip("/"))
+    for row_id, profile, value, details, active in rows:
+        target = THEME_SHELVES.get((value or "").strip("/"))
         if target is None:
             continue
-        merged = {**json.loads(details or "{}"), "name": target[1]}
+        code, name = target
+        twin = connection.exec_driver_sql(
+            "SELECT id FROM interest WHERE profile_slug = ? AND key = 'thema' AND value = ? "
+            "AND id != ?",
+            (profile, code, row_id),
+        ).first()
+        if twin is not None:
+            if has_active and active:
+                connection.exec_driver_sql("UPDATE interest SET active = 1 WHERE id = ?",
+                                           (twin[0],))
+            if _has_table(connection, "interest_seeded"):
+                connection.exec_driver_sql(
+                    "DELETE FROM interest_seeded WHERE interest_id = ?", (row_id,))
+            connection.exec_driver_sql("DELETE FROM interest WHERE id = ?", (row_id,))
+            continue
+        merged = {**json.loads(details or "{}"), "name": name}
         connection.exec_driver_sql(
             "UPDATE interest SET value = ?, details = ? WHERE id = ?",
-            (target[0], json.dumps(merged, ensure_ascii=False), row_id),
+            (code, json.dumps(merged, ensure_ascii=False), row_id),
         )
+
+
+def _a_theme_is_seeded_at_an_address(connection: Connection) -> None:
+    """Angesät ist ein Thema bei einer Quelle unter einer Adresse (Review
+    04.10.2026). Ältere Zeilen haben keine: ein Thema sät dort einmal still neu
+    an, statt den Tagesbericht mit einem neuen Regal zu fluten."""
+    if _has_table(connection, "interest_seeded"):
+        add_column(connection, "interest_seeded", "address", "VARCHAR")
 
 
 def _a_portrait_remembers_whether_a_sample_went_along(connection: Connection) -> None:
@@ -709,6 +759,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _a_portrait_remembers_whether_a_sample_went_along,
     _the_dnb_names_the_page_count,
     _themes_become_genre_codes,
+    _a_theme_is_seeded_at_an_address,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

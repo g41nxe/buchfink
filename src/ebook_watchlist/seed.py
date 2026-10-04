@@ -228,28 +228,18 @@ def theme_code(value: str) -> str:
     """Ein Thema aus dem Saatgut als Code der Genre-Liste (ADR 37).
 
     Bis ADR 37 war ein Thema ein beam-Pfad; ``seed.yaml`` darf ihn weiter
-    nennen und wird übersetzt, damit niemand die Datei anfassen muss. Was die
-    Liste nicht kennt, ist ein Fehler — ein stilles Thema, das keine Quelle
-    fegt, sähe aus wie ein ruhiger Tag.
+    nennen und wird mit derselben Tafel übersetzt wie die Migration. Was keiner
+    kennt, ist ein Fehler — ein stilles Thema, das keine Quelle fegt, sähe aus
+    wie ein ruhiger Tag.
     """
     from .config import ConfigError
-    from .sources.beam.selectors import GENRES as BEAM
+    from .migrations import THEME_SHELVES
 
     if value in load_genres():
         return value
-    path = value.strip("/")
-    by_shelf = {shelf: code for code, shelf in BEAM.items()}
-    by_shelf |= LEGACY_SHELVES
-    if path in by_shelf:
-        return by_shelf[path]
+    target = THEME_SHELVES.get(value.strip("/"))
+    if target is not None:
+        return target[0]
     raise ConfigError(
         f"Thema {value!r}: kein Code der Genre-Liste (docs/genres.yaml) und kein bekanntes Regal"
     )
-
-
-#: Regale, die vor ADR 37 als Thema gespeichert wurden und kein eigenes
-#: Gegenstück in der beam-Tabelle haben.
-LEGACY_SHELVES = {
-    "belletristik/horror-mystery/horror-mystery-allgemein": "FIC015000",
-    "belletristik/science-fiction/science-fiction-allgemein": "FIC028000",
-}

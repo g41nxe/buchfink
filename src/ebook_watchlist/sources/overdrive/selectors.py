@@ -54,7 +54,8 @@ GENRES: dict[str, str] = {
     "FIC014000": "115",  # Historical Fiction
     "FIC016000": "123",  # Humor (Fiction)
     "FIC019000": "49",   # Literature
-    "BIO000000": "7",    # Biography & Autobiography
+    # Keine Biografie: der Parser behält bei einem Thema nur Belletristik
+    # (`parse.FICTION_CODES`), dort fände sie nie etwas (Review 04.10.2026).
 }
 
 #: Nur EPUB-E-Books, wie bei der Onleihe (``media: [ebook]``).

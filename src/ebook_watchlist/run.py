@@ -1036,7 +1036,9 @@ def _run(
     seeded = {
         (source_name, interest_id)
         for source_name, interest_id in context.swept
-        if store.is_interest_seeded(interest_id, source_name)
+        if store.is_interest_seeded(
+            interest_id, source_name, address=context.addresses.get((source_name, interest_id))
+        )
     }
     # Einmal gebaut, von Vergleich und Tagesbericht benutzt: sonst meldet der
     # Stapel einen Buendelvorteil, den der Tagesbericht nicht kennt.
@@ -1077,7 +1079,10 @@ def _run(
     _fetch_suggestion_covers(store, settings, client)
 
     for source_name, interest_id in context.swept:
-        store.mark_interest_seeded(interest_id, source_name, now=started_at)
+        store.mark_interest_seeded(
+            interest_id, source_name, now=started_at,
+            address=context.addresses.get((source_name, interest_id)),
+        )
 
     last_run = store.last_finished_run(settings.slug, run_id)
     digest = build_digest(
