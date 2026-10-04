@@ -80,7 +80,9 @@ def unrated_report(deltas: list[Delta]) -> GateReport:
     unbeurteilt sind. Ein Watchlist-Titel wird nie beurteilt und zählt nicht
     mit (Ticket 20).
     """
-    return GateReport(unrated=sum(1 for delta in deltas if _is_discovery(delta)))
+    return GateReport(
+        unrated=len({subject_of(delta.current) for delta in deltas if _is_discovery(delta)})
+    )
 
 
 def _readers_verdict(store: Store, observation: Observation) -> Verdict | None:

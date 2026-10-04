@@ -79,6 +79,12 @@ class OnleiheSource(LibrarySource):
         if ref is None:
             return []
         html = self.client.get(urljoin(self.base, sel.SERIES_LIST_PATH.format(series_id=ref)))
+        shown, total = parse.title_range(html)
+        if total is not None and shown is not None and shown < total:
+            # Wie die Liste blättert, ist nicht geprüft (#86): lieber laut als
+            # still abgeschnitten.
+            print(f"Onleihe-Reihe {name}: nur {shown} von {total} Bänden gelesen (#86)",
+                  file=sys.stderr)
         return parse.series_volumes(html, name, media=self.media, base=self.base,
                                     source=self.name)
 

@@ -90,3 +90,39 @@ def test_beam_keeps_only_titles_of_the_series_by_its_author() -> None:
 
     assert beam.asked == "Wayward Pines"
     assert sorted(f.title for f in found) == ["Psychose", "Wayward Pines: Ausbruch"]
+
+
+# --- aus dem Review (04.10.2026) ---------------------------------------------
+
+
+def test_overdrive_turns_the_page_of_a_long_series() -> None:
+    """Eine Reihe mit mehr Bänden als eine Seite fasst: die neuesten stehen
+    hinten, und gerade die zählen."""
+    from ebook_watchlist.sources.overdrive import selectors as sel
+
+    item = json.loads(overdrive_fixture("collection-lucky-day.json"))
+    reckless = next(i for i in item["items"] if i["title"] == "Steinernes Fleisch")
+    full = [reckless | {"id": str(n), "formats": reckless["formats"]} for n in range(sel.PER_PAGE)]
+    pages = [json.dumps({"items": full}), json.dumps({"items": [reckless | {"id": "99"}]})]
+
+    class Paged(StubClient):
+        def get(self, url: str, params: dict | None = None) -> str:
+            self.requests.append((url, params))
+            return pages[len(self.requests) - 1]
+
+    client = Paged("")
+    found = OverdriveSource(client=client).by_series("Reckless", "Cornelia Funke", "1817267")
+
+    assert len(found) == sel.PER_PAGE + 1
+    assert [p.get("page") for _, p in client.requests] == [None, "2"]
+
+
+def test_the_onleihe_says_when_a_series_list_is_cut_short(capsys) -> None:
+    """Wie die Onleihe-Reihenliste blättert, ist nicht geprüft (#86); bis dahin
+    sagt der Lauf, dass Bände fehlen, statt still abzuschneiden."""
+    html = onleihe_fixture("series-list.html").replace("1-6 von 6</h3>", "1-6 von 9</h3>")
+
+    OnleiheSource(StubClient(html)).by_series("Die sieben Schwestern", "Lucinda Riley",
+                                              "1730790992")
+
+    assert "6 von 9" in capsys.readouterr().err

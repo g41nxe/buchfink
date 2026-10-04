@@ -185,12 +185,13 @@ def check_details(key: str, details: dict) -> dict:
     """
     unknown = set(details) - {
         "tier", "sources", "note", "restrict", "known_missing", "reasons", "removed",
-        "series",
+        "series", "series_ended",
     }
     if unknown:
         raise ConfigurationError(
             f"unbekannte Angaben zu {key!r}: {', '.join(sorted(unknown))} "
-            "(bekannt: known_missing, note, reasons, removed, restrict, series, sources, tier)"
+            "(bekannt: known_missing, note, reasons, removed, restrict, series, "
+            "series_ended, sources, tier)"
         )
     if "removed" in details and not isinstance(details["removed"], bool):
         raise ConfigurationError(f"'removed' bei {key!r} ist ja oder nein")

@@ -444,6 +444,18 @@ def parse_list(
     return found_items
 
 
+#: „Titel 1-20 von 34" über einer Liste.
+_TITLE_RANGE = re.compile(r"Titel\s+(\d+)\s*-\s*(\d+)\s+von\s+(\d+)")
+
+
+def title_range(html: str) -> tuple[int | None, int | None]:
+    """Wie viele Titel die Seite zeigt und wie viele die Liste hat."""
+    hit = _TITLE_RANGE.search(soup(html).get_text(" ", strip=True))
+    if not hit:
+        return None, None
+    return int(hit.group(2)) - int(hit.group(1)) + 1, int(hit.group(3))
+
+
 def series_volumes(
     html: str,
     series: str,

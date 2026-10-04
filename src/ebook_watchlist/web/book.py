@@ -941,8 +941,13 @@ def set_stars(
     Profilfassung wird mitgeschrieben, damit später nachvollziehbar bleibt, wovon
     hier die Rede war — verfallen tut ihr Urteil deswegen nicht.
     """
+    # Ihre Sterne gelten dem Werk (ADR 36): an den anderen Ausgaben fallen
+    # ältere weg, damit dort dieselben gelten — nicht ein zweites Urteil daneben.
+    own = book_subject(book_id)
+    for other in store.work_book_subjects(own) - {own}:
+        store.drop_rating(other, BY_READER)
     if stars is None:
-        store.drop_rating(book_subject(book_id), BY_READER)
+        store.drop_rating(own, BY_READER)
         return
     if not 0 <= stars <= 5:
         raise ValueError(f"Sterne müssen zwischen 0 und 5 liegen, nicht {stars}")

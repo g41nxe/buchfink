@@ -138,3 +138,28 @@ def test_a_watch_of_one_edition_sees_the_other_she_owns(store: Store) -> None:
 
     assert store.owned_as("test", [ENGLISH]) == {ENGLISH: "Gestohlene Erinnerung"}
     assert replace(find(ENGLISH, "Recursion")).isbn in store.decided_works("test")
+
+
+def test_new_stars_on_one_edition_hold_for_the_whole_work(store: Store) -> None:
+    """Aus dem Review (04.10.2026): wer an der zweiten Ausgabe neue Sterne
+    vergibt, ändert das Urteil des Werks — nicht ein zweites daneben."""
+    from ebook_watchlist.web.book import set_stars
+
+    recursion(store)
+    german = store.find_or_create_book(isbn=GERMAN, title="Gestohlene Erinnerung",
+                                       author="Blake Crouch", now=NOW)
+    english = store.find_or_create_book(isbn=ENGLISH, title="Recursion",
+                                        author="Crouch, Blake", now=NOW)
+
+    class Settings:
+        slug = "test"
+
+    set_stars(store, Settings(), german.id, 4, now=NOW)
+    set_stars(store, Settings(), english.id, 2, now=NOW)
+
+    assert store.rating(book_subject(german.id), origin=BY_READER).stars == 2
+    assert store.rating(book_subject(english.id), origin=BY_READER).stars == 2
+
+    set_stars(store, Settings(), german.id, None, now=NOW)
+
+    assert store.rating(book_subject(english.id), origin=BY_READER) is None

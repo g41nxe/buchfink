@@ -25,6 +25,8 @@ from .relations import REMOVED, RelationKind
 from .store import Store
 
 WATCHING = str(RelationKind.WATCHING)
+#: Vermerk an einem Band, den „Nicht mehr beobachten" entfernt hat — nicht sie.
+SERIES_ENDED = "series_ended"
 
 
 def watched(store: Store, profile_slug: str) -> set[int]:
@@ -39,7 +41,7 @@ def watch(store: Store, profile_slug: str, series_id: int, *, now: datetime) -> 
     """
     store.set_series_watch(profile_slug, series_id, active=True, now=now)
     return sum(
-        _put_on_watchlist(store, profile_slug, series_id, isbn, title, author, now)
+        _put_on_watchlist(store, profile_slug, series_id, isbn, title, author, now, revive=True)
         for isbn, title, author in store.series_volumes(series_id)
     )
 
@@ -48,15 +50,20 @@ def unwatch(store: Store, profile_slug: str, series_id: int, *, now: datetime) -
     """Nicht mehr beobachten: nur die Bände, die über die Reihe kamen.
 
     Entfernt, nicht pausiert (#72): ein Band, der nur über die Reihe auf der
-    Watchlist stand, verschwindet von ihr, statt ruhend stehen zu bleiben.
+    Watchlist stand, verschwindet von ihr, statt ruhend stehen zu bleiben — auch
+    ein pausierter. Was sie selbst entfernt hatte, bleibt, wie es ist; nur was
+    die Reihe entfernt (``SERIES_ENDED``), holt ein erneutes Beobachten zurück.
     """
     store.set_series_watch(profile_slug, series_id, active=False, now=now)
-    for relation in store.relations(profile_slug, kind=WATCHING):
+    for relation in store.relations(profile_slug, kind=WATCHING, active_only=False):
         details = json.loads(relation.details or "{}")
-        if details.get("series") == series_id:
-            store.set_relation_details(profile_slug, relation.book_id, WATCHING,
-                                       {**details, REMOVED: True}, now=now)
-            store.deactivate_relation(profile_slug, relation.book_id, WATCHING, now=now)
+        if details.get("series") != series_id:
+            continue
+        if not relation.active and details.get(REMOVED):
+            continue
+        store.set_relation_details(profile_slug, relation.book_id, WATCHING,
+                                   {**details, REMOVED: True, SERIES_ENDED: True}, now=now)
+        store.deactivate_relation(profile_slug, relation.book_id, WATCHING, now=now)
 
 
 def add_volumes(
@@ -89,11 +96,26 @@ def _put_on_watchlist(
     title: str,
     author: str | None,
     now: datetime,
+    *,
+    revive: bool = False,
 ) -> bool:
-    """Ein Band auf die Watchlist — außer, sie hat schon etwas zu ihm gesagt."""
+    """Ein Band auf die Watchlist — außer, sie hat schon etwas zu ihm gesagt.
+
+    Auch eine stillgelegte Beobachtung ist etwas, das sie gesagt hat: einen
+    Band, den sie entfernt oder pausiert hat, setzt das Fegen jedes Laufs nicht
+    zurück (Review, 04.10.2026). Nur ``revive`` — sie beobachtet die Reihe
+    wieder — holt zurück, was die Reihe selbst entfernt hatte.
+    """
     book = store.find_or_create_book(isbn=isbn, title=title, author=author, now=now)
-    if any(r.active for r in store.relations_of(profile_slug, book.id)):
+    relations = store.relations_of(profile_slug, book.id)
+    if any(r.active for r in relations):
         return False
+    watching = next((r for r in relations if r.kind == WATCHING), None)
+    if watching is not None:
+        details = json.loads(watching.details or "{}")
+        ended_by_series = details.get("series") == series_id and details.get(SERIES_ENDED)
+        if not (revive and ended_by_series):
+            return False
     store.put_relation(profile_slug, book.id, WATCHING, now=now, series=series_id)
     return True
 

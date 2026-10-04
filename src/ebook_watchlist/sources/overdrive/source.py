@@ -55,6 +55,11 @@ def require_title_id(url: str) -> str:
     return item_id
 
 
+#: Wie viele Seiten einer Reihe höchstens gelesen werden — eine Bremse, keine
+#: Erwartung: 20 Bände je Seite.
+MAX_SERIES_PAGES = 10
+
+
 class OverdriveSource(LibrarySource):
     name = SOURCE_NAME
 
@@ -97,11 +102,19 @@ class OverdriveSource(LibrarySource):
         Watchlist zählt ein Band, nicht ob er heute frei ist (#85)."""
         if ref is None:
             return []
-        query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **sel.LANGUAGE_PARAMS,
-                     seriesId=ref)
-        text = self.client.get(self._url(sel.SEARCH_PATH), params=query)
-        return parse.parse_finds(parse.payload(text), source=self.name,
-                                 reason=MatchReason.WATCHLIST)
+        found: list[Observation] = []
+        # Die neuesten Bände stehen hinten, und gerade die zählen: geblättert
+        # wird, bis eine Seite nicht mehr voll ist (Review, 04.10.2026).
+        for page in range(1, MAX_SERIES_PAGES + 1):
+            query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **sel.LANGUAGE_PARAMS,
+                         seriesId=ref)
+            if page > 1:
+                query["page"] = str(page)
+            data = parse.payload(self.client.get(self._url(sel.SEARCH_PATH), params=query))
+            found += parse.parse_finds(data, source=self.name, reason=MatchReason.WATCHLIST)
+            if len(data.get("items") or []) < sel.PER_PAGE:
+                break
+        return found
 
     def by_category(self, category_path: str) -> list[Observation]:
         """Die Neuzugänge zu einem Thema der Leserin, frei und auf Deutsch."""

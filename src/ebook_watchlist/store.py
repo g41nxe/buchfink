@@ -1438,6 +1438,12 @@ class Store:
             ))
             return {o for group in _work_siblings(session, isbns).values() for o in group}
 
+    def work_book_subjects(self, subject: str) -> set[str]:
+        """``book:<id>`` -> die Buchschlüssel aller Ausgaben seines Werks, es
+        selbst eingeschlossen."""
+        with self.session() as session:
+            return _work_book_subjects(session, [subject])[subject]
+
     def forget_work_entries(self) -> None:
         """Nur für Tests: der Stand vor ADR 36."""
         with self.session() as session:
@@ -2765,6 +2771,24 @@ def _merge_series(session: Session, *, keep: int, drop: int) -> int:
     kept, dropped = session.get(SeriesRow, keep), session.get(SeriesRow, drop)
     kept.overdrive_ref = kept.overdrive_ref or dropped.overdrive_ref
     kept.onleihe_ref = kept.onleihe_ref or dropped.onleihe_ref
+    # Beobachtet sie die Reihe, die verschwindet, beobachtet sie danach die
+    # zusammengeführte — samt der Bände, die über sie kamen (Review, 04.10.2026).
+    for watch in session.scalars(
+        select(SeriesWatchRow).where(SeriesWatchRow.series_id == drop)
+    ).all():
+        other = session.get(SeriesWatchRow, (watch.profile_slug, keep))
+        if other is None:
+            session.add(SeriesWatchRow(profile_slug=watch.profile_slug, series_id=keep,
+                                       active=watch.active, since=watch.since))
+        else:
+            other.active = other.active or watch.active
+        session.delete(watch)
+    for relation in session.scalars(
+        select(BookRelationRow).where(BookRelationRow.details.contains('"series"'))
+    ).all():
+        details = json.loads(relation.details)
+        if details.get("series") == drop:
+            relation.details = json.dumps({**details, "series": keep}, ensure_ascii=False)
     session.delete(dropped)
     return keep
 

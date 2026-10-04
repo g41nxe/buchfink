@@ -567,3 +567,11 @@ def test_a_library_find_that_becomes_free_is_judged_first(store, vocabulary, wei
     kept, report = run(store, vocabulary, weights, [delta], portrayer)
 
     assert portrayer.calls and kept == [] and report.held_back == 1
+
+
+def test_a_run_that_cannot_judge_counts_books_not_finds() -> None:
+    """Aus dem Review (04.10.2026): dieselbe Regel wie in einem urteilenden Lauf."""
+    shop = discovery(isbn="9783104911854")
+    bibliothek = discovery(isbn="9783104911854", source="onleihe", source_item_id="9")
+
+    assert gate.unrated_report([first_seen(shop), first_seen(bibliothek)]).unrated == 1
