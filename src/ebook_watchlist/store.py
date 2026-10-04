@@ -308,6 +308,27 @@ class BisacEntryRow(Base):
 BISAC_ORIGINS = ("dnb", "overdrive")
 
 
+class SourceCategoryRow(Base):
+    """Eine Quellkategorie, wie die Detailseiten sie nennen (#92).
+
+    Die Onleihe hat kein Verzeichnis ihrer Kategorien; bekannt wird eine
+    Nummer nur, wo eine Detailseite sie nennt. Gesammelt, damit die
+    Genre-Tabelle der Quelle sich füllen lässt — kein Buch bekommt daraus ein
+    Genre.
+    """
+
+    __tablename__ = "source_category"
+
+    source: Mapped[str] = mapped_column(String, primary_key=True)
+    number: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    #: Auf wie vielen Detailseiten sie stand.
+    count: Mapped[int] = mapped_column(Integer, default=0)
+    last_seen: Mapped[datetime] = mapped_column(DateTime)
+    #: Ein Titel, der sie trug — hilft beim Zuordnen eines unklaren Namens.
+    example: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
 class WorkEntryRow(Base):
     """Zu welchem Werk eine ISBN gehört — je Herkunft (ADR 36, #80).
 
@@ -1427,6 +1448,32 @@ class Store:
             ))
             names = self.series_names() if named else {}
         return frozenset(ids | {names[n] for n in named if n in names})
+
+    def note_categories(
+        self, source: str, categories: Iterable[tuple[str, str]], *, example: str | None,
+        now: datetime,
+    ) -> None:
+        """Die Quellkategorien einer Detailseite mitzählen (#92)."""
+        wanted = dict(categories)
+        if not wanted:
+            return
+        with self.session() as session, session.begin():
+            for number, name in wanted.items():
+                row = session.get(SourceCategoryRow, (source, number))
+                if row is None:
+                    row = SourceCategoryRow(source=source, number=number, count=0)
+                    session.add(row)
+                row.name = name
+                row.count += 1
+                row.last_seen = now
+                row.example = example or row.example
+
+    def source_categories(self) -> list[SourceCategoryRow]:
+        """Alle gesammelten Quellkategorien, je Quelle nach Nummer."""
+        with self.session() as session:
+            rows = list(session.scalars(select(SourceCategoryRow)))
+        return sorted(rows, key=lambda r: (r.source, int(r.number) if r.number.isdigit()
+                                           else 0, r.number))
 
     def bisac_codes(self, isbns: Iterable[str]) -> dict[str, tuple[str, ...]]:
         """ISBN -> ihre BISAC-Codes, die der DNB zuerst, ohne Doppelte (#88)."""

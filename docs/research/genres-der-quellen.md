@@ -85,6 +85,11 @@ Daraus folgt eine billige Möglichkeit: Detailseiten holt das Werkzeug ohnehin
 für jeden Steckbrief (#17). Liest es dabei den Kategorienpfad mit, lernt es
 den Baum nebenbei, ohne eine Anfrage mehr.
 
+Umgesetzt mit #92: Die Detailseite nennt unter „Kategorie:" eine **flache
+Liste** (2, 160, 616), keinen Pfad. Das Belegesammeln zählt jede Nummer mit,
+`ebw categories` listet sie und zeigt, welche schon in `GENRES` steht. Das
+Fegen über die Kategorienliste ist #93.
+
 ## Offen
 
 - Ob die Onleihe ein Verzeichnis aller Kategorien hat (Menü, Sitemap) — nicht

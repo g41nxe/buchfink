@@ -66,6 +66,9 @@ class Item:
     #: Reihe und ihre Nummer bei der Quelle, wo die Detailseite sie nennt (#83).
     series: str | None = None
     series_ref: str | None = None
+    #: (Nummer, Name) der Quellkategorien, wo eine Quelle sie nur an der
+    #: Detailseite zeigt (#92) — gesammelt, nicht geurteilt.
+    categories: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(slots=True)

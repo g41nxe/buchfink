@@ -68,6 +68,9 @@ class Detail:
     #: Die Nummer der Reihenliste aus dem Link „Reihe:" — die Adresse, unter
     #: der die Onleihe die Reihe zeigt (ADR 35).
     series_ref: str | None = None
+    #: (Nummer, Name) je Kategorie unter „Kategorie:" — gesammelt, damit die
+    #: Genre-Tabelle der Onleihe sich ohne eigene Anfrage füllt (#92).
+    categories: tuple[tuple[str, str], ...] = ()
 
     @property
     def availability(self) -> Availability:
@@ -134,6 +137,7 @@ def parse_detail(html: str) -> Detail:
         publisher=_publisher(page),
         pages=_pages(_labelled_value(page, sel.LABEL_PAGES)),
         series_ref=_series_ref(page),
+        categories=_categories(page),
     )
 
 
@@ -149,6 +153,25 @@ def _series_ref(page: BeautifulSoup) -> str | None:
             hit = _SERIES_LIST.search(link["href"]) if link else None
             return hit.group(1) if hit else None
     return None
+
+
+#: ``mediaList,0-155-373164461-101-…`` → 155.
+_CATEGORY_LIST = re.compile(r"mediaList,0-(\d+)-")
+
+
+def _categories(page: BeautifulSoup) -> tuple[tuple[str, str], ...]:
+    """Die Kategorien unter „Kategorie:", ohne das Komma, das sie trennt (#92)."""
+    for row in page.select(sel.DESCRIPTION_ROW):
+        bold = row.find("b")
+        if bold and bold.get_text(strip=True) == sel.LABEL_CATEGORY:
+            found: list[tuple[str, str]] = []
+            for link in row.find_all("a", href=True):
+                hit = _CATEGORY_LIST.search(link["href"])
+                name = link.get_text(" ", strip=True).rstrip(",").strip()
+                if hit and name:
+                    found.append((hit.group(1), name))
+            return tuple(found)
+    return ()
 
 
 def _pages(value: str | None) -> int | None:

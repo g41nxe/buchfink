@@ -83,13 +83,15 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         "command",
         nargs="?",
         default="run",
-        choices=["run", "doctor", "sources", "seed", "dismissals", "rate", "judge"],
+        choices=["run", "doctor", "sources", "seed", "dismissals", "rate", "judge",
+                 "categories"],
         help=(
             "'run' checks everything; 'doctor' only asks each Source whether it still "
             "parses; 'sources' lists them and can pause one; 'seed' imports the YAML "
             "files into the database once; 'dismissals' resolves the leftover product "
             "numbers from dismissed.yaml into Book Relations; 'judge' holds named "
-            "titles or a YAML list against the Reading Profile"
+            "titles or a YAML list against the Reading Profile; 'categories' lists the "
+            "Source Categories collected from detail pages (#92)"
         ),
     )
     parser.add_argument(
@@ -499,6 +501,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _dismissals(settings, sources)
         if args.command == "rate":
             return _rate(settings, args.count, sources, client)
+        if args.command == "categories":
+            from .source_categories import report
+
+            print("\n".join(report(Store(paths.db_path()), sources)))
+            return EXIT_OK
         if args.command == "judge":
             return _judge(settings, args.titles, args.file, ask=not args.known_only)
         if too_soon := _too_soon(settings, datetime.now(), _gap(args, settings)):

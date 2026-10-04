@@ -313,6 +313,16 @@ text — that stays beside the code in the Portrait. The reader likes or
 dislikes genres (and authors): a liked genre is a small bonus, a disliked one
 keeps a find out of the pile; a genre covers all subgenres below it.
 
+### Source Category
+*deutsch: Quellkategorie*
+
+A category of a Source's own catalogue, by its number and name — e.g. Onleihe
+155 „Krimi & Thriller". Where a Source has no directory of them (the Onleihe),
+they are collected from the detail pages fetched anyway (#92), with count,
+last sighting and an example title; `ebw categories` lists them and says which
+already stand in the Source's genre table. Collected, not judged: no Book
+gets a Genre from a Source Category.
+
 ### Discovery
 *deutsch: Fund*
 
