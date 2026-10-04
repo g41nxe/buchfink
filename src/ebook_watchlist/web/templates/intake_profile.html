@@ -60,7 +60,7 @@
   </fieldset>
   {% endmacro %}
   {% macro more_genres(name) %}
-  <select name="{{ name }}" aria-label="weiteres Genre" class="h-7 rounded-full border border-dashed border-rule bg-transparent px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink">
+  <select name="{{ name }}" aria-label="weiteres Genre" class="h-7 rounded-full border border-dashed border-rule bg-card px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink">
     <option value="">+ Genre …</option>
     {% for code, gname, sub in preferences.options %}
     <option value="{{ code }}">{% if sub %}&emsp;{% endif %}{{ gname }}</option>
@@ -69,7 +69,7 @@
   {% endmacro %}
   {% macro more_authors(name) %}
   <input type="text" name="{{ name }}" placeholder="+ Autor:in" aria-label="weitere Autor:in"
-         autocomplete="off" class="h-7 rounded-full border border-dashed border-rule bg-transparent px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink w-36">
+         autocomplete="off" class="h-7 rounded-full border border-dashed border-rule bg-card px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink w-36">
   {% endmacro %}
 
   <section class="mt-6 max-w-2xl rounded-lg border border-rule bg-card px-4 py-4">
