@@ -641,6 +641,11 @@ def test_screen_5_offers_the_genres_and_authors_of_her_books(client, books) -> N
     assert 'name="liked_genre" value="FIC028100"' in body
     assert 'name="disliked_genre" value="FIC009020"' in body
     assert "checked" not in body.split('name="liked_genre"', 1)[1].split(">", 1)[0]
+    # Genres und Autor:innen getrennt, die Überschrift sagt, was es bewirkt —
+    # kein „folgen:" vor jeder Zeile (04.10.2026).
+    section = body.split("Genres und Autor:innen", 1)[1]
+    assert section.index("Genres") < section.index("Autor:innen") < section.index("Folgen")
+    assert "folgen:" not in section
 
 
 def test_adopting_takes_the_ticked_genres_and_authors(client, db, books) -> None:

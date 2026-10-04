@@ -804,8 +804,9 @@ class BookSuggestions:
 
     liked_genres: tuple[tuple[str, str], ...]
     disliked_genres: tuple[tuple[str, str], ...]
-    liked_authors: tuple[str, ...]
-    disliked_authors: tuple[str, ...]
+    #: (Name, Name) — dieselbe Gestalt wie die Genres, für eine Vorlage.
+    liked_authors: tuple[tuple[str, str], ...]
+    disliked_authors: tuple[tuple[str, str], ...]
 
 
 def book_suggestions(store: Store, settings: Settings) -> BookSuggestions:
@@ -821,6 +822,6 @@ def book_suggestions(store: Store, settings: Settings) -> BookSuggestions:
     return BookSuggestions(
         liked_genres=tuple((c, genres.name(c) or c) for c in loved[0]),
         disliked_genres=tuple((c, genres.name(c) or c) for c in lost[0] if c not in loved[0]),
-        liked_authors=loved[1],
-        disliked_authors=tuple(a for a in lost[1] if a not in loved[1]),
+        liked_authors=tuple((a, a) for a in loved[1]),
+        disliked_authors=tuple((a, a) for a in lost[1] if a not in loved[1]),
     )

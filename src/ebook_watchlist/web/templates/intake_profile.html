@@ -33,44 +33,51 @@
   </div>
 
   {# Genres und Autor:innen deiner Bücher (ADR 37, #91): vorgeschlagen,
-     nichts angehakt — gilt nur, was du anhakst. Weitere lassen sich dazunehmen. #}
+     nichts angehakt — gilt nur, was du anhakst. Weitere lassen sich dazunehmen.
+
+     Zwei Blöcke, nicht eine gemischte Liste: eine gemochte Autor:in wirkt
+     anders als ein gemochtes Genre (sie wird gesucht, das Genre hebt nur das
+     Urteil), und die Überschrift sagt das — ohne Präfix an jeder Zeile. #}
   {% from "_preferences.html" import genre_select, author_input %}
+  {% macro checklist(name, items) %}
+  {% for value, label in items %}
+  <label class="flex items-center gap-2 py-1 text-sm">
+    <input type="checkbox" name="{{ name }}" value="{{ value }}"> {{ label }}</label>
+  {% endfor %}
+  {% endmacro %}
+  {% macro column(title, hint) %}
+  <fieldset>
+    <legend class="mb-0.5 text-xs font-medium tracking-wider text-soft uppercase">{{ title }}</legend>
+    <p class="mb-2 text-xs text-soft">{{ hint }}</p>
+    {{ caller() }}
+  </fieldset>
+  {% endmacro %}
   <section class="mt-8 max-w-2xl">
     <h2 class="font-serif text-lg font-semibold">Genres und Autor:innen</h2>
-    <p class="mb-4 text-sm text-soft">Aus deinen Büchern vorgeschlagen. Hake an, was gelten
-      soll — ein gemochtes Genre hebt das Urteil ein wenig, was du nicht magst, wird nicht
-      vorgeschlagen, und Autor:innen, denen du folgst, werden wöchentlich gesucht.</p>
+    <p class="mb-5 text-sm text-soft">Aus deinen Büchern vorgeschlagen. Hake an, was gelten soll.</p>
+
+    <h3 class="mb-3 text-sm font-semibold">Genres</h3>
     <div class="grid gap-5 sm:grid-cols-2">
-      <fieldset>
-        <legend class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">Magst du</legend>
-        {% for code, name in suggest.liked_genres %}
-        <label class="flex items-center gap-2 py-1 text-sm">
-          <input type="checkbox" name="liked_genre" value="{{ code }}"> {{ name }}</label>
-        {% endfor %}
-        {% for author in suggest.liked_authors %}
-        <label class="flex items-center gap-2 py-1 text-sm">
-          <input type="checkbox" name="liked_author" value="{{ author }}"> folgen: {{ author }}</label>
-        {% endfor %}
-        <div class="mt-2 flex flex-col gap-2">
-          {{ genre_select("liked_genre", preferences.options, "weiteres Genre …") }}
-          {{ author_input("liked_author", "weitere Autor:in") }}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend class="mb-2 text-xs font-medium tracking-wider text-soft uppercase">Magst du nicht</legend>
-        {% for code, name in suggest.disliked_genres %}
-        <label class="flex items-center gap-2 py-1 text-sm">
-          <input type="checkbox" name="disliked_genre" value="{{ code }}"> {{ name }}</label>
-        {% endfor %}
-        {% for author in suggest.disliked_authors %}
-        <label class="flex items-center gap-2 py-1 text-sm">
-          <input type="checkbox" name="disliked_author" value="{{ author }}"> {{ author }}</label>
-        {% endfor %}
-        <div class="mt-2 flex flex-col gap-2">
-          {{ genre_select("disliked_genre", preferences.options, "weiteres Genre …") }}
-          {{ author_input("disliked_author", "weitere Autor:in") }}
-        </div>
-      </fieldset>
+      {% call column("Magst du", "hebt das Urteil ein wenig") %}
+        {{ checklist("liked_genre", suggest.liked_genres) }}
+        <div class="mt-2 flex">{{ genre_select("liked_genre", preferences.options, "weiteres Genre …") }}</div>
+      {% endcall %}
+      {% call column("Magst du nicht", "wird nicht vorgeschlagen") %}
+        {{ checklist("disliked_genre", suggest.disliked_genres) }}
+        <div class="mt-2 flex">{{ genre_select("disliked_genre", preferences.options, "weiteres Genre …") }}</div>
+      {% endcall %}
+    </div>
+
+    <h3 class="mt-7 mb-3 text-sm font-semibold">Autor:innen</h3>
+    <div class="grid gap-5 sm:grid-cols-2">
+      {% call column("Folgen", "neue Bücher werden wöchentlich gesucht") %}
+        {{ checklist("liked_author", suggest.liked_authors) }}
+        <div class="mt-2 flex">{{ author_input("liked_author", "weitere Autor:in") }}</div>
+      {% endcall %}
+      {% call column("Nicht vorschlagen", "ihre Bücher kommen nicht in den Stapel") %}
+        {{ checklist("disliked_author", suggest.disliked_authors) }}
+        <div class="mt-2 flex">{{ author_input("disliked_author", "weitere Autor:in") }}</div>
+      {% endcall %}
     </div>
   </section>
 
