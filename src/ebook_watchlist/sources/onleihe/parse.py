@@ -155,8 +155,10 @@ def _series_ref(page: BeautifulSoup) -> str | None:
     return None
 
 
-#: ``mediaList,0-155-373164461-101-…`` → 155.
-_CATEGORY_LIST = re.compile(r"mediaList,0-(\d+)-")
+#: ``mediaList,0-155-373164461-101-…`` → 155. Nur der Listentyp 101: die
+#: Navigationslinks jeder Seite führen auch auf ``mediaList,0-…`` (Review
+#: 04.10.2026).
+_CATEGORY_LIST = re.compile(r"mediaList,0-(\d+)-\d+-101-")
 
 
 def _categories(page: BeautifulSoup) -> tuple[tuple[str, str], ...]:

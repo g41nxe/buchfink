@@ -107,8 +107,14 @@ def _with_details(store: Store, settings: Settings, observations, sources):
             continue
         # Die Quellkategorien stehen auf derselben Seite; mitgezählt, damit die
         # Genre-Tabelle der Quelle sich ohne eigene Anfrage füllt (#92).
+        # Buchführung: scheitert sie, gilt die Seite trotzdem (Review 04.10.2026).
         if item.categories:
-            store.note_categories(source.name, item.categories, example=item.title, now=now)
+            try:
+                store.note_categories(source.name, item.categories, example=item.title,
+                                      now=now)
+            except Exception as exc:  # noqa: BLE001 - mitzählen, nicht urteilen
+                print(f"  Quellkategorien nicht gezählt: {type(exc).__name__}",
+                      file=sys.stderr)
         # Die Detailseite traegt auch das groessere Titelbild (600x600 statt
         # 200x200 auf der Kachel). Sie ist schon geholt — es hier fallen zu
         # lassen hiesse, sie fuer dasselbe Bild ein zweites Mal zu holen.

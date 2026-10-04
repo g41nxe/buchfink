@@ -91,3 +91,46 @@ def test_without_categories_the_report_says_so(store: Store) -> None:
     from ebook_watchlist.source_categories import report
 
     assert report(store, []) == ["Noch keine Quellkategorien gesammelt."]
+
+
+def test_only_category_lists_count_as_categories() -> None:
+    """Die Navigationslinks jeder Seite führen auch auf ``mediaList,0-…``,
+    aber nicht mit dem Listentyp 101 (Review 04.10.2026)."""
+    from ebook_watchlist.sources.onleihe.parse import _categories, soup
+
+    page = soup('''<p class="horizontalDescription"><b>Kategorie:</b><span>
+        <a href="mediaList,0-155-1-101-0-0-0-0-0-0-0.html">Krimi &amp; Thriller,</a>
+        <a href="mediaList,0-0-0-102-0-0-0-0-400001-0-0.html">eBook</a></span></p>''')
+
+    assert _categories(page) == (("155", "Krimi & Thriller"),)
+
+
+def test_a_failing_tally_does_not_cost_the_evidence(data_dir: Path, monkeypatch) -> None:
+    """Mitzählen ist Buchführung; scheitert es, gilt die Detailseite trotzdem
+    (Review 04.10.2026)."""
+    from ebook_watchlist import paths
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.evidence import gather
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.sources.base import Item
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(Store, "note_categories", broken)
+    store, settings = Store(paths.db_path()), load_settings()
+
+    class Source:
+        name = "onleihe"
+
+        def item(self, source_item_id: str) -> Item:
+            return Item(source_item_id=source_item_id, title="Die Spur",
+                        blurb="Der ganze Klappentext.",
+                        categories=(("155", "Krimi & Thriller"),))
+
+    finds = [Observation(source="onleihe", source_item_id=str(n), title="Die Spur",
+                         match_reason=MatchReason.GENRE_CATEGORY) for n in (1, 2)]
+
+    backed = gather(store, settings, finds, [Source()])
+
+    assert [o.blurb for o in backed] == ["Der ganze Klappentext."] * 2

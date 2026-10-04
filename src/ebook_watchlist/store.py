@@ -30,6 +30,7 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
@@ -322,7 +323,9 @@ class SourceCategoryRow(Base):
     source: Mapped[str] = mapped_column(String, primary_key=True)
     number: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
-    #: Auf wie vielen Detailseiten sie stand.
+    #: Wie oft eine geholte Detailseite sie nannte — Abholungen, nicht
+    #: verschiedene Titel: ein neu beurteiltes Buch zählt noch einmal. Ein
+    #: grober Anhalt, keine Statistik (Review 04.10.2026).
     count: Mapped[int] = mapped_column(Integer, default=0)
     last_seen: Mapped[datetime] = mapped_column(DateTime)
     #: Ein Titel, der sie trug — hilft beim Zuordnen eines unklaren Namens.
@@ -1457,16 +1460,26 @@ class Store:
         wanted = dict(categories)
         if not wanted:
             return
-        with self.session() as session, session.begin():
-            for number, name in wanted.items():
-                row = session.get(SourceCategoryRow, (source, number))
-                if row is None:
-                    row = SourceCategoryRow(source=source, number=number, count=0)
-                    session.add(row)
-                row.name = name
-                row.count += 1
-                row.last_seen = now
-                row.example = example or row.example
+        # In einer Anweisung: Lauf und Oberfläche können dieselbe neue Nummer
+        # gleichzeitig sehen; lesen-dann-einfügen stieße dann auf den
+        # Schlüssel (Review 04.10.2026).
+        statement = sqlite_insert(SourceCategoryRow).values([
+            {"source": source, "number": number, "name": name, "count": 1,
+             "last_seen": now, "example": example}
+            for number, name in wanted.items()
+        ])
+        statement = statement.on_conflict_do_update(
+            index_elements=["source", "number"],
+            set_={
+                "name": statement.excluded.name,
+                "count": SourceCategoryRow.count + 1,
+                "last_seen": statement.excluded.last_seen,
+                "example": func.coalesce(statement.excluded.example, SourceCategoryRow.example),
+            },
+        )
+        with self.session() as session:
+            session.execute(statement)
+            session.commit()
 
     def source_categories(self) -> list[SourceCategoryRow]:
         """Alle gesammelten Quellkategorien, je Quelle nach Nummer."""
