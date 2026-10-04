@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from .config import OwnedBook, Seed, Settings, WatchlistEntry
+from .genres import load_genres
 from .relations import InterestKey, RelationKind
 from .store import Store
 
@@ -212,10 +213,43 @@ def sow(store: Store, settings: Settings, seed: Seed, watchlist: list[WatchlistE
         )
         report.interests += 1
     for category in seed.genre_categories:
+        code = theme_code(category)
         store.put_interest(
-            settings.slug, str(InterestKey.GENRE_CATEGORY), category, now=at, tier="core"
+            settings.slug, str(InterestKey.GENRE_CATEGORY), code, now=at, tier="core",
+            name=load_genres().name(code),
         )
         report.interests += 1
 
     report.books = len(store.books()) - before
     return report
+
+
+def theme_code(value: str) -> str:
+    """Ein Thema aus dem Saatgut als Code der Genre-Liste (ADR 37).
+
+    Bis ADR 37 war ein Thema ein beam-Pfad; ``seed.yaml`` darf ihn weiter
+    nennen und wird übersetzt, damit niemand die Datei anfassen muss. Was die
+    Liste nicht kennt, ist ein Fehler — ein stilles Thema, das keine Quelle
+    fegt, sähe aus wie ein ruhiger Tag.
+    """
+    from .config import ConfigError
+    from .sources.beam.selectors import GENRES as BEAM
+
+    if value in load_genres():
+        return value
+    path = value.strip("/")
+    by_shelf = {shelf: code for code, shelf in BEAM.items()}
+    by_shelf |= LEGACY_SHELVES
+    if path in by_shelf:
+        return by_shelf[path]
+    raise ConfigError(
+        f"Thema {value!r}: kein Code der Genre-Liste (docs/genres.yaml) und kein bekanntes Regal"
+    )
+
+
+#: Regale, die vor ADR 37 als Thema gespeichert wurden und kein eigenes
+#: Gegenstück in der beam-Tabelle haben.
+LEGACY_SHELVES = {
+    "belletristik/horror-mystery/horror-mystery-allgemein": "FIC015000",
+    "belletristik/science-fiction/science-fiction-allgemein": "FIC028000",
+}

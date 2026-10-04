@@ -406,3 +406,26 @@ def test_importing_twice_leaves_one_relation(store: Store) -> None:
 
     book = store.books()[0]
     assert len(store.relations_of("t", book.id)) == 1
+
+
+def test_a_theme_is_stored_as_a_genre_code_with_its_name(store: Store) -> None:
+    """Ein Thema ist ein Code der Genre-Liste; ein alter beam-Pfad im Saatgut
+    wird übersetzt, damit `seed.yaml` nicht angefasst werden muss (ADR 37)."""
+    import json
+
+    sow(store, settings(),
+        seed(genre_categories=["belletristik/krimi-thriller/psychothriller", "FIC028000"]),
+        [], now=NOW)
+
+    themes = {row.value: json.loads(row.details or "{}")
+              for row in store.interests("t", key="thema")}
+    assert themes["FIC031080"]["name"] == "Psychothriller"
+    assert themes["FIC028000"]["name"] == "Science-Fiction"
+
+
+def test_a_theme_the_list_does_not_know_is_loud(store: Store) -> None:
+    from ebook_watchlist.config import ConfigError
+
+    with pytest.raises(ConfigError, match="belletristik/liebesromane"):
+        sow(store, settings(), seed(genre_categories=["belletristik/liebesromane"]), [],
+            now=NOW)

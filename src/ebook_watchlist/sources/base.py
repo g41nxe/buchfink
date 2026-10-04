@@ -11,9 +11,10 @@ from __future__ import annotations
 import dataclasses
 import sys
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import ClassVar
 
 from ..config import Settings, WatchlistEntry
 from ..dismissals import Dismissed
@@ -231,6 +232,24 @@ class RunContext:
 
 class Source(ABC):
     """Anything a Run can poll."""
+
+    #: Code der Genre-Liste → eigene Adresse dieser Quelle (ADR 37): ein
+    #: Regal, ein Thema, eine Kategorienummer. Jede Quelle hält ihre eigene,
+    #: neben ihrem Code; die Liste kennt keine Quelle.
+    genre_addresses: ClassVar[Mapping[str, str]] = {}
+
+    def genre_address(self, code: str) -> str | None:
+        """Die Adresse zu einem Genre — oder zu dem darüber, oder keine.
+
+        Untergenre vor Genre: OverDrive kennt keinen Psychothriller, aber
+        Thriller. Ohne Eintrag wird nicht gefegt; geraten wird nicht.
+        """
+        from ..genres import load_genres
+
+        for candidate in load_genres().lineage(code):
+            if candidate in self.genre_addresses:
+                return self.genre_addresses[candidate]
+        return None
 
     #: Stable identifier used as ``observation.source`` — never change it for a
     #: live Source, the Snapshot is keyed on it.

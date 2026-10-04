@@ -39,6 +39,11 @@ def genre_category_name(category: str | None) -> str | None:
     """
     if not category:
         return None
+    from .genres import load_genres
+
+    if (name := load_genres().name(category)) is not None:
+        # Ein Code der Genre-Liste (ADR 37).
+        return name
     if "/" not in category and category != category.lower():
         # Kein Pfad, sondern schon ein Name — die Sammlung einer Bibliothek
         # („Lucky Day", #74). ``capitalize`` machte daraus „Lucky day".
@@ -74,10 +79,14 @@ def is_library_list(observation: Observation) -> bool:
     Namen, ein Thema einen Shop-Pfad. Gezeigt werden beide getrennt: sonst
     stand „Lucky Day" in der Bernstein-Pille eines Themas.
     """
+    from .genres import load_genres
+
     return (
         observation.match_reason is MatchReason.GENRE_CATEGORY
         and bool(observation.category)
         and "/" not in (observation.category or "")
+        # Ein Thema ist seit ADR 37 ein Code — auch ohne Schrägstrich keine Liste.
+        and observation.category not in load_genres()
         and _is_library(observation.source)
     )
 

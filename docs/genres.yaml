@@ -1,0 +1,93 @@
+# Die feste Genre-Liste (ADR 37).
+#
+# Jeder Eintrag ist ein BISAC-Code (BISG, bisg.org/fiction) mit deutschem Namen
+# und der BISAC-Bezeichnung zum Nachprüfen. Aufgenommen ist, was mindestens ein
+# Buch im Bestand braucht (Zählung vom 04.10.2026); die Ordnung kommt aus
+# BISAC, nicht aus dem Geschmack der Leserin. Das „General" einer Gruppe ist
+# ihr „sonstiges".
+#
+# Die Liste kennt keine Quelle: jede Quelle übersetzt die Codes in ihrer eigenen
+# Tabelle (`sources/*/selectors.py`, `GENRES`). Ein Name lässt sich hier
+# ändern, der Code nicht — an ihm hängen Steckbriefe, Profil und Themen.
+#
+# `erweiterung: true` markiert, was BISAC nicht kennt; die Id beginnt dann mit
+# `DE-`.
+
+genres:
+  - code: FIC031000
+    name: Thriller
+    bisac: Thrillers / General
+    untergenres:
+      - {code: FIC031080, name: Psychothriller, bisac: Thrillers / Psychological}
+      - {code: FIC031100, name: Domestic Thriller, bisac: Thrillers / Domestic}
+      - {code: FIC031010, name: Crime-Thriller, bisac: Thrillers / Crime}
+      - {code: FIC036000, name: Techno-Thriller, bisac: Thrillers / Technological}
+      - {code: FIC006000, name: Spionage, bisac: Thrillers / Espionage}
+      - {code: FIC031070, name: Übernatürlicher Thriller, bisac: Thrillers / Supernatural}
+
+  - code: FIC022000
+    name: Krimi
+    bisac: Mystery & Detective / General
+    untergenres:
+      - {code: FIC022020, name: Polizeikrimi, bisac: Mystery & Detective / Police Procedural}
+      - {code: FIC022070, name: Cosy Crime, bisac: Mystery & Detective / Cozy / General}
+      - {code: FIC022080, name: Internationaler Krimi, bisac: Mystery & Detective / International Crime & Mystery}
+      - {code: DE-REGIONALKRIMI, name: Regionalkrimi, erweiterung: true}
+
+  - code: FIC028000
+    name: Science-Fiction
+    bisac: Science Fiction / General
+    untergenres:
+      - {code: FIC028030, name: Space Opera, bisac: Science Fiction / Space Opera}
+      - {code: FIC028070, name: Postapokalypse, bisac: Science Fiction / Apocalyptic & Post-Apocalyptic}
+      - {code: FIC028050, name: Military SF, bisac: Science Fiction / Military}
+      - {code: FIC028100, name: Cyberpunk, bisac: Science Fiction / Cyberpunk}
+
+  - code: FIC055000
+    name: Dystopie
+    bisac: Dystopian
+
+  - code: FIC009000
+    name: Fantasy
+    bisac: Fantasy / General
+    untergenres:
+      - {code: FIC009020, name: High Fantasy, bisac: Fantasy / Epic}
+      - {code: FIC009060, name: Urban Fantasy, bisac: Fantasy / Urban}
+      - {code: FIC009070, name: Dark Fantasy, bisac: Fantasy / Dark Fantasy}
+
+  - code: FIC015000
+    name: Horror
+    bisac: Horror / General
+    untergenres:
+      - {code: FIC015040, name: Übernatürlicher Horror, bisac: Horror / Occult & Supernatural}
+      - {code: FIC015030, name: Kreaturenhorror, bisac: Horror / Monsters & Creatures}
+      - {code: FIC015050, name: Psychologischer Horror, bisac: Horror / Psychological}
+
+  - code: FIC027000
+    name: Liebesroman
+    bisac: Romance / General
+    untergenres:
+      - {code: FIC027020, name: Contemporary Romance, bisac: Romance / Contemporary}
+      - {code: FIC027030, name: Romantasy, bisac: Romance / Fantasy}
+
+  - code: FIC016000
+    name: Humor
+    bisac: Humorous / General
+    untergenres:
+      - {code: FIC060000, name: Schwarzer Humor, bisac: Humorous / Dark Humor}
+
+  - code: FIC014000
+    name: Historischer Roman
+    bisac: Historical / General
+
+  - code: FIC019000
+    name: Gegenwartsliteratur
+    bisac: Literary
+
+  - code: FIC002000
+    name: Abenteuer
+    bisac: Action & Adventure
+
+  - code: BIO000000
+    name: Biografie & Erinnerungen
+    bisac: Biography & Autobiography / General

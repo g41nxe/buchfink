@@ -609,6 +609,46 @@ def _the_dnb_names_the_page_count(connection: Connection) -> None:
     add_column(connection, "dnb_record", "pages", "INTEGER")
 
 
+def _themes_become_genre_codes(connection: Connection) -> None:
+    """Ein Thema war ein beam-Pfad und ist jetzt ein Code der Genre-Liste,
+    mit seinem Namen (ADR 37).
+
+    Die Zuordnung steht hier fest und nicht in der beam-Tabelle: eine Migration
+    beschreibt die Welt, in der sie geschrieben wurde. Ein Pfad, den sie nicht
+    kennt, bleibt stehen — sichtbar falsch statt still verloren.
+    """
+    if not _has_table(connection, "interest"):
+        return
+    import json
+
+    known = {
+        "belletristik/krimi-thriller/psychothriller": ("FIC031080", "Psychothriller"),
+        "belletristik/krimi-thriller": ("FIC031000", "Thriller"),
+        "belletristik/krimi-thriller/spionage": ("FIC006000", "Spionage"),
+        "belletristik/krimi-thriller/regionalkrimis": ("DE-REGIONALKRIMI", "Regionalkrimi"),
+        "belletristik/science-fiction": ("FIC028000", "Science-Fiction"),
+        "belletristik/science-fiction/science-fiction-allgemein": ("FIC028000", "Science-Fiction"),
+        "belletristik/science-fiction/space-opera": ("FIC028030", "Space Opera"),
+        "belletristik/science-fiction/military-sf": ("FIC028050", "Military SF"),
+        "belletristik/science-fiction/dystopie": ("FIC055000", "Dystopie"),
+        "belletristik/horror-mystery": ("FIC015000", "Horror"),
+        "belletristik/horror-mystery/horror-mystery-allgemein": ("FIC015000", "Horror"),
+        "belletristik/fantasy": ("FIC009000", "Fantasy"),
+    }
+    rows = connection.exec_driver_sql(
+        "SELECT id, value, details FROM interest WHERE key = 'thema'"
+    ).all()
+    for row_id, value, details in rows:
+        target = known.get((value or "").strip("/"))
+        if target is None:
+            continue
+        merged = {**json.loads(details or "{}"), "name": target[1]}
+        connection.exec_driver_sql(
+            "UPDATE interest SET value = ?, details = ? WHERE id = ?",
+            (target[0], json.dumps(merged, ensure_ascii=False), row_id),
+        )
+
+
 def _a_portrait_remembers_whether_a_sample_went_along(connection: Connection) -> None:
     """Die Leseprobe als zweite Stufe wird genau einmal gefragt (#76)."""
     add_column(connection, "portrait", "with_sample", "INTEGER")
@@ -668,6 +708,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _an_observation_knows_its_page_count,
     _a_portrait_remembers_whether_a_sample_went_along,
     _the_dnb_names_the_page_count,
+    _themes_become_genre_codes,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

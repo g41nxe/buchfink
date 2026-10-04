@@ -48,6 +48,10 @@ def test_the_raw_shelf_path_never_reaches_the_reader() -> None:
 @pytest.mark.parametrize(
     ("category", "expected"),
     [
+        # Ein Code der Genre-Liste: ihr Name (ADR 37).
+        ("FIC031080", "Psychothriller"),
+        ("DE-REGIONALKRIMI", "Regionalkrimi"),
+        # Ältere Beobachtungen tragen noch den beam-Pfad.
         ("belletristik/horror-mystery/horror-mystery-allgemein", "Horror & Mystery"),
         ("belletristik/science-fiction/space-opera", "Space Opera"),
         ("/belletristik/science-fiction/military-sf/", "Military SF"),
@@ -115,7 +119,7 @@ def test_a_library_find_by_genre_category_names_the_genre_not_a_collection() -> 
 
     fund = Observation(source="overdrive", source_item_id="1", title="T",
                        match_reason=MatchReason.GENRE_CATEGORY,
-                       category="belletristik/krimi-thriller/psychothriller",
+                       category="FIC031080",
                        availability=Availability.AVAILABLE)
 
     assert why_shown(fund) == "neu im Thema Psychothriller, sofort ausleihbar"

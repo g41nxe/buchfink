@@ -49,6 +49,7 @@ def author_slug(author: str) -> str:
 
 
 class BeamSource(ShopSource):
+    genre_addresses = sel.GENRES
     name = SOURCE_NAME
 
     def __init__(self, client: HttpClient, name: str = SOURCE_NAME, base: str = sel.BASE) -> None:
@@ -204,8 +205,14 @@ class BeamSource(ShopSource):
         v1 trusts the shop's shelving rather than classifying anything: sort the
         category by release date and read the front of it (ADR 11). What counts
         as *new* is decided later, by the diff against past Observations.
+
+        ``category_path`` ist ein Code der Genre-Liste (ADR 37); welches Regal
+        er meint, steht in ``selectors.GENRES``.
         """
-        path = category_path.strip("/") + "/"
+        shelf = self.genre_address(category_path)
+        if shelf is None:
+            return []
+        path = shelf.strip("/") + "/"
         seen: set[str] = set()
         observations: list[Observation] = []
 

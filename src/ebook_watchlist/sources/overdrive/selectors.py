@@ -40,13 +40,22 @@ NEWLY_ADDED = {"sortBy": "newlyadded"}
 #: wird ein Stichwort im letzten Abschnitt des Pfads; ein Thema ohne Eintrag
 #: wird bei OverDrive nicht gesucht. Die Kennungen stehen in der Facette
 #: ``subjects`` der Suchantwort (gemessen am 26.09.2026).
-GENRE_SUBJECTS = (
-    ("thriller", "100"),
-    ("krimi", "57"),
-    ("science-fiction", "80"),
-    ("horror", "38"),
-    ("fantasy", "24"),
-)
+GENRES: dict[str, str] = {
+    # Code der Genre-Liste → Thema bei OverDrive (ADR 37). OverDrive kennt keine
+    # Untergenres; erhoben am 04.10.2026 aus der Facette `subjects`
+    # (docs/research/genres-der-quellen.md).
+    "FIC031000": "100",  # Thriller
+    "FIC022000": "57",   # Mystery
+    "FIC028000": "80",   # Science Fiction
+    "FIC055000": "80",   # Dystopien stehen dort unter Science Fiction
+    "FIC009000": "24",   # Fantasy
+    "FIC015000": "38",   # Horror
+    "FIC027000": "77",   # Romance
+    "FIC014000": "115",  # Historical Fiction
+    "FIC016000": "123",  # Humor (Fiction)
+    "FIC019000": "49",   # Literature
+    "BIO000000": "7",    # Biography & Autobiography
+}
 
 #: Nur EPUB-E-Books, wie bei der Onleihe (``media: [ebook]``).
 #: ``ebook-epub-adobe`` ist das Format, das die Leserin auf einem E-Reader

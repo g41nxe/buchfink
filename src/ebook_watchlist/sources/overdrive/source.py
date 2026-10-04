@@ -61,6 +61,7 @@ MAX_SERIES_PAGES = 10
 
 
 class OverdriveSource(LibrarySource):
+    genre_addresses = sel.GENRES
     name = SOURCE_NAME
 
     def __init__(
@@ -117,9 +118,12 @@ class OverdriveSource(LibrarySource):
         return found
 
     def by_category(self, category_path: str) -> list[Observation]:
-        """Die Neuzugänge zu einem Thema der Leserin, frei und auf Deutsch."""
-        slug = category_path.strip("/").rsplit("/", 1)[-1]
-        subject = next((sid for word, sid in sel.GENRE_SUBJECTS if word in slug), None)
+        """Die Neuzugänge zu einem Thema der Leserin, frei und auf Deutsch.
+
+        ``category_path`` ist ein Code der Genre-Liste; OverDrive kennt nur
+        grobe Themen, ein Psychothriller wird als Thriller gefegt (ADR 37).
+        """
+        subject = self.genre_address(category_path)
         if subject is None:
             return []
         return self._finds(

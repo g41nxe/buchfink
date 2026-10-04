@@ -84,9 +84,8 @@ def test_interests_become_the_two_author_lists(store: Store) -> None:
 
     assert configured.settings.reference_authors == ["Chris Carter"]
     assert configured.settings.extended_authors == ["Dave Eggers"]
-    assert configured.settings.genre_categories == [
-        "belletristik/krimi-thriller/psychothriller"
-    ]
+    # Das Saatgut darf den alten beam-Pfad nennen; gespeichert wird der Code (ADR 37).
+    assert configured.settings.genre_categories == ["FIC031080"]
 
 
 def test_the_settings_that_never_were_relations_stay_from_the_file(store: Store) -> None:

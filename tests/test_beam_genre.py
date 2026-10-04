@@ -21,7 +21,8 @@ from ebook_watchlist.store import Store
 
 FIXTURES = Path(__file__).parent / "fixtures" / "beam"
 NOW = datetime(2026, 9, 4, 6, 0)
-SPACE_OPERA = "belletristik/science-fiction/space-opera"
+#: Ein Thema ist ein Code der Genre-Liste (ADR 37); beam übersetzt ihn selbst.
+SPACE_OPERA = "FIC028030"
 PROFILE = Settings(slug="t", name="T")
 
 
@@ -78,11 +79,20 @@ def test_the_shelf_is_recorded_on_every_observation() -> None:
     assert all(o.original_price_cents is None for o in observations)
 
 
-def test_a_leading_or_trailing_slash_does_not_change_the_request() -> None:
+def test_a_subgenre_beam_does_not_shelve_falls_back_to_its_genre() -> None:
+    """Domestic Thriller hat bei beam kein eigenes Regal: es gilt das des
+    Genres, Krimi & Thriller (ADR 37)."""
     beam = source()
-    beam.by_category("/" + SPACE_OPERA + "/")
+    beam.by_category("FIC031100")
     url, _ = beam.client.requests[0]  # type: ignore[attr-defined]
-    assert url.endswith("/belletristik/science-fiction/space-opera/")
+    assert url.endswith("/belletristik/krimi-thriller/")
+
+
+def test_a_genre_beam_cannot_translate_asks_nothing() -> None:
+    beam = source()
+
+    assert beam.by_category("FIC999999") == []
+    assert beam.client.requests == []  # type: ignore[attr-defined]
 
 
 # --- what counts as new ---------------------------------------------------

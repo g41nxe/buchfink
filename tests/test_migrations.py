@@ -453,3 +453,31 @@ def test_the_old_machine_judgements_are_deleted_and_hers_stay(tmp_path: Path) ->
     with sqlite3.connect(path) as connection:
         origins = sorted(o for (o,) in connection.execute("SELECT origin FROM rating"))
     assert origins == ["onleihe_readers", "reader"]
+
+
+def test_the_themes_become_genre_codes(tmp_path: Path) -> None:
+    """Die gespeicherten Themen waren beam-Pfade; sie werden Codes der
+    Genre-Liste mit ihrem Namen (ADR 37). Ein Pfad, den niemand übersetzen
+    kann, bleibt stehen — lieber sichtbar falsch als still verloren."""
+    import json
+
+    from sqlalchemy import create_engine, text
+
+    from ebook_watchlist.migrations import _themes_become_genre_codes
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE interest (id INTEGER PRIMARY KEY, profile_slug TEXT, key TEXT, "
+            "value TEXT, details TEXT)")
+        for value in ("belletristik/krimi-thriller/psychothriller",
+                      "belletristik/horror-mystery/horror-mystery-allgemein",
+                      "belletristik/science-fiction", "belletristik/etwas-unbekanntes"):
+            connection.execute(text(
+                "INSERT INTO interest (profile_slug, key, value, details) "
+                "VALUES ('t', 'thema', :v, '{\"tier\": \"core\"}')"), {"v": value})
+        _themes_become_genre_codes(connection)
+        rows = dict(connection.exec_driver_sql("SELECT value, details FROM interest").all())
+
+    assert set(rows) == {"FIC031080", "FIC015000", "FIC028000", "belletristik/etwas-unbekanntes"}
+    assert json.loads(rows["FIC031080"]) == {"tier": "core", "name": "Psychothriller"}

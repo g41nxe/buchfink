@@ -105,3 +105,32 @@ BADGE_PREORDER = "Vorbestellbar"
 # --- doctor probe ---------------------------------------------------------
 
 PROBE_QUERY = "Krieg der Klone Scalzi"
+
+
+#: Code der Genre-Liste → Regal bei beam (ADR 37). Erhoben am 04.10.2026
+#: (docs/research/genres-der-quellen.md). Krimi und Thriller teilen ein Regal.
+GENRES: dict[str, str] = {
+    "FIC031000": "belletristik/krimi-thriller",
+    "FIC031080": "belletristik/krimi-thriller/psychothriller",
+    "FIC006000": "belletristik/krimi-thriller/spionage",
+    "FIC022000": "belletristik/krimi-thriller",
+    "DE-REGIONALKRIMI": "belletristik/krimi-thriller/regionalkrimis",
+    "FIC028000": "belletristik/science-fiction",
+    "FIC028030": "belletristik/science-fiction/space-opera",
+    "FIC028050": "belletristik/science-fiction/military-sf",
+    "FIC028070": "belletristik/science-fiction/postapokalypse",
+    "FIC028100": "belletristik/science-fiction/cyberpunk",
+    "FIC055000": "belletristik/science-fiction/dystopie",
+    "FIC009000": "belletristik/fantasy",
+    "FIC009020": "belletristik/fantasy/high-fantasy",
+    "FIC009060": "belletristik/fantasy/urban-fantasy",
+    "FIC009070": "belletristik/fantasy/dark-fantasy",
+    "FIC015000": "belletristik/horror-mystery",
+    "FIC027000": "belletristik/romance",
+    "FIC027030": "belletristik/romance/romantasy",
+    "FIC016000": "belletristik/humor-satire",
+    "FIC014000": "belletristik/historische-romane",
+    "FIC019000": "belletristik/romane-erzaehlungen",
+    "FIC002000": "belletristik/abenteuer-western/abenteuer",
+    "BIO000000": "belletristik/biographien",
+}

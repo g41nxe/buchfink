@@ -483,23 +483,24 @@ def test_a_book_by_someone_else_is_not_an_author_find() -> None:
 
 
 def test_a_genre_category_is_searched_as_newly_added_by_subject() -> None:
-    """Thema → OverDrive-Thema: Psychothriller ist Thriller (100)."""
+    """Thema → OverDrive-Thema: Psychothriller ist Thriller (100) — OverDrive
+    kennt keine Untergenres, es gilt das Genre (ADR 37)."""
     client = StubClient(fixture("search-hits.json"))
     quelle = OverdriveSource(client=client)
 
-    funde = quelle.by_category("belletristik/krimi-thriller/psychothriller")
+    funde = quelle.by_category("FIC031080")
 
     _, params = client.requests[0]
     assert params["subject"] == "100" and params["sortBy"] == "newlyadded"
     assert params["showOnlyAvailable"] == "true"
     assert funde and funde[0].match_reason is MatchReason.GENRE_CATEGORY
-    assert funde[0].category == "belletristik/krimi-thriller/psychothriller"
+    assert funde[0].category == "FIC031080"
 
 
 def test_a_genre_without_a_subject_asks_nothing() -> None:
     client = StubClient(fixture("search-hits.json"))
 
-    assert OverdriveSource(client=client).by_category("belletristik/liebesromane") == []
+    assert OverdriveSource(client=client).by_category("FIC999999") == []
     assert client.requests == []
 
 
