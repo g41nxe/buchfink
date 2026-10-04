@@ -297,6 +297,22 @@ shelving, not the reader's word for what interests them. The code keeps
 stored in the database stays `"thema"` — a data value, not an identifier, and
 not migrated (ADR 22, addendum of 26.09.2026).
 
+Decided in ADR 37, not yet built: a Thema becomes an entry of the Genre list
+(a BISAC code) instead of a beam path, and every Source translates it itself.
+
+### Genre
+*deutsch: Genre*
+
+An entry of the fixed list `docs/genres.yaml` (ADR 37): a BISAC code with a
+German name, e.g. `FIC031080` „Psychothriller", grouped as genre → subgenre.
+A book has one subgenre from the model or several codes from its Sources
+(DNB, OverDrive); a Source code on the list wins. Every Source translates the
+codes into its own categories in a table of its own; subgenre falls back to
+genre, and without an entry the Source does not sweep. Not the model's free
+text — that stays beside the code in the Portrait. The reader likes or
+dislikes genres (and authors): a liked genre is a small bonus, a disliked one
+keeps a find out of the pile; a genre covers all subgenres below it.
+
 ### Discovery
 *deutsch: Fund*
 
