@@ -27,7 +27,7 @@ from __future__ import annotations
 import re
 import sys
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -251,9 +251,12 @@ def genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
         # gleich wie das Modell das Genre geschrieben hat. Ein Steckbrief ohne
         # Code bekommt ihn hier nach denselben Regeln wie beim Speichern.
         from .genre_migration import genre_code
+        from .preferences import book_codes
 
         code = portrait.genre_code or genre_code(portrait.genre, portrait.subgenre)
-        return bool(code) and genres.covers(counterweight.genre, code)
+        # Der Verlag vor dem Modell, wie bei Bonus und Ausschluss (ADR 37).
+        return any(genres.covers(counterweight.genre, c)
+                   for c in book_codes(portrait.source_codes, code))
     # Ein Gegengewicht von vor ADR 37 trägt noch Text.
     pattern = re.compile(rf"(?<!\w){re.escape(counterweight.genre.casefold())}(?!\w)")
     parts = (portrait.genre, portrait.subgenre)
@@ -483,7 +486,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Profil nicht übernommen: {exc}", file=sys.stderr)
         return 1
     settings = load_settings()
-    version = Store(paths.db_path()).put_reading_profile(
+    store = Store(paths.db_path())
+    # Die Datei kennt Genres und Autor:innen nicht (ADR 37); sie bleiben, wie
+    # sie im Speicher stehen, statt still zu verschwinden (Review 04.10.2026).
+    if (stored := store.reading_profile(settings.slug)) is not None:
+        profile = replace(profile, liked_genres=stored.liked_genres,
+                          disliked_genres=stored.disliked_genres,
+                          disliked_authors=stored.disliked_authors)
+    version = store.put_reading_profile(
         settings.slug, profile, cause=f"aus der Datei {file_path.name}", now=datetime.now()
     )
     print(f"Profil gespeichert als Fassung {version}: {len(profile.liked)} gemocht, "

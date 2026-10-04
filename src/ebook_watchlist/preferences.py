@@ -56,9 +56,11 @@ def excluded_by(
     if profile is None or observation.match_reason is MatchReason.WATCHLIST:
         return None
     if observation.author and profile.disliked_authors:
-        wanted = author_key(observation.author)
+        # Jede Person des Felds für sich: „King, Stephen, Straub, Peter"
+        # (Review 04.10.2026).
+        people = {author_key(person) for person in people_in(observation.author)}
         for name in profile.disliked_authors:
-            if author_key(name) == wanted:
+            if author_key(name) in people:
                 return f"Autor:in {observation.author}"
     genres = load_genres()
     for code in book_codes(codes, None):
@@ -66,6 +68,23 @@ def excluded_by(
             if genres.covers(disliked, code):
                 return f"Genre {genres.name(disliked)}"
     return None
+
+
+def people_in(field: str) -> list[str]:
+    """Die Personen eines Autorfelds.
+
+    `split_authors` trennt „Stephen King, Peter Straub"; „King, Stephen,
+    Straub, Peter" — lauter einzelne Wörter — liest es als eine Person. Dort
+    gilt paarweise „Nachname, Vorname" (Review 04.10.2026). Das ganze Feld
+    zählt immer mit.
+    """
+    from .matching.normalize import split_authors
+
+    people = [field, *split_authors(field)]
+    parts = [part.strip() for part in field.split(",") if part.strip()]
+    if len(parts) >= 4 and len(parts) % 2 == 0 and all(" " not in p for p in parts):
+        people += [f"{given} {surname}" for surname, given in zip(parts[::2], parts[1::2], strict=True)]
+    return people
 
 
 def liked_genre(profile: ReadingProfile, codes: Iterable[str]) -> str | None:
@@ -131,8 +150,7 @@ def change(
     if kind not in KINDS or not value:
         return False
     if kind == "liked_author":
-        store.put_interest(profile_slug, str(InterestKey.AUTHOR), value, active=add, now=now,
-                           tier="extended")
+        follow(store, profile_slug, value, active=add, now=now)
         return True
     if kind.endswith("_genre") and value not in load_genres():
         return False
@@ -142,11 +160,37 @@ def change(
     current = getattr(profile, field)
     updated = tuple(dict.fromkeys((*current, value))) if add else tuple(
         v for v in current if v != value)
-    if updated == current:
+    changes = {field: updated}
+    # Gemocht und nicht gemocht schließen sich aus: das neue gilt (Review
+    # 04.10.2026).
+    other = {"liked_genres": "disliked_genres", "disliked_genres": "liked_genres"}.get(field)
+    if add and other and value in getattr(profile, other):
+        changes[other] = tuple(v for v in getattr(profile, other) if v != value)
+    if changes == {field: current}:
         return False
-    store.put_reading_profile(profile_slug, replace(profile, **{field: updated}),
+    store.put_reading_profile(profile_slug, replace(profile, **changes),
                               cause="Profilseite", now=now)
     return True
+
+
+def follow(store: Store, profile_slug: str, name: str, *, active: bool, now: datetime) -> None:
+    """Einer Autor:in folgen oder nicht mehr — ohne ihre Stufe anzufassen.
+
+    Eine neue folgt wöchentlich (ADR 37); eine, der sie schon folgt, behält
+    ihre Stufe: ein Referenzautor aus dem Saatgut ist täglich, und ein erneutes
+    Folgen stufte ihn sonst herunter (Review 04.10.2026).
+    """
+    known = {
+        author_key(row.value): row
+        for row in store.interests(profile_slug, key=str(InterestKey.AUTHOR), active_only=False)
+    }
+    row = known.get(author_key(name))
+    if row is not None:
+        store.put_interest(profile_slug, str(InterestKey.AUTHOR), row.value, active=active,
+                           now=now)
+    elif active:
+        store.put_interest(profile_slug, str(InterestKey.AUTHOR), name, now=now,
+                           tier="extended")
 
 
 def from_books(store: Store, book_ids: Iterable[int]) -> tuple[tuple[str, ...], tuple[str, ...]]:

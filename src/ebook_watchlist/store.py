@@ -2223,7 +2223,9 @@ class Store:
                 .where(PortraitRow.subject.in_(group), PortraitRow.fingerprint == fingerprint)
                 .order_by(*_BEST_PORTRAIT_FIRST)
             ).first()
-            return _portrait_of(row) if row is not None else None
+            if row is None:
+                return None
+        return self._with_source_codes({subject: _portrait_of(row)})[subject]
 
     def portraits_for(self, subjects: Iterable[str], fingerprint: str) -> dict[str, Portrait]:
         """Die jüngsten Steckbriefe zu diesen Schlüsseln — ein Zugriff für eine
@@ -2251,7 +2253,18 @@ class Store:
                 for asked in asked_by[row.subject]:
                     if asked not in best:
                         best[asked] = _portrait_of(row)
-            return best
+        return self._with_source_codes(best)
+
+    def _with_source_codes(self, portraits: dict[str, Portrait]) -> dict[str, Portrait]:
+        """Die BISAC-Codes des Verlags an die Steckbriefe mit ISBN hängen —
+        damit Bonus, Gegengewicht und Ausschluss dasselbe Genre sehen (ADR 37)."""
+        isbns = {s.removeprefix("isbn:") for s in portraits if s.startswith("isbn:")}
+        codes = self.bisac_codes(isbns)
+        return {
+            subject: replace(p, source_codes=codes.get(subject.removeprefix("isbn:"), ()))
+            if subject.startswith("isbn:") else p
+            for subject, p in portraits.items()
+        }
 
     # --- Leseprofil aus Facetten (#46) ---------------------------------------
 

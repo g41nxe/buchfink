@@ -159,3 +159,86 @@ def test_the_pile_hides_and_counts_what_she_does_not_like(data_dir) -> None:
     assert [s.author for s in pile.items] == ["Jemand Anderes"]
     assert pile.hidden_disliked == 1
     assert (1, "nicht gemocht") in pile.hidden
+
+
+# --- aus dem Review (04.10.2026) -------------------------------------------------
+
+
+def test_following_again_keeps_a_daily_author_daily(store: Store) -> None:
+    """Ein Referenzautor aus dem Saatgut ist täglich; ein erneutes Folgen oder
+    Zurücknehmen stuft ihn nicht auf wöchentlich herunter."""
+    import json
+
+    from ebook_watchlist.preferences import change
+
+    store.put_interest("t", "author", "Chris Carter", now=NOW, tier="core")
+
+    change(store, "t", "liked_author", "Chris Carter", add=True, now=NOW)
+    change(store, "t", "liked_author", "Chris Carter", add=False, now=NOW)
+
+    (row,) = store.interests("t", key="author", active_only=False)
+    assert json.loads(row.details)["tier"] == "core"
+    assert row.active is False
+
+
+def test_a_field_with_several_authors_is_excluded_by_any_of_them() -> None:
+    profile = replace(EMPTY, disliked_authors=("Stephen King",))
+
+    assert excluded_by(profile, find(author="King, Stephen, Straub, Peter"), ())
+    assert excluded_by(profile, find(author="Stephen King, Peter Straub"), ())
+
+
+def test_a_genre_is_either_liked_or_disliked(store: Store) -> None:
+    from ebook_watchlist.preferences import change
+
+    change(store, "t", "liked_genre", "FIC027000", add=True, now=NOW)
+    change(store, "t", "disliked_genre", "FIC027000", add=True, now=NOW)
+
+    profile = store.reading_profile("t")
+    assert (profile.liked_genres, profile.disliked_genres) == ((), ("FIC027000",))
+
+
+def test_the_liked_genre_bonus_reads_the_publishers_code_first(store: Store) -> None:
+    """Wie der Ausschluss: der Verlag vor dem Modell. Gemocht ist Thriller,
+    der Steckbrief sagt Fantasy, der Verlag Psychothriller."""
+    from ebook_watchlist.dnb import Record
+    from ebook_watchlist.facets import Liked, load_weights
+    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+    from ebook_watchlist.taste_form import learn, overlap
+
+    vocabulary, weights = load_vocabulary(), load_weights()
+    stamp = fingerprint(vocabulary)
+    store.save_dnb("9783000000701", Record(title="T", bisac=("FIC031080",)), NOW)
+    store.put_portrait("isbn:9783000000701", Portrait(
+        known=True, fingerprint=stamp, genre_code="FIC009000",
+        traits=(Trait("world_building", "Satz.", "wissen", "praegend"),)), now=NOW)
+    portrait = store.portrait("isbn:9783000000701", stamp)
+    profile = replace(EMPTY, liked=(Liked(vocabulary.family_of("world_building").id),),
+                      liked_genres=("FIC031000",))
+
+    result = overlap(portrait, profile, learn(profile, (), vocabulary, weights), vocabulary,
+                     weights)
+
+    assert portrait.source_codes == ("FIC031080",)
+    assert any(step.kind == "liked_genre" for step in result.steps)
+
+
+def test_importing_a_profile_file_keeps_genres_and_authors(store: Store, tmp_path,
+                                                          monkeypatch) -> None:
+    """Die Datei kennt die neuen Felder nicht; sie gehen deshalb nicht verloren."""
+    from ebook_watchlist import facets, paths
+
+    store.put_reading_profile("t", replace(EMPTY, disliked_genres=("FIC027000",),
+                                           disliked_authors=("Rosamunde Pilcher",)),
+                              cause="test", now=NOW)
+    profile_file = tmp_path / "profil.yaml"
+    profile_file.write_text("gemocht: [brooding]\n", encoding="utf-8")
+    monkeypatch.setattr(paths, "db_path", lambda: store.path)
+    monkeypatch.setattr("ebook_watchlist.config.load_settings",
+                        lambda: type("S", (), {"slug": "t"})())
+
+    assert facets.main([str(profile_file)]) == 0
+
+    profile = store.reading_profile("t")
+    assert profile.disliked_genres == ("FIC027000",)
+    assert profile.disliked_authors == ("Rosamunde Pilcher",)

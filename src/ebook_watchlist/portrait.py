@@ -208,6 +208,10 @@ class Portrait:
     #: Das Genre als Code der Liste (ADR 37). Bis das Modell selbst wählt
     #: (#90), aus ``genre``/``subgenre`` nach den Regeln von #89.
     genre_code: str | None = None
+    #: Die BISAC-Codes des Verlags zur ISBN, beim Lesen aus dem Speicher
+    #: angehängt — nicht gespeichert. Sie gehen dem ``genre_code`` vor
+    #: (ADR 37, Review 04.10.2026).
+    source_codes: tuple[str, ...] = ()
 
 
 def worth_asking_again(portrait: Portrait, *, text_now: bool, sample_now: bool = False) -> bool:

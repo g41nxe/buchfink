@@ -774,24 +774,29 @@ def adopt(
     # Genres und Autor:innen, die sie auf Bildschirm 5 angehakt hat (#91);
     # was schon im Profil stand, bleibt.
     genres = load_genres()
+    from ..preferences import follow
+
     for author in liked_authors:
         if author.strip():
-            store.put_interest(settings.slug, str(InterestKey.AUTHOR), " ".join(author.split()),
-                               now=now, tier="extended")
+            follow(store, settings.slug, " ".join(author.split()), active=True, now=now)
 
     def merged(old: tuple[str, ...], new: Iterable[str], *, codes: bool) -> tuple[str, ...]:
         fresh = [" ".join(v.split()) for v in new if v.strip()]
         return tuple(dict.fromkeys(
             [*old, *(v for v in fresh if not codes or v in genres)]))
 
+    disliked = merged(previous.disliked_genres if previous else (), disliked_genres,
+                      codes=True)
+
     return store.put_reading_profile(
         settings.slug,
         ReadingProfile(
             facets, counterweights, state.liked,
-            liked_genres=merged(previous.liked_genres if previous else (), liked_genres,
-                                codes=True),
-            disliked_genres=merged(previous.disliked_genres if previous else (),
-                                   disliked_genres, codes=True),
+            # Ein Genre ist gemocht oder nicht gemocht; nicht gemocht geht vor.
+            liked_genres=tuple(c for c in merged(
+                previous.liked_genres if previous else (), liked_genres, codes=True)
+                if c not in disliked),
+            disliked_genres=disliked,
             disliked_authors=merged(previous.disliked_authors if previous else (),
                                     disliked_authors, codes=False),
         ),

@@ -310,7 +310,9 @@ def overlap(
     # (ADR 37, #91).
     from .preferences import book_codes, liked_genre
 
-    if profile.liked_genres and liked_genre(profile, book_codes((), portrait.genre_code)):
+    if profile.liked_genres and liked_genre(
+        profile, book_codes(portrait.source_codes, portrait.genre_code)
+    ):
         steps.append(Step("liked_genre", (1 - share) * weights.genre_bonus))
         share = 1 - (1 - share) * (1 - weights.genre_bonus)
     if pattern < 0:
