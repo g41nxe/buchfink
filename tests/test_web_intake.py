@@ -614,3 +614,18 @@ def test_frequent_families_are_not_recounted_for_every_tap(db, books, monkeypatc
     db.put_portrait("item:y:neu", _portrait("Roman", None, ["harsh"]), now=NOW)
     intake.frequent_families(db, load_settings(), vocabulary)
     assert len(loaded) == 1
+
+
+@pytest.mark.parametrize(("genre", "subgenre", "expected"), [
+    ("Fantasy", "High Fantasy / Heroische Fantasy", "High Fantasy"),
+    # Nur 31 von 293 Untergenres im Bestand trennen mit Schrägstrich, die
+    # übrigen mehrteiligen mit Komma (#56, 04.10.2026).
+    ("Fantasy", "High Fantasy, Epos", "High Fantasy"),
+    ("Science-Fiction", "Space Opera, Weltraum-Abenteuer", "Space Opera"),
+    ("Thriller", "Psychothriller", "Psychothriller"),
+    ("Krimi", None, "Krimi"),
+])
+def test_a_counterweight_takes_the_first_part_of_the_subgenre(
+    genre: str, subgenre: str | None, expected: str
+) -> None:
+    assert intake.counterweight_genre(genre, subgenre) == expected

@@ -19,6 +19,7 @@ das Werkzeug unsichtbar die Facetten; bestätigt wird es als erste Fassung.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field, replace
@@ -277,8 +278,10 @@ def confirm(store: Store, settings: Settings, entry_id: int, *, now: datetime) -
 LOVED, LOST, BOOST = "loved", "lost", "boost"
 
 #: Ab wie vielen Büchern der neutrale Bestand etwas über Häufigkeit sagt, und
-#: ab welchem Anteil eine Familie als häufig gilt. Vorläufig; darunter wird
-#: nicht sortiert (#44).
+#: ab welchem Anteil eine Familie als häufig gilt; darunter wird nicht
+#: sortiert (#44). Bestätigt in #56 (04.10.2026): bei 269 neutralen
+#: Steckbriefen sind es „bedrohlich" (46 %) und „nervenaufreibend" (44 %) —
+#: die Thriller-Regale, nicht die Leserin. „Häufig" bricht nur Gleichstände.
 NEUTRAL_MIN_BOOKS = 30
 FREQUENT_SHARE = 0.4
 
@@ -472,10 +475,22 @@ def shelf_book(store: Store, vocabulary, book_id: int) -> ShelfBook | None:
                 weights.get(family), 0
             ):
                 weights[family] = trait.weight
-    # Fein genug für ein Gegengewicht mit Genre: "High Fantasy" statt
-    # "Fantasy", sonst träfe es auch Grimdark (#44).
-    genre = portrait.subgenre.split("/")[0].strip() if portrait.subgenre else portrait.genre
+    genre = counterweight_genre(portrait.genre, portrait.subgenre)
     return ShelfBook(str(book.id), book.id, book.title, genre, families, terms, weights)
+
+
+def counterweight_genre(genre: str | None, subgenre: str | None) -> str | None:
+    """Das Genre, auf das ein Gegengewicht dieses Buchs sich beschränkt.
+
+    Fein genug: "High Fantasy" statt "Fantasy", sonst träfe es auch Grimdark
+    (#44). Der erste Teil des Untergenres — getrennt wird an "/" **und** an
+    ",": die Steckbriefe schreiben meist "High Fantasy, Epos", und ungetrennt
+    träfe das Gegengewicht nur Bücher mit wörtlich demselben Untergenre (#56).
+    """
+    if not subgenre:
+        return genre
+    head = re.split(r"[/,]", subgenre, maxsplit=1)[0].strip()
+    return head or genre
 
 
 def _shelf_books(store: Store, settings: Settings, vocabulary, side: str) -> list[ShelfBook]:
