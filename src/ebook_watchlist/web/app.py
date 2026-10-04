@@ -29,6 +29,7 @@ from starlette.concurrency import run_in_threadpool
 from .. import paths, series_watch
 from ..config import ConfigError, load_settings
 from ..facets import GENERAL
+from ..genres import genre_label
 from ..models import LinkOutcome
 from ..relations import RelationKind
 from ..single import Report
@@ -115,6 +116,8 @@ def _stars(value: float | None) -> str:
 
 TEMPLATES.env.filters["sum_chars"] = _sum_chars
 TEMPLATES.env.filters["stars"] = _stars
+# Ein Genre-Code als sein Name, freier Text wie er ist (ADR 37).
+TEMPLATES.env.filters["genre_label"] = genre_label
 #: Die alten Sortierschlüssel (#70): der Browser hat vielleicht noch einen
 #: davon gemerkt, und `_sort_select.html` übersetzt ihn beim Umziehen.
 TEMPLATES.env.globals["old_sort_slugs"] = sorting.OLD_SLUGS

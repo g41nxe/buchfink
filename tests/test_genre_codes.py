@@ -1,0 +1,107 @@
+"""Steckbriefe und Gegengewichte tragen Genre-Codes (ADR 37, #89)."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from pathlib import Path
+
+from ebook_watchlist.facets import Counterweight, ReadingProfile, genre_matches
+from ebook_watchlist.genres import genre_label
+from ebook_watchlist.portrait import Portrait
+from ebook_watchlist.store import Store
+
+NOW = datetime(2026, 10, 4, 12, 0)
+
+
+def portrait(genre: str | None, subgenre: str | None, code: str | None = None) -> Portrait:
+    return Portrait(known=True, fingerprint="fp", genre=genre, subgenre=subgenre,
+                    genre_code=code)
+
+
+def test_a_code_reads_as_its_name_and_free_text_as_itself() -> None:
+    assert genre_label("FIC009020") == "High Fantasy"
+    assert genre_label("Cosy") == "Cosy"
+    assert genre_label(None) is None
+
+
+def test_a_counterweight_with_a_code_covers_the_subgenres_below() -> None:
+    """„nur bei Fantasy" gilt auch für High Fantasy; „nur bei High Fantasy"
+    nicht für jede Fantasy — und Schreibweisen spielen keine Rolle mehr."""
+    fantasy = Counterweight(("big_world",), "FIC009000")
+    epic = Counterweight(("duo",), "FIC009020")
+
+    assert genre_matches(fantasy, portrait("Fantasy", "Epische Fantasy", "FIC009020"))
+    assert genre_matches(epic, portrait("Fantasy", "High Fantasy, Epos", "FIC009020"))
+    assert not genre_matches(epic, portrait("Fantasy", "Urban Fantasy", "FIC009060"))
+    assert not genre_matches(epic, portrait("Fantasy", None, "FIC009000"))
+
+
+def test_an_old_counterweight_without_a_code_still_compares_text() -> None:
+    old = Counterweight(("duo",), "High Fantasy")
+
+    assert genre_matches(old, portrait("Fantasy", "High Fantasy / Heroische Fantasy"))
+
+
+def test_a_new_portrait_gets_its_code_from_the_rules_until_the_model_chooses(
+    store: Store,
+) -> None:
+    """Zwischen #89 und #90 entsteht kein Steckbrief ohne Code."""
+    store.put_portrait("isbn:9783000000501", portrait("Thriller", "Psycho-Thriller"), now=NOW)
+
+    stored = store.portrait("isbn:9783000000501", "fp")
+    assert stored.genre_code == "FIC031080"
+    assert stored.genre == "Thriller" and stored.subgenre == "Psycho-Thriller"
+
+
+def test_the_migration_codes_portraits_and_counterweights(tmp_path: Path) -> None:
+    """Freitext bleibt, Code und Name kommen dazu; „Cosy" und „Cozy" aus dem
+    alten Leseprofil werden ein Gegengewicht."""
+    from sqlalchemy import create_engine
+
+    from ebook_watchlist.migrations import _genres_become_codes
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    body = {"facets": [], "liked": [], "counterweights": [
+        {"families": ["duo"], "genre": "Epische Fantasy", "books": ["Herr der Ringe"]},
+        {"families": ["funny"], "genre": "Cosy", "books": ["alt"]},
+        {"families": ["funny"], "genre": "Cozy", "books": ["alt"]},
+        {"families": ["explicit"], "genre": None, "books": ["alt"]},
+    ]}
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE portrait (id INTEGER PRIMARY KEY, genre TEXT, subgenre TEXT)")
+        connection.exec_driver_sql(
+            "INSERT INTO portrait (genre, subgenre) VALUES ('Fantasy', 'High Fantasy, Epos'), "
+            "('Sachbuch', 'Kulturgeschichte')")
+        connection.exec_driver_sql(
+            "CREATE TABLE reading_profile (id INTEGER PRIMARY KEY, body TEXT)")
+        connection.exec_driver_sql("INSERT INTO reading_profile (body) VALUES (?)",
+                                   (json.dumps(body),))
+        _genres_become_codes(connection)
+        portraits = connection.exec_driver_sql(
+            "SELECT genre, genre_code, genre_name FROM portrait ORDER BY id").all()
+        weights = json.loads(connection.exec_driver_sql(
+            "SELECT body FROM reading_profile").scalar_one())["counterweights"]
+
+    assert portraits == [("Fantasy", "FIC009020", "High Fantasy"), ("Sachbuch", None, None)]
+    assert [(w["families"], w["genre"]) for w in weights] == [
+        (["duo"], "FIC009020"), (["funny"], "FIC022070"), (["explicit"], None)]
+
+
+def test_the_profile_page_names_the_genre_of_a_counterweight(data_dir: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from ebook_watchlist import paths
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.web import create_app
+
+    store = Store(paths.db_path())
+    store.put_reading_profile(load_settings().slug, ReadingProfile(
+        (), (Counterweight(("duo",), "FIC009020", ("Herr der Ringe",)),), ()),
+        cause="test", now=NOW)
+
+    body = TestClient(create_app()).get("/profile").text
+
+    assert "nur bei High Fantasy" in body
+    assert "FIC009020" not in body

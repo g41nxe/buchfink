@@ -19,7 +19,6 @@ das Werkzeug unsichtbar die Facetten; bestätigt wird es als erste Fassung.
 
 from __future__ import annotations
 
-import re
 from collections import Counter
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field, replace
@@ -475,22 +474,21 @@ def shelf_book(store: Store, vocabulary, book_id: int) -> ShelfBook | None:
                 weights.get(family), 0
             ):
                 weights[family] = trait.weight
-    genre = counterweight_genre(portrait.genre, portrait.subgenre)
+    genre = portrait.genre_code or counterweight_genre(portrait.genre, portrait.subgenre)
     return ShelfBook(str(book.id), book.id, book.title, genre, families, terms, weights)
 
 
 def counterweight_genre(genre: str | None, subgenre: str | None) -> str | None:
-    """Das Genre, auf das ein Gegengewicht dieses Buchs sich beschränkt.
+    """Das Genre, auf das ein Gegengewicht dieses Buchs sich beschränkt — als
+    Code der Liste (ADR 37).
 
-    Fein genug: "High Fantasy" statt "Fantasy", sonst träfe es auch Grimdark
-    (#44). Der erste Teil des Untergenres — getrennt wird an "/" **und** an
-    ",": die Steckbriefe schreiben meist "High Fantasy, Epos", und ungetrennt
-    träfe das Gegengewicht nur Bücher mit wörtlich demselben Untergenre (#56).
+    Fein genug: High Fantasy statt Fantasy, sonst träfe es auch Grimdark
+    (#44). Seit #89 kein Text mehr: „High Fantasy, Epos" und „Epische Fantasy"
+    sind derselbe Code, und das Gegengewicht trifft beide.
     """
-    if not subgenre:
-        return genre
-    head = re.split(r"[/,]", subgenre, maxsplit=1)[0].strip()
-    return head or genre
+    from ..genre_migration import genre_code
+
+    return genre_code(genre, subgenre)
 
 
 def _shelf_books(store: Store, settings: Settings, vocabulary, side: str) -> list[ShelfBook]:

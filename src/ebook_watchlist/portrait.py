@@ -205,6 +205,9 @@ class Portrait:
     #: Ob beim Fragen der Anfang der Leseprobe beilag (#76): die zweite Stufe,
     #: wenn ein Buch trotz Klappentext unbekannt blieb. Einmal, nie wieder.
     with_sample: bool | None = None
+    #: Das Genre als Code der Liste (ADR 37). Bis das Modell selbst wählt
+    #: (#90), aus ``genre``/``subgenre`` nach den Regeln von #89.
+    genre_code: str | None = None
 
 
 def worth_asking_again(portrait: Portrait, *, text_now: bool, sample_now: bool = False) -> bool:

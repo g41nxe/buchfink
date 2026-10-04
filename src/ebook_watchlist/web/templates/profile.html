@@ -188,7 +188,7 @@
                   font-medium text-danger ring-1 ring-danger/20 ring-inset
                   {{ 'hover:ring-danger/50' if c.book_id }}">
           <svg class="i"><use href="#ic-ban"/></svg>{{ c.name }}
-          {% if c.genre %}<span class="rounded-full bg-card/70 px-1.5 py-px font-normal text-soft">nur bei {{ c.genre }}</span>{% endif %}
+          {% if c.genre %}<span class="rounded-full bg-card/70 px-1.5 py-px font-normal text-soft">nur bei {{ c.genre | genre_label }}</span>{% endif %}
         </{{ 'a' if c.book_id else 'span' }}>
       </li>
       {% endfor %}

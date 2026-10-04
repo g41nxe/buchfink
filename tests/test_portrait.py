@@ -8,6 +8,7 @@ Vokabular. Geurteilt wird hier noch nicht.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -376,7 +377,9 @@ def test_a_portrait_is_kept_per_subject_and_fingerprint(store: Store) -> None:
     store.put_portrait("isbn:9783548289441", portrait, now=NOW)
 
     again = store.portrait("isbn:9783548289441", portrait.fingerprint)
-    assert again == portrait
+    # Der Genre-Code wird beim Speichern aus dem freien Genre abgeleitet (#89).
+    assert again.genre_code is not None and portrait.genre_code is None
+    assert again == replace(portrait, genre_code=again.genre_code)
     assert store.portrait("isbn:9783548289441", "anderer-abdruck") is None
     assert store.portrait("isbn:0000000000000", portrait.fingerprint) is None
 

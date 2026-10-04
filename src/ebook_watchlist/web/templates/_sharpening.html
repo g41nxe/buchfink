@@ -89,7 +89,7 @@
                 class="h-7 rounded border border-rule bg-paper px-1 text-xs text-ink">
           <option value="here">nur bei diesem Buch</option>
           <option value="general">auch bei anderen</option>
-          {% if n.genre %}<option value="genre">nur bei {{ n.genre }}</option>{% endif %}
+          {% if n.genre %}<option value="genre">nur bei {{ n.genre | genre_label }}</option>{% endif %}
         </select>
         {% endif %}
       </li>

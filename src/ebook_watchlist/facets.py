@@ -233,6 +233,16 @@ def genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
     """
     if counterweight.genre is None:
         return True
+    from .genres import load_genres
+
+    genres = load_genres()
+    if counterweight.genre in genres:
+        # Ein Code (ADR 37): er gilt für sich und alle Untergenres darunter,
+        # gleich wie das Modell das Genre geschrieben hat.
+        return bool(portrait.genre_code) and genres.covers(
+            counterweight.genre, portrait.genre_code
+        )
+    # Ein Gegengewicht von vor ADR 37 trägt noch Text.
     pattern = re.compile(rf"(?<!\w){re.escape(counterweight.genre.casefold())}(?!\w)")
     parts = (portrait.genre, portrait.subgenre)
     return any(pattern.search((part or "").casefold()) for part in parts)

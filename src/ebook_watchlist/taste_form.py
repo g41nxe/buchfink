@@ -32,6 +32,7 @@ from .facets import (
     genre_matches,
     is_pattern,
 )
+from .genres import genre_label
 from .portrait import Portrait, Vocabulary
 
 #: Ab welchem Wert der Form ein Merkmal in der Begründung als gemocht oder als
@@ -382,6 +383,6 @@ def _reasons(
         lines.extend(evidence_for((f,)))
     for rule in rules:
         lines.append(Reason("dagegen", f"{family_names(rule.families, vocabulary)} "
-                                       f"(bei {rule.genre})"))
+                                       f"(bei {genre_label(rule.genre)})"))
         lines.extend(evidence_for(rule.families))
     return tuple(lines)

@@ -223,7 +223,8 @@ def test_counterweights_take_their_scope(client, db, profile) -> None:
 
     new = db.reading_profile(slug())
     assert new.version == 2
-    assert Counterweight(("big_world",), "High Fantasy", ("Herr der Ringe",)) in new.counterweights
+    # Seit #89 trägt es den Code der Genre-Liste, nicht den Text.
+    assert Counterweight(("big_world",), "FIC009020", ("Herr der Ringe",)) in new.counterweights
     assert Counterweight(("sad",), None, ("Herr der Ringe",)) in new.counterweights
     # Das Gemochte bleibt unberührt (#64).
     assert new.liked == profile.liked

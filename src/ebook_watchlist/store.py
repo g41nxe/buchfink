@@ -446,6 +446,10 @@ class PortraitRow(Base):
     with_text: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     #: Ob die Leseprobe beilag (#76).
     with_sample: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    #: Das Genre als Code der Liste und sein Name (ADR 37); der Freitext in
+    #: ``genre``/``subgenre`` bleibt daneben.
+    genre_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    genre_name: Mapped[str | None] = mapped_column(String, nullable=True)
     #: JSON-Liste aus ``{"term", "sentence", "evidence", "weight"}``.
     traits: Mapped[str] = mapped_column(String, default="[]")
     #: JSON-Liste der verletzten Regeln.
@@ -735,6 +739,7 @@ def _portrait_of(row: PortraitRow) -> Portrait:
         violations=tuple(json.loads(row.violations)),
         with_text=row.with_text,
         with_sample=row.with_sample,
+        genre_code=row.genre_code,
     )
 
 
@@ -2156,7 +2161,15 @@ class Store:
     # --- Steckbriefe (#45) ---------------------------------------------------
 
     def put_portrait(self, subject: str, portrait: Portrait, *, now: datetime) -> None:
-        """Einen Steckbrief festhalten — dazu, nie an Stelle eines alten."""
+        """Einen Steckbrief festhalten — dazu, nie an Stelle eines alten.
+
+        Ohne Code wird er aus dem freien Genre abgeleitet (#89), damit bis zur
+        neuen Anweisung (#90) kein Steckbrief ohne Genre-Code entsteht.
+        """
+        from .genre_migration import genre_code
+        from .genres import load_genres
+
+        code = portrait.genre_code or genre_code(portrait.genre, portrait.subgenre)
         with self.session() as session:
             session.add(
                 PortraitRow(
@@ -2185,6 +2198,8 @@ class Store:
                     violations=json.dumps(list(portrait.violations), ensure_ascii=False),
                     with_text=portrait.with_text,
                     with_sample=portrait.with_sample,
+                    genre_code=code,
+                    genre_name=load_genres().name(code),
                 )
             )
             session.commit()

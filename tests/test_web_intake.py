@@ -617,15 +617,15 @@ def test_frequent_families_are_not_recounted_for_every_tap(db, books, monkeypatc
 
 
 @pytest.mark.parametrize(("genre", "subgenre", "expected"), [
-    ("Fantasy", "High Fantasy / Heroische Fantasy", "High Fantasy"),
-    # Nur 31 von 293 Untergenres im Bestand trennen mit Schrägstrich, die
-    # übrigen mehrteiligen mit Komma (#56, 04.10.2026).
-    ("Fantasy", "High Fantasy, Epos", "High Fantasy"),
-    ("Science-Fiction", "Space Opera, Weltraum-Abenteuer", "Space Opera"),
-    ("Thriller", "Psychothriller", "Psychothriller"),
-    ("Krimi", None, "Krimi"),
+    ("Fantasy", "High Fantasy / Heroische Fantasy", "FIC009020"),
+    # Seit #89 ein Code der Genre-Liste: Schrägstrich, Komma und Schreibweise
+    # spielen keine Rolle mehr (#56, ADR 37).
+    ("Fantasy", "High Fantasy, Epos", "FIC009020"),
+    ("Science-Fiction", "Space Opera, Weltraum-Abenteuer", "FIC028030"),
+    ("Thriller", "Psychothriller", "FIC031080"),
+    ("Krimi", None, "FIC022000"),
 ])
-def test_a_counterweight_takes_the_first_part_of_the_subgenre(
+def test_a_counterweight_takes_the_code_of_its_subgenre(
     genre: str, subgenre: str | None, expected: str
 ) -> None:
     assert intake.counterweight_genre(genre, subgenre) == expected

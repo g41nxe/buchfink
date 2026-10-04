@@ -201,7 +201,7 @@
     <input type="hidden" name="family" value="{{ p.family_id }}">
     <span class="text-soft">steckt auch in {{ title_row(k.also_in) }} —</span>
     {% set options = [("here", "nur bei diesen Büchern"), ("general", "auch bei anderen")] %}
-    {% if k.genre %}{% set options = options + [("genre", "nur bei " ~ k.genre)] %}{% endif %}
+    {% if k.genre %}{% set options = options + [("genre", "nur bei " ~ (k.genre | genre_label))] %}{% endif %}
     {% for value, text in options %}
     <button type="submit" name="scope" value="{{ value }}"
             aria-pressed="{{ 'true' if k.scope == value else 'false' }}"

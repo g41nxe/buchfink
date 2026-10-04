@@ -98,3 +98,14 @@ def parse_genres(text: str) -> GenreList:
 def load_genres(path: Path = GENRES_PATH) -> GenreList:
     """Einmal gelesen; die Liste ändert sich nicht, während das Werkzeug läuft."""
     return parse_genres(path.read_text(encoding="utf-8"))
+
+
+def genre_label(value: str | None) -> str | None:
+    """Ein Code als sein Name — und freier Text, wie er ist.
+
+    Für die Oberfläche: ein Gegengewicht „nur bei FIC009020" liest sich als
+    „nur bei High Fantasy"; eines von vor ADR 37 trägt noch Text.
+    """
+    if value is None:
+        return None
+    return load_genres().name(value) or value

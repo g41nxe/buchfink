@@ -52,6 +52,7 @@ from ..facets import (
     strength,
     strength_level,
 )
+from ..genres import genre_label
 from ..portrait import VocabularyError, fingerprint, load_vocabulary
 from ..relations import RelationKind
 from ..store import Store
@@ -171,7 +172,7 @@ def _by_kind(store, settings, profile, kind, title, shelf, vocabulary) -> Sharpe
                 Family(
                     ",".join(c.families) + (f"|{c.genre}" if c.genre else ""),
                     family_names(c.families, vocabulary)
-                    + (f" (nur bei {c.genre})" if c.genre else ""),
+                    + (f" (nur bei {genre_label(c.genre)})" if c.genre else ""),
                     False,
                 )
                 for c in profile.counterweights

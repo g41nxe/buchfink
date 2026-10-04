@@ -699,6 +699,57 @@ def _a_theme_is_seeded_at_an_address(connection: Connection) -> None:
         add_column(connection, "interest_seeded", "address", "VARCHAR")
 
 
+def _genres_become_codes(connection: Connection) -> None:
+    """Steckbriefe und Gegengewichte bekommen den Code der Genre-Liste (#89).
+
+    Nach den Regeln in `genre_migration`, die die Leserin am 04.10.2026
+    durchgesehen hat. Der Freitext des Steckbriefs bleibt; ein Gegengewicht
+    trägt danach den Code statt des Textes, und zwei, die derselbe Code gleich
+    macht („Cosy", „Cozy"), werden eines.
+    """
+    import json
+
+    from .genre_migration import genre_code
+    from .genres import load_genres
+
+    genres = load_genres()
+    if _has_table(connection, "portrait"):
+        add_column(connection, "portrait", "genre_code", "VARCHAR")
+        add_column(connection, "portrait", "genre_name", "VARCHAR")
+        rows = connection.exec_driver_sql(
+            "SELECT id, genre, subgenre FROM portrait WHERE genre_code IS NULL"
+        ).all()
+        for row_id, genre, subgenre in rows:
+            code = genre_code(genre, subgenre)
+            if code is not None:
+                connection.exec_driver_sql(
+                    "UPDATE portrait SET genre_code = ?, genre_name = ? WHERE id = ?",
+                    (code, genres.name(code), row_id),
+                )
+    if _has_table(connection, "reading_profile"):
+        for row_id, body in connection.exec_driver_sql(
+            "SELECT id, body FROM reading_profile"
+        ).all():
+            data = json.loads(body or "{}")
+            seen: set[tuple] = set()
+            weights = []
+            for weight in data.get("counterweights") or []:
+                text = weight.get("genre")
+                if text and text not in genres:
+                    weight = {**weight, "genre": genre_code(None, text) or text}
+                key = (tuple(weight.get("families") or ()), weight.get("genre"))
+                if key in seen:
+                    continue
+                seen.add(key)
+                weights.append(weight)
+            if weights != (data.get("counterweights") or []):
+                data["counterweights"] = weights
+                connection.exec_driver_sql(
+                    "UPDATE reading_profile SET body = ? WHERE id = ?",
+                    (json.dumps(data, ensure_ascii=False), row_id),
+                )
+
+
 def _a_portrait_remembers_whether_a_sample_went_along(connection: Connection) -> None:
     """Die Leseprobe als zweite Stufe wird genau einmal gefragt (#76)."""
     add_column(connection, "portrait", "with_sample", "INTEGER")
@@ -760,6 +811,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _the_dnb_names_the_page_count,
     _themes_become_genre_codes,
     _a_theme_is_seeded_at_an_address,
+    _genres_become_codes,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
