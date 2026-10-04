@@ -377,9 +377,9 @@ def test_a_portrait_is_kept_per_subject_and_fingerprint(store: Store) -> None:
     store.put_portrait("isbn:9783548289441", portrait, now=NOW)
 
     again = store.portrait("isbn:9783548289441", portrait.fingerprint)
-    # Der Genre-Code wird beim Speichern aus dem freien Genre abgeleitet (#89).
-    assert again.genre_code is not None and portrait.genre_code is None
-    assert again == replace(portrait, genre_code=again.genre_code)
+    # Den Genre-Code trägt der Steckbrief schon aus der Antwort (#89, #90).
+    assert again.genre_code is not None
+    assert again == portrait
     assert store.portrait("isbn:9783548289441", "anderer-abdruck") is None
     assert store.portrait("isbn:0000000000000", portrait.fingerprint) is None
 
@@ -400,7 +400,6 @@ def test_a_portrait_without_text_does_not_displace_one_with_text(store: Store) -
     """*Gestohlene Erinnerung* (26.09.2026): um 10:35 mit Klappentext
     beschrieben, um 18:49 ohne — und der zweite hielt das Buch für *Dark
     Matter*. Wer nur aus dem Gedächtnis schreibt, verdrängt keinen Beleg."""
-    from dataclasses import replace
 
     vocabulary = load_vocabulary()
     with_text = replace(parse_answer(answer(pitch="Mit Text."), vocabulary), with_text=True)
@@ -726,9 +725,12 @@ def test_the_answer_carries_the_chosen_code() -> None:
 
 
 def test_a_code_off_the_list_is_noted_and_left_out() -> None:
-    """Erfunden ist erfunden: kein Code, ein vermerkter Verstoß — und beim
-    Speichern gilt die Ableitung aus dem Freitext (#89)."""
+    """Erfunden ist erfunden: ein vermerkter Verstoß, und es gilt die
+    Ableitung aus dem Freitext (#89) — schon beim Lesen der Antwort."""
+    from ebook_watchlist.genre_migration import genre_code
+
     portrait = parse_answer(answer(genre_code="FIC999999"), load_vocabulary())
 
-    assert portrait.genre_code is None
+    assert portrait.genre_code == genre_code(portrait.genre, portrait.subgenre)
+    assert portrait.genre_code != "FIC999999"
     assert any("FIC999999" in v for v in portrait.violations)

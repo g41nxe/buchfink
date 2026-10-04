@@ -238,10 +238,12 @@ def genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
     genres = load_genres()
     if counterweight.genre in genres:
         # Ein Code (ADR 37): er gilt für sich und alle Untergenres darunter,
-        # gleich wie das Modell das Genre geschrieben hat.
-        return bool(portrait.genre_code) and genres.covers(
-            counterweight.genre, portrait.genre_code
-        )
+        # gleich wie das Modell das Genre geschrieben hat. Ein Steckbrief ohne
+        # Code bekommt ihn hier nach denselben Regeln wie beim Speichern.
+        from .genre_migration import genre_code
+
+        code = portrait.genre_code or genre_code(portrait.genre, portrait.subgenre)
+        return bool(code) and genres.covers(counterweight.genre, code)
     # Ein Gegengewicht von vor ADR 37 trägt noch Text.
     pattern = re.compile(rf"(?<!\w){re.escape(counterweight.genre.casefold())}(?!\w)")
     parts = (portrait.genre, portrait.subgenre)

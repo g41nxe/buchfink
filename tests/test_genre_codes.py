@@ -105,3 +105,57 @@ def test_the_profile_page_names_the_genre_of_a_counterweight(data_dir: Path) -> 
 
     assert "nur bei High Fantasy" in body
     assert "FIC009020" not in body
+
+
+# --- aus dem Review (04.10.2026) ----------------------------------------------
+
+
+def test_a_fresh_portrait_carries_its_code_before_it_is_stored() -> None:
+    """Das Tor beurteilt den frischen Steckbrief, nicht den gespeicherten —
+    ohne Code griff ein Gegengewicht „nur bei High Fantasy" dort nicht."""
+    from ebook_watchlist.portrait import load_vocabulary, parse_answer
+
+    text = json.dumps({"bekannt": True, "titel": "T", "autor": "A", "genre": "Fantasy",
+                       "untergenre": "High Fantasy, Epos", "pitch": "Ein Buch.",
+                       "merkmale": [], "erzaehlmuster": []})
+
+    assert parse_answer(text, load_vocabulary()).genre_code == "FIC009020"
+
+
+def test_a_counterweight_with_a_code_reads_a_portrait_without_one() -> None:
+    """Ein Steckbrief, der nie gespeichert wurde, trägt keinen Code; das
+    Gegengewicht leitet ihn dann selbst ab."""
+    epic = Counterweight(("duo",), "FIC009020")
+
+    assert genre_matches(epic, portrait("Fantasy", "High Fantasy, Epos"))
+
+
+def test_merging_two_counterweights_keeps_the_books_of_both(tmp_path: Path) -> None:
+    from sqlalchemy import create_engine
+
+    from ebook_watchlist.migrations import _genres_become_codes
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    body = {"counterweights": [{"families": ["funny"], "genre": "Cosy", "books": ["A"]},
+                               {"families": ["funny"], "genre": "Cozy", "books": ["B"]}]}
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE reading_profile (id INTEGER PRIMARY KEY, body TEXT)")
+        connection.exec_driver_sql("INSERT INTO reading_profile (body) VALUES (?)",
+                                   (json.dumps(body),))
+        _genres_become_codes(connection)
+        weights = json.loads(connection.exec_driver_sql(
+            "SELECT body FROM reading_profile").scalar_one())["counterweights"]
+
+    assert weights == [{"families": ["funny"], "genre": "FIC022070", "books": ["A", "B"]}]
+
+
+def test_two_genres_of_one_counterweight_read_as_names() -> None:
+    from ebook_watchlist.web.profile_page import FacetLine, merge_genres
+
+    lines = (FacetLine(name="witzig", genre="FIC022070", books=("A",)),
+             FacetLine(name="witzig", genre="FIC009020", books=("B",)))
+
+    (merged,) = merge_genres(lines)
+
+    assert merged.genre == "Cosy Crime / High Fantasy"

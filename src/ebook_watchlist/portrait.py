@@ -615,6 +615,12 @@ def parse_answer(
     if code is not None and code not in load_genres():
         violations.append(f"Genre-Code {code} steht nicht in der Liste")
         code = None
+    if code is None:
+        # Schon hier, nicht erst beim Speichern: das Tor beurteilt den frischen
+        # Steckbrief (Review 04.10.2026).
+        from .genre_migration import genre_code
+
+        code = genre_code(_text(data.get("genre")), _text(data.get("untergenre")))
 
     return Portrait(
         known=True,

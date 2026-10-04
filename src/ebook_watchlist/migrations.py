@@ -731,17 +731,21 @@ def _genres_become_codes(connection: Connection) -> None:
             "SELECT id, body FROM reading_profile"
         ).all():
             data = json.loads(body or "{}")
-            seen: set[tuple] = set()
-            weights = []
+            at: dict[tuple, int] = {}
+            weights: list[dict] = []
             for weight in data.get("counterweights") or []:
                 text = weight.get("genre")
                 if text and text not in genres:
                     weight = {**weight, "genre": genre_code(None, text) or text}
                 key = (tuple(weight.get("families") or ()), weight.get("genre"))
-                if key in seen:
+                if key in at:
+                    # Zusammenlegen, ohne Bücher zu verlieren (Review 04.10.2026).
+                    first = weights[at[key]]
+                    first["books"] = list(dict.fromkeys(
+                        [*(first.get("books") or ()), *(weight.get("books") or ())]))
                     continue
-                seen.add(key)
-                weights.append(weight)
+                at[key] = len(weights)
+                weights.append(dict(weight))
             if weights != (data.get("counterweights") or []):
                 data["counterweights"] = weights
                 connection.exec_driver_sql(

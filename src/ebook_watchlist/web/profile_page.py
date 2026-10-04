@@ -24,6 +24,7 @@ from ..facets import (
     load_weights,
     strength,
 )
+from ..genres import genre_label
 from ..judging import load_judge
 from ..portrait import VocabularyError, load_vocabulary
 from ..reasons import genre_category_name
@@ -111,7 +112,9 @@ def merge_genres(lines: tuple[FacetLine, ...]) -> tuple[FacetLine, ...]:
             first = merged[at[line.name]]
             merged[at[line.name]] = replace(
                 first,
-                genre=f"{first.genre} / {line.genre}",
+                # Namen, nicht Codes: die zusammengesetzte Zeichenkette kennt
+                # keine Liste mehr (Review 04.10.2026).
+                genre=f"{genre_label(first.genre)} / {genre_label(line.genre)}",
                 books=tuple(dict.fromkeys((*first.books, *line.books))),
                 book_id=first.book_id or line.book_id,
             )
