@@ -43,58 +43,79 @@
      Pillen zum Antippen wie beim Nachschärfen — ♥ grün für gemocht, ⊘ rot für
      nicht gemocht, das Personenzeichen bei Autor:innen —, und das Feld für ein
      weiteres Genre oder eine weitere Autor:in so klein wie eine Pille. #}
-  {% macro pill(name, value, label, icon, gone=false) %}
-  <label class="tap inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border
-                border-rule px-3 text-xs text-soft transition
-                {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
-                   if gone else
-                   'has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:text-accent hover:border-accent hover:text-accent' }}">
-    <input type="checkbox" name="{{ name }}" value="{{ value }}" class="sr-only">
-    <svg class="i"><use href="#{{ icon }}"/></svg>{{ label }}</label>
-  {% endmacro %}
-  {% macro row(title, hint) %}
-  <fieldset class="mb-3 last:mb-0">
+  {% macro pill_classes(gone) -%}
+  tap inline-flex h-7 cursor-pointer items-center gap-1 rounded-full border border-rule px-3
+  text-xs text-soft transition
+  {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
+     if gone else
+     'has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:text-accent hover:border-accent hover:text-accent' }}
+  {%- endmacro %}
+  {% set field = "h-7 rounded-full border border-dashed border-rule bg-card px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink" %}
+
+  {# Eine Zeile: die Vorschläge aus den Büchern, dahinter, was sie selbst
+     dazunimmt, und das Feld dafür. Jede Wahl im Feld wird sofort eine
+     angehakte Pille, und das Feld ist wieder frei — so lassen sich beliebig
+     viele dazunehmen (04.10.2026). Steht dasselbe schon als Vorschlag da, wird
+     nur dieser angehakt. Ohne JavaScript schickt das Feld selbst seinen einen
+     Wert mit. #}
+  {% macro row(title, hint, name, icon, items, adder, gone=false) %}
+  <fieldset class="mb-3 last:mb-0"
+            x-data="{ added: [],
+                      pick(value, label) {
+                        value = (value || '').trim();
+                        if (!value) return;
+                        for (const box of this.$root.querySelectorAll('input[type=checkbox]')) {
+                          if (box.value === value) { box.checked = true; return }
+                        }
+                        this.added.push({ value: value, label: (label || value).trim() });
+                      } }">
     <legend class="mb-1.5 text-xs text-soft"><span class="text-ink">{{ title }}</span>
       · {{ hint }}</legend>
-    <div class="flex flex-wrap items-center gap-1.5">{{ caller() }}</div>
+    <div class="flex flex-wrap items-center gap-1.5">
+      {% for value, label in items %}
+      <label class="{{ pill_classes(gone) }}">
+        <input type="checkbox" name="{{ name }}" value="{{ value }}" class="sr-only">
+        <svg class="i"><use href="#{{ icon }}"/></svg>{{ label }}</label>
+      {% endfor %}
+      <template x-for="item in added" :key="item.value">
+        <label class="{{ pill_classes(gone) }}">
+          <input type="checkbox" name="{{ name }}" :value="item.value" class="sr-only" checked>
+          <svg class="i"><use href="#{{ icon }}"/></svg><span x-text="item.label"></span></label>
+      </template>
+      {% if adder == "genre" %}
+      <select name="{{ name }}" aria-label="weiteres Genre" class="{{ field }}"
+              @change="pick($event.target.value, $event.target.selectedOptions[0].text);
+                       $event.target.value = ''">
+        <option value="">+ Genre …</option>
+        {% for code, gname, sub in preferences.options %}
+        <option value="{{ code }}">{% if sub %}&emsp;{% endif %}{{ gname }}</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <input type="text" name="{{ name }}" placeholder="+ Autor:in" aria-label="weitere Autor:in"
+             autocomplete="off" class="{{ field }} w-36"
+             @keydown.enter.prevent="pick($event.target.value); $event.target.value = ''">
+      {% endif %}
+    </div>
   </fieldset>
-  {% endmacro %}
-  {% macro more_genres(name) %}
-  <select name="{{ name }}" aria-label="weiteres Genre" class="h-7 rounded-full border border-dashed border-rule bg-card px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink">
-    <option value="">+ Genre …</option>
-    {% for code, gname, sub in preferences.options %}
-    <option value="{{ code }}">{% if sub %}&emsp;{% endif %}{{ gname }}</option>
-    {% endfor %}
-  </select>
-  {% endmacro %}
-  {% macro more_authors(name) %}
-  <input type="text" name="{{ name }}" placeholder="+ Autor:in" aria-label="weitere Autor:in"
-         autocomplete="off" class="h-7 rounded-full border border-dashed border-rule bg-card px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink w-36">
   {% endmacro %}
 
   <section class="mt-6 max-w-2xl rounded-lg border border-rule bg-card px-4 py-4">
     <p class="mb-1 text-xs font-medium uppercase tracking-wide text-soft">Genres und Autor:innen</p>
-    <p class="mb-4 text-xs text-soft">Aus deinen Büchern vorgeschlagen — tipp an, was gelten soll.</p>
+    <p class="mb-4 text-xs text-soft">Aus deinen Büchern vorgeschlagen — tipp an, was gelten soll.
+      Weitere nimmst du über das Feld dazu, so viele du willst.</p>
 
     <p class="mb-2 text-xs font-medium text-ink">Genres</p>
-    {% call row("Magst du", "hebt das Urteil ein wenig") %}
-      {% for code, name in suggest.liked_genres %}{{ pill("liked_genre", code, name, "ic-heart") }}{% endfor %}
-      {{ more_genres("liked_genre") }}
-    {% endcall %}
-    {% call row("Magst du nicht", "wird nicht vorgeschlagen") %}
-      {% for code, name in suggest.disliked_genres %}{{ pill("disliked_genre", code, name, "ic-ban", gone=true) }}{% endfor %}
-      {{ more_genres("disliked_genre") }}
-    {% endcall %}
+    {{ row("Magst du", "hebt das Urteil ein wenig", "liked_genre", "ic-heart",
+           suggest.liked_genres, "genre") }}
+    {{ row("Magst du nicht", "wird nicht vorgeschlagen", "disliked_genre", "ic-ban",
+           suggest.disliked_genres, "genre", gone=true) }}
 
     <p class="mt-4 mb-2 border-t border-rule pt-3 text-xs font-medium text-ink">Autor:innen</p>
-    {% call row("Folgen", "neue Bücher werden wöchentlich gesucht") %}
-      {% for value, name in suggest.liked_authors %}{{ pill("liked_author", value, name, "ic-user") }}{% endfor %}
-      {{ more_authors("liked_author") }}
-    {% endcall %}
-    {% call row("Nicht vorschlagen", "ihre Bücher kommen nicht in den Stapel") %}
-      {% for value, name in suggest.disliked_authors %}{{ pill("disliked_author", value, name, "ic-ban", gone=true) }}{% endfor %}
-      {{ more_authors("disliked_author") }}
-    {% endcall %}
+    {{ row("Folgen", "neue Bücher werden wöchentlich gesucht", "liked_author", "ic-user",
+           suggest.liked_authors, "author") }}
+    {{ row("Nicht vorschlagen", "ihre Bücher kommen nicht in den Stapel", "disliked_author",
+           "ic-ban", suggest.disliked_authors, "author", gone=true) }}
   </section>
 
   <nav class="mt-6 flex items-center justify-between gap-3 border-t border-rule pt-4 text-sm">

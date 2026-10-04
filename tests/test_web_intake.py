@@ -660,3 +660,17 @@ def test_adopting_takes_the_ticked_genres_and_authors(client, db, books) -> None
     assert profile.disliked_genres == ("FIC009020",)
     assert profile.disliked_authors == ("Rosamunde Pilcher",)
     assert "Tad Williams" in {r.value for r in db.interests(load_settings().slug, key="author")}
+
+
+def test_more_than_one_extra_genre_can_be_added(client, db, books) -> None:
+    """Das Feld „+ Genre …" legt je Wahl eine Pille an (Alpine) — und was
+    mehrfach ankommt, zählt einmal (04.10.2026)."""
+    body = client.get("/intake/profile").text
+    assert "x-for" in body.split("Genres und Autor:innen", 1)[1]
+
+    tap(client, "brooding")
+    client.post("/intake/profile", data={
+        "liked_genre": ["FIC028100", "FIC009060", "FIC009060", ""],
+    })
+
+    assert db.reading_profile(load_settings().slug).liked_genres == ("FIC028100", "FIC009060")

@@ -83,7 +83,8 @@ def people_in(field: str) -> list[str]:
     people = [field, *split_authors(field)]
     parts = [part.strip() for part in field.split(",") if part.strip()]
     if len(parts) >= 4 and len(parts) % 2 == 0 and all(" " not in p for p in parts):
-        people += [f"{given} {surname}" for surname, given in zip(parts[::2], parts[1::2], strict=True)]
+        pairs = zip(parts[::2], parts[1::2], strict=True)
+        people += [f"{given} {surname}" for surname, given in pairs]
     return people
 
 
