@@ -776,17 +776,32 @@ def adopt(
     genres = load_genres()
     from ..preferences import follow
 
-    for author in liked_authors:
-        if author.strip():
-            follow(store, settings.slug, " ".join(author.split()), active=True, now=now)
+    def fresh(values: Iterable[str]) -> list[str]:
+        return [" ".join(v.split()) for v in values if v.strip()]
 
-    def merged(old: tuple[str, ...], new: Iterable[str], *, codes: bool) -> tuple[str, ...]:
-        fresh = [" ".join(v.split()) for v in new if v.strip()]
-        return tuple(dict.fromkeys(
-            [*old, *(v for v in fresh if not codes or v in genres)]))
+    def merged(old: tuple[str, ...], new: list[str], dropped: list[str], *,
+               codes: bool) -> tuple[str, ...]:
+        """Das Alte ohne, was jetzt auf der anderen Seite steht, plus das Neue."""
+        gone = {author_key(v) for v in dropped} if not codes else set(dropped)
+        kept = [v for v in old if (v if codes else author_key(v)) not in gone]
+        return tuple(dict.fromkeys([*kept, *(v for v in new if not codes or v in genres)]))
 
-    disliked = merged(previous.disliked_genres if previous else (), disliked_genres,
-                      codes=True)
+    # Gemocht oder nicht gemocht, nicht beides: das Neue gilt gegen das Alte
+    # (wie auf der Profilseite); hier zugleich angehakt, geht nicht gemocht
+    # vor (Review 04.10.2026).
+    new_liked_genres, new_disliked_genres = fresh(liked_genres), fresh(disliked_genres)
+    new_liked_authors, new_disliked_authors = fresh(liked_authors), fresh(disliked_authors)
+    blocked = {author_key(a) for a in new_disliked_authors}
+    for author in new_disliked_authors:
+        follow(store, settings.slug, author, active=False, now=now)
+    for author in new_liked_authors:
+        if author_key(author) not in blocked:
+            follow(store, settings.slug, author, active=True, now=now)
+
+    disliked = merged(previous.disliked_genres if previous else (), new_disliked_genres,
+                      new_liked_genres, codes=True)
+    disliked_authors_kept = merged(previous.disliked_authors if previous else (),
+                                   new_disliked_authors, new_liked_authors, codes=False)
 
     return store.put_reading_profile(
         settings.slug,
@@ -794,11 +809,10 @@ def adopt(
             facets, counterweights, state.liked,
             # Ein Genre ist gemocht oder nicht gemocht; nicht gemocht geht vor.
             liked_genres=tuple(c for c in merged(
-                previous.liked_genres if previous else (), liked_genres, codes=True)
-                if c not in disliked),
+                previous.liked_genres if previous else (), new_liked_genres,
+                new_disliked_genres, codes=True) if c not in disliked),
             disliked_genres=disliked,
-            disliked_authors=merged(previous.disliked_authors if previous else (),
-                                    disliked_authors, codes=False),
+            disliked_authors=disliked_authors_kept,
         ),
         cause="Erstaufnahme", now=now
     )

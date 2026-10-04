@@ -68,14 +68,26 @@ def test_a_liked_author_becomes_a_weekly_discovery_channel(client: TestClient, d
 
 
 def test_a_disliked_author_lands_in_the_profile(client: TestClient, db: Store) -> None:
+    db.put_reading_profile(load_settings().slug, ReadingProfile((), ()), cause="t", now=NOW)
     body = change(client, "disliked_author", "Rosamunde Pilcher")
 
     assert db.reading_profile(load_settings().slug).disliked_authors == ("Rosamunde Pilcher",)
     assert "Rosamunde Pilcher" in body
 
 
-def test_the_profile_page_offers_the_genre_list(client: TestClient) -> None:
+def test_the_profile_page_offers_the_genre_list(client: TestClient, db: Store) -> None:
+    db.put_reading_profile(load_settings().slug, ReadingProfile((), ()), cause="t", now=NOW)
     body = client.get("/profile").text
 
     assert 'action="/profile/preference"' in body
     assert '<option value="FIC031080">' in body
+
+
+def test_without_a_profile_the_page_offers_only_following(client: TestClient) -> None:
+    """Vor der Erstaufnahme gibt es kein Leseprofil, in dem ein Genre stehen
+    könnte; folgen geht trotzdem (Review 04.10.2026)."""
+    body = client.get("/profile").text.split('id="preferences"', 1)[1]
+
+    assert 'value="liked_author"' in body
+    assert 'value="disliked_genre"' not in body
+    assert "nach der Erstaufnahme" in body

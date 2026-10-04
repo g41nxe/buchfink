@@ -70,16 +70,26 @@
     {% set disliked_genre_select %}{{ genre_select("value", p.options, "Genre wählen …") }}{% endset %}
     {% set follow_input %}{{ author_input("value", "Name") }}{% endset %}
     {% set block_input %}{{ author_input("value", "Name") }}{% endset %}
+    {# Genres und gesperrte Autor:innen stehen im Leseprofil; vor der
+       Erstaufnahme gibt es keins, und ein leeres anzulegen hieße, gegen nichts
+       zu urteilen (Review 04.10.2026). Folgen geht immer. #}
+    {% if p.has_profile %}
     {{ _group("Genres, die du magst", "liked_genre", p.liked_genres,
               "bg-accent-bg text-accent", liked_genre_select) }}
     {{ _group("Genres, die du nicht magst", "disliked_genre", p.disliked_genres,
               "bg-danger/10 text-danger", disliked_genre_select) }}
+    {% endif %}
     {{ _group("Autor:innen, denen du folgst", "liked_author",
               p.liked_authors, "bg-accent-bg text-accent",
               follow_input) }}
+    {% if p.has_profile %}
     {{ _group("Autor:innen, die nicht vorgeschlagen werden", "disliked_author",
               p.disliked_authors, "bg-danger/10 text-danger",
               block_input) }}
+    {% else %}
+    <p class="py-3 text-sm text-soft italic">Genres und Autor:innen, die nicht vorgeschlagen
+      werden, kannst du nach der Erstaufnahme festlegen.</p>
+    {% endif %}
   </div>
 </section>
 {% endmacro %}

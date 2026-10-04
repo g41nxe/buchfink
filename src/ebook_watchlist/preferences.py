@@ -13,6 +13,7 @@ was sie selbst benannt hat, sortiert keine Regel aus.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -85,6 +86,8 @@ def people_in(field: str) -> list[str]:
     if len(parts) >= 4 and len(parts) % 2 == 0 and all(" " not in p for p in parts):
         pairs = zip(parts[::2], parts[1::2], strict=True)
         people += [f"{given} {surname}" for surname, given in pairs]
+    if (first := display_author(field)) is not None:
+        people.append(first)
     return people
 
 
@@ -117,6 +120,8 @@ class PreferencesView:
     disliked_authors: tuple[tuple[str, str], ...]
     #: (Code, Name, Untergenre?) — die ganze Liste für die Auswahl.
     options: tuple[tuple[str, str, bool], ...]
+    #: Gibt es schon ein Leseprofil? Ohne eins lässt sich nur folgen.
+    has_profile: bool = True
 
 
 def view(store: Store, profile_slug: str) -> PreferencesView:
@@ -135,6 +140,7 @@ def view(store: Store, profile_slug: str) -> PreferencesView:
         ),
         disliked_authors=tuple((a, a) for a in (profile.disliked_authors if profile else ())),
         options=tuple((g.code, g.name, g.parent is not None) for g in genres),
+        has_profile=profile is not None,
     )
 
 
@@ -150,12 +156,25 @@ def change(
     value = " ".join(value.split())
     if kind not in KINDS or not value:
         return False
+    profile = store.reading_profile(profile_slug)
     if kind == "liked_author":
         follow(store, profile_slug, value, active=add, now=now)
+        # Gefolgt oder nicht vorgeschlagen, nicht beides: das neue gilt.
+        if add and profile is not None:
+            kept = tuple(a for a in profile.disliked_authors
+                         if author_key(a) != author_key(value))
+            if kept != profile.disliked_authors:
+                store.put_reading_profile(profile_slug, replace(profile, disliked_authors=kept),
+                                          cause="Profilseite", now=now)
         return True
     if kind.endswith("_genre") and value not in load_genres():
         return False
-    profile = store.reading_profile(profile_slug) or ReadingProfile((), ())
+    # Vor der Erstaufnahme gibt es kein Leseprofil. Ein Genre legte sonst ein
+    # leeres an, und ab dann urteilte der Code gegen nichts (Review 04.10.2026).
+    if profile is None:
+        return False
+    if kind == "disliked_author" and add:
+        follow(store, profile_slug, value, active=False, now=now)
     field = {"liked_genre": "liked_genres", "disliked_genre": "disliked_genres",
              "disliked_author": "disliked_authors"}[kind]
     current = getattr(profile, field)
@@ -228,14 +247,20 @@ def display_author(field: str | None) -> str | None:
     Das Feld trägt oft Übersetzer:innen mit („Michael Crichton, Norbert
     Wölfl") oder die Sortierform („Crouch, Blake"). Vorgeschlagen roh, entstand
     daraus eine zweite Interessen-Zeile neben „Blake Crouch".
-    """
-    from .matching.normalize import split_authors
 
-    names = split_authors(field or "")
-    if not names:
+    Ein Komma zwischen zwei Teilen ist Sortierform, wenn ein Teil ein einzelnes
+    Wort ist oder der zweite auf eine Initiale endet („Martin, George R. R.",
+    „Ruiz Zafón, Carlos", „Le Guin, Ursula K."); zwei ganze Namen sind zwei
+    Personen. `split_authors` trennt die Sortierform mit langem Vornamen und
+    schlug sonst „Martin" vor.
+    """
+    first_segment = re.split(r"\s*(?:;|&|\bund\b|\band\b)\s*", field or "")[0]
+    parts = [" ".join(p.split()) for p in first_segment.split(",") if p.strip()]
+    if not parts:
         return None
-    first = names[0]
-    if first.count(",") == 1:
-        surname, given = (part.strip() for part in first.split(","))
-        first = f"{given} {surname}".strip()
-    return " ".join(first.split()) or None
+    if len(parts) == 1:
+        return parts[0]
+    surname, given = parts[0], parts[1]
+    sort_form = (" " not in surname or " " not in given
+                 or re.search(r"(?:^|\s)\w\.$", given) is not None)
+    return f"{given} {surname}" if sort_form else surname

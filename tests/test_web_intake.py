@@ -674,3 +674,26 @@ def test_more_than_one_extra_genre_can_be_added(client, db, books) -> None:
     })
 
     assert db.reading_profile(load_settings().slug).liked_genres == ("FIC028100", "FIC009060")
+
+
+def test_screen_5_lets_a_new_like_win_over_an_old_dislike(client, db, books) -> None:
+    """Wie auf der Profilseite: das Neue gilt (Review 04.10.2026)."""
+    from dataclasses import replace
+
+    from ebook_watchlist.facets import ReadingProfile
+
+    slug = load_settings().slug
+    db.put_reading_profile(slug, replace(ReadingProfile((), ()), disliked_genres=("FIC009060",),
+                                         disliked_authors=("Stephen King",)),
+                           cause="test", now=datetime(2026, 10, 4))
+    tap(client, "brooding")
+    client.post("/intake/profile", data={"liked_genre": ["FIC009060"],
+                                         "liked_author": ["Stephen King", "Blake Crouch"],
+                                         "disliked_author": ["Blake Crouch"]})
+
+    profile = db.reading_profile(slug)
+    assert profile.liked_genres == ("FIC009060",)
+    assert profile.disliked_genres == ()
+    assert profile.disliked_authors == ("Blake Crouch",)
+    followed = [r.value for r in db.interests(slug, key="author")]
+    assert "Stephen King" in followed and "Blake Crouch" not in followed
