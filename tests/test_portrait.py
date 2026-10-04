@@ -688,3 +688,47 @@ def test_an_unknown_book_is_asked_again_once_a_sample_is_there() -> None:
     assert worth_asking_again(with_text, text_now=True, sample_now=True)
     assert not worth_asking_again(with_text, text_now=True, sample_now=False)
     assert not worth_asking_again(with_sample, text_now=True, sample_now=True)
+
+
+# --- das Genre aus der Liste (ADR 37, #90) ------------------------------------
+
+
+def test_the_model_is_asked_for_a_code_from_the_genre_list() -> None:
+    from ebook_watchlist.portrait import prompt
+
+    text = prompt("Der Leopard", "Jo Nesbø", "Ein Mörder in Oslo.", load_vocabulary())
+
+    assert '"genre_code"' in text
+    assert "FIC031080 Psychothriller" in text
+    assert "DE-REGIONALKRIMI Regionalkrimi" in text
+
+
+def test_the_genre_list_does_not_change_the_fingerprint() -> None:
+    """Die Steckbriefe sind migriert (#89); käme die Liste in den Abdruck,
+    veralteten sie alle und kosteten je einen Aufruf."""
+    from ebook_watchlist import portrait as module
+
+    assert "FIC031080" not in module.TEMPLATE
+    assert "genre_code" not in module.TEMPLATE
+
+
+def test_a_batch_asks_for_the_code_once() -> None:
+    text = prompt_many([("A", "X", None), ("B", "Y", None)], load_vocabulary())
+
+    assert text.count("FIC031080 Psychothriller") == 1
+    assert '"genre_code"' in text
+
+
+def test_the_answer_carries_the_chosen_code() -> None:
+    portrait = parse_answer(answer(genre_code="FIC031080"), load_vocabulary())
+
+    assert portrait.genre_code == "FIC031080"
+
+
+def test_a_code_off_the_list_is_noted_and_left_out() -> None:
+    """Erfunden ist erfunden: kein Code, ein vermerkter Verstoß — und beim
+    Speichern gilt die Ableitung aus dem Freitext (#89)."""
+    portrait = parse_answer(answer(genre_code="FIC999999"), load_vocabulary())
+
+    assert portrait.genre_code is None
+    assert any("FIC999999" in v for v in portrait.violations)

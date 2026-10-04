@@ -428,6 +428,26 @@ Antworte ausschließlich mit JSON in genau dieser Form:
 """
 
 
+def genre_section() -> str:
+    """Die Genre-Liste als Zusatz zur Anweisung (ADR 37, #90).
+
+    Ein eigener Abschnitt hinter ``TEMPLATE``, nicht in ihm: der Fingerabdruck
+    rechnet ``TEMPLATE`` und das Vokabular, und die Steckbriefe des Bestands
+    sind schon migriert (#89). Käme die Liste in den Abdruck, veralteten sie
+    alle und kosteten je einen Aufruf.
+    """
+    from .genres import load_genres
+
+    lines = [f"{'  ' if genre.parent else ''}{genre.code} {genre.name}" for genre in load_genres()]
+    return (
+        "\nZusätzlich: Ordne das Buch genau einem Eintrag dieser Genre-Liste zu und gib "
+        'dessen Code im Feld "genre_code" an, neben den Feldern oben. Nimm das genaueste '
+        "Untergenre, das zutrifft (eingerückt unter seinem Genre); passt keines, den Code "
+        "des Genres; passt gar nichts, null. Erfinde keinen Code.\n"
+        "--- GENRES ---\n" + "\n".join(lines) + "\n--- ENDE GENRES ---\n"
+    )
+
+
 def fingerprint(vocabulary: Vocabulary) -> str:
     """Woran man sieht, ob ein gespeicherter Steckbrief noch gilt.
 
@@ -474,7 +494,9 @@ def prompt(
         book.append(f"Klappentext: {blurb}")
     if sample:
         book.append(SAMPLE_NOTE + sample)
-    return TEMPLATE.format(vokabular=vocabulary.prompt_text(), buch="\n".join(book))
+    return TEMPLATE.format(vokabular=vocabulary.prompt_text(), buch="\n".join(book)) + (
+        genre_section()
+    )
 
 
 def _text(value) -> str | None:
@@ -585,6 +607,15 @@ def parse_answer(
     elif len(pitch) > PITCH_MAX:
         violations.append(f"Pitch hat {len(pitch)} Zeichen, höchstens {PITCH_MAX}")
 
+    # Das Genre aus der Liste (#90). Ein erfundener Code zählt nicht; beim
+    # Speichern gilt dann die Ableitung aus dem Freitext (#89).
+    from .genres import load_genres
+
+    code = _text(data.get("genre_code"))
+    if code is not None and code not in load_genres():
+        violations.append(f"Genre-Code {code} steht nicht in der Liste")
+        code = None
+
     return Portrait(
         known=True,
         fingerprint=stamp,
@@ -596,6 +627,7 @@ def parse_answer(
         pitch=pitch,
         traits=tuple(traits),
         violations=tuple(violations),
+        genre_code=code,
     )
 
 
@@ -625,6 +657,7 @@ def prompt_many(books, vocabulary: Vocabulary) -> str:
         + "\n\nAntworte ausschließlich mit einem JSON-Objekt, dessen Schlüssel die Nummern der "
         'Bücher sind ("1", "2", …); jeder Wert hat genau diese Form:'
         + shape
+        + genre_section()
     )
 
 
