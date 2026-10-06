@@ -1368,30 +1368,38 @@ class Store:
                     refs["onleihe"] = row.onleihe_ref
             return refs
 
-    def series_volumes(self, series_id: int) -> list[tuple[str, str, str | None]]:
-        """Die bekannten Bände einer Reihe: ISBN, Titel, Autor:in.
+    def series_volumes(
+        self, series_id: int
+    ) -> list[tuple[str, str, str | None, str | None]]:
+        """Die bekannten Bände einer Reihe: ISBN, Titel, Autor:in, Bildadresse.
 
         Titel und Autor:in von der letzten Sichtung, sonst aus der DNB — eine
-        ISBN, die keine von beiden beim Namen nennt, wird kein Buch.
+        ISBN, die keine von beiden beim Namen nennt, wird kein Buch. Die
+        Bildadresse nur von einer Sichtung: wer den Band aufs Watchlist setzt,
+        sieht damit nach, ob das Bild schon auf der Platte liegt (06.10.2026).
         """
         with self.session() as session:
             isbns = set(session.scalars(
                 select(SeriesEntryRow.isbn).where(SeriesEntryRow.series_id == series_id)
             ))
-            named: dict[str, tuple[str, str | None]] = {}
-            for isbn, title, author in session.execute(
-                select(ObservationRow.isbn, ObservationRow.title, ObservationRow.author)
+            named: dict[str, tuple[str, str | None, str | None]] = {}
+            covers: dict[str, str] = {}
+            for isbn, title, author, cover_url in session.execute(
+                select(ObservationRow.isbn, ObservationRow.title, ObservationRow.author,
+                       ObservationRow.cover_url)
                 .where(ObservationRow.isbn.in_(isbns))
                 .order_by(ObservationRow.id)
             ):
-                named[isbn] = (title, author)
+                if cover_url:
+                    covers[isbn] = cover_url
+                named[isbn] = (title, author, covers.get(isbn))
             for isbn, title, author in session.execute(
                 select(DnbRecordRow.isbn, DnbRecordRow.title, DnbRecordRow.author).where(
                     DnbRecordRow.isbn.in_(isbns - set(named)), DnbRecordRow.title.is_not(None)
                 )
             ):
-                named[isbn] = (title, author)
-        return [(isbn, title, author) for isbn, (title, author) in sorted(named.items())]
+                named[isbn] = (title, author, None)
+        return [(isbn, *rest) for isbn, rest in sorted(named.items())]
 
     def set_series_watch(
         self, profile_slug: str, series_id: int, *, active: bool, now: datetime

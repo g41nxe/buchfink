@@ -84,7 +84,11 @@ def test_the_book_page_offers_to_watch_its_series(client: TestClient, db: Store)
     after = client.post(f"/series/{series_id}/watch",
                         data={"watch": "1", "back": f"/book/{book_id}"}).text
 
+    # Die Pille sieht aus wie jede geltende Wahl: Rand und Tönung in Petrol,
+    # nicht Weiß auf Petrol (06.10.2026).
+    assert "Reihe beobachtet" in after
     assert "Nicht mehr beobachten" in after
+    assert "bg-accent text-white" not in after
     titles = {b.title for b in db.books()}
     assert {"Golden Son", "Morning Star"} <= titles
     assert "Golden Son" in client.get("/watchlist").text

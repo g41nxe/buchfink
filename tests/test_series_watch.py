@@ -213,3 +213,30 @@ def test_a_watched_series_survives_being_merged_into_another(store: Store) -> No
     assert watching(store)["Der Vollstrecker"] == {"series": merged.id}
     series_watch.unwatch(store, SLUG, merged.id, now=NOW)
     assert "Der Vollstrecker" not in watching(store)
+
+
+def test_a_volume_keeps_the_cover_the_stack_already_fetched(
+    store: Store, tmp_path, monkeypatch
+) -> None:
+    """Der Fledermausmann verlor sein Bild, als die Reihe beobachtet wurde: die
+    neue ``book``-Zeile kannte den Dateinamen nicht, obwohl das Bild für den
+    Stapel längst auf der Platte lag (06.10.2026). Geholt wird nichts (ADR 3)."""
+    from dataclasses import replace
+
+    from ebook_watchlist import paths
+    from ebook_watchlist.covers import file_name
+
+    monkeypatch.setenv("EBW_DATA_DIR", str(tmp_path / "data"))
+    url = "https://od.invalid/red-rising.jpg"
+    folder = paths.covers_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / file_name(url)).write_bytes(b"x")
+    seen(store, replace(volume("9783000000101", "Red Rising", "1"), cover_url=url),
+         volume("9783000000102", "Golden Son", "2"))
+    (row,) = store.series_rows()
+
+    series_watch.watch(store, SLUG, row.id, now=NOW)
+
+    covers = {b.title: b.cover_file for b in store.books()}
+    assert covers["Red Rising"] == file_name(url)
+    assert covers["Golden Son"] is None

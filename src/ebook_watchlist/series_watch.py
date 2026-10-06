@@ -19,6 +19,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+from . import paths
+from .covers import CoverStore, file_name
 from .junk import is_short_story
 from .models import MatchReason, Observation
 from .relations import REMOVED, RelationKind
@@ -41,8 +43,9 @@ def watch(store: Store, profile_slug: str, series_id: int, *, now: datetime) -> 
     """
     store.set_series_watch(profile_slug, series_id, active=True, now=now)
     return sum(
-        _put_on_watchlist(store, profile_slug, series_id, isbn, title, author, now, revive=True)
-        for isbn, title, author in store.series_volumes(series_id)
+        _put_on_watchlist(store, profile_slug, series_id, isbn, title, author, now,
+                          cover_url=cover_url, revive=True)
+        for isbn, title, author, cover_url in store.series_volumes(series_id)
     )
 
 
@@ -82,7 +85,8 @@ def add_volumes(
     if series_id not in store.watched_series(profile_slug):
         return 0
     return sum(
-        _put_on_watchlist(store, profile_slug, series_id, o.isbn, o.title, o.author, now)
+        _put_on_watchlist(store, profile_slug, series_id, o.isbn, o.title, o.author, now,
+                          cover_url=o.cover_url)
         for o in found
         if o.isbn and not is_short_story(replace(o, match_reason=MatchReason.GENRE_CATEGORY))
     )
@@ -97,9 +101,15 @@ def _put_on_watchlist(
     author: str | None,
     now: datetime,
     *,
+    cover_url: str | None = None,
     revive: bool = False,
 ) -> bool:
     """Ein Band auf die Watchlist — außer, sie hat schon etwas zu ihm gesagt.
+
+    Das Titelbild bekommt die neue ``book``-Zeile gleich mit, wenn es für den
+    Stapel schon geholt wurde: der Name ist die gehashte Adresse, nachgesehen
+    wird auf der Platte, geholt nichts (ADR 3). Ohne das stand der Band bis
+    zum nächsten Lauf ohne Bild auf der Watchlist (06.10.2026).
 
     Auch eine stillgelegte Beobachtung ist etwas, das sie gesagt hat: einen
     Band, den sie entfernt oder pausiert hat, setzt das Fegen jedes Laufs nicht
@@ -117,6 +127,10 @@ def _put_on_watchlist(
         if not (revive and ended_by_series):
             return False
     store.put_relation(profile_slug, book.id, WATCHING, now=now, series=series_id)
+    if cover_url and not book.cover_file:
+        name = file_name(cover_url)
+        if CoverStore(paths.covers_dir()).has(name):
+            store.set_cover(book.id, name)
     return True
 
 
@@ -134,7 +148,7 @@ def sweep(store: Store, profile_slug: str, sources, *, now: datetime) -> int:
         row = store.series_row(series_id)
         if row is None:
             continue
-        authors = [author for _, _, author in store.series_volumes(series_id) if author]
+        authors = [author for _, _, author, _ in store.series_volumes(series_id) if author]
         author = authors[0] if authors else row.author_key or None
         for source in sources:
             ref = {"overdrive": row.overdrive_ref, "onleihe": row.onleihe_ref}.get(source.name)

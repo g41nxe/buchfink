@@ -52,14 +52,22 @@
     <form method="post" action="/series/{{ series_view.id }}/watch" class="mt-1.5">
       <input type="hidden" name="watch" value="{{ '0' if series_view.watched else '1' }}">
       <input type="hidden" name="back" value="{{ back }}">
+      {# Dieselbe Pille wie Filter und „Prüfen bei" (`_pill.html`), nur mit
+         Zeichen: gilt sie, Rand und Tönung in Petrol wie jede geltende Wahl.
+         Vorher war sie voll gefüllt mit Weiß darauf — der einzige solche
+         Knopf der Seite, und schlecht lesbar (06.10.2026). Dass ein zweiter
+         Tipp sie wieder abschaltet, sagt der Tooltip; die Knöpfe darunter
+         schreiben es auch nicht dazu. #}
       <button type="submit"
-              class="tap inline-flex h-8 items-center gap-1.5 rounded border px-2.5 text-xs
-                     font-medium {{ 'border-accent bg-accent text-white hover:opacity-90'
-                                    if series_view.watched
-                                    else 'border-rule bg-card hover:border-accent hover:text-accent' }}">
+              title="{{ 'Nicht mehr beobachten' if series_view.watched else 'Reihe beobachten' }}"
+              aria-pressed="{{ 'true' if series_view.watched else 'false' }}"
+              class="pill tap inline-flex h-7 items-center gap-1.5 rounded border px-3 text-xs
+                     transition sm:rounded-full
+                     {{ 'border-accent bg-accent/10 text-accent'
+                        if series_view.watched
+                        else 'border-rule text-soft hover:border-accent hover:text-accent' }}">
         <svg class="i"><use href="#ic-binoculars"/></svg>
-        {{ 'Reihe beobachtet · Nicht mehr beobachten' if series_view.watched
-           else 'Reihe beobachten' }}</button>
+        {{ 'Reihe beobachtet' if series_view.watched else 'Reihe beobachten' }}</button>
     </form>
     {% endif %}
 
