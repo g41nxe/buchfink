@@ -202,8 +202,26 @@ trailing „-Reihe", „-Thriller", „ermittelt" and the like — „Die
 Cormoran-Strike-Reihe" is `cormoran strike`. Two names a Source gives for the
 same ISBN are the same series. Membership is kept per ISBN with its
 **volume** (*Band*: text, „2", „6.1", „Sonderband") and where it came from; the
-DNB outranks OverDrive, OverDrive the Onleihe, all of them the title. A series
+DNB outranks OverDrive, OverDrive the Onleihe, all of them the title. The title
+is a witness in two fixed forms only (ADR 38): a subtitle ending in „Name n" or
+„Name Band n" („Bobby Dollar 3"), or a title „Name. Band n" („Otherland. Band
+2"); a bare number („Die Hexenholzkrone 1") is a split volume, not a series.
+A Bundle inherits the series of the volumes it contains. A series
 can be watched: its volumes then stand on the Watchlist (see Watchlist Entry).
+
+### Bundle
+*deutsch: Sammelausgabe, Sammelband*
+
+One edition that contains several volumes sold separately elsewhere (ADR 24;
+ONIX `EditionType = CMB`). Recognised by its name (`looks_like_bundle`:
+„Sammelband", „3in1", „Zwei …"). Which volumes it holds is known two ways, in
+this order: the DNB names their ISBNs (`dnb_contains`), or the slash form of
+the title („Kakerlaken / Rotkehlchen") is split and each part held against the
+Observations of the same author — a part no Source knows is not a volume.
+Nothing is guessed. A Bundle inherits the Series of its volumes with the volume
+as a span („2–3", origin `bundle`), and its Discovery page and Suggestion card
+list the volumes with the reader's relation to each (ADR 38). Its price
+advantage over the single volumes is the Deal of ADR 24.
 
 ### Short Story
 *deutsch: Kurzgeschichte*
