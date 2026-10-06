@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -39,12 +39,14 @@ from .books import find as find_book
 from .cleaning import author_key, preferred_spelling
 from .dnb import Record
 from .facets import Counterweight, Facet, Liked, ReadingProfile
+from .matching.bundles import looks_like_bundle, volume_titles
+from .matching.normalize import normalize_title
 from .migrations import migrate
 from .models import LINK_OUTCOMES, Availability, MatchReason, Observation
 from .portrait import Portrait, Trait
 from .ratings import RATING_ORIGINS
 from .relations import RelationKind, check_details, check_interest_key, check_relation_kind
-from .series import SeriesOf, series_key
+from .series import SeriesOf, series_from_title, series_key, volume_span
 from .work import work_key
 
 #: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
@@ -349,7 +351,18 @@ class WorkEntryRow(Base):
 
 #: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
 #: ISBN, OverDrive vielleicht über das Werk (ADR 35).
-SERIES_ORIGINS = ("dnb", "overdrive", "onleihe")
+@dataclass(frozen=True, slots=True)
+class SeriesEntry:
+    """Eine Zuordnung ISBN -> Reihe, wie sie eine Herkunft nennt."""
+
+    isbn: str
+    origin: str
+    series_id: int
+    volume: str | None
+
+
+#: Der Titel zuletzt (ADR 38), und ein Sammelband erbt von seinen Bänden.
+SERIES_ORIGINS = ("dnb", "overdrive", "onleihe", "title", "bundle")
 
 
 class BookSourceRow(Base):
@@ -1327,6 +1340,126 @@ class Store:
             elif known[isbn][1] is None and volume:
                 known[isbn] = (known[isbn][0], volume)
         return known
+
+    def series_entries_of(self, isbn: str) -> list[SeriesEntry]:
+        """Jede Zuordnung dieser ISBN mit ihrer Herkunft — was die Rangfolge
+        entscheidet, bleibt sichtbar (ADR 35)."""
+        with self.session() as session:
+            rows = session.scalars(
+                select(SeriesEntryRow).where(SeriesEntryRow.isbn == isbn)
+                .order_by(SeriesEntryRow.origin)
+            )
+            return [SeriesEntry(row.isbn, row.origin, row.series_id, row.volume) for row in rows]
+
+    def _title_index(self, profile_slug: str) -> dict[tuple[str, str], str]:
+        """(Autor:in, Titel) -> ISBN, beide in Vergleichsform, über alle Sichtungen.
+
+        Die Stelle, an der ein Sammelband seine Bände findet: die Teile seines
+        Namens sind Titel, und ein Titel ist nur ein Band, wenn dieselbe
+        Autor:in ihn irgendwo einzeln hat (ADR 24, 38). Die jüngste Sichtung
+        gewinnt, damit eine gewechselte ISBN nicht an der alten hängt.
+        """
+        stmt = (
+            select(ObservationRow.isbn, ObservationRow.title, ObservationRow.author)
+            .where(ObservationRow.profile_slug == profile_slug,
+                   ObservationRow.isbn.is_not(None), ObservationRow.author.is_not(None))
+            .order_by(ObservationRow.id)
+        )
+        with self.session() as session:
+            return {
+                (author_key(author), normalize_title(title)): isbn
+                for isbn, title, author in session.execute(stmt)
+                if not looks_like_bundle(title)
+            }
+
+    def contained_volumes(
+        self, profile_slug: str, isbn: str | None, title: str, author: str | None,
+        index: dict[tuple[str, str], str] | None = None,
+    ) -> list[tuple[str, str]]:
+        """(ISBN, Titel) je Band eines Sammelbands — oder leer (ADR 38).
+
+        Die DNB zuerst: nennt sie die enthaltenen ISBNs, ist nichts zu raten.
+        Sonst zerfällt der Name an Schrägstrichen, und jeder Teil muss bei
+        derselben Autor:in ein Buch sein — ein Teil, der keins ist, macht den
+        Namen zu keinem Sammelband (dieselbe Selbstkorrektur wie ADR 24).
+        ``index`` kommt mit, wo viele Sammelbände nacheinander fragen.
+        """
+        if isbn:
+            from_library = self.contained_isbns(isbn)
+            if len(from_library) >= 1:
+                titles = self._titles_of(from_library)
+                return [(contained, titles.get(contained, contained)) for contained in from_library]
+        parts = volume_titles(title)
+        if len(parts) < 2 or not author:
+            return []
+        if index is None:
+            index = self._title_index(profile_slug)
+        writer = author_key(author)
+        found = [(index.get((writer, normalize_title(part))), part) for part in parts]
+        if any(found_isbn is None for found_isbn, _ in found):
+            return []
+        return [(found_isbn, part) for found_isbn, part in found if found_isbn]
+
+    def _titles_of(self, isbns: Iterable[str]) -> dict[str, str]:
+        """ISBN -> Titel, aus der jüngsten Sichtung, sonst aus der DNB."""
+        isbns = set(isbns)
+        with self.session() as session:
+            titles = dict(session.execute(
+                select(DnbRecordRow.isbn, DnbRecordRow.title).where(
+                    DnbRecordRow.isbn.in_(isbns), DnbRecordRow.title.is_not(None))
+            ).all())
+            for found_isbn, title in session.execute(
+                select(ObservationRow.isbn, ObservationRow.title)
+                .where(ObservationRow.isbn.in_(isbns)).order_by(ObservationRow.id)
+            ):
+                titles[found_isbn] = title
+        return titles
+
+    def series_from_bundles(self, profile_slug: str) -> int:
+        """Jeder Sammelband unter den Funden erbt die Reihe seiner Bände (ADR 38).
+
+        Abgeleitet aus dem, was gespeichert ist, bei jedem Lauf neu und ohne
+        Anfrage — wie ``series_from_dnb``. Hängt mindestens ein Band an einer
+        Reihe, bekommt der Sammelband eine Zuordnung mit Herkunft ``bundle``
+        und dem Band als Spanne („2–3"). Gibt zurück, wie viele neu dazukamen
+        oder sich änderten.
+        """
+        bundles = [
+            o for o in self.latest_discoveries(profile_slug)
+            if o.isbn and looks_like_bundle(o.title)
+        ]
+        if not bundles:
+            return 0
+        index = self._title_index(profile_slug)
+        changed = 0
+        with self.session() as session:
+            for bundle in bundles:
+                volumes = self.contained_volumes(
+                    profile_slug, bundle.isbn, bundle.title, bundle.author, index
+                )
+                entries = {
+                    found_isbn: entry
+                    for found_isbn, entry in self._series_entries(
+                        found_isbn for found_isbn, _ in volumes
+                    ).items()
+                }
+                if not entries:
+                    continue
+                series_ids = [sid for sid, _ in entries.values()]
+                series_id = max(set(series_ids), key=series_ids.count)
+                span = volume_span(
+                    volume for sid, volume in entries.values() if sid == series_id
+                )
+                row = session.get(SeriesEntryRow, (bundle.isbn, "bundle"))
+                if row is None:
+                    session.add(SeriesEntryRow(isbn=bundle.isbn, origin="bundle",
+                                               series_id=series_id, volume=span))
+                    changed += 1
+                elif (row.series_id, row.volume) != (series_id, span):
+                    row.series_id, row.volume = series_id, span
+                    changed += 1
+            session.commit()
+        return changed
 
     def series_known(self) -> dict[str, tuple[int, str | None]]:
         """ISBN -> (Reihe, Band), für `series.MidSeries`."""
@@ -2870,6 +3003,12 @@ class Store:
                 if obs.isbn and obs.series:
                     _file_series(session, obs.isbn, obs.series, obs.author,
                                  obs.series_index, obs.source, obs.series_ref)
+                # Der Titel als Zeuge (ADR 38) nur, wo die Quelle selbst
+                # schweigt: nennt sie die Reihe, ist der Titel kein zweiter.
+                if obs.isbn and not obs.series:
+                    if witness := series_from_title(obs.title, obs.subtitle):
+                        _file_series(session, obs.isbn, witness[0], obs.author,
+                                     witness[1], "title")
                 if obs.isbn and session.get(WorkEntryRow, (obs.isbn, "title")) is None:
                     _file_work(session, obs.isbn, obs.author, obs.title, "title")
                 if obs.isbn and obs.bisac:

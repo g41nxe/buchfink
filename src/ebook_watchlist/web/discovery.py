@@ -40,7 +40,7 @@ from .book import (
     _price,
     portray_observation,
 )
-from .triage import _cover_file
+from .triage import ContainedVolume, _cover_file, contained_view
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +100,8 @@ class Page:
         return max(0, len(self.history) - HISTORY_ROWS)
     #: Die Reihe aus der Zuordnung je ISBN, mit dem Knopf zum Beobachten (#85).
     series_view: SeriesView | None = None
+    #: Was ein Sammelband enthält, und was sie zu jedem Band gesagt hat (ADR 38).
+    contains: tuple[ContainedVolume, ...] = ()
 
 
 def portray(
@@ -167,6 +169,7 @@ def build(store: Store, settings: Settings, source: str, item_id: str) -> Page |
         author=newest.author,
         series=series.label if series else newest.series,
         series_view=series,
+        contains=contained_view(store, settings.slug, newest.isbn, newest.title, newest.author),
         isbn=newest.isbn,
         cover_file=_cover_file(newest),
         blurb=newest.blurb,

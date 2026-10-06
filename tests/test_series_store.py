@@ -152,3 +152,110 @@ def test_a_series_without_author_joins_the_one_with(store: Store) -> None:
     found = known(store)
     assert found["9783000000077"][0] == found["9783000000066"][0] == "wayward pines"
     assert len([r for r in store.series_rows() if r.key == "wayward pines"]) == 2
+
+
+def at_beam(isbn: str, title: str, subtitle: str | None, *,
+            author: str = "Tad Williams") -> Observation:
+    return Observation(source="beam", source_item_id=isbn[-4:], title=title, subtitle=subtitle,
+                       author=author, isbn=isbn, match_reason=MatchReason.PROFILE_AUTHOR,
+                       observed_at=NOW)
+
+
+def test_the_title_files_a_series_of_its_own(store: Store) -> None:
+    """Der vierte Zeuge aus ADR 35, gebaut in ADR 38: ein Untertitel „Bobby
+    Dollar 3" legt die Reihe an wie ein Name der Onleihe."""
+    seen(store, at_beam("9783608108361", "Spät dran am Jüngsten Tag", "Bobby Dollar 3"),
+         at_beam("9783608101270", "Otherland. Band 2", "Fluss aus blauem Feuer"),
+         at_beam("9783608108781", "Die Hexenholzkrone 1", None))
+
+    assert known(store) == {"9783608108361": ("bobby dollar", "3"),
+                            "9783608101270": ("otherland", "2")}
+    (entry,) = [e for e in store.series_entries_of("9783608108361")]
+    assert entry.origin == "title"
+
+
+def test_every_other_witness_outranks_the_title(store: Store) -> None:
+    seen(store, at_beam("9783608105735", "Die dunklen Gassen des Himmels", "Bobby Dollar 2"))
+    seen(store, Observation(source="onleihe", source_item_id="1", title="Die dunklen Gassen",
+                            author="Tad Williams", isbn="9783608105735", series="Bobby Dollar",
+                            series_index="1", match_reason=MatchReason.PROFILE_AUTHOR,
+                            observed_at=NOW))
+
+    assert known(store)["9783608105735"] == ("bobby dollar", "1")
+
+
+# --- Ein Sammelband erbt die Reihe seiner Bände (ADR 38) ----------------------
+
+def nesbo(isbn: str, title: str, *, source: str = "beam", series: str | None = None,
+          volume: str | None = None, subtitle: str | None = None) -> Observation:
+    return Observation(source=source, source_item_id=isbn[-4:], title=title, subtitle=subtitle,
+                       author="Jo Nesbø", isbn=isbn, series=series, series_index=volume,
+                       match_reason=MatchReason.PROFILE_AUTHOR, observed_at=NOW)
+
+
+def test_a_bundle_inherits_the_series_of_its_volumes(store: Store) -> None:
+    """„Kakerlaken / Rotkehlchen": Kakerlaken hängt an Harry Hole, der
+    Sammelband nicht — bis er von seinen Bänden erbt, mit dem Band als Spanne."""
+    seen(store, nesbo("9783548920726", "Kakerlaken", source="overdrive",
+                      series="Harry Hole", volume="2"),
+         nesbo("9783548920665", "Rotkehlchen", source="overdrive",
+               series="Harry Hole", volume="3"),
+         nesbo("9783843713474", "Kakerlaken / Rotkehlchen",
+               subtitle="Zwei Kriminalromane in einem eBook - Band 2 und 3"))
+
+    assert store.series_from_bundles("test") == 1
+
+    assert known(store)["9783843713474"] == ("harry hole", "2–3")
+    assert [e.origin for e in store.series_entries_of("9783843713474")] == ["bundle"]
+    assert store.contained_volumes("test", "9783843713474", "Kakerlaken / Rotkehlchen",
+                                   "Jo Nesbø") == [("9783548920726", "Kakerlaken"),
+                                                   ("9783548920665", "Rotkehlchen")]
+
+
+def test_one_volume_with_a_series_is_enough(store: Store) -> None:
+    seen(store, nesbo("9783548920726", "Kakerlaken", source="overdrive",
+                      series="Harry Hole", volume="2"),
+         nesbo("9783548920665", "Rotkehlchen"),
+         nesbo("9783843713474", "Kakerlaken / Rotkehlchen"))
+
+    store.series_from_bundles("test")
+
+    assert known(store)["9783843713474"] == ("harry hole", "2")
+
+
+def test_the_dnb_names_the_volumes_where_the_title_does_not(store: Store) -> None:
+    seen(store, nesbo("9783548920726", "Kakerlaken", source="overdrive",
+                      series="Harry Hole", volume="2"),
+         nesbo("9783843799999", "Harry Hole: 3in1 Bundle"))
+    store.save_dnb("9783843799999", Record(title="Harry Hole: 3in1 Bundle", author="Nesbø, Jo",
+                                           contains=("9783548920726",)), NOW)
+
+    store.series_from_bundles("test")
+
+    assert known(store)["9783843799999"] == ("harry hole", "2")
+    assert store.contained_volumes("test", "9783843799999", "Harry Hole: 3in1 Bundle",
+                                   "Jo Nesbø") == [("9783548920726", "Kakerlaken")]
+
+
+def test_a_part_no_source_knows_makes_it_no_bundle(store: Store) -> None:
+    """Dieselbe Selbstkorrektur wie beim Preisvergleich (ADR 24)."""
+    seen(store, nesbo("9783548920726", "Kakerlaken", source="overdrive",
+                      series="Harry Hole", volume="2"),
+         nesbo("9783843713474", "Kakerlaken / Psychothriller / Verlagsbestseller"))
+
+    assert store.series_from_bundles("test") == 0
+    assert "9783843713474" not in known(store)
+    assert store.contained_volumes("test", "9783843713474",
+                                   "Kakerlaken / Psychothriller / Verlagsbestseller",
+                                   "Jo Nesbø") == []
+
+
+def test_a_volume_by_another_author_does_not_count(store: Store) -> None:
+    seen(store, Observation(source="overdrive", source_item_id="x", title="Kakerlaken",
+                            author="Jemand Anders", isbn="9783548920726", series="Harry Hole",
+                            series_index="2", match_reason=MatchReason.PROFILE_AUTHOR,
+                            observed_at=NOW),
+         nesbo("9783548920665", "Rotkehlchen"),
+         nesbo("9783843713474", "Kakerlaken / Rotkehlchen"))
+
+    assert store.series_from_bundles("test") == 0

@@ -131,3 +131,51 @@ def test_a_watchlist_title_is_never_mid_series() -> None:
     watched = replace(find("Otherland. Band 3"), match_reason=MatchReason.WATCHLIST)
 
     assert not NOBODY(watched)
+
+
+# --- Der Titel als Zeuge der Reihe (ADR 38) -----------------------------------
+
+from ebook_watchlist.series import series_from_title  # noqa: E402
+
+
+@pytest.mark.parametrize(("title", "subtitle", "expected"), [
+    # Untertitel „Name n", „Name Band n", Zusatz hinter „|" abgeschnitten.
+    ("Spät dran am Jüngsten Tag", "Bobby Dollar 3", ("Bobby Dollar", "3")),
+    ("Das Reich der Grasländer 1", "Der letzte König von Osten Ard 2",
+     ("Der letzte König von Osten Ard", "2")),
+    ("Die Kinder des Seefahrers 1", "Der letzte König von Osten Ard Band 4",
+     ("Der letzte König von Osten Ard", "4")),
+    ("Der Drachenbeinthron",
+     "Das Geheimnis der Großen Schwerter 1 | Der Auftakt der High-Fantasy-Reihe",
+     ("Das Geheimnis der Großen Schwerter", "1")),
+    ("Das Moor des Vergessens", "Mysterien der Heide - Band 2", ("Mysterien der Heide", "2")),
+    ("Die Schatten unter dem Schnee", "Asterion-Zyklus 2", ("Asterion-Zyklus", "2")),
+    ("Folge meinem Willen", "Thriller: Natalie Price ermittelt 4",
+     ("Natalie Price ermittelt", "4")),
+    # Titel „Name. Band n", „Name - Band n: …".
+    ("Otherland. Band 2", "Fluss aus blauem Feuer", ("Otherland", "2")),
+    ("The Heritage Universe - Band 3: Der kalte Tod", None, ("The Heritage Universe", "3")),
+    ("Crissis Tagebücher. Band 3", None, ("Crissis Tagebücher", "3")),
+    ("Clarissa Hyde: Band 42 – Geheimbund der Wölfe", None, ("Clarissa Hyde", "42")),
+    # Der Titel geht dem Untertitel vor, wenn beide etwas sagen.
+    ("Otherland. Band 2", "Bobby Dollar 3", ("Otherland", "2")),
+])
+def test_the_title_names_the_series_in_two_forms(title, subtitle, expected) -> None:
+    assert series_from_title(title, subtitle) == expected
+
+
+@pytest.mark.parametrize(("title", "subtitle"), [
+    # Eine nackte Zahl im Titel ist ein geteilter Band, keine Reihe.
+    ("Die Hexenholzkrone 1", None),
+    ("Station 11", None),
+    # Ein Strukturwort allein ist kein Name.
+    ("Sternkreuzer Proxima - Im Bauch des Wals", "Folge 26"),
+    ("Im Schatten der Nacht", "Band 1"),
+    # Zwei Bände hinter der Zahl: ein Sammelband, keine Nummer.
+    ("Kakerlaken / Rotkehlchen", "Zwei Kriminalromane in einem eBook - Band 2 und 3"),
+    ("Blutmond", "Harry Hole ermittelt"),
+    ("Blutmond", None),
+    ("1984", None),
+])
+def test_what_is_not_a_series_witness(title, subtitle) -> None:
+    assert series_from_title(title, subtitle) is None

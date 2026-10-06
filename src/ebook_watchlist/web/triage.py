@@ -34,7 +34,7 @@ from ..reasons import (
     source_kinds,
     why_shown,
 )
-from ..relations import RELATION_KINDS, RelationKind, labelled_actions
+from ..relations import RELATION_KINDS, RelationKind, label_of, labelled_actions
 from ..series import SeriesOf, mid_series_finder
 from ..sources import registry
 from ..store import Store
@@ -107,6 +107,8 @@ class Suggestion:
     described: bool = False
     #: Zu welcher Reihe der Fund gehört, als welcher Band (#85).
     series: SeriesOf | None = None
+    #: Was ein Sammelband enthält, und was sie zu jedem Band gesagt hat (ADR 38).
+    contains: tuple[ContainedVolume, ...] = ()
 
     @property
     def byline(self) -> str | None:
@@ -229,6 +231,44 @@ def _cover_file(observation: Observation, covers: CoverStore | None = None) -> s
     name = file_name(observation.cover_url)
     folder = covers if covers is not None else CoverStore(paths.covers_dir())
     return name if folder.has(name) else None
+
+
+@dataclass(frozen=True, slots=True)
+class ContainedVolume:
+    """Ein Band eines Sammelbands, wie Fundseite und Karte ihn zeigen (ADR 38)."""
+
+    isbn: str
+    title: str
+    #: Das Regalschild ihrer Beziehung („in Beobachtung", „im Besitz"), sonst nichts.
+    relation: str | None
+
+
+def contained_view(
+    store: Store, profile_slug: str, isbn: str | None, title: str, author: str | None,
+    *, index: dict[tuple[str, str], str] | None = None,
+    books: dict[str, int] | None = None,
+) -> tuple[ContainedVolume, ...]:
+    """Die Bände eines Sammelbands mit dem, was sie dazu gesagt hat.
+
+    Gezeigt wird, was gefunden wurde; ein Sammelband, dessen Bände keine
+    Quelle kennt, bekommt keine Zeile und keine Schätzung (ADR 38). ``index``
+    und ``books`` kommen mit, wo der Stapel viele nacheinander fragt.
+    """
+    if not looks_like_bundle(title):
+        return ()
+    volumes = store.contained_volumes(profile_slug, isbn, title, author, index)
+    if not volumes:
+        return ()
+    if books is None:
+        books = store.books_with_relations(profile_slug)
+    out = []
+    for found_isbn, found_title in volumes:
+        relation = None
+        if (book_id := books.get(found_isbn)) is not None:
+            active = [r.kind for r in store.relations_of(profile_slug, book_id) if r.active]
+            relation = label_of(active[0]) if active else None
+        out.append(ContainedVolume(found_isbn, found_title, relation))
+    return tuple(out)
 
 
 def _suggestion(
@@ -433,6 +473,16 @@ def pending(
     items = _one_per_book(items)
     named = store.series_of(item.isbn for item in items if item.isbn)
     items = [replace(item, series=named.get(item.isbn or "")) for item in items]
+    # Die Bände der Sammelbände, mit einem Titelindex für alle (ADR 38).
+    if any(item.is_bundle for item in items):
+        index = store._title_index(settings.slug)
+        books = store.books_with_relations(settings.slug)
+        items = [
+            replace(item, contains=contained_view(store, settings.slug, item.isbn, item.title,
+                                                  item.author, index=index, books=books))
+            if item.is_bundle else item
+            for item in items
+        ]
 
     # Sortiert wird **vor** dem Abschneiden: sonst zeigte die Seite die
     # ersten fuenfzig einer zufaelligen Reihe, nur huebsch geordnet.

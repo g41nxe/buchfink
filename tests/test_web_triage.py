@@ -1094,3 +1094,21 @@ def test_a_borderline_verdict_says_knapp() -> None:
         "{{ verdict_stars(3, 41, borderline=b) }}").render
 
     assert "knapp" in render(b=True) and "knapp" not in render(b=False)
+
+
+def test_a_bundle_on_the_pile_names_its_volumes(client: TestClient, db: Store) -> None:
+    """Auch die Karte sagt, was drinsteckt und was sie dazu gesagt hat (ADR 38)."""
+    found(db, item_id="2", title="Kakerlaken", author="Jo Nesbø", isbn="9783548920726",
+          reason=MatchReason.PROFILE_AUTHOR)
+    found(db, item_id="3", title="Rotkehlchen", author="Jo Nesbø", isbn="9783548920665",
+          reason=MatchReason.PROFILE_AUTHOR)
+    found(db, item_id="4", title="Kakerlaken / Rotkehlchen", author="Jo Nesbø",
+          isbn="9783843713474", reason=MatchReason.PROFILE_AUTHOR)
+    book = db.find_or_create_book(isbn="9783548920665", title="Rotkehlchen",
+                                  author="Jo Nesbø", now=NOW)
+    db.put_relation("test", book.id, "owned", now=NOW)
+
+    page = client.get("/suggestions").text
+
+    assert "Enthält" in page
+    assert "Rotkehlchen</span> (im Besitz)" in page.replace("\n", "")

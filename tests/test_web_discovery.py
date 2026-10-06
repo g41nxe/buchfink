@@ -397,3 +397,30 @@ def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
     stored = db.portrait(subject_of(observation), fingerprint(vocabulary))
     assert stored.known and stored.with_sample
     assert len(asked) == 1 and "Der Anfang." in asked[0]
+
+
+# --- ein Sammelband sagt, was er enthält (ADR 38) ----------------------------
+
+
+def test_a_bundle_names_its_volumes_and_what_she_said_to_them(
+    client: TestClient, db: Store
+) -> None:
+    """„Kakerlaken / Rotkehlchen": Kakerlaken steht über die Reihe auf der
+    Watchlist, Rotkehlchen nicht — die Seite sagt beides (06.10.2026)."""
+    put_discovery(db, item_id="2", title="Kakerlaken", author="Jo Nesbø",
+                  isbn="9783548920726", series="Harry Hole")
+    put_discovery(db, item_id="3", title="Rotkehlchen", author="Jo Nesbø",
+                  isbn="9783548920665")
+    put_discovery(db, item_id="4", title="Kakerlaken / Rotkehlchen", author="Jo Nesbø",
+                  isbn="9783843713474")
+    book = db.find_or_create_book(isbn="9783548920726", title="Kakerlaken",
+                                  author="Jo Nesbø", now=NOW)
+    db.put_relation("test", book.id, "watching", now=NOW)
+    db.series_from_bundles("test")
+
+    page = client.get("/discovery/beam/4").text
+
+    assert "Harry Hole" in page
+    assert "Enthält" in page
+    assert "Kakerlaken</span> (in Beobachtung)" in page.replace("\n", "")
+    assert "Rotkehlchen" in page

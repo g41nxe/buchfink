@@ -133,6 +133,13 @@
                  {% else %}Mehrere Bände in einer Ausgabe{% endif %}">
       {% if item.volumes %}{{ item.volumes | length }} Bände{% else %}Sammelausgabe{% endif %}</span>
     {% endif %}
+    {# Die Bände beim Namen, mit dem, was sie dazu gesagt hat (ADR 38). #}
+    {% if item.contains %}
+    <span class="basis-full text-xs text-soft">Enthält:
+      {% for v in item.contains %}<span class="text-ink">{{ v.title }}</span>
+      {%- if v.relation %} ({{ v.relation }}){% endif %}
+      {%- if not loop.last %} · {% endif %}{% endfor %}</span>
+    {% endif %}
     {% endset %}
 
     {% set under_author %}

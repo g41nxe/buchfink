@@ -264,7 +264,7 @@ def _ask_the_library(
     rest = settings.dnb_budget - spent
     pending = store.isbns_without_dnb(settings.slug, rest) if rest > 0 else []
     if not pending:
-        _series_from_dnb(store)
+        _series_from_dnb(store, settings.slug)
         return
 
     library = Dnb(client=client)
@@ -285,17 +285,21 @@ def _ask_the_library(
         store.save_dnb(isbn, record, now)
         found += 1 if record else 0
     print(f"DNB: {len(pending)} gefragt, {found} beantwortet")
-    _series_from_dnb(store)
+    _series_from_dnb(store, settings.slug)
 
 
-def _series_from_dnb(store: Store) -> None:
+def _series_from_dnb(store: Store, profile_slug: str) -> None:
     """Reihe und Band auf die Buecher, auch wenn heute nichts gefragt wurde.
 
     Was frueher von der DNB kam, hat vielleicht noch kein Buch erreicht — und
     ein Lauf ohne neue ISBN kehrt vorher zurueck. Kostet keine Anfrage (#10).
+    Danach erben die Sammelbände von ihren Bänden (ADR 38) — nach der DNB,
+    weil deren Zuordnungen die sind, von denen sie erben.
     """
     if series_count := store.series_from_dnb():
         print(f"DNB: {series_count} Reihen übernommen")
+    if bundle_count := store.series_from_bundles(profile_slug):
+        print(f"Sammelbände: {bundle_count} Reihen geerbt")
 
 
 def _without_foreign_languages(store: Store, deltas, settings: Settings) -> list:
