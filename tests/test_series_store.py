@@ -184,7 +184,7 @@ def test_every_other_witness_outranks_the_title(store: Store) -> None:
     assert known(store)["9783608105735"] == ("bobby dollar", "1")
 
 
-# --- Ein Sammelband erbt die Reihe seiner Bände (ADR 38) ----------------------
+# --- Eine Sammelausgabe erbt die Reihe seiner Bände (ADR 38) ----------------------
 
 def nesbo(isbn: str, title: str, *, source: str = "beam", series: str | None = None,
           volume: str | None = None, subtitle: str | None = None) -> Observation:
@@ -195,7 +195,7 @@ def nesbo(isbn: str, title: str, *, source: str = "beam", series: str | None = N
 
 def test_a_bundle_inherits_the_series_of_its_volumes(store: Store) -> None:
     """„Kakerlaken / Rotkehlchen": Kakerlaken hängt an Harry Hole, der
-    Sammelband nicht — bis er von seinen Bänden erbt, mit dem Band als Spanne."""
+    Sammelausgabe nicht — bis sie von ihren Bänden erbt, mit dem Band als Spanne."""
     seen(store, nesbo("9783548920726", "Kakerlaken", source="overdrive",
                       series="Harry Hole", volume="2"),
          nesbo("9783548920665", "Rotkehlchen", source="overdrive",
@@ -228,13 +228,16 @@ def test_the_dnb_names_the_volumes_where_the_title_does_not(store: Store) -> Non
                       series="Harry Hole", volume="2"),
          nesbo("9783843799999", "Harry Hole: 3in1 Bundle"))
     store.save_dnb("9783843799999", Record(title="Harry Hole: 3in1 Bundle", author="Nesbø, Jo",
-                                           contains=("9783548920726",)), NOW)
+                                           contains=("9783548920726", "9783548920665")), NOW)
+    store.save_dnb("9783548920665", Record(title="Rotkehlchen", author="Nesbø, Jo"), NOW)
 
     store.series_from_bundles("test")
 
     assert known(store)["9783843799999"] == ("harry hole", "2")
-    assert store.contained_volumes("test", "9783843799999", "Harry Hole: 3in1 Bundle",
-                                   "Jo Nesbø") == [("9783548920726", "Kakerlaken")]
+    # Die DNB nennt die ISBNs ohne Reihenfolge; verglichen wird die Menge.
+    assert sorted(store.contained_volumes("test", "9783843799999", "Harry Hole: 3in1 Bundle",
+                                          "Jo Nesbø")) == [("9783548920665", "Rotkehlchen"),
+                                                           ("9783548920726", "Kakerlaken")]
 
 
 def test_a_part_no_source_knows_makes_it_no_bundle(store: Store) -> None:

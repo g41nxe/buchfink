@@ -171,11 +171,20 @@ def test_the_title_names_the_series_in_two_forms(title, subtitle, expected) -> N
     # Ein Strukturwort allein ist kein Name.
     ("Sternkreuzer Proxima - Im Bauch des Wals", "Folge 26"),
     ("Im Schatten der Nacht", "Band 1"),
-    # Zwei Bände hinter der Zahl: ein Sammelband, keine Nummer.
+    # Zwei Bände hinter der Zahl: eine Sammelausgabe, keine Nummer.
     ("Kakerlaken / Rotkehlchen", "Zwei Kriminalromane in einem eBook - Band 2 und 3"),
     ("Blutmond", "Harry Hole ermittelt"),
     ("Blutmond", None),
     ("1984", None),
+    # Review 06.10.2026: der Bindestrich zwischen zwei Bänden, auch im Titel.
+    ("Kakerlaken / Rotkehlchen", "Harry Hole - Band 2-3"),
+    ("Kakerlaken / Rotkehlchen", "Harry Hole Band 2 - 3"),
+    ("Otherland. Band 2 und 3", None),
+    ("Harry Hole - Band 2-3: Doppelband", None),
+    # Eine Zahl über 99, ein Bandwort mitten im Wort, ein Strukturwort mit Punkt.
+    ("Irgendwas", "Episode 100"),
+    ("Irgendwas", "Nr. 5"),
+    ("Irgendwas", "Teil 2 Buch 3"),
 ])
 def test_what_is_not_a_series_witness(title, subtitle) -> None:
     assert series_from_title(title, subtitle) is None

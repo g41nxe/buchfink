@@ -100,7 +100,7 @@ class Page:
         return max(0, len(self.history) - HISTORY_ROWS)
     #: Die Reihe aus der Zuordnung je ISBN, mit dem Knopf zum Beobachten (#85).
     series_view: SeriesView | None = None
-    #: Was ein Sammelband enthält, und was sie zu jedem Band gesagt hat (ADR 38).
+    #: Was eine Sammelausgabe enthält, und was sie zu jedem Band gesagt hat (ADR 38).
     contains: tuple[ContainedVolume, ...] = ()
 
 

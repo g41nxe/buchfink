@@ -46,15 +46,8 @@
       {{ title }}</h1>
     <p class="mt-0.5 text-sm text-soft sm:text-base">{{ author or "unbekannt" }}
       {%- if series %} · {{ series }}{% endif %}</p>
-    {# Was ein Sammelband enthält, und was sie zu jedem Band gesagt hat
-       (ADR 38): ohne das sah „Kakerlaken / Rotkehlchen" aus wie ein fremdes
-       Buch, obwohl Kakerlaken über die Reihe auf der Watchlist stand. #}
-    {% if volumes %}
-    <p class="mt-0.5 text-sm text-soft">Enthält:
-      {% for v in volumes %}<span class="text-ink">{{ v.title }}</span>
-      {%- if v.relation %} ({{ v.relation }}){% endif %}
-      {%- if not loop.last %} · {% endif %}{% endfor %}</p>
-    {% endif %}
+    {% from "_contains.html" import contains %}
+    {{ contains(volumes, extra="mt-0.5 text-sm") }}
     {# Die ganze Reihe auf die Watchlist (#85): ihre Bände stehen danach dort,
        neue kommen von selbst dazu. #}
     {% if series_view %}

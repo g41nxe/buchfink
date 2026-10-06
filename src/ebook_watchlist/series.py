@@ -64,21 +64,26 @@ def _name(text: str) -> str:
 #: Untertitel „Bobby Dollar 3", „Mysterien der Heide - Band 2": der Name, dann
 #: höchstens ein Trennzeichen und ein Bandwort, dann eine kleine Zahl am Ende.
 _SUBTITLE_FORM = re.compile(
-    r"^(?P<name>.+?)\s*[-–:,]?\s*(?:band|bd\.?|teil|buch)?\s*(?P<volume>\d{1,2})$",
+    r"^(?P<name>.+?)(?:\s*[-–:,]\s*|\s+)(?:(?:band|bd\.?|teil|buch)\s*)?"
+    r"(?<!\d)(?P<volume>\d{1,2})$",
     re.IGNORECASE,
 )
 #: Titel „Otherland. Band 2", „The Heritage Universe - Band 3: Der kalte Tod":
 #: hier muss das Bandwort stehen — „Die Hexenholzkrone 1" ist ein geteilter
 #: Band, keine Reihe (dieselbe Grenze wie `named_volume`).
 _TITLE_FORM = re.compile(
-    r"^(?P<name>.{3,}?)\s*[.:–-]\s*(?:band|bd\.|teil|buch)\s+(?P<volume>\d{1,2})\b",
+    r"^(?P<name>.{3,}?)\s*[.:–-]\s*(?:band|bd\.|teil|buch)\s+(?P<volume>\d{1,2})"
+    r"(?!\d)(?P<rest>.*)$",
     re.IGNORECASE,
 )
 #: „Thriller: Natalie Price ermittelt 4" — ein Gattungswort vor dem Doppelpunkt
 #: gehört nicht zum Namen.
 _GENRE_PREFIX = re.compile(r"^\w[\w-]*:\s*")
-#: „Band 2 und 3": hinter der Zahl folgt noch ein Band — ein Sammelband.
-_TWO_VOLUMES = re.compile(r"\d\s*(?:und|&|-|–)$", re.IGNORECASE)
+#: „Band 2 und 3", „Band 2-3": hinter der Zahl folgt noch ein Band — eine
+#: Sammelausgabe. Im Untertitel steht die erste Zahl dann am Ende des Namens,
+#: im Titel folgt das Bindewort auf die Zahl (Review 06.10.2026).
+_SECOND_VOLUME = re.compile(r"^\s*(?:und|&|-|–)\s*\d", re.IGNORECASE)
+_NAME_ENDS_IN_NUMBER = re.compile(r"\d\s*(?:und|&|-|–)?$", re.IGNORECASE)
 #: Was allein kein Name ist: „Folge 26", „Band 1".
 _STRUCTURE_WORDS = frozenset(
     {"band", "bd", "folge", "teil", "buch", "episode", "special", "nummer", "nr"}
@@ -95,6 +100,8 @@ def series_from_title(title: str | None, subtitle: str | None) -> tuple[str, str
     kein zweiter Band folgen, und eine nackte Zahl im Titel zählt nicht.
     """
     if title and (hit := _TITLE_FORM.match(title.strip())):
+        if _SECOND_VOLUME.match(hit.group("rest")):
+            return None
         return _witness(hit.group("name"), hit.group("volume"))
     if subtitle:
         head = subtitle.split("|", 1)[0].strip().rstrip(".")
@@ -105,18 +112,19 @@ def series_from_title(title: str | None, subtitle: str | None) -> tuple[str, str
 
 def _witness(name: str, volume: str) -> tuple[str, str] | None:
     name = name.strip(" -–:,")
-    if not name or _TWO_VOLUMES.search(name):
+    if not name or _NAME_ENDS_IN_NUMBER.search(name):
         return None
-    words = set(series_key(name).split())
+    # Wörter ohne Satzzeichen: „Nr." ist „nr", und das ist ein Strukturwort.
+    words = set(re.findall(r"\w+", series_key(name)))
     if not words or words <= _STRUCTURE_WORDS:
         return None
     return name, volume
 
 
 def volume_span(volumes: Iterable[str | None]) -> str | None:
-    """„2–3" aus den Bänden eines Sammelbands; „2", wenn nur einer zählt (ADR 38).
+    """„2–3" aus den Bänden eines Sammelausgabe; „2", wenn nur einer zählt (ADR 38).
 
-    Der Folgeband-Filter liest daraus die erste Zahl: ein Sammelband mit
+    Der Folgeband-Filter liest daraus die erste Zahl: eine Sammelausgabe mit
     Band 1 ist ein Einstieg, einer ab Band 2 nicht.
     """
     numbers = sorted({n for n in (_dnb_volume(v) for v in volumes) if n is not None})

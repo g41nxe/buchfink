@@ -1,0 +1,12 @@
+{# Was eine Sammelausgabe enthält, und was sie zu jedem Band gesagt hat
+   (ADR 38): ohne das sah „Kakerlaken / Rotkehlchen" aus wie ein fremdes Buch,
+   obwohl Kakerlaken über die Reihe auf der Watchlist stand. Eine Stelle für
+   Fundseite und Stapelkarte; `tag` und `extra` passen sie der Umgebung an. #}
+{% macro contains(volumes, tag="p", extra="") %}
+{% if volumes %}
+<{{ tag }} class="text-soft {{ extra }}">Enthält:
+  {% for v in volumes %}<span class="text-ink">{{ v.title }}</span>
+  {%- if v.relation %} ({{ v.relation }}){% endif %}
+  {%- if not loop.last %} · {% endif %}{% endfor %}</{{ tag }}>
+{% endif %}
+{% endmacro %}

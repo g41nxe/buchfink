@@ -210,11 +210,11 @@ A Bundle inherits the series of the volumes it contains. A series
 can be watched: its volumes then stand on the Watchlist (see Watchlist Entry).
 
 ### Bundle
-*deutsch: Sammelausgabe, Sammelband*
+*deutsch: Sammelausgabe*
 
 One edition that contains several volumes sold separately elsewhere (ADR 24;
 ONIX `EditionType = CMB`). Recognised by its name (`looks_like_bundle`:
-„Sammelband", „3in1", „Zwei …"). Which volumes it holds is known two ways, in
+„Sammelausgabe", „3in1", „Zwei …"). Which volumes it holds is known two ways, in
 this order: the DNB names their ISBNs (`dnb_contains`), or the slash form of
 the title („Kakerlaken / Rotkehlchen") is split and each part held against the
 Observations of the same author — a part no Source knows is not a volume.

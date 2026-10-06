@@ -399,7 +399,7 @@ def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
     assert len(asked) == 1 and "Der Anfang." in asked[0]
 
 
-# --- ein Sammelband sagt, was er enthält (ADR 38) ----------------------------
+# --- eine Sammelausgabe sagt, was er enthält (ADR 38) ----------------------------
 
 
 def test_a_bundle_names_its_volumes_and_what_she_said_to_them(

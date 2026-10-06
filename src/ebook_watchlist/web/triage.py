@@ -107,7 +107,7 @@ class Suggestion:
     described: bool = False
     #: Zu welcher Reihe der Fund gehört, als welcher Band (#85).
     series: SeriesOf | None = None
-    #: Was ein Sammelband enthält, und was sie zu jedem Band gesagt hat (ADR 38).
+    #: Was eine Sammelausgabe enthält, und was sie zu jedem Band gesagt hat (ADR 38).
     contains: tuple[ContainedVolume, ...] = ()
 
     @property
@@ -199,7 +199,7 @@ class Pile:
         ihnen, und "in anderen Sprachen" stand dort gar nicht.
         """
         pairs = (
-            (self.hidden_junk, "Sammelbände und Gratistitel"),
+            (self.hidden_junk, "Sammelausgaben und Gratistitel"),
             (self.hidden_priced, "weder Schnäppchen noch ausleihbar"),
             (self.hidden_weak, self._below_threshold),
             (self.hidden_language, "in anderen Sprachen"),
@@ -235,7 +235,7 @@ def _cover_file(observation: Observation, covers: CoverStore | None = None) -> s
 
 @dataclass(frozen=True, slots=True)
 class ContainedVolume:
-    """Ein Band eines Sammelbands, wie Fundseite und Karte ihn zeigen (ADR 38)."""
+    """Ein Band eines Sammelausgabe, wie Fundseite und Karte ihn zeigen (ADR 38)."""
 
     isbn: str
     title: str
@@ -248,9 +248,9 @@ def contained_view(
     *, index: dict[tuple[str, str], str] | None = None,
     books: dict[str, int] | None = None,
 ) -> tuple[ContainedVolume, ...]:
-    """Die Bände eines Sammelbands mit dem, was sie dazu gesagt hat.
+    """Die Bände eines Sammelausgabe mit dem, was sie dazu gesagt hat.
 
-    Gezeigt wird, was gefunden wurde; ein Sammelband, dessen Bände keine
+    Gezeigt wird, was gefunden wurde; eine Sammelausgabe, deren Bände keine
     Quelle kennt, bekommt keine Zeile und keine Schätzung (ADR 38). ``index``
     und ``books`` kommen mit, wo der Stapel viele nacheinander fragt.
     """
@@ -261,14 +261,32 @@ def contained_view(
         return ()
     if books is None:
         books = store.books_with_relations(profile_slug)
-    out = []
-    for found_isbn, found_title in volumes:
-        relation = None
-        if (book_id := books.get(found_isbn)) is not None:
-            active = [r.kind for r in store.relations_of(profile_slug, book_id) if r.active]
-            relation = label_of(active[0]) if active else None
-        out.append(ContainedVolume(found_isbn, found_title, relation))
-    return tuple(out)
+    kinds = _active_kinds(store, profile_slug)
+    return tuple(
+        ContainedVolume(found_isbn, found_title, _shelf_label(kinds.get(books.get(found_isbn))))
+        for found_isbn, found_title in volumes
+    )
+
+
+def _active_kinds(store: Store, profile_slug: str) -> dict[int, set[str]]:
+    """Buch-Id -> die Arten, die gerade gelten — einmal für alle Bände."""
+    kinds: dict[int, set[str]] = {}
+    for relation in store.relations(profile_slug):
+        kinds.setdefault(relation.book_id, set()).add(relation.kind)
+    return kinds
+
+
+#: Mehrere Beziehungen gelten zugleich (`relations.RelationKind`); das
+#: Regalschild zeigt eine. Was sie hat, vor dem, was sie vorhat, vor dem, was
+#: sie nicht will: „im Besitz" sagt mehr als „in Beobachtung".
+_SHELF_ORDER = (RelationKind.OWNED, RelationKind.WATCHING, RelationKind.LIKED,
+                RelationKind.DISLIKED, RelationKind.DISMISSED)
+
+
+def _shelf_label(kinds: set[str] | None) -> str | None:
+    if not kinds:
+        return None
+    return next((label_of(kind) for kind in _SHELF_ORDER if str(kind) in kinds), None)
 
 
 def _suggestion(
@@ -423,7 +441,7 @@ def pending(
         if is_junk(observation):
             hidden["junk"].add(subject_of(observation))
             continue
-        # Wie ein Sammelband eine Frage der Form, nicht des Geschmacks (#73).
+        # Wie eine Sammelausgabe eine Frage der Form, nicht des Geschmacks (#73).
         if is_short_story(observation):
             hidden["short"].add(subject_of(observation))
             continue
@@ -473,9 +491,9 @@ def pending(
     items = _one_per_book(items)
     named = store.series_of(item.isbn for item in items if item.isbn)
     items = [replace(item, series=named.get(item.isbn or "")) for item in items]
-    # Die Bände der Sammelbände, mit einem Titelindex für alle (ADR 38).
+    # Die Bände der Sammelausgaben, mit einem Titelindex für alle (ADR 38).
     if any(item.is_bundle for item in items):
-        index = store._title_index(settings.slug)
+        index = store.title_index(settings.slug)
         books = store.books_with_relations(settings.slug)
         items = [
             replace(item, contains=contained_view(store, settings.slug, item.isbn, item.title,

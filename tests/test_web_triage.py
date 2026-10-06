@@ -95,7 +95,7 @@ def test_junk_never_reaches_the_pile(client: TestClient, db: Store) -> None:
     # "ausgeblendet" steht seit #31 einmal vor der Aufzaehlung statt am
     # ersten Eintrag — verworfen wird weiterhin nichts.
     assert "ausgeblendet" in body
-    assert "Sammelbände und Gratistitel" in body
+    assert "Sammelausgaben und Gratistitel" in body
 
 
 def test_a_find_in_another_language_leaves_the_pile(client: TestClient, db: Store) -> None:

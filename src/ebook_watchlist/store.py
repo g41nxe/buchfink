@@ -349,8 +349,6 @@ class WorkEntryRow(Base):
     key: Mapped[str] = mapped_column(String, index=True)
 
 
-#: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
-#: ISBN, OverDrive vielleicht über das Werk (ADR 35).
 @dataclass(frozen=True, slots=True)
 class SeriesEntry:
     """Eine Zuordnung ISBN -> Reihe, wie sie eine Herkunft nennt."""
@@ -361,7 +359,9 @@ class SeriesEntry:
     volume: str | None
 
 
-#: Der Titel zuletzt (ADR 38), und ein Sammelband erbt von seinen Bänden.
+#: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
+#: ISBN, OverDrive vielleicht über das Werk (ADR 35). Der Titel zuletzt
+#: (ADR 38), und eine Sammelausgabe erbt von ihren Bänden.
 SERIES_ORIGINS = ("dnb", "overdrive", "onleihe", "title", "bundle")
 
 
@@ -1351,10 +1351,10 @@ class Store:
             )
             return [SeriesEntry(row.isbn, row.origin, row.series_id, row.volume) for row in rows]
 
-    def _title_index(self, profile_slug: str) -> dict[tuple[str, str], str]:
+    def title_index(self, profile_slug: str) -> dict[tuple[str, str], str]:
         """(Autor:in, Titel) -> ISBN, beide in Vergleichsform, über alle Sichtungen.
 
-        Die Stelle, an der ein Sammelband seine Bände findet: die Teile seines
+        Die Stelle, an der eine Sammelausgabe ihre Bände findet: die Teile ihres
         Namens sind Titel, und ein Titel ist nur ein Band, wenn dieselbe
         Autor:in ihn irgendwo einzeln hat (ADR 24, 38). Die jüngste Sichtung
         gewinnt, damit eine gewechselte ISBN nicht an der alten hängt.
@@ -1376,24 +1376,26 @@ class Store:
         self, profile_slug: str, isbn: str | None, title: str, author: str | None,
         index: dict[tuple[str, str], str] | None = None,
     ) -> list[tuple[str, str]]:
-        """(ISBN, Titel) je Band eines Sammelbands — oder leer (ADR 38).
+        """(ISBN, Titel) je Band eines Sammelausgabe — oder leer (ADR 38).
 
         Die DNB zuerst: nennt sie die enthaltenen ISBNs, ist nichts zu raten.
         Sonst zerfällt der Name an Schrägstrichen, und jeder Teil muss bei
         derselben Autor:in ein Buch sein — ein Teil, der keins ist, macht den
-        Namen zu keinem Sammelband (dieselbe Selbstkorrektur wie ADR 24).
-        ``index`` kommt mit, wo viele Sammelbände nacheinander fragen.
+        Namen zu keinem Sammelausgabe (dieselbe Selbstkorrektur wie ADR 24).
+        ``index`` kommt mit, wo viele Sammelausgaben nacheinander fragen.
         """
         if isbn:
             from_library = self.contained_isbns(isbn)
-            if len(from_library) >= 1:
+            # Zwei oder mehr, wie beim Preisvergleich (ADR 24): ein 770-Satz
+            # mit einer ISBN beschreibt keine Sammelausgabe.
+            if len(from_library) >= 2:
                 titles = self._titles_of(from_library)
                 return [(contained, titles.get(contained, contained)) for contained in from_library]
         parts = volume_titles(title)
         if len(parts) < 2 or not author:
             return []
         if index is None:
-            index = self._title_index(profile_slug)
+            index = self.title_index(profile_slug)
         writer = author_key(author)
         found = [(index.get((writer, normalize_title(part))), part) for part in parts]
         if any(found_isbn is None for found_isbn, _ in found):
@@ -1416,11 +1418,11 @@ class Store:
         return titles
 
     def series_from_bundles(self, profile_slug: str) -> int:
-        """Jeder Sammelband unter den Funden erbt die Reihe seiner Bände (ADR 38).
+        """Jeder Sammelausgabe unter den Funden erbt die Reihe seiner Bände (ADR 38).
 
         Abgeleitet aus dem, was gespeichert ist, bei jedem Lauf neu und ohne
         Anfrage — wie ``series_from_dnb``. Hängt mindestens ein Band an einer
-        Reihe, bekommt der Sammelband eine Zuordnung mit Herkunft ``bundle``
+        Reihe, bekommt die Sammelausgabe eine Zuordnung mit Herkunft ``bundle``
         und dem Band als Spanne („2–3"). Gibt zurück, wie viele neu dazukamen
         oder sich änderten.
         """
@@ -1430,19 +1432,14 @@ class Store:
         ]
         if not bundles:
             return 0
-        index = self._title_index(profile_slug)
+        index = self.title_index(profile_slug)
         changed = 0
         with self.session() as session:
             for bundle in bundles:
                 volumes = self.contained_volumes(
                     profile_slug, bundle.isbn, bundle.title, bundle.author, index
                 )
-                entries = {
-                    found_isbn: entry
-                    for found_isbn, entry in self._series_entries(
-                        found_isbn for found_isbn, _ in volumes
-                    ).items()
-                }
+                entries = self._series_entries(found_isbn for found_isbn, _ in volumes)
                 if not entries:
                     continue
                 series_ids = [sid for sid, _ in entries.values()]
@@ -3003,9 +3000,11 @@ class Store:
                 if obs.isbn and obs.series:
                     _file_series(session, obs.isbn, obs.series, obs.author,
                                  obs.series_index, obs.source, obs.series_ref)
-                # Der Titel als Zeuge (ADR 38) nur, wo die Quelle selbst
-                # schweigt: nennt sie die Reihe, ist der Titel kein zweiter.
-                if obs.isbn and not obs.series:
+                # Der Titel als Zeuge (ADR 38), auch neben der Quelle: wer
+                # vorgeht, entscheidet die Rangfolge beim Lesen, nicht das
+                # Schreiben — ein Name der Quelle ohne Band lässt den Band
+                # vom Titel gelten (Review 06.10.2026).
+                if obs.isbn:
                     if witness := series_from_title(obs.title, obs.subtitle):
                         _file_series(session, obs.isbn, witness[0], obs.author,
                                      witness[1], "title")

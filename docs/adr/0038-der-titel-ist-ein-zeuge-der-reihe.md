@@ -1,8 +1,8 @@
-# 38. Der Titel ist ein Zeuge der Reihe, und ein Sammelband erbt sie
+# 38. Der Titel ist ein Zeuge der Reihe, und eine Sammelausgabe erbt sie
 
 Was ADR 35 als vierte Herkunft vorsah, wird gebaut: Untertitel und Titel
 nennen die Reihe, wenn sie es in einer von zwei festen Formen tun. Ein
-Sammelband erbt die Reihe seiner Bände und sagt, welche er enthält (#94).
+Sammelausgabe erbt die Reihe seiner Bände und sagt, welche er enthält (#94).
 
 ## Kontext
 
@@ -13,7 +13,7 @@ Vier Fälle vom 06.10.2026, in denen eine Reihe nicht erkannt wurde:
 | Tad Williams, *Spät dran am Jüngsten Tag* | Untertitel „Bobby Dollar 3" (beam) | `series` leer; Untertitel liefert nur die Bandnummer |
 | Tad Williams, *Das Reich der Grasländer 1* | Untertitel „Der letzte König von Osten Ard 2" | keine Quelle nennt die Reihe |
 | Chris Carter, Hunter-und-Garcia-Bände | beam ohne ISBN, Untertitel, Reihe | kein Zeuge; eigene Probe nötig |
-| Jo Nesbø, *Kakerlaken / Rotkehlchen* | Untertitel „… Band 2 und 3" | Sammelband; „Kakerlaken" hängt an der Reihe, der Band nicht |
+| Jo Nesbø, *Kakerlaken / Rotkehlchen* | Untertitel „… Band 2 und 3" | Sammelausgabe; „Kakerlaken" hängt an der Reihe, der Band nicht |
 
 ADR 35 nennt den Titel als Herkunft mit dem niedrigsten Rang, `MidSeries`
 liest ihn schon für die Bandnummer (`named_volume`, `volume_of(subtitle)`).
@@ -54,36 +54,40 @@ Namen tun; der Schlüssel folgt ADR 35 und gilt je Autor:in. Drei Sperren:
   `band`, `folge`, `teil`, `buch`, `episode`, `special`, `nummer` allein sind
   kein Name. Das fängt „Folge 26" und „Band 1".
 - Hinter der Zahl darf kein „und", „&" oder „-" folgen: „Band 2 und 3" nennt
-  zwei Bände, also einen Sammelband (siehe unten), keine Nummer.
+  zwei Bände, also eine Sammelausgabe (siehe unten), keine Nummer.
 - Ohne ISBN keine Zuordnung — die Zuordnung ist je ISBN (ADR 35).
 
 Der Rang bleibt der niedrigste: nennt die DNB, OverDrive oder die Onleihe
-dieselbe ISBN, gilt deren Band. Die Prosa-Form wird nicht gelesen; vier
+dieselbe ISBN, gilt deren Band. Geschrieben wird der Titel-Zeuge trotzdem
+immer, auch neben einem Namen der Quelle — wer vorgeht, entscheidet das
+Lesen, und ein Name ohne Band lässt den Band vom Titel gelten. Die Prosa-Form wird nicht gelesen; vier
 Treffer in vier Formulierungen rechtfertigen keine Regel.
 
-### Ein Sammelband erbt die Reihe seiner Bände
+### Eine Sammelausgabe erbt die Reihe seiner Bände
 
-Ein Sammelband (`looks_like_bundle`, ADR 24) kennt seine Bände auf zwei
-Wegen, in dieser Reihenfolge: die DNB nennt sie als ISBN (`dnb_contains`),
-sonst zerfällt der Titel an Schrägstrichen (`volume_titles`), und jeder Teil
+Eine Sammelausgabe (`looks_like_bundle`, ADR 24) kennt ihre Bände auf zwei
+Wegen, in dieser Reihenfolge: die DNB nennt sie als ISBN (`dnb_contains`,
+mindestens zwei — wie beim Preisvergleich, ADR 24), sonst zerfällt der Titel an Schrägstrichen (`volume_titles`), und jeder Teil
 wird gegen die Sichtungen derselben Autor:in gehalten — ein Teil, der dort
 kein Buch ist, ist keiner (dieselbe Selbstkorrektur wie beim Preisvergleich).
 
-Hängt mindestens ein gefundener Band an einer Reihe, bekommt der Sammelband
+Hängt mindestens ein gefundener Band an einer Reihe, bekommt der Sammelausgabe
 eine Zuordnung mit Herkunft `bundle` und dem Band als Spanne, „2–3". Der
-Folgeband-Filter liest daraus wie bisher die erste Zahl: ein Sammelband mit
+Folgeband-Filter liest daraus wie bisher die erste Zahl: eine Sammelausgabe mit
 Band 1 ist ein Einstieg, einer ab Band 2 nicht.
 
 Abgeleitet wird je Lauf hinter dem Snapshot, wie `_series_from_dnb`: aus dem,
 was gespeichert ist, ohne Anfrage, bei jedem Lauf neu — ein Band, der nach dem
-Sammelband gesehen wird, holt ihn beim nächsten Lauf nach.
+Sammelausgabe gesehen wird, holt ihn beim nächsten Lauf nach.
 
-### Was der Sammelband sagt
+### Was der Sammelausgabe sagt
 
 Fundseite und Stapelkarte zeigen je enthaltenem Band eine Zeile: den Titel
-und, falls sie eine Beziehung zu ihm hat, welche („auf deiner Watchlist",
-„gekauft", „ausgeschlossen"). Ein Band ohne Beziehung steht nur mit Titel.
-Gezeigt wird, was gefunden wurde; ein Sammelband, dessen Bände keine Quelle
+und, falls sie eine Beziehung zu ihm hat, ihr Regalschild („in Beobachtung",
+„im Besitz", „Ausgeschlossen" — `relations.RELATION_LABELS`); gelten mehrere,
+das, was sie hat, vor dem, was sie vorhat. Ein Band ohne Beziehung steht nur
+mit Titel.
+Gezeigt wird, was gefunden wurde; eine Sammelausgabe, deren Bände keine Quelle
 kennt, bekommt keine Zeile und keine Schätzung.
 
 ## Erwogen und verworfen
@@ -97,7 +101,7 @@ kennt, bekommt keine Zeile und keine Schätzung.
 - **Den Klappentext lesen** („Harry Hole ermittelt im Bundle"): kein Zeuge,
   sondern Werbung. Bleibt beim Steckbrief.
 - **Die Prosa-Form**: siehe oben.
-- **Sammelband als eigenes Ticket**: beide Hälften brauchen dieselbe
+- **Sammelausgabe als eigenes Ticket**: beide Hälften brauchen dieselbe
   Zuordnung und dieselbe Kopfzeile; getrennt wären es zwei Reviews am
   selben Code.
 

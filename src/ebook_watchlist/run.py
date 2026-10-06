@@ -293,13 +293,13 @@ def _series_from_dnb(store: Store, profile_slug: str) -> None:
 
     Was frueher von der DNB kam, hat vielleicht noch kein Buch erreicht — und
     ein Lauf ohne neue ISBN kehrt vorher zurueck. Kostet keine Anfrage (#10).
-    Danach erben die Sammelbände von ihren Bänden (ADR 38) — nach der DNB,
+    Danach erben die Sammelausgaben von ihren Bänden (ADR 38) — nach der DNB,
     weil deren Zuordnungen die sind, von denen sie erben.
     """
     if series_count := store.series_from_dnb():
         print(f"DNB: {series_count} Reihen übernommen")
     if bundle_count := store.series_from_bundles(profile_slug):
-        print(f"Sammelbände: {bundle_count} Reihen geerbt")
+        print(f"Sammelausgaben: {bundle_count} Reihen geerbt")
 
 
 def _without_foreign_languages(store: Store, deltas, settings: Settings) -> list:
