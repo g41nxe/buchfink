@@ -113,13 +113,17 @@ def parse_title(item: dict) -> Detail:
     title = item.get("title")
     if not isinstance(title, str) or not title.strip():
         raise SourceStructureError(f"OverDrive: Titel {item.get('id')!r} hat keinen Titel")
+    # Ohne Lizenz nennt OverDrive keine Zähler, sagt aber ``isOwned: false``
+    # (*Auslöschung*, 24.10.2026). Das ist eine Auskunft, kein Umbau; fehlen
+    # die Zähler *ohne* diese Angabe, bleibt es laut (ADR 7).
+    count = _count if item.get("isOwned") is False else _int
     return Detail(
         title=title.strip(),
         author=_text(item, "firstCreatorName"),
         isbn=_isbn(item),
-        owned_copies=_int(item, "ownedCopies"),
-        available_copies=_int(item, "availableCopies"),
-        holds=_int(item, "holdsCount"),
+        owned_copies=count(item, "ownedCopies"),
+        available_copies=count(item, "availableCopies"),
+        holds=count(item, "holdsCount"),
         blurb=_text(item, "description"),
         cover_url=_cover(item),
     )

@@ -64,6 +64,20 @@ def test_a_title_the_library_does_not_own_is_unknown() -> None:
     assert parse.parse_title(item).availability is Availability.UNKNOWN
 
 
+def test_a_title_the_library_gave_up_is_unknown_not_broken() -> None:
+    """*Auslöschung* (7802220) am 24.10.2026: ``isOwned: false``, keine
+    Formate, und die drei Zähler fehlen ganz. Das ist kein Umbau, sondern eine
+    Bibliothek ohne Lizenz — es riss den ganzen Lauf ab."""
+    item = json.loads(fixture("title.json")) | {"isOwned": False, "formats": []}
+    for field in ("ownedCopies", "availableCopies", "holdsCount"):
+        del item[field]
+
+    detail = parse.parse_title(item)
+
+    assert (detail.owned_copies, detail.available_copies, detail.holds) == (0, 0, 0)
+    assert detail.availability is Availability.UNKNOWN
+
+
 def test_a_title_without_copy_counts_is_a_structure_change() -> None:
     """Eine fehlende Zahl ist kein leerer Wert, sondern ein Umbau. Sie still
     als "nichts verfügbar" zu lesen wäre der eine Fehler, den dieses Werkzeug
