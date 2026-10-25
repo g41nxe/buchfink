@@ -268,15 +268,7 @@
                 }
             }
         ],
-        "./src/ebook_watchlist/store.py": [
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 33,
-                    "endColumn": 41,
-                    "lineCount": 1
-                }
-            },
+        "./src/ebook_watchlist/store/catalog.py": [
             {
                 "code": "reportCallIssue",
                 "range": {
@@ -428,7 +420,19 @@
                     "endColumn": 64,
                     "lineCount": 1
                 }
-            },
+            }
+        ],
+        "./src/ebook_watchlist/store/observations.py": [
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 33,
+                    "endColumn": 41,
+                    "lineCount": 1
+                }
+            }
+        ],
+        "./src/ebook_watchlist/store/rows.py": [
             {
                 "code": "reportOptionalMemberAccess",
                 "range": {
