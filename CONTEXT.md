@@ -972,6 +972,16 @@ The Worker's check every 15 minutes: if the last *finished* Run is older than
 the Cadence, enqueue a Run. It replaces a fixed schedule, so a machine that was
 asleep runs as soon as it wakes, and a Run lost in a crash becomes due again.
 
+### Design Page
+*deutsch: Bausteinseite*
+
+`/_design`, not in the menu: every building block of the UI in its states,
+rendered with the real macros and partials. Books come from the collection where
+it has them; invented examples stand in only for an empty one (CI, a fresh
+clone). Staged are the moments the database holds only by chance — a running
+Job, a failed Run, an overlong title. A new building block lands here first,
+then in a page (#113).
+
 ### Seed file
 *deutsch: Saatgutdatei*
 

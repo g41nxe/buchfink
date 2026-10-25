@@ -38,6 +38,7 @@ from ..store import RunRow, Store
 from . import (
     assignments,
     book,
+    design,
     discovery,
     home,
     intake,
@@ -399,6 +400,25 @@ def create_app() -> FastAPI:
                 "actions": triage.ACTIONS,
                 "icons": symbols.RELATION_ICONS,
                 "arguments": home.ARGUMENTS,
+            },
+        )
+
+    @app.get("/_design", response_class=HTMLResponse)
+    def design_page(request: Request) -> HTMLResponse:
+        try:
+            real = design.real_rows(_store_for(paths.db_path()), load_settings())
+        except ConfigError:
+            real = {"watchlist": [], "suggestions": []}
+        return TEMPLATES.TemplateResponse(
+            request,
+            "design.html",
+            {
+                "asset_version": asset_version(),
+                "real": real,
+                "now": datetime.now(),
+                "portrait_jobs_by_book": {},
+                "portrait_jobs_by_item": {},
+                **design.context(datetime.now()),
             },
         )
 

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Bausteine — Buchfink{% endblock %}
+
+{% from "_section.html" import section %}
+{% from "_card.html" import card %}
+{% from "_cover.html" import cover %}
+{% from "_book_row.html" import row %}
+{% from "_icon_button.html" import icon_button %}
+{% from "_state_button.html" import state_button %}
+{% from "_decisions.html" import decisions %}
+{% from "_watchlist_actions.html" import watchlist_actions %}
+{% from "_pill.html" import pill %}
+{% from "_origin_pill.html" import origin_pill %}
+{% from "_verdict_stars.html" import verdict_stars %}
+{% from "_undo_bar.html" import undo_bar %}
+
+{% block content %}
+<h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Bausteine</h1>
+<p class="mb-2 max-w-xl text-sm text-soft">
+  Jeder Baustein der Oberfläche in seinen Zuständen. Die Bücher kommen aus
+  deinem Bestand; gestellt sind nur die Momente, die es dort nur zufällig gibt.
+  Ein neuer Baustein kommt zuerst hierher, dann in eine Seite (#113).
+</p>
+{# Die Muster sind echte Bausteine — und manche tun von selbst etwas: der
+   laufende Hammer und die laufende Lauf-Leiste fragen alle zwei Sekunden
+   nach, „Jetzt prüfen“ stieße einen echten Lauf an. `hx-disable` hält htmx
+   von allem hier fern, `inert` jeden Klick; aussehen tun sie wie immer. #}
+<p class="mb-6 text-xs text-soft">Nichts hier löst etwas aus.</p>
+
+<div hx-disable inert>
+
+{% call section("Farben", "ic-radar") %}{% endcall %}
+<div class="grid grid-cols-3 gap-2 sm:grid-cols-6">
+  {% for token in color_tokens %}
+  <div class="rounded-lg border border-rule bg-card p-2 text-xs">
+    <div class="mb-1 h-10 rounded border border-rule" style="background: var(--color-{{ token }})"></div>
+    <code>{{ token }}</code>
+  </div>
+  {% endfor %}
+</div>
+
+{% call section("Cover", "ic-doc") %}{% endcall %}
+<div class="flex flex-wrap items-end gap-6">
+  {% for label, borrowable, deal in [("ohne Abzeichen", false, false), ("Schnäppchen", false, true),
+                                     ("ausleihbar", true, false), ("beides", true, true)] %}
+  <figure class="text-center text-xs text-soft">
+    {{ cover("Psychose", borrowable=borrowable, deal=deal) }}
+    <figcaption class="mt-2">{{ label }}</figcaption>
+  </figure>
+  {% endfor %}
+  <figure class="text-center text-xs text-soft">
+    {{ cover(long_title, borrowable=true, deal=true, large=true) }}
+    <figcaption class="mt-2">groß</figcaption>
+  </figure>
+</div>
+
+{% call section("Buchzeile", "ic-unlist") %}{% endcall %}
+{% if real.watchlist or real.suggestions %}
+{# Echte Zeilen aus dem Bestand, mit denselben Teil-Templates wie auf
+   Watchlist und Stapel — je eine für einen Fall, der vorkommt. #}
+{% set back = "/_design" %}
+<ul class="divide-y divide-hair">
+  {% for label, entry in real.watchlist %}
+  <li class="list-none pt-4 text-xs font-medium text-soft">Watchlist · {{ label }}</li>
+  {% include "_watchlist_row.html" %}
+  {% endfor %}
+  {% for label, item in real.suggestions %}
+  <li class="list-none pt-4 text-xs font-medium text-soft">Vorschlag · {{ label }}</li>
+  <li>{% include "_suggestion_row.html" %}</li>
+  {% endfor %}
+</ul>
+{% else %}
+{# Ein leerer Bestand (CI, frischer Klon): erfundene Beispiele statt einer
+   leeren Seite. #}
+<ul class="divide-y divide-hair">
+  {# Watchlist: Schnäppchen, die Zeichen der Watchlist samt Hammer (es gibt
+     schon einen Steckbrief → „neu beurteilen“). #}
+  <li>
+    {% set url = "/book/0/portrait" %}{% set present = true %}{% set dom_id = "judge-design-1" %}{% set job = none %}
+    {% set judge %}{% include "_judge_button.html" %}{% endset %}
+    {% set actions_slot %}{{ watchlist_actions(entry, closings, icons, back="/_design", extra=judge) }}{% endset %}
+    {% set figures %}{{ verdict_stars(4, 56) }}{% endset %}
+    {{ row("Psychose", title_url="/_design", author="Blake Crouch", deal=true, figures=figures,
+           pitch="Ein Secret-Service-Agent wacht nach einem Unfall in einer idyllischen Kleinstadt auf, aus der es kein Entkommen gibt.",
+           above="verliehen", price="2,99 €", actions=actions_slot) }}
+  </li>
+  {# Vorschlag: Thema als Herkunft, die drei Entscheidungen und ein Hammer,
+     dessen Auftrag gerade läuft. #}
+  <li>
+    {% set url = "/discovery/beam/0/portrait" %}{% set present = true %}{% set dom_id = "judge-design-2" %}{% set job = jobs.busy %}
+    {% set judge %}{% include "_judge_button.html" %}{% endset %}
+    {% set actions_slot %}{{ decisions("beam", "0", actions, icons, extra=judge) }}{% endset %}
+    {% set pill_slot %}{{ origin_pill("Psychothriller") }}{% endset %}
+    {% set figures %}{{ verdict_stars(5, 74) }}{% endset %}
+    {{ row("Der schuldige Ehemann", title_url="/_design", author="O. J. Mullen", pill=pill_slot,
+           figures=figures, pitch="Zwei Frauen, die beide dem Missbrauch entkommen wollten, treffen eine Entscheidung, die sie für immer aneinander bindet.",
+           price="4,99 €", actions=actions_slot) }}
+  </li>
+  {# Ohne Urteil, ohne Preis, ohne Zeichen: was eine Zeile mindestens hat. #}
+  <li>
+    {{ row("Ein Titel, den noch niemand beschrieben hat", title_url="/_design", author="unbekannt") }}
+  </li>
+</ul>
+{% endif %}
+<p class="mt-6 text-xs font-medium text-soft">Belastungsprobe · länger als jeder bisherige Titel</p>
+<ul class="divide-y divide-hair">
+  {# Belastungsprobe: sehr langer Titel, ausleihbar und Schnäppchen, knapp an
+     der Schwelle, Hammer mit Fehlermeldung. #}
+  <li>
+    {% set url = "/discovery/beam/0/portrait" %}{% set present = false %}{% set dom_id = "judge-design-3" %}{% set job = jobs.trouble %}
+    {% set judge %}{% include "_judge_button.html" %}{% endset %}
+    {% set actions_slot %}{{ decisions("beam", "0", actions, icons, extra=judge) }}{% endset %}
+    {% set figures %}{{ verdict_stars(3, 51, borderline=true) }}{% endset %}
+    {{ row(long_title, title_url="/_design", author="Danilo Fender", borrowable=true, deal=true,
+           figures=figures, pitch="Ein Ex-Cop, dessen alter Fall im Haus gegenüber einzieht: das Duell beginnt mit Blicken und endet mit dem Verschwinden einer Nachbarin.",
+           above="ausleihbar", above_tone="text-accent", price="1,99 €", actions=actions_slot) }}
+  </li>
+</ul>
+
+{% call section("Zeichen", "ic-check") %}{% endcall %}
+<div class="flex flex-wrap items-center gap-2">
+  {{ icon_button("Ausschließen", "ic-x", tone="danger") }}
+  {{ icon_button("Hab ich", "ic-check", tone="amber") }}
+  {{ icon_button("Beobachten", "ic-binoculars") }}
+  {{ icon_button("jetzt nachsehen", "ic-refresh") }}
+</div>
+{# Der Hammer in allen vier Zuständen — unabhängig davon, was der Bestand
+   gerade zeigt. #}
+<div class="mt-3 flex flex-wrap items-center gap-4 text-xs text-soft">
+  {% for label, present_, job_ in [("jetzt beurteilen", false, none), ("neu beurteilen", true, none),
+                                   ("Auftrag läuft", true, jobs.busy), ("mit Fehler", false, jobs.trouble)] %}
+  <span class="flex items-center gap-2">
+    {% set url = "/book/0/portrait" %}{% set present = present_ %}{% set job = job_ %}{% set dom_id = "judge-state-" ~ loop.index %}
+    {% include "_judge_button.html" %}{{ label }}</span>
+  {% endfor %}
+</div>
+<div class="mt-3 flex flex-wrap items-center gap-2">
+  {{ state_button("watching", "Beobachten", icon="ic-binoculars", active=true) }}
+  {{ state_button("owned", "Hab ich", icon="ic-check") }}
+  {{ state_button("dismissed", "Ausschließen", icon="ic-x") }}
+</div>
+
+{% call section("Pillen", "ic-tag") %}{% endcall %}
+<div class="flex flex-wrap items-center gap-2">
+  {{ pill("alle", active=true) }}
+  {{ pill("Autor:innen") }}
+  {{ pill("Themen") }}
+  {{ origin_pill("Psychothriller") }}
+  {{ origin_pill("Blake Crouch", author=true) }}
+  {{ origin_pill("Zuletzt zurückgegeben", from_list=true) }}
+</div>
+
+{% call section("Sterne", "ic-star") %}{% endcall %}
+<div class="flex flex-col gap-2">
+  {{ verdict_stars(5, 74) }}
+  {{ verdict_stars(4, 56) }}
+  {{ verdict_stars(3, 51, borderline=true) }}
+  {{ verdict_stars(1, 12) }}
+  {# Ohne Urteil zeigt der Baustein absichtlich nichts. #}
+  <span class="text-xs text-soft">ohne Urteil: (bleibt leer){{ verdict_stars(none) }}</span>
+</div>
+
+{% call section("Statuszeile", "ic-clock") %}{% endcall %}
+{% set run_state = runs.idle %}
+{% set status = statuses.fresh %}{% set suggestions_total = 111 %}{% set target = "run-slot-design-1" %}
+{% include "_status_bar.html" %}
+{% set status = statuses.stale %}{% set target = "run-slot-design-2" %}
+{% include "_status_bar.html" %}
+{% set status = statuses.failed %}{% set target = "run-slot-design-3" %}
+{% include "_status_bar.html" %}
+
+{% call section("Lauf", "ic-play") %}{% endcall %}
+{% for state in [runs.idle, runs.busy, runs.failed] %}
+{% set run_state = state %}
+{% include "_run_panel.html" %}
+{% endfor %}
+
+{% call section("Rückgängig", "ic-refresh") %}{% endcall %}
+{{ undo_bar("Psychose", "ist jetzt bei deinen Büchern", "/_design", "") }}
+
+{% call section("Abschnitt und Karte", "ic-doc") %}{% endcall %}
+{% call card("Eine Karte", "ic-heart", sub="mit Untertitel") %}
+<p class="text-sm text-soft">Inhalt einer Karte, etwa auf der Profilseite.</p>
+{% endcall %}
+
+</div>
+{% endblock %}
