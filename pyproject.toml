@@ -32,6 +32,7 @@ dev = [
     "pytailwindcss>=0.3.1",
     "pytest-xdist>=3.8.0",
     "basedpyright>=1.40.2",
+    "playwright>=1.64.1",
 ]
 
 [build-system]
@@ -44,9 +45,10 @@ packages = ["src/ebook_watchlist"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # -n auto verteilt auf alle Kerne (Ticket 18).
-addopts = "-m 'not live' -n auto"
+addopts = "-m 'not live and not browser' -n auto"
 markers = [
     "live: hits a real source over the network; excluded by default",
+    "browser: drives a real browser against the UI (#105); run with -m browser",
 ]
 
 [tool.ruff]

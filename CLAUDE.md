@@ -19,7 +19,8 @@ ohne den Code zu lesen.
 ## Entwicklung
 
 - `uv run pytest && uv run ruff check .` — Smoke-Tests gegen die echten Quellen
-  sind mit `@pytest.mark.live` markiert und laufen nicht mit.
+  sind mit `@pytest.mark.live` markiert und laufen nicht mit. Die Browser-Tests (#105)
+  laufen mit `uv run pytest -m browser -n 0` (lokal reicht ein installiertes Edge).
 - Oberfläche: `uv run ebw serve` (Port 8437, mit Hintergrunddienst; `ebw web` ohne
   ihn — dann bleiben Läufe und Steckbriefe liegen). Die statischen
   Dateien vorher einmal mit `uv run python -m ebook_watchlist.web.build` bauen.

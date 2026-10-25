@@ -42,3 +42,11 @@ jobs:
 
       - name: Tests
         run: uv run pytest
+
+      # Wenige Abläufe im echten Browser (#105): Layout, nicht Pixel. Bei jedem
+      # Push, damit die Gruppe nicht verrottet wie eine, die niemand startet.
+      - name: Browser
+        run: uv run playwright install --with-deps chromium
+
+      - name: Browser-Tests
+        run: uv run pytest -m browser -n 0
