@@ -331,7 +331,7 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     vocabulary = load_vocabulary()
     asked: list[Observation] = []
 
-    def portray_finds(observations):
+    def portray_finds(observations, *, batch=False):
         asked.extend(observations)
         traits = tuple(Trait(t, f"Satz zu {t}", "wissen") for t in ("quest", "adventure"))
         return {

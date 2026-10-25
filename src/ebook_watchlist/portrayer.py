@@ -17,34 +17,48 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field, replace
-from typing import Protocol
-
-import requests
+from dataclasses import dataclass, replace
+from typing import Any, Protocol
 
 from .models import Observation
 from .portrait import (
+    ANSWER_SCHEMA,
     EVIDENCE,
     EVIDENCE_WITH_SAMPLE,
     MAX_TOKENS,
+    Parts,
     Portrait,
     PortrayalUnavailable,
     Vocabulary,
+    many_schema,
     parse_answer,
     parse_many,
     prompt,
     prompt_many,
+    prompt_many_parts,
+    prompt_parts,
 )
 
 #: Voreinstellung: eine beschränkte Aufgabe gegen ein mitgeliefertes Vokabular,
-#: dafür ist das kleinste Modell das richtige.
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
-API_URL = "https://api.anthropic.com/v1/messages"
-API_VERSION = "2023-06-01"
+#: dafür ist das kleinste Modell das richtige. Haiku 5.5 statt 4.5 (#102):
+#: ein Zehntel des Preises (0,10 $ / 0,50 $ je Million Tokens bis 100 000
+#: Tokens Anweisung) und besser im Befolgen von Regeln. Es denkt von selbst;
+#: wie viel, sagt ``EFFORT`` — ein festes Denkbudget lehnt es ab.
+DEFAULT_MODEL = "claude-haiku-5-5"
+#: Mittel ist die Voreinstellung des Modells; ausdrücklich gesetzt, damit ein
+#: anderes Modell nicht still anders denkt.
+EFFORT = "medium"
+#: Platz für Denken *und* Antwort: das Denken zählt mit, und ein zu knapper
+#: Deckel schnitte den Steckbrief ab.
+API_MAX_TOKENS = 16_000
+#: Wie oft der Stand eines Batches erfragt wird, und wie lange höchstens.
+BATCH_POLL_SECONDS = 30
+BATCH_GIVE_UP_SECONDS = 2 * 60 * 60
 #: Der Schlüssel kommt aus der Umgebung, bewusst und nur von dort (Ticket 20).
 #: ADR 6 sieht eine Secrets-Datei für die Bibliothekskennung vor, weil ein Lauf
 #: sich dort *anmelden* muss und die Kennung der Leserin gehört. Dieser
@@ -82,37 +96,119 @@ class Channel(Protocol):
 
 @dataclass(slots=True)
 class ApiChannel:
-    """Fragt die Messages-API. Keine eigene Bibliothek — sie ist ein POST."""
+    """Fragt die Messages-API über das offizielle SDK (#102).
+
+    Drei Dinge, die der Weg über die Kommandozeile nicht kann:
+
+    - **Zwischenspeicher:** Regeln, Vokabular und Genre-Liste stehen als
+      Systemtext vorn und werden gecacht — rund 5500 Tokens, die ein Aufruf
+      danach zu einem Zehntel zahlt.
+    - **Festes Schema:** die Form der Antwort legt ``output_config.format``
+      fest, statt dass das Modell sie aus dem Text abliest. Ob die Merkmale im
+      Vokabular stehen, prüft danach :func:`parse_answer`, wie auf jedem Weg.
+    - **Batch** für ``ebw rate``: zum halben Preis, dafür nicht sofort.
+    """
 
     api_key: str
     model: str = DEFAULT_MODEL
-    timeout: float = 60.0
-    session: requests.Session = field(default_factory=requests.Session)
+    timeout: float = 600.0
+    #: Ein `anthropic.Anthropic` — in Tests ersetzt.
+    client: Any = None
+
+    def __post_init__(self) -> None:
+        if self.client is None:
+            import anthropic
+
+            self.client = anthropic.Anthropic(api_key=self.api_key, timeout=self.timeout)
+
+    def _params(self, parts: Parts, schema: dict | None, max_tokens: int) -> dict:
+        output: dict = {"effort": EFFORT}
+        if schema is not None:
+            output["format"] = {"type": "json_schema", "schema": schema}
+        return {
+            "model": self.model,
+            "max_tokens": max(max_tokens, API_MAX_TOKENS),
+            "system": [{"type": "text", "text": parts.stable,
+                        "cache_control": {"type": "ephemeral"}}],
+            "messages": [{"role": "user", "content": parts.variable}],
+            "output_config": output,
+        }
 
     def ask(self, text: str, max_tokens: int = MAX_TOKENS) -> str:
-        payload = {
-            "model": self.model,
-            "max_tokens": max_tokens,
-            "messages": [{"role": "user", "content": text}],
-        }
-        headers = {
-            "x-api-key": self.api_key,
-            "anthropic-version": API_VERSION,
-            "content-type": "application/json",
-        }
+        """Ein Text ohne Teilung und ohne Schema — der allgemeine Weg (`Channel`)."""
+        return self.ask_parts(Parts(stable="", variable=text), None, max_tokens)
+
+    def ask_parts(self, parts: Parts, schema: dict | None, max_tokens: int = MAX_TOKENS) -> str:
+        """Geteilt und mit Schema fragen. Gestreamt, damit ein großer Deckel
+        keine Zeitüberschreitung auslöst."""
+        import anthropic
+
+        params = self._params(parts, schema, max_tokens)
+        if not parts.stable:
+            del params["system"]
         try:
-            response = self.session.post(
-                API_URL, json=payload, headers=headers, timeout=self.timeout
-            )
-        except requests.RequestException as exc:
+            with self.client.messages.stream(**params) as stream:
+                message = stream.get_final_message()
+        except anthropic.APIConnectionError as exc:
             raise PortrayalUnavailable(f"Modell nicht erreichbar: {exc}") from exc
-        if response.status_code != 200:
-            raise PortrayalUnavailable(f"Modell antwortete {response.status_code}")
+        except anthropic.APIStatusError as exc:
+            raise PortrayalUnavailable(f"Modell antwortete {exc.status_code}") from exc
+        return _message_text(message)
+
+    def batch(
+        self, requests: dict[str, tuple[Parts, dict | None]], *,
+        poll_seconds: float = BATCH_POLL_SECONDS, give_up_seconds: float = BATCH_GIVE_UP_SECONDS,
+    ) -> dict[str, str]:
+        """Viele Anfragen als ein Batch (#102): halber Preis, Ergebnis später.
+
+        Zurück kommt die Antwort je Schlüssel. Was scheitert, abläuft oder
+        nach ``give_up_seconds`` noch offen ist, fehlt — es kostet nur sich
+        (ADR 7). Die Reihenfolge der Ergebnisse ist beliebig; gelesen wird
+        nach Schlüssel.
+        """
+        import time
+
+        import anthropic
+
         try:
-            blocks = response.json()["content"]
-            return "".join(block.get("text", "") for block in blocks)
-        except (ValueError, KeyError, TypeError) as exc:
-            raise PortrayalUnavailable(f"unerwartete Antwortform: {exc}") from exc
+            created = self.client.messages.batches.create(requests=[
+                {"custom_id": key, "params": self._params(parts, schema, MAX_TOKENS)}
+                for key, (parts, schema) in requests.items()
+            ])
+            started = time.monotonic()
+            while True:
+                status = self.client.messages.batches.retrieve(created.id).processing_status
+                if status == "ended":
+                    break
+                if time.monotonic() - started > give_up_seconds:
+                    self.client.messages.batches.cancel(created.id)
+                    return {}
+                time.sleep(poll_seconds)
+            answers: dict[str, str] = {}
+            for entry in self.client.messages.batches.results(created.id):
+                if entry.result.type != "succeeded":
+                    continue
+                try:
+                    answers[entry.custom_id] = _message_text(entry.result.message)
+                except PortrayalUnavailable:
+                    continue
+            return answers
+        except anthropic.APIConnectionError as exc:
+            raise PortrayalUnavailable(f"Modell nicht erreichbar: {exc}") from exc
+        except anthropic.APIStatusError as exc:
+            raise PortrayalUnavailable(f"Modell antwortete {exc.status_code}") from exc
+
+
+def _message_text(message) -> str:
+    """Der Text einer Antwort — Denkblöcke sind nicht die Antwort."""
+    if message.stop_reason == "refusal":
+        raise PortrayalUnavailable("Modell hat abgelehnt")
+    if message.stop_reason == "max_tokens":
+        raise PortrayalUnavailable("Antwort abgeschnitten (max_tokens)")
+    text = "".join(block.text for block in message.content if block.type == "text")
+    if not text:
+        raise PortrayalUnavailable("Antwort ohne Text")
+    return text
 
 
 @dataclass(slots=True)
@@ -245,10 +341,19 @@ class Portrayer:
     def portray(
         self, title: str, author: str | None, blurb: str | None, sample: str | None = None
     ) -> Portrait:
-        """Einmal fragen, die Antwort lesen."""
-        answer = self.channel.ask(
-            prompt(title, author, blurb, self.vocabulary, sample), MAX_TOKENS
-        )
+        """Einmal fragen, die Antwort lesen.
+
+        Über die API geteilt und mit Schema (#102), über die Kommandozeile als
+        der eine Text wie bisher.
+        """
+        if isinstance(self.channel, ApiChannel):
+            answer = self.channel.ask_parts(
+                prompt_parts(title, author, blurb, self.vocabulary, sample), ANSWER_SCHEMA
+            )
+        else:
+            answer = self.channel.ask(
+                prompt(title, author, blurb, self.vocabulary, sample), MAX_TOKENS
+            )
         evidence = EVIDENCE_WITH_SAMPLE if sample else EVIDENCE
         return replace(
             parse_answer(answer, self.vocabulary, evidence),
@@ -294,7 +399,7 @@ class Portrayer:
         return self.with_sample(observation, self.portray(*self._book(observation)))
 
     def portray_finds(
-        self, observations: Sequence[Observation]
+        self, observations: Sequence[Observation], *, batch: bool = False
     ) -> dict[tuple[str, str], Portrait]:
         """Mehrere Funde beschreiben, bis zu ``batch_size`` je Aufruf (#66).
 
@@ -302,7 +407,14 @@ class Portrayer:
         unbeschrieben geblieben: ein Bündel, das scheitert, kostet nur seine
         Bücher, und ein Buch, das die Antwort auslässt oder krumm beschreibt,
         nur sich selbst — nie mehr (ADR 7).
+
+        ``batch``: über die API als Batch, zum halben Preis und ohne Bündeln —
+        das Vokabular kostet dank Zwischenspeicher ohnehin nur einmal (#102).
+        Nur für ``ebw rate``: ein Batch kann eine Stunde brauchen, und das Tor
+        im Lauf wartet nicht so lange. Über die Kommandozeile gilt es nicht.
         """
+        if batch and isinstance(self.channel, ApiChannel) and observations:
+            return self._portray_batch(observations)
         results: dict[tuple[str, str], Portrait] = {}
         size = max(1, self.batch_size)
         for start in range(0, len(observations), size):
@@ -311,10 +423,16 @@ class Portrayer:
                 if len(chunk) == 1:
                     results[chunk[0].key] = self.portray_find(chunk[0])
                     continue
-                answer = self.channel.ask(
-                    prompt_many([self._book(o) for o in chunk], self.vocabulary),
-                    MAX_TOKENS * len(chunk),
-                )
+                books = [self._book(o) for o in chunk]
+                if isinstance(self.channel, ApiChannel):
+                    answer = self.channel.ask_parts(
+                        prompt_many_parts(books, self.vocabulary), many_schema(len(chunk)),
+                        MAX_TOKENS * len(chunk),
+                    )
+                else:
+                    answer = self.channel.ask(
+                        prompt_many(books, self.vocabulary), MAX_TOKENS * len(chunk)
+                    )
                 for number, portrait in parse_many(answer, self.vocabulary, len(chunk)).items():
                     book = chunk[number - 1]
                     portrait = replace(portrait, with_text=bool(self._book(book)[2]))
@@ -325,6 +443,37 @@ class Portrayer:
             except PortrayalUnavailable:
                 continue
         return results
+
+    def _portray_batch(
+        self, observations: Sequence[Observation]
+    ) -> dict[tuple[str, str], Portrait]:
+        assert isinstance(self.channel, ApiChannel)
+        by_id = {}
+        for observation in observations:
+            by_id.setdefault(_batch_id(observation), observation)
+        answers = self.channel.batch({
+            key: (prompt_parts(*self._book(o), self.vocabulary), ANSWER_SCHEMA)
+            for key, o in by_id.items()
+        })
+        results: dict[tuple[str, str], Portrait] = {}
+        for key, answer in answers.items():
+            observation = by_id[key]
+            try:
+                portrait = replace(parse_answer(answer, self.vocabulary),
+                                   with_text=bool(self._book(observation)[2]))
+            except PortrayalUnavailable:
+                continue
+            try:
+                results[observation.key] = self.with_sample(observation, portrait)
+            except PortrayalUnavailable:
+                results[observation.key] = portrait
+        return results
+
+
+def _batch_id(observation: Observation) -> str:
+    """Ein Schlüssel, wie ihn die Batch-API annimmt: Buchstaben, Ziffern, - und _."""
+    raw = f"{observation.source}-{observation.source_item_id}"
+    return re.sub(r"[^A-Za-z0-9_-]", "_", raw)[:64]
 
 
 def build_portrayer(model: str | None, vocabulary: Vocabulary) -> Portrayer | None:

@@ -503,6 +503,135 @@ def prompt(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class Parts:
+    """Eine Anweisung in zwei Teilen, für den Weg über die API (#102).
+
+    ``stable`` ist für jedes Buch gleich — Regeln, Vokabular, Genre-Liste, die
+    Form der Antwort — und steht vorn, damit die API es zwischenspeichern kann:
+    rund 5500 Tokens, die sonst jeder Aufruf voll bezahlt. ``variable`` ist das
+    Buch. Der Weg über die Kommandozeile bekommt weiter den einen Text aus
+    :func:`prompt`; der Fingerabdruck rechnet ohnehin nur Anweisung und
+    Vokabular, nicht ihre Reihenfolge.
+    """
+
+    stable: str
+    variable: str
+
+
+def _stable(vocabulary: Vocabulary) -> str:
+    head, rest = TEMPLATE.split("--- BUCH ---", 1)
+    shape = rest.split("--- ENDE BUCH ---", 1)[1].format()
+    return (
+        head.format(vokabular=vocabulary.prompt_text())
+        + "Das Buch, um das es geht, steht in der Nachricht.\n"
+        + shape
+        + genre_section()
+    )
+
+
+def _book_lines(title: str, author: str | None, blurb: str | None, sample: str | None) -> str:
+    lines = [f"Titel: {title}", f"Autor: {author or '(nicht angegeben)'}"]
+    if blurb:
+        lines.append(f"Klappentext: {blurb}")
+    if sample:
+        lines.append(SAMPLE_NOTE + sample)
+    return "\n".join(lines)
+
+
+def prompt_parts(
+    title: str,
+    author: str | None,
+    blurb: str | None,
+    vocabulary: Vocabulary,
+    sample: str | None = None,
+) -> Parts:
+    """Dasselbe wie :func:`prompt`, geteilt in Gleichbleibendes und Buch."""
+    book = _book_lines(title, author, blurb, sample)
+    return Parts(_stable(vocabulary), f"--- BUCH ---\n{book}\n--- ENDE BUCH ---")
+
+
+def prompt_many_parts(books, vocabulary: Vocabulary) -> Parts:
+    """Dasselbe wie :func:`prompt_many`, geteilt; ``books`` wie dort."""
+    blocks = [
+        f"--- BUCH {n} ---\n{_book_lines(t, a, b, None)}\n--- ENDE BUCH {n} ---"
+        for n, (t, a, b) in enumerate(books, start=1)
+    ]
+    variable = (
+        f"Es sind {len(blocks)} Bücher. Beschreibe jedes für sich, unabhängig von den "
+        "anderen; was du zu einem sagst, darf nichts mit einem anderen zu tun haben.\n\n"
+        + "\n\n".join(blocks)
+        + "\n\nAntworte mit einem JSON-Objekt, dessen Schlüssel die Nummern der Bücher sind "
+        '("1", "2", …); jeder Wert hat die Form von oben.'
+    )
+    return Parts(_stable(vocabulary), variable)
+
+
+def _maybe(kind: str) -> dict:
+    return {"anyOf": [{"type": kind}, {"type": "null"}]}
+
+
+_TRAIT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "satz": {"type": "string"},
+        "beleg": {"type": "string", "enum": list(EVIDENCE_WITH_SAMPLE)},
+        "gewicht": {"type": "string", "enum": ["praegend", "deutlich", "rand"]},
+    },
+    "required": ["id", "satz", "beleg", "gewicht"],
+    "additionalProperties": False,
+}
+_PATTERN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "satz": {"type": "string"},
+        "beleg": {"type": "string", "enum": list(EVIDENCE_WITH_SAMPLE)},
+    },
+    "required": ["id", "satz", "beleg"],
+    "additionalProperties": False,
+}
+
+#: Die Form eines Steckbriefs als JSON-Schema (#102): auf dem API-Weg legt sie
+#: die Antwort fest, statt dass das Modell sie aus dem Text abliest. Ob die
+#: Merkmale im Vokabular stehen, prüft danach wie auf jedem Weg
+#: :func:`parse_answer` — die Liste der Wörter steht bewusst nicht im Schema:
+#: was das Modell an Unbekanntem versucht, soll als Verstoß sichtbar werden,
+#: nicht still auf ein erlaubtes Wort gezwungen.
+ANSWER_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "bekannt": {"type": "boolean"},
+        "titel": {"type": "string"},
+        "autor": _maybe("string"),
+        "originaltitel": _maybe("string"),
+        "genre": _maybe("string"),
+        "untergenre": _maybe("string"),
+        "pitch": _maybe("string"),
+        "genre_code": _maybe("string"),
+        "merkmale": {"type": "array", "items": _TRAIT_SCHEMA},
+        "erzaehlmuster": {"type": "array", "items": _PATTERN_SCHEMA},
+    },
+    "required": [
+        "bekannt", "titel", "autor", "originaltitel", "genre", "untergenre", "pitch",
+        "genre_code", "merkmale", "erzaehlmuster",
+    ],
+    "additionalProperties": False,
+}
+
+
+def many_schema(count: int) -> dict:
+    """Die Form einer gebündelten Antwort: je Nummer ein Steckbrief."""
+    keys = [str(n) for n in range(1, count + 1)]
+    return {
+        "type": "object",
+        "properties": {key: ANSWER_SCHEMA for key in keys},
+        "required": keys,
+        "additionalProperties": False,
+    }
+
+
 def _text(value) -> str | None:
     """Ein Feld der Antwort als Text; leer, ``null`` und "null" sind nichts."""
     if value is None:

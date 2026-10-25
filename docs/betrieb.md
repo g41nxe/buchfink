@@ -90,6 +90,12 @@ Was dabei zu wissen ist:
   Sie kostet allerdings 320 MB im Bild und rund 34 Sekunden je Aufruf; wer
   einen Rückstand zügig abarbeiten will, nimmt den Schlüssel.
 
+  Mit Schlüssel (#102) fragt Buchfink Claude Haiku 5.5 über das offizielle
+  SDK: Regeln und Vokabular stehen gecacht vorn, die Form der Antwort legt ein
+  JSON-Schema fest, und `ebw rate` schickt den Rückstand als Batch zum halben
+  Preis — das dauert dann Minuten bis zu einer Stunde. Der Weg über die
+  `claude`-CLI bleibt, wie er war.
+
 Eine vorhandene Datenbank kommt so ins Volume (vorher den Lauf beenden, damit
 niemand schreibt):
 

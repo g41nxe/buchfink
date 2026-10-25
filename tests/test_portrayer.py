@@ -12,7 +12,7 @@ import pytest
 
 from conftest import needs_vocabulary
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.portrait import PortrayalUnavailable, load_vocabulary
+from ebook_watchlist.portrait import ANSWER_SCHEMA, Parts, PortrayalUnavailable, load_vocabulary
 from ebook_watchlist.portrayer import (
     ApiChannel,
     CliChannel,
@@ -192,60 +192,175 @@ def test_a_good_envelope_still_yields_its_result() -> None:
 # --- der Weg über die API ------------------------------------------------------------
 
 
-class FakeSession:
-    def __init__(self, response=None, error: Exception | None = None) -> None:
-        self.response, self.error, self.posted = response, error, []
+class _Block:
+    def __init__(self, kind: str, text: str = "") -> None:
+        self.type, self.text = kind, text
 
-    def post(self, url, **kwargs):
-        self.posted.append((url, kwargs))
+
+class _Message:
+    def __init__(self, blocks, stop_reason: str = "end_turn") -> None:
+        self.content, self.stop_reason = blocks, stop_reason
+
+
+class _Stream:
+    def __init__(self, message) -> None:
+        self.message = message
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> None:
+        return None
+
+    def get_final_message(self):
+        return self.message
+
+
+class FakeClient:
+    """Steht für `anthropic.Anthropic`: nimmt die Anfragen entgegen, fragt niemanden."""
+
+    def __init__(self, message=None, error: Exception | None = None) -> None:
+        self.sent: list[dict] = []
+        self.error = error
+        self.reply = message or _Message([_Block("text", ANSWER)])
+        self.messages = self
+        self.batches = FakeBatches(self)
+
+    def stream(self, **params):
+        self.sent.append(params)
         if self.error:
             raise self.error
-        return self.response
+        return _Stream(self.reply)
 
 
-class FakeResponse:
-    def __init__(self, status_code=200, body=None) -> None:
-        self.status_code, self.body = status_code, body
+class FakeBatches:
+    def __init__(self, client: FakeClient) -> None:
+        self.client, self.created, self.polls = client, [], 0
 
-    def json(self):
-        if self.body is None:
-            raise ValueError("kein JSON")
-        return self.body
+    def create(self, requests):
+        self.created = list(requests)
+        return type("Batch", (), {"id": "msgbatch_1", "processing_status": "in_progress"})()
+
+    def retrieve(self, batch_id):
+        self.polls += 1
+        status = "ended" if self.polls >= 2 else "in_progress"
+        return type("Batch", (), {"id": batch_id, "processing_status": status})()
+
+    def results(self, batch_id):
+        # Absichtlich verkehrt herum: Ergebnisse kommen in beliebiger Reihenfolge.
+        for request in reversed(self.created):
+            custom_id = request["custom_id"]
+            if custom_id.endswith("2"):
+                yield type("R", (), {"custom_id": custom_id, "result": type(
+                    "E", (), {"type": "errored"})()})()
+                continue
+            answer = f'{{"bekannt": false, "n": "{custom_id}"}}'
+            message = _Message([_Block("thinking"), _Block("text", answer)])
+            yield type("R", (), {"custom_id": custom_id, "result": type(
+                "S", (), {"type": "succeeded", "message": message})()})()
 
 
-def test_the_api_answer_is_the_text_of_its_blocks() -> None:
-    session = FakeSession(FakeResponse(body={"content": [{"text": "Ein "}, {"text": "Text"}]}))
+PARTS = Parts(stable="Anweisung und Vokabular",
+              variable="--- BUCH ---\nTitel: X\n--- ENDE BUCH ---")
 
-    answer = ApiChannel(api_key="sk-test", session=session).ask("Frage", 123)
 
-    assert answer == "Ein Text"
-    _, kwargs = session.posted[0]
-    assert kwargs["json"]["max_tokens"] == 123
-    assert kwargs["json"]["messages"] == [{"role": "user", "content": "Frage"}]
-    assert kwargs["headers"]["x-api-key"] == "sk-test"
+def test_the_api_caches_the_vocabulary_and_fixes_the_shape() -> None:
+    """Das Vokabular steht vorn und wird gecacht; die Form der Antwort legt ein
+    Schema fest, statt dass das Modell sie aus dem Text abliest (#102)."""
+    client = FakeClient()
+
+    answer = ApiChannel(api_key="sk-test", client=client).ask_parts(PARTS, ANSWER_SCHEMA)
+
+    assert answer == ANSWER
+    params = client.sent[0]
+    assert params["model"] == "claude-haiku-5-5"
+    assert params["system"] == [{"type": "text", "text": PARTS.stable,
+                                 "cache_control": {"type": "ephemeral"}}]
+    assert params["messages"] == [{"role": "user", "content": PARTS.variable}]
+    assert params["output_config"]["format"] == {"type": "json_schema", "schema": ANSWER_SCHEMA}
+    # Haiku 5.5: Sampling-Parameter sind ein Fehler, ein festes Denkbudget auch.
+    assert "temperature" not in params and "thinking" not in params
+
+
+def test_thinking_blocks_are_not_the_answer() -> None:
+    client = FakeClient(_Message([_Block("thinking"), _Block("text", ANSWER)]))
+
+    assert ApiChannel(api_key="sk-test", client=client).ask_parts(PARTS, ANSWER_SCHEMA) == ANSWER
+
+
+@pytest.mark.parametrize(
+    ("stop", "word"), [("refusal", "abgelehnt"), ("max_tokens", "abgeschnitten")]
+)
+def test_a_cut_or_refused_answer_is_unavailable(stop: str, word: str) -> None:
+    client = FakeClient(_Message([_Block("text", "{")], stop_reason=stop))
+
+    with pytest.raises(PortrayalUnavailable, match=word):
+        ApiChannel(api_key="sk-test", client=client).ask_parts(PARTS, ANSWER_SCHEMA)
 
 
 def test_an_unreachable_api_is_unavailable_not_a_crash() -> None:
-    import requests
+    import anthropic
+    import httpx2
 
-    session = FakeSession(error=requests.ConnectionError("kein Netz"))
+    error = anthropic.APIConnectionError(request=httpx2.Request("POST", "https://x.invalid"))
 
     with pytest.raises(PortrayalUnavailable, match="nicht erreichbar"):
-        ApiChannel(api_key="sk-test", session=session).ask("Frage")
+        ApiChannel(api_key="sk-test", client=FakeClient(error=error)).ask_parts(PARTS, None)
 
 
-def test_a_refusal_from_the_api_is_named() -> None:
-    session = FakeSession(FakeResponse(status_code=529))
+def test_an_error_status_is_named() -> None:
+    import anthropic
+    import httpx2
+
+    response = httpx2.Response(529, request=httpx2.Request("POST", "https://x.invalid"))
+    error = anthropic.APIStatusError("überlastet", response=response, body=None)
 
     with pytest.raises(PortrayalUnavailable, match="529"):
-        ApiChannel(api_key="sk-test", session=session).ask("Frage")
+        ApiChannel(api_key="sk-test", client=FakeClient(error=error)).ask_parts(PARTS, None)
 
 
-def test_an_unexpected_answer_shape_is_unavailable() -> None:
-    session = FakeSession(FakeResponse(body={"gibt": "es nicht"}))
+def test_a_batch_comes_back_by_its_ids_not_its_order() -> None:
+    """Die Batch-API für `ebw rate` (#102): halber Preis, Ergebnisse in
+    beliebiger Reihenfolge, ein fehlgeschlagener Eintrag kostet nur sich."""
+    client = FakeClient()
+    channel = ApiChannel(api_key="sk-test", client=client)
 
-    with pytest.raises(PortrayalUnavailable, match="Antwortform"):
-        ApiChannel(api_key="sk-test", session=session).ask("Frage")
+    answers = channel.batch({"b1": (PARTS, ANSWER_SCHEMA), "b2": (PARTS, ANSWER_SCHEMA),
+                             "b3": (PARTS, ANSWER_SCHEMA)}, poll_seconds=0)
+
+    assert set(answers) == {"b1", "b3"}
+    assert json.loads(answers["b1"])["n"] == "b1"
+    request = client.batches.created[0]["params"]
+    assert request["system"][0]["cache_control"] == {"type": "ephemeral"}
+    assert request["output_config"]["format"]["schema"] == ANSWER_SCHEMA
+
+
+@needs_vocabulary
+def test_the_api_path_hands_over_parts_and_schema() -> None:
+    """Der Weg über die Kommandozeile bekommt weiter genau den alten Text."""
+    client = FakeClient()
+    portrayer = Portrayer(ApiChannel(api_key="sk-test", client=client), load_vocabulary())
+
+    portrayer.portray("Der Schwarm", "Frank Schätzing", "Ein Meer, das zurückschlägt.")
+
+    params = client.sent[0]
+    assert "Der Schwarm" in params["messages"][0]["content"]
+    assert "Der Schwarm" not in params["system"][0]["text"]
+    assert "VOKABULAR" in params["system"][0]["text"]
+
+
+@needs_vocabulary
+def test_rate_uses_the_batch_when_asked() -> None:
+    client = FakeClient()
+    portrayer = Portrayer(ApiChannel(api_key="sk-test", client=client), load_vocabulary())
+    finds = [Observation(source="beam", source_item_id=str(n), title=f"Titel {n}", author="A",
+                         match_reason=MatchReason.GENRE_CATEGORY) for n in (1, 2, 3)]
+
+    described = portrayer.portray_finds(finds, batch=True)
+
+    assert client.sent == []  # kein einzelner Aufruf
+    assert len(client.batches.created) == 3
+    assert set(described) == {("beam", "1"), ("beam", "3")}
 
 
 # --- welcher Weg gewählt wird ----------------------------------------------------------

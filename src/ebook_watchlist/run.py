@@ -814,7 +814,8 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
     now = datetime.now()
     distribution: dict[int, int] = {}
     violations = flawed = 0
-    described = portrayer.portray_finds(finds)
+    # Über die API als Batch, zum halben Preis (#102); der Rückstand eilt nicht.
+    described = portrayer.portray_finds(finds, batch=True)
     for observation in finds:
         portrait = described.get(observation.key)
         if portrait is None:
