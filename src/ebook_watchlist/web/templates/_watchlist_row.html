@@ -27,7 +27,7 @@
 
     {% set pill %}
     {% if entry.is_bundle %}
-    <span class="rounded bg-amber/15 px-1.5 py-0.5 text-xs font-medium text-amber"
+    <span class="rounded bg-pill-bg px-1.5 py-0.5 text-xs font-medium text-pill"
           title="Mehrere Bände in einer Ausgabe">Sammelausgabe</span>
     {% endif %}
     {# Ein Watchlist-Titel wird auch ohne Sprachfilter gesucht (#77). Führt
@@ -207,7 +207,7 @@
             <span class="caption mt-1 block text-xs leading-tight">
               {{ candidate.title }}
               {% if candidate.is_bundle %}
-              <span class="mt-0.5 block text-amber">
+              <span class="mt-0.5 block text-pill">
                 {% if candidate.volumes %}{{ candidate.volumes | length }} Bände
                 {% else %}Sammelausgabe{% endif %}</span>
               {% endif %}

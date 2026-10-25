@@ -487,14 +487,15 @@ def test_an_unjudged_find_shows_no_stars(client: TestClient, db: Store) -> None:
 
 
 def test_the_row_carries_a_cover_and_the_source_symbol(client: TestClient, db: Store) -> None:
-    """Dieselbe Sprache wie auf der Watchlist: grün Bibliothek, bernstein Shop."""
+    """Dieselbe Sprache wie auf der Watchlist: Petrol Bibliothek, die Preisfarbe
+    für den Shop (ADR 39)."""
     found(db, title="Der Kannibalenhügel", price=399)
 
     body = client.get("/suggestions").text
 
     assert "ic-shop" in body
     assert "ic-tag" in body  # Schnäppchen-Abzeichen auf dem Cover, 3,99 €
-    assert "text-amber" in body
+    assert "text-price" in body
 
 
 def test_a_long_title_is_shortened_in_the_row_and_whole_on_the_find_page(

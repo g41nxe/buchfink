@@ -158,7 +158,7 @@
       {% if item.url %}
       <a href="{{ item.url }}" target="_blank" rel="noopener"
          title="{{ item.source_label }}: dort ansehen"
-         class="{{ 'text-accent' if item.source_category == 'library' else 'text-amber' }}
+         class="{{ 'text-accent' if item.source_category == 'library' else 'text-price' }}
                 hover:opacity-70">
         <svg class="i"><use href="#ic-{{ 'lib' if item.source_category == 'library'
                                          else 'shop' }}"/></svg></a>

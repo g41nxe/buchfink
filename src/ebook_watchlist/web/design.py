@@ -17,7 +17,7 @@ from types import SimpleNamespace
 
 from ..config import Settings
 from ..store import Store
-from . import home, symbols, triage, watchlist
+from . import home, intake, symbols, triage, watchlist
 from .runs import RunState
 
 #: Der längste Titel, den der Stapel bisher gesehen hat, und noch etwas mehr:
@@ -33,6 +33,7 @@ COLOR_TOKENS = (
     "paper", "card", "ink", "soft", "rule", "hair",
     "accent", "accent-bg", "amber", "amber-bg", "danger", "gold",
     "price", "pill", "pill-bg", "heading", "header", "header-ink",
+    "choice", "book-mark", "warn",
 )
 
 
@@ -64,6 +65,33 @@ def real_rows(store: Store, settings: Settings) -> dict:
         + _first(items, "ohne Cover", lambda i: not i.cover_file)
     )
     return {"watchlist": _unique(picked_entries), "suggestions": _unique(picked_items)}
+
+
+def real_intake(store: Store, settings: Settings) -> dict | None:
+    """Karten der Erstaufnahme aus dem eigenen Leseprofil, je Zustand eine.
+
+    Dieselbe Rechnung wie Bildschirm 3 und 4 (`intake.choosing`). Ohne
+    Vokabular oder ohne genannte Bücher gibt es keine Karten — dann `None`.
+    """
+    try:
+        choice = intake.choosing(store, settings)
+    except Exception:  # noqa: BLE001 - die Bausteinseite zeigt, was es gibt
+        return None
+    cards = choice.terms + choice.patterns
+    picked = _unique(
+        _first(cards, "verstärkt", lambda k: k.pill.boosted)
+        + _first(cards, "gewählt", lambda k: k.pill.on and not k.pill.boosted)
+        + _first(cards, "nicht gewählt", lambda k: not k.pill.on and not k.pill.pattern)
+        + _first(cards, "Erzählmuster", lambda k: k.pill.pattern)
+    )
+    lost = choice.lost_terms + choice.lost_patterns
+    picked_lost = _unique(
+        _first(lost, "angetippt", lambda k: k.pill.on)
+        + _first(lost, "nicht angetippt", lambda k: not k.pill.on)
+    )
+    if not picked and not picked_lost:
+        return None
+    return {"cards": picked, "lost": picked_lost, "can_boost": choice.can_boost}
 
 
 def _unique(picked: list[tuple[str, object]]) -> list[tuple[str, object]]:

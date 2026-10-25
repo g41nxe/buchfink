@@ -339,7 +339,7 @@ def test_the_owned_button_is_coloured_like_a_purchase_not_like_the_library(
     start = form.index('value="owned"')
     button = form[start : form.index("</button>", start)]
 
-    assert "hover:text-amber" in button
+    assert "hover:text-price" in button
     assert "hover:text-accent" not in button
 
 

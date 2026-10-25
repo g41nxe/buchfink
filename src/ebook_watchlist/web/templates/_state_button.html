@@ -35,7 +35,7 @@
                sm:h-9 sm:px-3 sm:text-sm {{ extra }}
                {% if active %}border-accent bg-accent/10 text-accent
                {% elif kind in ('dismissed', 'disliked') %}border-rule text-soft hover:border-danger hover:text-danger
-               {% elif kind in ('owned', 'liked') %}border-rule text-ink hover:border-amber hover:text-amber
+               {% elif kind in ('owned', 'liked') %}border-rule text-ink hover:border-price hover:text-price
                {% else %}border-rule text-ink hover:border-accent hover:text-accent{% endif %}">
   {% if icon %}<svg class="i"><use href="#{{ icon }}"/></svg>{% endif %}{{ label }}
 </button>

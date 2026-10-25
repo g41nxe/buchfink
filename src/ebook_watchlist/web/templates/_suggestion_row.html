@@ -22,7 +22,7 @@
     {# Eine Sammelausgabe darf nicht aussehen wie der gesuchte Einzelband
        (ADR 24). Nennt der Name die Baende, stehen sie dabei — sonst nur die
        Tatsache, denn geraten wird hier nichts. #}
-    <span class="ml-1 rounded bg-amber/15 px-1.5 py-0.5 text-xs font-medium text-amber"
+    <span class="ml-1 rounded bg-pill-bg px-1.5 py-0.5 text-xs font-medium text-pill"
           title="{% if item.volumes %}Enthält: {{ item.volumes | join(', ') }}
                  {% else %}Mehrere Bände in einer Ausgabe{% endif %}">
       {% if item.volumes %}{{ item.volumes | length }} Bände{% else %}Sammelausgabe{% endif %}</span>
@@ -38,7 +38,7 @@
     <a href="{{ item.url }}" target="_blank" rel="noopener"
        title="{{ item.source_label }}: dort ansehen"
        onclick="event.stopPropagation()"
-       class="{{ 'text-accent' if item.source_category == 'library' else 'text-amber' }}
+       class="{{ 'text-accent' if item.source_category == 'library' else 'text-price' }}
               hover:opacity-70">
       <svg class="i"><use href="#ic-{{ 'lib' if item.source_category == 'library'
                                        else 'shop' }}"/></svg></a>

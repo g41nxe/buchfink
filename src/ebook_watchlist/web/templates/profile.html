@@ -166,9 +166,9 @@
           <{{ 'a' if g.book_id else 'span' }}
              {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening" title="beim Buch ändern"{% endif %}
              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1
-                    ring-inset {{ 'bg-amber-bg text-amber ring-amber/30' if g.boosted
+                    ring-inset {{ 'bg-choice/10 text-choice ring-choice/30' if g.boosted
                                   else 'bg-accent-bg text-accent ring-accent/20' }}
-                    {{ ('hover:ring-amber/60' if g.boosted else 'hover:ring-accent/50') if g.book_id }}">
+                    {{ ('hover:ring-choice/60' if g.boosted else 'hover:ring-accent/50') if g.book_id }}">
             {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>{% endif %}
             {{ g.name }}</{{ 'a' if g.book_id else 'span' }}>
         </li>
@@ -230,7 +230,7 @@
       {% for interest in view.genre_categories %}
       <li class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium
                  {{ 'border border-rule text-soft line-through' if not interest.active
-                    else 'bg-amber-bg text-amber' }}"
+                    else 'bg-pill-bg text-pill' }}"
           title="{{ interest.value }}"><svg class="i"><use href="#ic-tag"/></svg>{{ interest.label }}</li>
       {% endfor %}
     </ul>
@@ -251,7 +251,7 @@
     {% endif %}
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 py-2.5 first:pt-0 last:pb-0">
       <dt class="flex items-center gap-2 text-sm text-soft"><svg class="i shrink-0"><use href="#ic-shop"/></svg>Schnäppchen ohne Nachfrage</dt>
-      <dd class="ml-auto text-right text-sm whitespace-nowrap">unter <span class="font-semibold text-amber">{{ view.strong_deal }}</span></dd>
+      <dd class="ml-auto text-right text-sm whitespace-nowrap">unter <span class="font-semibold text-price">{{ view.strong_deal }}</span></dd>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 py-2.5 first:pt-0 last:pb-0">
       <dt class="flex items-center gap-2 text-sm text-soft"><svg class="i shrink-0"><use href="#ic-tag"/></svg>Mittleres Band</dt>

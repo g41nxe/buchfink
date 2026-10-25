@@ -92,7 +92,7 @@
   {% set y = 34 + loop.index0 * 26 %}
   {% set n = {"prägend": 3, "deutlich": 2, "am Rand": 1}[p.weight_word] %}
   {% for i in range(3) %}
-  <circle cx="{{ rx + 6 + i * 8 }}" cy="{{ y }}" r="2.6" class="{{ 'fill-amber' if i < n else 'fill-hair' }}"/>
+  <circle cx="{{ rx + 6 + i * 8 }}" cy="{{ y }}" r="2.6" class="{{ 'fill-book-mark' if i < n else 'fill-hair' }}"/>
   {% endfor %}
   <text x="{{ rx + 34 }}" y="{{ y + 4 }}" font-size="13" class="fill-ink">{{ p.name }}</text>
   {% endfor %}

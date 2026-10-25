@@ -384,7 +384,7 @@
        {% if state.url and found %}href="{{ state.url }}" target="_blank" rel="noopener"
        class="hover:decoration-current {% else %}class="{% endif %}
               flex shrink-0 items-center gap-1.5 sm:w-40
-              {{ 'text-accent' if category.library else 'text-amber' }}
+              {{ 'text-accent' if category.library else 'text-price' }}
               {{ 'underline decoration-current/30 underline-offset-2' if state.url and found }}">
       <svg class="i"><use href="#{{ 'ic-lib' if category.library else 'ic-shop' }}"/></svg>
       {{ state.display }}
@@ -395,7 +395,7 @@
     {# Der Wert steht auf dem Telefon rechts in derselben Zeile wie der Name,
        am Schreibtisch hinter dem Stand. #}
     <span class="ml-auto shrink-0 tabular-nums sm:order-last
-                 {{ 'text-amber' if sighting and sighting.deal else 'text-ink' }}">
+                 {{ 'text-price' if sighting and sighting.deal else 'text-ink' }}">
       {%- if sighting and sighting.price %}{{ sighting.price }}
       {%- elif sighting and sighting.hold %}{{ sighting.hold }}
       {%- else %}<span class="text-soft">—</span>{% endif %}</span>

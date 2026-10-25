@@ -42,15 +42,15 @@
       {% if p.verdict_tick %}
       <line x1="{{ '%.1f' | format(p.verdict_tick[0][0]) }}" y1="{{ '%.1f' | format(p.verdict_tick[0][1]) }}"
             x2="{{ '%.1f' | format(p.verdict_tick[1][0]) }}" y2="{{ '%.1f' | format(p.verdict_tick[1][1]) }}"
-            class="stroke-amber" stroke-width="1.6"/>
+            class="stroke-book-mark" stroke-width="1.6"/>
       {% endif %}
       {% if p.track %}
       <line x1="{{ '%.1f' | format(p.track[0][0]) }}" y1="{{ '%.1f' | format(p.track[0][1]) }}"
             x2="{{ '%.1f' | format(p.track[1][0]) }}" y2="{{ '%.1f' | format(p.track[1][1]) }}"
-            class="stroke-amber" stroke-width="3.5"/>
+            class="stroke-book-mark" stroke-width="3.5"/>
       {% elif p.hollow %}
       <circle cx="{{ '%.1f' | format(p.hollow[0]) }}" cy="{{ '%.1f' | format(p.hollow[1]) }}"
-              r="2.2" class="fill-none stroke-amber" stroke-width="1.2"/>
+              r="2.2" class="fill-none stroke-book-mark" stroke-width="1.2"/>
       {% endif %}
     </g>
     {% endfor %}
@@ -106,7 +106,7 @@
           <span class="min-w-0 flex-1 truncate {{ 'font-semibold text-ink' if p.carried
                                                   else 'text-danger' if p.tone == 'danger'
                                                   else 'text-soft' }}">{{ p.name }}</span>
-          {% if s.has_book %}<span class="size-1.5 shrink-0 rounded-full {{ 'bg-amber' if p.carried else '' }}"></span>{% endif %}
+          {% if s.has_book %}<span class="size-1.5 shrink-0 rounded-full {{ 'bg-book-mark' if p.carried else '' }}"></span>{% endif %}
           {# Ein Balken je Zeile auf einer gemeinsamen Nulllinie (Cleveland &
              McGill: Position auf gemeinsamer Skala liest man am genauesten). #}
           <span class="relative h-2 w-24 shrink-0" aria-hidden="true">
@@ -162,9 +162,9 @@
   <span>leerer Platz: noch unbekannt</span>
   {% if with_book %}
   <span class="inline-flex items-center gap-1.5">
-    <span class="inline-block h-1 w-3 bg-amber"></span>dieses Buch</span>
+    <span class="inline-block h-1 w-3 bg-book-mark"></span>dieses Buch</span>
   <span class="inline-flex items-center gap-1.5">
-    <span class="inline-block h-2.5 w-0.5 bg-amber"></span>so zählt es im Urteil</span>
+    <span class="inline-block h-2.5 w-0.5 bg-book-mark"></span>so zählt es im Urteil</span>
   {% endif %}
   {% if unknown %}
   <span>{{ unknown }} {{ "Merkmal" if unknown == 1 else "Merkmale" }} oder Muster des Buchs

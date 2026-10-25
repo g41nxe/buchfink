@@ -31,7 +31,7 @@
   {# Der Zeitpunkt fuehrt auf die Uebersicht: dort stehen die Laeufe, aus
      denen er kommt. #}
   <a href="/overview" title="Läufe, Quellen und Tagesberichte"
-     class="{{ 'font-medium text-amber' if status.stale }} underline
+     class="{{ 'font-medium text-warn' if status.stale }} underline
             decoration-rule underline-offset-2 hover:decoration-current">zuletzt geprüft {{ status.when }}{% if status.stale %} — vor {{ status.age_days }} {{ 'Tag' if status.age_days == 1 else 'Tagen' }}{% endif %}</a>
   </span>
   {% if status.failed %}

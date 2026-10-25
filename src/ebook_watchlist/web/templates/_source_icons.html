@@ -20,7 +20,7 @@
 {% macro source_icons(groups, unresolved=false, stop=false) %}
 {% for group in groups %}
 {% set symbol = "ic-lib" if group.library else "ic-shop" %}
-{% set tone = ("text-accent" if group.library else "text-amber") if group.found else "text-rule" %}
+{% set tone = ("text-accent" if group.library else "text-price") if group.found else "text-rule" %}
 <{{ "a" if group.url else "span" }}
    {% if group.url %}href="{{ group.url }}" target="_blank" rel="noopener"
    {% if stop %}onclick="event.stopPropagation()"{% endif %}

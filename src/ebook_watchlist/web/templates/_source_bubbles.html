@@ -17,7 +17,7 @@
 <div class="flex flex-wrap gap-1.5">
   {% for state in category.sources %}
   {% set found = state.outcome in ("linked", "confirmed") %}
-  {% set tone = ("text-accent border-accent/40" if category.library else "text-amber border-amber/40")
+  {% set tone = ("text-accent border-accent/40" if category.library else "text-price border-price/40")
                 if found else "border-rule text-soft opacity-60" %}
   <{{ "a" if state.url and found else "span" }}
      {% if state.url and found %}href="{{ state.url }}" target="_blank" rel="noopener"

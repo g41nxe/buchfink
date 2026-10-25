@@ -15,7 +15,7 @@
 #}
 {% macro tile(display, library=false, url=none, price=none, availability=none,
               fallback=none, deal=false, when=none, pill=none, fills=false) %}
-{% set tone = ("text-accent" if library else "text-amber") if url else "text-soft" %}
+{% set tone = ("text-accent" if library else "text-price") if url else "text-soft" %}
 <{{ "a" if url else "div" }}
    {% if url %}href="{{ url }}" target="_blank" rel="noopener"
    title="{{ display }} öffnen" class="tile-clickable cursor-pointer {% else %}

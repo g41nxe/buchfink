@@ -56,6 +56,9 @@
   --color-header-ink: var(--color-ink);
   --color-header-soft: var(--color-soft);
   --color-header-chip: var(--color-hair);
+  --color-choice: var(--color-amber);
+  --color-book-mark: var(--color-amber);
+  --color-warn: var(--color-amber);
 
   --font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
 
@@ -402,6 +405,13 @@ details[open] > summary > .when-open { display: inline-flex; }
   --color-header-ink: oklch(0.98 0.01 80);
   --color-header-soft: oklch(0.85 0.03 80);
   --color-header-chip: oklch(1 0 0 / 0.14);
+  /* Was die Leserin wählt — verstärkt, Hab ich, ein Filter — ist eine
+     Handlung wie jede andere: Petrol. */
+  --color-choice: var(--color-accent);
+  /* Das Buch selbst in Spinne und Abgleich: dieselbe Farbe wie seine Sterne. */
+  --color-book-mark: var(--color-gold);
+  /* Ein ausgefallener Lauf ist ein Problem; das Wort steht dabei. */
+  --color-warn: var(--color-danger);
   --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
 }
 :root[data-look="a2"] body {

@@ -406,15 +406,18 @@ def create_app() -> FastAPI:
     @app.get("/_design", response_class=HTMLResponse)
     def design_page(request: Request) -> HTMLResponse:
         try:
-            real = design.real_rows(_store_for(paths.db_path()), load_settings())
+            settings, store = load_settings(), _store_for(paths.db_path())
+            real = design.real_rows(store, settings)
+            intake_cards = design.real_intake(store, settings)
         except ConfigError:
-            real = {"watchlist": [], "suggestions": []}
+            real, intake_cards = {"watchlist": [], "suggestions": []}, None
         return TEMPLATES.TemplateResponse(
             request,
             "design.html",
             {
                 "asset_version": asset_version(),
                 "real": real,
+                "intake_cards": intake_cards,
                 "now": datetime.now(),
                 "portrait_jobs_by_book": {},
                 "portrait_jobs_by_item": {},
