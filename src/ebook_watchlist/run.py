@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 from filelock import FileLock, Timeout
 
-from . import gate, notify, paths, series_watch
+from . import first_start, gate, notify, paths, series_watch
 from .bundle_deal import advantage_finder
 from .cleaning import clean_blurb
 from .config import (
@@ -485,6 +485,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv)
     if args.data_dir is not None:
         os.environ["EBW_DATA_DIR"] = str(args.data_dir)
+    first_start.ensure()
 
     try:
         settings = load_settings()

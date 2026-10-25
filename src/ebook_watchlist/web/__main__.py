@@ -14,7 +14,7 @@ from pathlib import Path
 
 import uvicorn
 
-from .. import paths
+from .. import first_start, paths
 from ..console import survive_a_narrow_console
 
 #: Bound to every interface so the page is reachable from a phone on the same
@@ -64,6 +64,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     _safe_output()
     survive_a_narrow_console()
+    first_start.ensure()
     print(f"data:  {paths.data_dir()}", file=sys.stderr)
     print(f"serve: http://{args.host}:{args.port}/", file=sys.stderr)
     uvicorn.run(

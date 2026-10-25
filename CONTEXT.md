@@ -24,9 +24,12 @@ effect at once beside fields that had stopped meaning anything:
 *deutsch: Einstellungen*
 
 What the run needs: sources, cadence, budgets, deal thresholds, languages. Read
-on every request, so a change takes effect at once. It holds no authors, no
-themes and no book lists — what of those applies lives in the database, and
-what seeded it in `seed.yaml`.
+on every request, so a change takes effect at once. What the reader changes on
+the overview page (cadence, home rows, thresholds, budgets, the address of
+Buchfink) is stored in the `setting` table and laid over `settings.yaml` before
+validation; the file is only the starting value (ADR 41). Settings hold no
+authors, no themes and no book lists — those live in the database as Interests
+and Relations.
 
 ### Watchlist
 *deutsch: Watchlist*
@@ -1004,7 +1007,7 @@ wrong:
 | --- | --- |
 | `watchlist.yaml` | **Seed.** Imported once into Book Relations of kind `watching`; the database is the truth afterwards and edits happen through the UI. |
 | `owned.yaml`, `dismissed.yaml` | **Seed.** Imported once into Relations and Ratings. |
-| `settings.yaml` | **Live configuration, not seed.** There is no settings table; `load_settings()` reads the file on every request. Thresholds, the rating model, the sweep weekday and the sources all come from it at runtime. |
+| `settings.yaml` | **Starting value and operation.** `load_settings()` reads it on every request and lays the `setting` table over it (ADR 41): what the reader changed in the UI wins. Sources, languages, the rating model and the sweep weekday still come only from the file. |
 | `seed.yaml` | **Seed.** Imported once into Interests and Relations. Until #36 these fields sat in `profile.yaml` next to the live ones and looked exactly like them, although `configuration.load` overwrote them from the database on every run. |
 
 Separate from all of these, and not in the data directory at all: the Reading

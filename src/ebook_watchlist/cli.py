@@ -81,10 +81,58 @@ def _data_dir(argv: Sequence[str]) -> Path | None:
     return None
 
 
+def _export(argv: Sequence[str]) -> int:
+    """``ebw export [DATEI]`` — Einstellungen, Interessen, Watchlist, Besitz als YAML (#104)."""
+    import yaml
+
+    from . import paths, transfer
+    from .config import load_settings
+    from .store import Store
+
+    data = transfer.export(Store(paths.db_path()), load_settings())
+    text = "# Buchfink-Export — `ebw import DATEI` spielt ihn ein (#104).\n" + yaml.safe_dump(
+        data, allow_unicode=True, sort_keys=False
+    )
+    if argv and argv[0] != "-":
+        Path(argv[0]).write_text(text, encoding="utf-8")
+        print(f"geschrieben: {argv[0]}", file=sys.stderr)
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
+def _import(argv: Sequence[str]) -> int:
+    """``ebw import DATEI`` — einen Export einspielen; nichts doppelt (#104)."""
+    from datetime import datetime
+
+    import yaml
+
+    from . import paths, transfer
+    from .config import load_settings
+    from .store import Store
+
+    if not argv:
+        print("ebw import DATEI", file=sys.stderr)
+        return 2
+    data = yaml.safe_load(Path(argv[0]).read_text(encoding="utf-8"))
+    try:
+        report = transfer.import_(Store(paths.db_path()), load_settings(), data,
+                                  now=datetime.now())
+    except transfer.ImportError_ as exc:
+        print(f"nicht eingespielt: {exc}", file=sys.stderr)
+        return 2
+    print(f"  {report.books:>4}  Bücher neu angelegt")
+    print(f"  {report.relations:>4}  Beziehungen")
+    print(f"  {report.interests:>4}  Interessen")
+    return 0
+
+
 COMMANDS: dict[str, Callable[[Sequence[str]], int]] = {
     "serve": _serve,
     "web": _web,
     "worker": _worker,
+    "export": _export,
+    "import": _import,
 }
 
 

@@ -103,9 +103,9 @@ def liked_genre(profile: ReadingProfile, codes: Iterable[str]) -> str | None:
 
 # --- Ansehen und ändern (Profilseite, Erstaufnahme) ----------------------------------
 
-#: Was sich ändern lässt. Gemochte Autor:innen sind Entdeckungskanäle
-#: (Interessen), alles andere steht im Leseprofil.
-KINDS = ("liked_genre", "disliked_genre", "liked_author", "disliked_author")
+#: Was sich ändern lässt. Gemochte Autor:innen und gefegte Themen sind
+#: Entdeckungskanäle (Interessen), alles andere steht im Leseprofil.
+KINDS = ("liked_genre", "disliked_genre", "liked_author", "disliked_author", "followed_theme")
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,6 +120,8 @@ class PreferencesView:
     disliked_authors: tuple[tuple[str, str], ...]
     #: (Code, Name, Untergenre?) — die ganze Liste für die Auswahl.
     options: tuple[tuple[str, str, bool], ...]
+    #: (Code, Name) je Thema, dessen Neuerscheinungen gemeldet werden (#104).
+    followed_themes: tuple[tuple[str, str], ...] = ()
     #: Gibt es schon ein Leseprofil? Ohne eins lässt sich nur folgen.
     has_profile: bool = True
 
@@ -141,6 +143,10 @@ def view(store: Store, profile_slug: str) -> PreferencesView:
         disliked_authors=tuple((a, a) for a in (profile.disliked_authors if profile else ())),
         options=tuple((g.code, g.name, g.parent is not None) for g in genres),
         has_profile=profile is not None,
+        followed_themes=named(
+            row.value
+            for row in store.interests(profile_slug, key=str(InterestKey.GENRE_CATEGORY))
+        ),
     )
 
 
@@ -166,6 +172,16 @@ def change(
             if kept != profile.disliked_authors:
                 store.put_reading_profile(profile_slug, replace(profile, disliked_authors=kept),
                                           cause="Profilseite", now=now)
+        return True
+    if kind == "followed_theme":
+        # Ein Thema ist ein Code der Genre-Liste, wie seit ADR 37 jedes Thema;
+        # nur dann hat eine Quelle eine Adresse dafür. Zurückgenommen wird es
+        # stillgelegt, nicht gelöscht (ADR 18).
+        genres = load_genres()
+        if value not in genres:
+            return False
+        store.put_interest(profile_slug, str(InterestKey.GENRE_CATEGORY), value, active=add,
+                           now=now, tier="core", name=genres.name(value))
         return True
     if kind.endswith("_genre") and value not in load_genres():
         return False

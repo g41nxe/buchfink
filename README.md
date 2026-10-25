@@ -125,13 +125,9 @@ Du brauchst Python 3.12 oder neuer und [uv](https://docs.astral.sh/uv/).
 # 1. Holen und einrichten
 git clone https://github.com/g41nxe/buchfink.git && cd buchfink
 uv sync
-mkdir -p data && cp examples/settings.yaml examples/seed.yaml examples/watchlist.yaml data/
 
-# 2. Deine Titel eintragen (data/watchlist.yaml), dann in die Datenbank und ein erster Lauf
-uv run ebw seed
-uv run ebw run
-
-# 3. Oberfläche bauen und starten — mit dem Hintergrunddienst, der Läufe nachholt
+# 2. Oberfläche bauen und starten — mit dem Hintergrunddienst, der Läufe nachholt.
+#    Beim ersten Start kommen die Beispiele nach data/ und in die Datenbank.
 uv run tailwindcss_install && uv run python -m ebook_watchlist.web.build
 uv run ebw serve
 ```
@@ -218,6 +214,7 @@ Eine Dateisperre sorgt dafür, dass nie zwei gleichzeitig laufen.
 | --- | --- |
 | `run` | ein vollständiger Lauf (Voreinstellung); mit `--watchlist` nur die Watchlist |
 | `seed` | überführt `seed.yaml`, `watchlist.yaml` und `owned.yaml` in die Datenbank; beliebig wiederholbar |
+| `export` / `import` | Einstellungen, Autor:innen, Themen, Watchlist und Besitz als YAML mitnehmen und wieder einspielen (ADR 41) |
 | `doctor` | prüft nur, ob die Quellen noch gelesen werden können |
 | `sources` | zeigt den Zustand der Quellen, pausiert eine mit `--disable` |
 | `rate` | schreibt Steckbriefe für den Rückstand an Vorschlägen |

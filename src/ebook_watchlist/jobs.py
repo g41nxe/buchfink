@@ -291,6 +291,9 @@ def worker_main(argv: list[str] | None = None) -> int:
     )
     print(f"data:   {paths.data_dir()}", file=sys.stderr)
     print(f"queue:  {paths.data_dir() / 'jobs.db'}", file=sys.stderr)
+    from . import first_start
+
+    first_start.ensure()
     heartbeat()
     tidy()
     consumer = queue().create_consumer(

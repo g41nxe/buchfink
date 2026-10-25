@@ -64,3 +64,7 @@ für einen begrifflichen Gewinn, den `configuration.load` schon erbringt.
 > **Nachtrag: eine Zeile abgelöst durch ADR 33.** Das Leseprofil liegt nicht
 > mehr in `docs/leseprofil.yaml`, sondern als Fassungen je Leserin in der
 > Datenbank. Einstellungen und Saatgut bleiben, wie sie hier stehen.
+
+> **Abgelöst durch ADR 41** (25.10.2026). Was eine Leserin einstellt, liegt
+> in der Datenbank und ist in der Oberfläche änderbar; `settings.yaml` ist nur
+> noch der Startwert, YAML zum Mitnehmen (`ebw export`/`import`).

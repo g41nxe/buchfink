@@ -70,6 +70,7 @@
     {% set disliked_genre_select %}{{ genre_select("value", p.options, "Genre wählen …") }}{% endset %}
     {% set follow_input %}{{ author_input("value", "Name") }}{% endset %}
     {% set block_input %}{{ author_input("value", "Name") }}{% endset %}
+    {% set theme_select %}{{ genre_select("value", p.options, "Thema wählen …") }}{% endset %}
     {# Genres und gesperrte Autor:innen stehen im Leseprofil; vor der
        Erstaufnahme gibt es keins, und ein leeres anzulegen hieße, gegen nichts
        zu urteilen (Review 04.10.2026). Folgen geht immer. #}
@@ -82,6 +83,10 @@
     {{ _group("Autor:innen, denen du folgst", "liked_author",
               p.liked_authors, "bg-accent-bg text-accent",
               follow_input) }}
+    {# Folgen wie bei Autor:innen: die Neuerscheinungen eines Themas werden
+       gemeldet (#104). Ein Thema ist kein Geschmack, darum ohne Leseprofil. #}
+    {{ _group("Themen, denen du folgst", "followed_theme",
+              p.followed_themes, "bg-pill-bg text-pill", theme_select) }}
     {% if p.has_profile %}
     {{ _group("Autor:innen, die nicht vorgeschlagen werden", "disliked_author",
               p.disliked_authors, "bg-danger/10 text-danger",
