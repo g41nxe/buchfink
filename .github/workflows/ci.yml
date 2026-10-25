@@ -1,0 +1,39 @@
+# Prüfung bei jedem Push und jedem Pull Request (#106).
+# Ohne vocabulary/ (nicht im Repo, #59) werden die Urteilstests übersprungen,
+# wie lokal auch; Live-Tests gegen echte Quellen laufen nie im CI.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Abhängigkeiten
+        run: uv sync --locked
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Typprüfung (nur neue Meldungen)
+        run: uv run basedpyright
+
+      - name: Tests
+        run: uv run pytest

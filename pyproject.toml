@@ -26,6 +26,7 @@ dev = [
     "ruff>=0.6",
     "pytailwindcss>=0.3.1",
     "pytest-xdist>=3.8.0",
+    "basedpyright>=1.40.2",
 ]
 
 [build-system]
@@ -49,3 +50,10 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.basedpyright]
+# Typprüfung im CI (#106): Modus "standard"; was heute schon gemeldet wird,
+# steht in .basedpyright/baseline.json, und nur neue Meldungen schlagen fehl.
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"

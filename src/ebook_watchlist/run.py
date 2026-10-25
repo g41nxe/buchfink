@@ -32,6 +32,7 @@ from .config import (
 )
 from .configuration import NotSeeded
 from .configuration import load as load_configuration
+from .console import survive_a_narrow_console
 from .covers import CoverStore, fetch_for_books, fetch_for_candidates, file_name
 from .diff import compute_deltas, keys_of, suppress_unseeded_interests
 from .digest import GateNote, build_digest
@@ -58,23 +59,6 @@ EXIT_SOURCE_FAILURE = 1
 EXTENDED_SWEEP_KEY = "last_extended_sweep"
 #: Past this, the weekly sweep happens on the next Run whatever day it is.
 EXTENDED_SWEEP_OVERDUE = timedelta(days=7)
-
-
-def _survive_a_narrow_console() -> None:
-    """Never lose a whole Run's Digest to a console that cannot render an arrow.
-
-    Windows still hands us a cp1252 stdout, which raises on "→" and on the
-    warning sign in the error heading. The HTML digest is always written in full
-    UTF-8; this only softens what the terminal gets.
-    """
-    for stream in (sys.stdout, sys.stderr):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is None:
-            continue
-        try:
-            reconfigure(errors="replace")
-        except (ValueError, OSError):  # pragma: no cover - stream not reconfigurable
-            pass
 
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -468,7 +452,7 @@ def _write_html(digest, generated_at: datetime) -> Path:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    _survive_a_narrow_console()
+    survive_a_narrow_console()
     args = _parse_args(argv)
     if args.data_dir is not None:
         os.environ["EBW_DATA_DIR"] = str(args.data_dir)

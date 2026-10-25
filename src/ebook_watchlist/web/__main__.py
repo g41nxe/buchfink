@@ -15,6 +15,7 @@ from pathlib import Path
 import uvicorn
 
 from .. import paths
+from ..console import survive_a_narrow_console
 
 #: Bound to every interface so the page is reachable from a phone on the same
 #: network. There is no authentication (ADR 3), so keep it off the open
@@ -62,6 +63,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ["EBW_DATA_DIR"] = str(args.data_dir)
 
     _safe_output()
+    survive_a_narrow_console()
     print(f"data:  {paths.data_dir()}", file=sys.stderr)
     print(f"serve: http://{args.host}:{args.port}/", file=sys.stderr)
     uvicorn.run(

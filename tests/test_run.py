@@ -131,7 +131,7 @@ def test_output_survives_a_console_that_cannot_render_the_digest(
 ) -> None:
     """Windows hands us a cp1252 stdout, which raises on the price arrow. Losing
     a whole Run's Digest at the very last step is not an acceptable failure."""
-    from ebook_watchlist.run import _survive_a_narrow_console
+    from ebook_watchlist.console import survive_a_narrow_console
 
     class Narrow:
         def __init__(self) -> None:
@@ -144,12 +144,32 @@ def test_output_survives_a_console_that_cannot_render_the_digest(
         """A stream with no reconfigure at all — must simply be left alone."""
 
     narrow, plain = Narrow(), Plain()
-    monkeypatch.setattr("ebook_watchlist.run.sys.stdout", narrow)
-    monkeypatch.setattr("ebook_watchlist.run.sys.stderr", plain)
+    monkeypatch.setattr("ebook_watchlist.console.sys.stdout", narrow)
+    monkeypatch.setattr("ebook_watchlist.console.sys.stderr", plain)
 
-    _survive_a_narrow_console()
+    survive_a_narrow_console()
 
-    assert narrow.kwargs == {"errors": "replace"}
+    assert narrow.kwargs["errors"] == "replace"
+
+
+def test_piped_output_is_utf8_not_question_marks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """In eine Pipe, ein Log oder Docker schreibt Windows mit cp1252: aus den
+    Sternen wurden `?????`, und wer die Ausgabe als UTF-8 las, sah statt der
+    Umlaute Ersatzzeichen (#106)."""
+    import io
+
+    from ebook_watchlist.console import survive_a_narrow_console
+
+    raw = io.BytesIO()
+    pipe = io.TextIOWrapper(raw, encoding="cp1252", newline="\n")
+    monkeypatch.setattr("ebook_watchlist.console.sys.stdout", pipe)
+    monkeypatch.setattr("ebook_watchlist.console.sys.stderr", io.StringIO())
+
+    survive_a_narrow_console()
+    print("★★★★☆ Großraumdisco → 4,99 €", file=pipe)
+    pipe.flush()
+
+    assert raw.getvalue().decode("utf-8") == "★★★★☆ Großraumdisco → 4,99 €\n"
 
 
 def test_a_run_fetches_the_images_of_its_own_pile(
