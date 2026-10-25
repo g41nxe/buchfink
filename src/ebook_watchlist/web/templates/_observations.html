@@ -33,7 +33,7 @@
       <td class="py-2 pr-3 tabular-nums whitespace-nowrap text-soft">
         {{ sighting.when.strftime("%d.%m. %H:%M") if sighting.when else "" }}</td>
       <td class="py-2 pr-3">{{ sighting.source }}</td>
-      <td class="py-2 pr-3 tabular-nums {{ 'text-amber' if sighting.deal }}">
+      <td class="py-2 pr-3 tabular-nums {{ 'text-price' if sighting.deal }}">
         {{ sighting.price or "—" }}</td>
       {# Auf dem Telefon nur das Zeichen der Bibliothek, grün wenn ausleihbar:
          das Wort „nicht im Katalog" kostet dort mehr Platz, als die Auskunft

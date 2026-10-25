@@ -348,7 +348,7 @@
     <span class="w-24 shrink-0 tabular-nums text-soft">
       {{ point.when.strftime("%d.%m. %H:%M") if point.when else "" }}</span>
     <span class="w-24 shrink-0 text-soft">{{ point.source }}</span>
-    <span class="font-semibold tabular-nums {{ 'text-amber' if point.deal }}">{{ point.price }}</span>
+    <span class="font-semibold tabular-nums {{ 'text-price' if point.deal }}">{{ point.price }}</span>
   </li>
   {% endfor %}
 </ul>

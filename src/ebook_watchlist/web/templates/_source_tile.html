@@ -45,7 +45,7 @@
   <div class="relative">
     {% if price %}
     <span class="block font-serif text-lg leading-none font-medium tabular-nums
-                 {{ 'text-amber' if deal else 'text-ink' }}">{{ price }}</span>
+                 {{ 'text-price' if deal else 'text-ink' }}">{{ price }}</span>
     {% elif availability %}
     <span class="block text-lg leading-none font-medium
                  {{ 'text-accent' if availability == 'ausleihbar' else 'text-ink' }}"

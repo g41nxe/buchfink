@@ -91,7 +91,7 @@
   <symbol id="ic-unlist" viewBox="0 0 24 24"><path d="M4 6.5h13M4 11.5h13M4 16.5h7M15 16.5h6"/></symbol>
 </svg>
 
-<header class="sticky top-0 z-20 border-b border-rule bg-card/85 backdrop-blur">
+<header class="sticky top-0 z-20 border-b border-rule bg-header/85 text-header-ink backdrop-blur">
   {# Auf dem Telefon steht alles in *einer* Reihe: Zeichen und vier Links.
      Vorher brach die Navigation darunter um, und die Kopfzeile kostete 105 der
      812 Pixel des Bildschirms — ein Achtel fuer einen Namen, den man nach dem
@@ -130,8 +130,8 @@
       {# Auf dem Telefon Zierrat, und sie braeche dort in vier Zeilen um.
          `error.html` setzt den Block um und bleibt sichtbar: eine klemmende
          Einrichtung ist keine Zierde. #}
-      <div class="mt-0.5 hidden text-xs tracking-[0.05em] text-soft uppercase sm:block">
-        Weniger Suchen. Mehr Lesen.</div>
+      <div class="mt-0.5 hidden text-xs tracking-[0.05em] text-header-soft uppercase sm:block">
+        Weniger suchen. Mehr lesen.</div>
       {% endblock %}
     </div>
     {# Auf dem Telefon nimmt die Navigation den Rest der Reihe, ab `sm` sitzt
@@ -159,8 +159,8 @@
          {% if icon %}title="{{ name }} — Läufe, Quellen und Tagesberichte"
          aria-label="{{ name }}"{% endif %}
          class="tap inline-flex h-7 items-center rounded px-1.5 sm:px-2.5
-                hover:bg-hair hover:text-ink
-                {{ 'bg-hair text-ink' if active else 'text-soft' }}">
+                hover:bg-header-chip hover:text-header-ink
+                {{ 'bg-header-chip text-header-ink' if active else 'text-header-soft' }}">
         {%- if icon %}<svg class="i sm:hidden"><use href="#{{ icon }}"/></svg>
         <span class="hidden sm:inline">{{ name }}</span>
         {%- else %}{{ name }}{% endif %}</a>
@@ -185,8 +185,8 @@
          title="Calibre-Web-Automated — die eigene Sammlung, in neuem Tab"
          aria-label="Calibre-Web-Automated — die eigene Sammlung, in neuem Tab"
          class="tap ml-1 inline-flex h-7 items-center gap-1 rounded border
-                border-rule px-1.5 text-soft sm:ml-2 sm:px-2.5
-                hover:border-soft hover:text-ink">
+                border-rule px-1.5 text-header-soft sm:ml-2 sm:px-2.5
+                hover:border-soft hover:text-header-ink">
         <span class="hidden sm:inline">CWA</span>
         <svg class="i text-[0.85em] opacity-70"><use href="#ic-extern"/></svg></a>
       {% endif %}

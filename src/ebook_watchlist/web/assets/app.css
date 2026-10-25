@@ -45,6 +45,18 @@
   --color-danger: light-dark(oklch(0.45 0.13 25), oklch(0.72 0.09 25));
   --color-gold: light-dark(oklch(0.68 0.11 85), oklch(0.78 0.10 85));
 
+  /* Rollen statt Farben (ADR 39): heute zeigen sie auf die bisherigen Werte,
+     unter A2′ bekommen sie eigene. So wechselt die Bildsprache, ohne dass ein
+     Template zwei Fassungen braucht. */
+  --color-price: var(--color-amber);
+  --color-pill: var(--color-amber);
+  --color-pill-bg: color-mix(in oklab, var(--color-amber) 15%, transparent);
+  --color-heading: var(--color-accent);
+  --color-header: var(--color-card);
+  --color-header-ink: var(--color-ink);
+  --color-header-soft: var(--color-soft);
+  --color-header-chip: var(--color-hair);
+
   --font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
 
   --shadow-sheet:
@@ -354,3 +366,64 @@
 details > summary > .when-open,
 details[open] > summary > .when-closed { display: none; }
 details[open] > summary > .when-open { display: inline-flex; }
+
+/* Fraunces, selbst ausgeliefert (ADR 39): Buchfink lädt nichts von fremden
+   Servern. Variable Schrift, Gewicht 400–700 und optische Größe, Untermenge
+   Latin mit Umlauten, „“ – … und €. Lizenz: assets/fraunces-OFL.txt. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("fraunces.woff2") format("woff2");
+}
+
+/* A2′ (ADR 39), zunächst nur auf der Bausteinseite umschaltbar. Werte und
+   gemessene Kontraste in #112. */
+:root[data-look="a2"] {
+  --color-paper: light-dark(oklch(0.955 0.015 78), oklch(0.2 0.028 215));
+  --color-card: light-dark(oklch(0.985 0.01 80), oklch(0.245 0.032 215));
+  --color-ink: light-dark(oklch(0.27 0.03 45), oklch(0.94 0.02 80));
+  --color-soft: light-dark(oklch(0.5 0.035 50), oklch(0.72 0.025 80));
+  --color-rule: light-dark(oklch(0.86 0.03 72), oklch(0.35 0.03 215));
+  --color-hair: light-dark(oklch(0.92 0.02 72), oklch(0.29 0.028 215));
+  --color-accent: light-dark(oklch(0.43 0.07 200), oklch(0.78 0.075 190));
+  --color-accent-bg: light-dark(oklch(0.93 0.035 185), oklch(0.3 0.045 205));
+  --color-danger: light-dark(oklch(0.5 0.15 25), oklch(0.74 0.12 25));
+  --color-gold: light-dark(oklch(0.64 0.12 70), oklch(0.82 0.13 78));
+  /* Orange heißt Preis — Betrag und Schnäppchen-Abzeichen. */
+  --color-price: light-dark(oklch(0.55 0.16 42), oklch(0.76 0.14 48));
+  /* Das Thema trägt das Wort, nicht die Farbe. */
+  --color-pill: var(--color-soft);
+  --color-pill-bg: light-dark(oklch(0.92 0.015 72), oklch(0.3 0.025 215));
+  /* Abschnittstitel in Textfarbe, damit sie nicht wie Links aussehen. */
+  --color-heading: var(--color-ink);
+  --color-header: light-dark(oklch(0.32 0.045 210), oklch(0.17 0.03 215));
+  --color-header-ink: oklch(0.98 0.01 80);
+  --color-header-soft: oklch(0.85 0.03 80);
+  --color-header-chip: oklch(1 0 0 / 0.14);
+  --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+}
+:root[data-look="a2"] body {
+  /* Papierkorn: kaum zu sehen, aber Papier statt Bildschirm. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4  0 0 0 0 .3  0 0 0 0 .2  0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-look="a2"] :is(a, button).tap {
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, outline-color 0.15s,
+    scale 0.15s ease-out;
+}
+:root[data-look="a2"] :is(a, button).tap:not(:disabled):active {
+  scale: 0.96;
+}
+/* Ein feiner Rand trennt das Cover vom Papier, in reinem Schwarz oder Weiß:
+   ein getönter Rand säße als farbiger Saum am Bild. */
+:root[data-look="a2"] .cover-img {
+  outline: 1px solid light-dark(oklch(0 0 0 / 0.1), oklch(1 0 0 / 0.1));
+  outline-offset: -1px;
+}
+[data-look-choice][aria-pressed="true"] {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-weight: 600;
+}

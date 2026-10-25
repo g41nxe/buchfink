@@ -27,10 +27,12 @@ LONG_TITLE = (
     "Psychothriller über einen Stalker"
 )
 
-#: Die Farb-Tokens aus `assets/app.css`, in der Reihenfolge ihrer Rollen.
+#: Die Farb-Tokens aus `assets/app.css`, in der Reihenfolge ihrer Rollen —
+#: zuerst die Grundfarben, dann die Rollen aus ADR 39.
 COLOR_TOKENS = (
     "paper", "card", "ink", "soft", "rule", "hair",
     "accent", "accent-bg", "amber", "amber-bg", "danger", "gold",
+    "price", "pill", "pill-bg", "heading", "header", "header-ink",
 )
 
 

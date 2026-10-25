@@ -54,6 +54,8 @@ class Library:
 #: gezeichnete Zeichen den Browser-Tab bei 16 — dort zerfaellt der Vogel zu
 #: einem Kruemel, waehrend Rechteck und Abzeichen noch unterscheidbar sind.
 ICONS = (
+    # Die Schrift ist eine fertige Datei wie die Bilder (ADR 39).
+    "fraunces.woff2",
     "favicon.svg",
     "buchfink.png",
     "buchfink-tag.png",

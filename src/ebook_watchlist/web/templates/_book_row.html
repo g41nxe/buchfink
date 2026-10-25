@@ -32,7 +32,7 @@
 <span class="block h-4 text-xs {{ above_tone }}">{{ above or "" }}</span>
 {% if price_body %}{{ price_body }}
 {% else %}
-<span class="text-lg font-semibold tabular-nums {{ 'text-amber' if deal }}">
+<span class="text-lg font-semibold tabular-nums {{ 'text-price' if deal }}">
   {{ price or "—" }}</span>
 {% endif %}
 {% endmacro %}

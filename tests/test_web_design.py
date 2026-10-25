@@ -73,3 +73,19 @@ def test_an_empty_collection_falls_back_to_examples(unseeded_data_dir: Path) -> 
 
     assert "Der schuldige Ehemann" in body
     assert "Watchlist · " not in body
+
+
+def test_the_design_page_switches_between_today_and_a2(client: TestClient) -> None:
+    """A2′ (ADR 39) entsteht zuerst hier, umschaltbar gegen den heutigen Stand."""
+    body = client.get("/_design").text
+
+    assert 'data-look-choice=""' in body and 'data-look-choice="a2"' in body
+
+
+def test_the_serif_is_served_by_buchfink_itself(client: TestClient) -> None:
+    """Keine fremden Server, auch nicht für eine Schrift (ADR 39)."""
+    response = client.get("/static/fraunces.woff2")
+
+    assert response.status_code == 200
+    assert response.content[:4] == b"wOF2"
+    assert "fonts.googleapis" not in client.get("/_design").text

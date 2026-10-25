@@ -48,12 +48,19 @@ def test_every_colour_carries_both_values() -> None:
     Frueher standen die dunklen Werte in einem zweiten Block, und eine neue
     Farbe dort zu vergessen war ein stiller Fehler. Jetzt traegt jede Zeile
     beide Werte, und diese Probe sagt es, wenn eine es nicht tut.
+
+    Eine Rolle, die nur auf andere Farben zeigt (`--color-price:
+    var(--color-amber)`, ADR 39), erbt beide Werte von dort.
     """
     text = APP_CSS.read_text(encoding="utf-8")
     theme = text[text.index("@theme {") : text.index("/* Hell und Dunkel")]
+
+    def inherits(row: str) -> bool:
+        return "var(--color-" in row and "oklch(" not in row
+
     without_dark = [
         row.strip()
         for row in theme.splitlines()
-        if row.strip().startswith("--color-") and "light-dark(" not in row
+        if row.strip().startswith("--color-") and "light-dark(" not in row and not inherits(row)
     ]
     assert without_dark == []

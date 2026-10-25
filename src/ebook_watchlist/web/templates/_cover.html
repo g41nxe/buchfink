@@ -44,7 +44,7 @@
               {{ 'rounded shadow-[0_2px_8px_rgba(0,0,0,.4)]' if large
                  else 'rounded-sm shadow-[0_1px_3px_rgba(0,0,0,.35)]' }}">
     {% if cover_file %}
-    <img src="/covers/{{ cover_file }}" alt="" class="h-full w-full object-cover">
+    <img src="/covers/{{ cover_file }}" alt="" class="cover-img h-full w-full object-cover">
     {% else %}
     {# Ein gezeichneter Buchrücken statt eines Textkastens — dasselbe Buch mit
        denselben drei Zeilen wie im Zeichen der Anwendung, nur größer.
@@ -76,7 +76,7 @@
       <svg><use href="#ic-lib"/></svg></span>
     {% endif %}
     {% if deal %}
-    <span title="Schnäppchen" class="badge {{ 'badge-large' if large }} bg-amber">
+    <span title="Schnäppchen" class="badge {{ 'badge-large' if large }} bg-price">
       <svg class="zipfel"><use href="#ic-tag"/></svg></span>
     {% endif %}
   </span>

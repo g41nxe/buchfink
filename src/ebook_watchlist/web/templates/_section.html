@@ -16,8 +16,8 @@
 #}
 {% macro section(title, icon=none, margin="mt-8 mb-3") %}
 <h2 class="{{ margin }} flex flex-wrap items-center gap-2 border-b border-rule pb-2 text-sm
-           font-semibold text-accent">
-  {% if icon %}<svg class="i"><use href="#{{ icon }}"/></svg>{% endif %}
+           font-semibold text-heading">
+  {% if icon %}<svg class="i text-accent"><use href="#{{ icon }}"/></svg>{% endif %}
   {{ title }}{% if caller %}{{ caller() }}{% endif %}
 </h2>
 {% endmacro %}
