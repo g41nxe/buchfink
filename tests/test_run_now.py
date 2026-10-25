@@ -8,6 +8,7 @@ nicht (ADR 3).
 
 from __future__ import annotations
 
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -256,6 +257,9 @@ def test_a_run_that_never_got_off_the_ground_shows_why(
     assert "config error" in state.detail
 
 
+@pytest.mark.skipif(
+    sys.platform != "win32", reason="die Fenster-Flags gibt es nur im Windows-subprocess"
+)
 def test_the_run_opens_no_console_window(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ein abgekoppelter Konsolenprozess bekommt unter Windows sein *eigenes*
     Fenster — und das poppte bei jedem Lauf und jedem Urteil auf dem Schreibtisch
