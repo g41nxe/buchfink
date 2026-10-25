@@ -70,6 +70,24 @@ def _link(path: str, **params: str) -> str:
     return f"{path}?{urlencode(given)}" if given else path
 
 
+def _pile_rows(pile: triage.Pile, portrait_jobs: Rechecker) -> dict:
+    """Was eine Vorschlagszeile zum Rendern braucht — für den Stapel und für
+    die nachgeladenen Zeilen (#115) gleich."""
+    return {
+        "pile": pile,
+        "actions": triage.ACTIONS,
+        "icons": symbols.RELATION_ICONS,
+        # Der Hammer-Knopf je Zeile: ob gerade ein Steckbrief entsteht
+        # (26.09.2026).
+        "portrait_jobs_by_item": {
+            (i.source, i.source_item_id): portrait_jobs.state(
+                ("item", i.source, i.source_item_id)
+            )
+            for i in pile.items
+        },
+    }
+
+
 def asset_version() -> str:
     """Der Zeitstempel des gebauten Stylesheets.
 
@@ -143,6 +161,7 @@ OLD_WATCHLIST_BACK: dict[str, str] = {"/watchlist?nur=unklar": WATCHLIST_UNSURE}
 #: FastAPI liest Formularfelder ueber diese Marker. Als Modulkonstante,
 #: damit im Funktionskopf kein Aufruf steht (ruff B008).
 _SELECTED = Form(default=[])
+_SHOWN = Form(default=[])
 
 
 @dataclass(frozen=True, slots=True)
@@ -1171,6 +1190,7 @@ def create_app() -> FastAPI:
             settings,
             reason=reason or None,
             sort=order.slug,
+            limit=settings.suggestions_shown,
         )
         return TEMPLATES.TemplateResponse(
             request,
@@ -1178,17 +1198,7 @@ def create_app() -> FastAPI:
             {
                 "settings": settings,
                 "asset_version": asset_version(),
-                "pile": pile,
-                "actions": triage.ACTIONS,
-                "icons": symbols.RELATION_ICONS,
-                # Der Hammer-Knopf je Zeile: ob gerade ein Steckbrief entsteht
-                # (26.09.2026).
-                "portrait_jobs_by_item": {
-                    (i.source, i.source_item_id): portrait_jobs.state(
-                        ("item", i.source, i.source_item_id)
-                    )
-                    for i in pile.items
-                },
+                **_pile_rows(pile, portrait_jobs),
                 "reason": reason,
                 "orders": sorting.SUGGESTIONS,
                 "sort": order.slug,
@@ -1209,6 +1219,34 @@ def create_app() -> FastAPI:
                     ),
                 },
             },
+        )
+
+    @app.post("/suggestions/more", response_class=HTMLResponse)
+    def triage_more(
+        request: Request,
+        shown: list[str] = _SHOWN,
+        reason: str = Form(""),
+        sort: str = Form(""),
+    ) -> HTMLResponse:
+        """Die nächsten zehn Vorschläge, angehängt unter die sichtbaren (#115).
+
+        Der Knopf schickt die Schlüssel der Zeilen mit, die schon dastehen —
+        keine Seitenzahl: eine Entscheidung dazwischen hätte die Zählung
+        verschoben. Die Antwort ersetzt den Knopf: neue Zeilen und, wenn noch
+        etwas kommt, ein neuer Knopf.
+        """
+        order, chosen = sorting.chosen(sorting.SUGGESTIONS, sort)
+        pile = triage.pending(
+            _store_for(paths.db_path()),
+            load_settings(),
+            reason=reason or None,
+            sort=order.slug,
+            skip=frozenset(shown),
+        )
+        return TEMPLATES.TemplateResponse(
+            request,
+            "_suggestion_more.html",
+            {**_pile_rows(pile, portrait_jobs), "reason": reason, "chosen": chosen},
         )
 
     @app.post("/suggestions/decide")

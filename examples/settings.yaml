@@ -38,6 +38,10 @@ run_every_hours: 20
 home_offers: 5
 home_suggestions: 3
 
+# Wie viele Vorschläge der Stapel zuerst zeigt; „Weitere 10 anzeigen“ am
+# Ende lädt nach.
+suggestions_shown: 20
+
 # Der Wochentag des breiteren Durchgangs.
 extended_sweep_weekday: 6  # 0 = Monday
 

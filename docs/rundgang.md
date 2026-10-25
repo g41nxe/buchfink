@@ -212,7 +212,7 @@ trifft (ADR 29).
 | `/watchlist` | Was du beobachtest, mit Preis und Ausleihstatus in einer Zeile |
 | `/book/{id}` | Alles über ein Buch: Beziehungen, Quellen, Preisverlauf, Urteile — und deine eigenen Sterne |
 | `/discovery/{quelle}/{nummer}` | Die Seite zu einem Fund: dieselbe wie die Buchseite, ohne das, was es vor einer Entscheidung nicht gibt (ADR 18). Sobald eine Beziehung gilt, führt sie auf die Buchseite |
-| `/suggestions` | Der Stapel: entweder je Zeile ein Zeichen, oder mehrere ankreuzen und unten gemeinsam entscheiden |
+| `/suggestions` | Der Stapel: entweder je Zeile ein Zeichen, oder mehrere ankreuzen und unten gemeinsam entscheiden. Zuerst `suggestions_shown` Zeilen (20), „Weitere 10 anzeigen“ hängt unten an |
 | `/profile` | Was das Werkzeug über dich zu wissen glaubt. Nur zum Lesen — mit Absicht |
 
 Start mit `python -m ebook_watchlist.web`. Die Oberfläche bindet an alle

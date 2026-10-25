@@ -46,13 +46,14 @@ ACTIONS: tuple[tuple[str, str], ...] = labelled_actions(
     RelationKind.DISMISSED, RelationKind.OWNED, RelationKind.WATCHING
 )
 
-#: Wie viele Zeilen eine Seite zeigt. Der Rückstand ist dreistellig, und eine
-#: Seite mit dreihundert Einträgen ist keine Aufgabe, sondern eine Strafe —
-#: der eigentliche Schnitt kommt aber vom Bewertungstor (ADR 19), nicht hier.
+#: Wie viele Zeilen „Weitere anzeigen“ unten anhängt (#115). Der Stapel ist
+#: kein einmaliger Rückstand, sondern dauerhaft dreistellig; eine Seite mit
+#: dreihundert Einträgen wäre trotzdem eine Strafe. Also zuerst
+#: `suggestions_shown` (zwanzig), dann je zehn auf Wunsch.
 #:
-#: Zehn, nicht fünfzig: solange der Stapel aus einem einmaligen Rückstand
-#: besteht, den das Tor ohnehin neu erzeugt, ist eine kurze Liste billiger —
-#: gezeigt wird nur, was auch bewertet werden muss.
+#: Nachladen statt Seitenzahlen: jede Entscheidung nimmt eine Zeile aus dem
+#: Stapel, und Seite zwei begänne dann bei einem Vorschlag, der nachgerückt ist
+#: — er würde übersprungen. Darum schickt der Knopf mit, was schon zu sehen ist.
 PAGE_SIZE = 10
 
 
@@ -153,6 +154,8 @@ class Pile:
     #: Wie viele es insgesamt sind, auch wenn die Seite weniger zeigt.
     total: int
     hidden_junk: int
+    #: Wie viele danach noch kommen — dafür steht der Knopf „Weitere anzeigen“.
+    rest: int = 0
     #: Vom Bewertungstor unter dem Schwellwert einsortiert. Nicht verworfen:
     #: das Urteil steht auf der Buchseite, und eine neue Profilversion holt sie
     #: zurück.
@@ -387,12 +390,16 @@ def pending(
     reason: str | None = None,
     limit: int = PAGE_SIZE,
     sort: str | None = None,
+    skip: frozenset[str] = frozenset(),
 ) -> Pile:
     """Die Funde, zu denen noch nichts gesagt wurde.
 
     Entschieden ist ein Fund, sobald es ein Buch mit einer Beziehung gibt, das
     diese Quelle unter dieser Nummer führt — oder das dieselbe ISBN trägt. Der
     zweite Weg ist der Grund, warum eine Entscheidung bei *jeder* Quelle wirkt.
+
+    ``skip`` sind die Schlüssel der Zeilen, die schon zu sehen sind: beim
+    Nachladen kommen die nächsten ``limit`` dahinter (#115).
     """
     decided_items = store.decided_items(settings.slug)
     decided_isbns = set(store.books_with_relations(settings.slug))
@@ -507,12 +514,14 @@ def pending(
     # Voreingestellt steht das Beste oben und Unbewertetes am Ende — es ist
     # keine Empfehlung, sondern eine offene Frage (#37).
     ordered = sorting.apply(sorting.SUGGESTIONS, items, sort)
+    unseen = [item for item in ordered if item.key not in skip]
 
     shown = {_subject_of_item(item) for item in items}
     counts = {why: len(books - shown) for why, books in hidden.items()}
     return Pile(
-        items=tuple(ordered[:limit]),
+        items=tuple(unseen[:limit]),
         total=len(items),
+        rest=max(len(unseen) - limit, 0),
         hidden_junk=counts["junk"],
         hidden_priced=counts["priced"],
         hidden_weak=counts["weak"],

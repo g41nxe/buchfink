@@ -66,8 +66,9 @@
   {{ sort_select(orders, sort, "/suggestions", sort_fields) }}
 
   <span class="ml-auto text-xs text-soft">
-    {{ pile.total }} offen{% if pile.items | length < pile.total %},
-    {{ pile.items | length }} gezeigt{% endif %}
+    {# Wie viele davon zu sehen sind, sagt der Knopf am Listenende — hier
+       veraltete die Zahl mit jedem Nachladen (#115). #}
+    {{ pile.total }} offen
     {%- if pile.hidden %} · ausgeblendet:
     {% for count, word in pile.hidden %}{{ count }} {{ word }}
     {%- if not loop.last %} · {% endif %}{% endfor %}{% endif %}
@@ -110,11 +111,7 @@
 <input type="hidden" name="sort" value="{{ chosen }}">
 
 <ul class="divide-y divide-hair">
-  {% for item in pile.items %}
-  <li>
-    {% include "_suggestion_row.html" %}
-  </li>
-  {% endfor %}
+  {% include "_suggestion_more.html" %}
 </ul>
 
 {# Die Leiste bleibt am unteren Rand stehen: bei fünfzig Zeilen wäre ein Knopf

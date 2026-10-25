@@ -5,6 +5,7 @@ Der Vorgang, den ein Gespräch am schlechtesten kann und ein Formular am besten.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -523,16 +524,80 @@ def test_a_long_title_is_shortened_in_the_row_and_whole_on_the_find_page(
     assert long_title in client.get("/discovery/beam/lang").text
 
 
-def test_the_page_shows_ten_not_fifty(client: TestClient, db: Store) -> None:
-    """Der Stapel wird vom Tor ohnehin neu erzeugt — gezeigt wird nur, was auch
-    bewertet werden muss."""
-    for number in range(15):
+def _rows(body: str) -> list[str]:
+    return re.findall(r'name="shown" value="([^"]+)"', body)
+
+
+def test_the_page_starts_with_twenty(client: TestClient, db: Store) -> None:
+    """Der Stapel ist dauerhaft dreistellig (#115): zwanzig zum Anfang, die
+    Zahl steht in den Einstellungen."""
+    for number in range(35):
         found(db, item_id=f"n{number}", title=f"Fund {number}")
 
-    pile = view.pending(db, load_settings())
+    body = client.get("/suggestions").text
 
-    assert len(pile.items) == view.PAGE_SIZE == 10
-    assert pile.total >= 15
+    assert load_settings().suggestions_shown == 20
+    assert len(_rows(body)) == 20
+    assert "Weitere 10 anzeigen" in body
+
+
+def test_more_appends_the_next_ten_without_repeats(client: TestClient, db: Store) -> None:
+    for number in range(35):
+        found(db, item_id=f"n{number}", title=f"Fund {number}")
+    shown = _rows(client.get("/suggestions").text)
+
+    more = client.post("/suggestions/more", data={"shown": shown, "reason": "", "sort": ""}).text
+
+    added = _rows(more)
+    assert len(added) == 10
+    assert not set(added) & set(shown)
+    assert "Weitere" in more
+
+
+def test_the_button_goes_when_the_pile_runs_out(client: TestClient, db: Store) -> None:
+    for number in range(25):
+        found(db, item_id=f"n{number}", title=f"Fund {number}")
+    shown = _rows(client.get("/suggestions").text)
+
+    more = client.post("/suggestions/more", data={"shown": shown}).text
+
+    assert len(_rows(more)) == 5
+    assert "Weitere" not in more
+
+
+def test_no_button_when_everything_fits(client: TestClient, db: Store) -> None:
+    for number in range(3):
+        found(db, item_id=f"n{number}", title=f"Fund {number}")
+
+    assert "Weitere" not in client.get("/suggestions").text
+
+
+def test_a_loaded_row_decides_like_the_first(client: TestClient, db: Store) -> None:
+    for number in range(25):
+        found(db, item_id=f"n{number}", title=f"Fund {number}")
+    shown = _rows(client.get("/suggestions").text)
+    late = _rows(client.post("/suggestions/more", data={"shown": shown}).text)[0]
+    source, _, item_id = late.partition(":")
+
+    decided = client.post(f"/suggestions/{source}/{item_id}/decide", data={"kind": "dismissed"})
+
+    assert decided.status_code == 200
+    assert late not in _rows(client.get("/suggestions").text)
+    assert late not in _rows(client.post("/suggestions/more", data={"shown": shown}).text)
+
+
+def test_more_keeps_the_filter(client: TestClient, db: Store) -> None:
+    for number in range(22):
+        found(db, item_id=f"g{number}", title=f"Genre {number}")
+    found(db, item_id="a1", title="Autorenfund", reason=MatchReason.PROFILE_AUTHOR)
+    shown = _rows(client.get("/suggestions?reason=profile_author").text)
+
+    more = client.post(
+        "/suggestions/more", data={"shown": shown, "reason": "profile_author"}
+    ).text
+
+    assert shown == ["beam:a1"]
+    assert _rows(more) == []
 
 
 @needs_vocabulary

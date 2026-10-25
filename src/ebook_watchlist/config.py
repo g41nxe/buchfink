@@ -57,6 +57,9 @@ class Settings:
     #: Werkzeug — der Rest hängt am Verweis darunter (Issue #5).
     home_offers: int = 5
     home_suggestions: int = 3
+    #: Wie viele Vorschläge der Stapel zuerst zeigt; weitere lädt ein Knopf
+    #: am Listenende nach, zehn zur Zeit (#115).
+    suggestions_shown: int = 20
     #: Die Kadenz: wie viele Stunden zwischen zwei Rundgängen mindestens
     #: liegen. Ein Lauf, den eine Maschine anstößt, prüft sie gegen den letzten
     #: Eintrag im Journal und tut sonst nichts — das ist die ganze Taktung, es
@@ -310,6 +313,7 @@ def load_settings(path: Path | None = None) -> Settings:
         rating_model=str(data["rating_model"]) if data.get("rating_model") else None,
         home_offers=_positive_int(data, "home_offers", 5, what),
         home_suggestions=_positive_int(data, "home_suggestions", 3, what),
+        suggestions_shown=_positive_int(data, "suggestions_shown", 20, what),
         run_every_hours=_positive_int(data, "run_every_hours", 20, what),
         extended_sweep_weekday=weekday,
         languages=_languages(data, what),

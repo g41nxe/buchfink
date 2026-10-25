@@ -1,0 +1,33 @@
+{# Zeilen des Stapels und, solange noch etwas kommt, der Knopf darunter (#115).
+
+   Der Stapel bindet diese Datei für die ersten Zeilen ein, `/suggestions/more`
+   liefert sie für die nächsten: dasselbe Markup, auch für die Entscheidungen
+   in einer nachgeladenen Zeile.
+
+   Jede Zeile trägt ihren Schlüssel als `shown`. Der Knopf steht im Formular
+   des Stapels, und htmx schickt bei einem POST die Felder des umgebenden
+   Formulars mit — damit kennt der Server, was schon zu sehen ist, dazu Filter
+   und Reihenfolge. Die Antwort ersetzt den Knopf. #}
+{% from "_cover.html" import cover %}
+{% from "_book_row.html" import row %}
+{% from "_verdict_stars.html" import verdict_stars %}
+{% from "_decisions.html" import decisions %}
+{% from "_state_button.html" import state_button %}
+{% for item in pile.items %}
+<li>
+  <input type="hidden" name="shown" value="{{ item.key }}">
+  {% include "_suggestion_row.html" %}
+</li>
+{% endfor %}
+{% if pile.rest %}
+<li id="more-suggestions" class="py-4 text-center">
+  <button type="button" hx-post="/suggestions/more" hx-target="#more-suggestions"
+          hx-swap="outerHTML" hx-disabled-elt="this"
+          class="tap inline-flex h-10 items-center justify-center gap-1 rounded border
+                 border-rule px-4 text-sm font-medium text-soft
+                 hover:border-soft hover:text-ink disabled:opacity-40">
+    Weitere {{ [pile.rest, 10] | min }} anzeigen
+    <span class="tabular-nums text-xs">(noch {{ pile.rest }})</span>
+  </button>
+</li>
+{% endif %}
