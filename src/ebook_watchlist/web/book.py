@@ -345,6 +345,35 @@ class FitView:
     comparison: Comparison | None = None
     #: Knapp an der Schwelle des Stapels (#81).
     borderline: bool = False
+    #: Was das Buch ist, in einem Satz — oben auf der Seite, vor allem Warum (#110).
+    pitch: str | None = None
+
+    @property
+    def for_names(self) -> tuple[str, ...]:
+        """Was für das Buch spricht, das Stärkste zuerst — für die Zeile „passt:“."""
+        if self.comparison is None:
+            return ()
+        strongest = tuple(p.name for p in self.comparison.strongest if p.side == "for")
+        return strongest + tuple(n for n in self.comparison.also_for if n not in strongest)
+
+    @property
+    def against_names(self) -> tuple[str, ...]:
+        return self.comparison.against if self.comparison is not None else ()
+
+
+#: So lang darf der Satz oben werden (#110): einer, nicht ein Absatz.
+PITCH_CHARS = 180
+
+
+def one_sentence(text: str | None, limit: int = PITCH_CHARS) -> str | None:
+    """Der Pitch, auf höchstens ``limit`` Zeichen — an einer Wortgrenze, mit „…“."""
+    if not text:
+        return None
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:–—-")
+    return cut + "…"
 
 
 def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
@@ -377,6 +406,7 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
         ),
         comparison=compare(portrait, judge),
         borderline=verdict.borderline,
+        pitch=one_sentence(portrait.pitch),
     )
 
 

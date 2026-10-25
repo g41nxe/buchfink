@@ -76,11 +76,6 @@
   {% endfor %}
 </form>
 
-{% if page.blurb %}
-{{ section("Klappentext", "ic-doc") }}
-{{ blurb(page.blurb) }}
-{% endif %}
-
 {# Die Übereinstimmung mit dem Leseprofil, ausgeschrieben (ADR 19, ADR 33): der
    Code rechnet sie aus dem Steckbrief, der Stapel zeigt nur den Pitch. Der
    Abschnitt steht immer, denn der Knopf braucht einen Platz: ein Fund ohne
@@ -107,6 +102,13 @@
   <li>{{ judgement_row(judgement) }}</li>
   {% endfor %}
 </ul>
+{% endif %}
+
+{# Unter dem Urteil, nicht darüber (#110): erst was das Buch ist und ob es
+   passt, dann der Text des Verlags. #}
+{% if page.blurb %}
+{{ section("Klappentext", "ic-doc") }}
+{{ blurb(page.blurb) }}
 {% endif %}
 
 {# Dieselbe Tabelle wie auf der Buchseite, dieselbe Grenze: ein Fund, der seit

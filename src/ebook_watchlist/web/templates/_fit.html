@@ -2,18 +2,22 @@
    hier, der Code rechnet aus dem Steckbrief und den Facetten. Eine Stelle für
    Buch- und Fundseite.
 
-   Seit dem Design-Review vom 26.09.2026 in zwei Teilen:
-   - die Antwort: Sterne, ein Satz, was das Buch prägt, und der Überblick als
-     Pillen — der Satz aus dem Steckbrief steckt im Hinweis jeder Pille;
-   - darunter ein eigener Abschnitt „Abgleich mit deinem Profil“ mit einem
-     Umschalter wie auf der Profilseite: Abdeckung, wie das Urteil entsteht,
-     die ganze Geschmacksform. Keine aufklappbaren Dreiecke mehr — sie passten
-     nicht zur Sprache der Seite.
+   In Stufen (#110):
+   - oben, immer sichtbar, die Antwort: die Sterne (mit „knapp“), **ein Satz,
+     was das Buch ist** — der Pitch, höchstens 180 Zeichen —, und eine Zeile,
+     warum es passt („passt: hart, gezeichnete Figur · dagegen: nichts“). Der
+     Pitch vor der Begründung: für die Entscheidung muss man zuerst wissen,
+     *was* das Buch ist; ob es passt, sagen die Sterne und die Zeile darunter;
+   - hinter „Warum?“, zugeklappt: die volle Begründung, die Pillen mit
+     Legende und der Abgleich mit seinen Reitern.
+
+   Ein Knopf statt `<details>`: das Dreieck passte nicht zur Sprache der Seite
+   (Design-Review 26.09.2026), ein Knopf mit Pfeil schon.
 
    Erwartet: `fit` (eine `FitView`) oder nichts. #}
 {% if fit %}
 {% from "_section.html" import section %}
-<div class="mt-4" data-fit>
+<div class="mt-4" data-fit x-data="{ why: false }">
   <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
     <span class="flex items-center gap-0.5 text-gold"
           title="{{ fit.stars }} von 5 — aus deinem Leseprofil gerechnet">
@@ -32,10 +36,32 @@
     <span class="rounded bg-pill-bg px-1.5 py-0.5 text-xs text-pill">knapp</span>
     {% endif %}
   </div>
+
+  {% if fit.pitch %}
+  <p class="mt-2 max-w-prose text-base leading-relaxed text-ink text-pretty" data-pitch>{{ fit.pitch }}</p>
+  {% endif %}
+
+  {% if fit.comparison %}
+  <p class="mt-1 max-w-prose text-sm text-soft" data-fit-line>
+    passt: <span class="text-ink">{{ fit.for_names | join(", ") if fit.for_names else "nichts Bestimmtes" }}</span>
+    <span aria-hidden="true">·</span>
+    dagegen: <span class="{{ 'text-danger' if fit.against_names else 'text-ink' }}">{{ fit.against_names | join(", ") if fit.against_names else "nichts" }}</span>
+  </p>
+  {% endif %}
+
+  <button type="button" @click="why = !why" :aria-expanded="why" aria-controls="fit-why"
+          class="tap mt-2 inline-flex h-9 items-center gap-1 rounded px-1 -mx-1 text-sm
+                 font-medium text-accent hover:underline underline-offset-2">
+    Warum?
+    <svg class="i transition-[rotate] duration-150" :class="why && 'rotate-180'">
+      <use href="#ic-chevron"/></svg>
+  </button>
+
+  <div id="fit-why" x-show="why" x-cloak data-why class="mt-2">
   {% if fit.borderline %}
   {# Gemessen (#81): ein Steckbrief streut um etwa sieben Punkte. Mehrere zu
      mitteln half kaum; also wird es gesagt. #}
-  <p class="mt-1 max-w-prose text-xs text-soft">Knapp an der Schwelle des Stapels: Das Modell
+  <p class="mb-3 max-w-prose text-xs text-soft">Knapp an der Schwelle des Stapels: Das Modell
     beschreibt dasselbe Buch nicht jedes Mal gleich, und ein neuer Steckbrief könnte es
     darüber oder darunter legen.</p>
   {% endif %}
@@ -43,61 +69,62 @@
   {% if fit.comparison %}
   {% from "_comparison.html" import summary, overview, bridge, waterfall %}
   {% set combos = fit.reasons | selectattr("kind", "equalto", "ganz") | map(attribute="text") | list %}
-  <div class="mt-3 max-w-2xl">{{ summary(fit.comparison, combos) }}{{ overview(fit.comparison) }}</div>
+  <div class="max-w-2xl">{{ summary(fit.comparison, combos) }}{{ overview(fit.comparison) }}</div>
   {% else %}
   {# Ohne Abgleich (etwa ohne Geschmacksform) bleibt die Begründung als Liste. #}
-  <ul class="mt-2 max-w-prose text-sm">
+  <ul class="max-w-prose text-sm">
     {% for line in fit.reasons if not line.detail %}
     <li class="mt-1">{{ line.text }}</li>
     {% endfor %}
   </ul>
   {% endif %}
-</div>
 
-{% if fit.comparison %}
-{# Der Abgleich im Detail, als eigener Abschnitt: dieselbe Überschrift wie
-   überall, ein Umschalter statt dreier Klappen. Die Abdeckung zuerst — sie
-   sagt, was fehlt, und das sieht man sonst nirgends. #}
-<div x-data="{ view: 'bridge', spiderTab: 1 }" data-comparison>
-  {% call section("Abgleich mit deinem Profil", "ic-radar") %}
-  {# Auf dem Telefon eine eigene Zeile über die ganze Breite, mit kurzen Wörtern:
-     die langen liefen sonst über den Rand. #}
-  <div role="group" aria-label="Ansicht"
-       class="flex w-full shrink-0 rounded-lg bg-hair p-0.5 text-xs font-normal
-              sm:ml-auto sm:inline-flex sm:w-auto">
-    {% for key, short, long in (("bridge", "Abdeckung", "Abdeckung"),
-                                ("waterfall", "Urteil", "Wie das Urteil entsteht"),
-                                ("spider", "Form", "Geschmacksform")) if key != "spider" or fit.spiders %}
-    <button type="button" @click="view = '{{ key }}'" :aria-pressed="view === '{{ key }}'"
-            :class="view === '{{ key }}' ? 'bg-card text-ink shadow-sm' : 'text-soft hover:text-ink'"
-            class="flex-1 rounded-md px-2.5 py-1 font-medium transition sm:flex-none">
-      <span class="sm:hidden">{{ short }}</span><span class="hidden sm:inline">{{ long }}</span></button>
-    {% endfor %}
-  </div>
-  {% endcall %}
-
-  <div x-show="view === 'bridge'">
-    <p class="mb-3 text-xs text-soft"><span class="sm:hidden">Deine stärksten Vorlieben und
-      Abneigungen — und ob das Buch sie hat.</span><span class="hidden sm:inline">Links deine
-      stärksten Vorlieben und Abneigungen, rechts das Buch; eine Linie, wo sie sich treffen.</span></p>
-    {{ bridge(fit.comparison.bridge) }}
-  </div>
-  <div x-show="view === 'waterfall'" x-cloak>
-    <p class="mb-3 text-xs text-soft">Vom Grundwert aus hebt oder senkt jeder Teil des Buchs die
-      Übereinstimmung; die letzte Zeile ist die Zahl oben.</p>
-    {{ waterfall(fit.comparison, fit.stars) }}
-  </div>
-  {% if fit.spiders %}
-  {% from "_spider.html" import switch, toggled, legend %}
-  <div x-show="view === 'spider'" x-cloak>
-    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-      <p class="text-xs text-soft">Das Buch über deiner ganzen Geschmacksform.</p>
-      {{ switch(fit.spiders) }}
+  {% if fit.comparison %}
+  {# Der Abgleich im Detail, als eigener Abschnitt: dieselbe Überschrift wie
+     überall, ein Umschalter statt dreier Klappen. Die Abdeckung zuerst — sie
+     sagt, was fehlt, und das sieht man sonst nirgends. #}
+  <div x-data="{ view: 'bridge', spiderTab: 1 }" data-comparison>
+    {% call section("Abgleich mit deinem Profil", "ic-radar") %}
+    {# Auf dem Telefon eine eigene Zeile über die ganze Breite, mit kurzen Wörtern:
+       die langen liefen sonst über den Rand. #}
+    <div role="group" aria-label="Ansicht"
+         class="flex w-full shrink-0 rounded-lg bg-hair p-0.5 text-xs font-normal
+                sm:ml-auto sm:inline-flex sm:w-auto">
+      {% for key, short, long in (("bridge", "Abdeckung", "Abdeckung"),
+                                  ("waterfall", "Urteil", "Wie das Urteil entsteht"),
+                                  ("spider", "Form", "Geschmacksform")) if key != "spider" or fit.spiders %}
+      <button type="button" @click="view = '{{ key }}'" :aria-pressed="view === '{{ key }}'"
+              :class="view === '{{ key }}' ? 'bg-card text-ink shadow-sm' : 'text-soft hover:text-ink'"
+              class="flex-1 rounded-md px-2.5 py-1 font-medium transition sm:flex-none">
+        <span class="sm:hidden">{{ short }}</span><span class="hidden sm:inline">{{ long }}</span></button>
+      {% endfor %}
     </div>
-    {{ toggled(fit.spiders) }}
-    {{ legend(with_book=true, unknown=fit.unknown) }}
+    {% endcall %}
+
+    <div x-show="view === 'bridge'">
+      <p class="mb-3 text-xs text-soft"><span class="sm:hidden">Deine stärksten Vorlieben und
+        Abneigungen — und ob das Buch sie hat.</span><span class="hidden sm:inline">Links deine
+        stärksten Vorlieben und Abneigungen, rechts das Buch; eine Linie, wo sie sich treffen.</span></p>
+      {{ bridge(fit.comparison.bridge) }}
+    </div>
+    <div x-show="view === 'waterfall'" x-cloak>
+      <p class="mb-3 text-xs text-soft">Vom Grundwert aus hebt oder senkt jeder Teil des Buchs die
+        Übereinstimmung; die letzte Zeile ist die Zahl oben.</p>
+      {{ waterfall(fit.comparison, fit.stars) }}
+    </div>
+    {% if fit.spiders %}
+    {% from "_spider.html" import switch, toggled, legend %}
+    <div x-show="view === 'spider'" x-cloak>
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs text-soft">Das Buch über deiner ganzen Geschmacksform.</p>
+        {{ switch(fit.spiders) }}
+      </div>
+      {{ toggled(fit.spiders) }}
+      {{ legend(with_book=true, unknown=fit.unknown) }}
+    </div>
+    {% endif %}
   </div>
   {% endif %}
+  </div>
 </div>
-{% endif %}
 {% endif %}

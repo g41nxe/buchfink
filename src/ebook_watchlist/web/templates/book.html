@@ -197,10 +197,6 @@
 
 
 
-{% if page.blurb %}
-{{ section("Klappentext", "ic-doc") }}
-{{ blurb(page.blurb) }}
-{% endif %}
 
 {# Die Bewertung (Design-Review 26.09.2026): der Steckbrief ist kein eigener
    Abschnitt mehr — was er sagt, steht jetzt im Abgleich (die Pillen tragen
@@ -227,7 +223,8 @@
     {% if portrait.original_title %} · im Original
     <span class="font-serif italic text-ink">{{ portrait.original_title }}</span>{% endif %}
   </p>
-  {% if portrait.pitch %}
+  {# Mit Urteil steht der Satz oben im Urteil (#110), sonst hier. #}
+  {% if portrait.pitch and not page.fit %}
   <p class="mt-1 text-sm leading-relaxed text-ink">{{ portrait.pitch }}</p>
   {% endif %}
 </div>
@@ -246,6 +243,8 @@
 </dl>
 {% endif %}
 {% endif %}
+
+{% with fit=page.fit %}{% include "_fit.html" %}{% endwith %}
 
 {# Ohne eigene Sterne steht hier nur ein Satz. Vorher standen daneben fuenf
    leere Sterne und, kursiv dahinter, ein zweites Mal "noch nicht bewertet" —
@@ -280,7 +279,13 @@
    ueber die Passung zum Leseprofil — und duerfen deshalb nicht neben einem
    Modellurteil stehen, als waeren sie dasselbe (ADR 19, Ticket 54). #}
 {% set foreign = page.judgements | selectattr("is_foreign") | list %}
-{% with fit=page.fit %}{% include "_fit.html" %}{% endwith %}
+
+{# Unter dem Urteil (#110): erst was das Buch ist und ob es passt, dann der
+   Text des Verlags. #}
+{% if page.blurb %}
+{{ section("Klappentext", "ic-doc") }}
+{{ blurb(page.blurb) }}
+{% endif %}
 
 {# Nachschärfen (#51): was dieses Buch an deinem Leseprofil ändert — nur bei
    *Mag ich* oder *Doof*, und nur, wenn es ein Profil gibt. #}

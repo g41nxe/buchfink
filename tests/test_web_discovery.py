@@ -7,6 +7,7 @@ mit den zweien, die sonst nirgends stehen: die ausgeschriebene Begründung des
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -425,3 +426,49 @@ def test_a_bundle_names_its_volumes_and_what_she_said_to_them(
     assert "Enthält" in page
     assert "Kakerlaken</span> (in Beobachtung)" in page.replace("\n", "")
     assert "Rotkehlchen" in page
+
+
+# --- in Stufen (#110) -------------------------------------------------------------
+
+
+@needs_vocabulary
+def test_the_answer_stands_on_top_the_reasons_behind_why(client: TestClient, db: Store) -> None:
+    """Oben: Sterne, was das Buch ist, eine Zeile, warum es passt. Der Rest hinter
+    „Warum?“, zugeklappt."""
+    observation = put_discovery(db)
+    give_profile(db)
+    describe(db, subject_of(observation), 4, "Ein Metzger mit Regeln statt Gewissen.")
+
+    body = client.get("/discovery/beam/7").text
+    fit = body.split("data-fit", 1)[1]
+    top, why = fit.split("data-why", 1)
+
+    assert "Ein Metzger mit Regeln statt Gewissen." in top
+    assert "passt:" in top and "dagegen:" in top
+    assert "Warum?" in top
+    assert re.search(r'<div[^>]*x-show="why"[^>]*data-why', body)
+    assert "Satz zu gritty" in why
+
+
+@needs_vocabulary
+def test_a_long_pitch_is_cut_to_one_sentence(client: TestClient, db: Store) -> None:
+    observation = put_discovery(db)
+    give_profile(db)
+    describe(db, subject_of(observation), 4, "Sehr lang. " * 40)
+
+    body = client.get("/discovery/beam/7").text
+    pitch = body.split("data-pitch", 1)[1].split("</p>", 1)[0]
+
+    assert len(pitch.split(">", 1)[1].strip()) <= 181
+    assert "…" in pitch
+
+
+@needs_vocabulary
+def test_the_blurb_comes_after_the_verdict(client: TestClient, db: Store) -> None:
+    observation = put_discovery(db)
+    give_profile(db)
+    describe(db, subject_of(observation), 4, "Ein Metzger mit Regeln statt Gewissen.")
+
+    body = client.get("/discovery/beam/7").text
+
+    assert body.index("data-fit") < body.index("Klappentext")

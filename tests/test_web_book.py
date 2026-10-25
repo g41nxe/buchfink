@@ -1223,7 +1223,10 @@ def test_the_fit_stands_under_the_judgement(
     assert "data-story-patterns" not in body and "Abgleich mit deinem Profil" in body
     rating = body.split("Bewertung", 1)[1].split("Deine Sterne", 1)[0]
     assert f'/book/{book.id}/portrait?again=1' in rating
-    assert "<details" not in body.split("data-comparison", 1)[1].split("Beobachtungen", 1)[0]
+    # Der Teil hinter „Warum?“ (#110) — die eigenen Sterne und der Klappentext
+    # danach haben ihr eigenes Aufklappen.
+    why = body.split("data-why", 1)[1].split('<details class="flex items-baseline', 1)[0]
+    assert "data-comparison>" in why and "<details" not in why
     # Ein Umschalter wie auf der Profilseite, eine Spinne zur Zeit (26.09.2026) —
     # sobald die Form auch Erzählmuster kennt.
     from dataclasses import replace
