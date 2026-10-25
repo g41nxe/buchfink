@@ -448,7 +448,7 @@ def test_the_list_yields_fiction_as_borrowable_finds() -> None:
     assert discovery.source_item_id == "361212177"
 
 
-def test_the_run_collects_the_lists_next_to_the_watchlist(tmp_path) -> None:
+def test_the_run_collects_the_lists_next_to_the_watchlist(tmp_path, data_dir) -> None:
     from datetime import datetime
 
     from ebook_watchlist.config import load_settings
@@ -483,7 +483,7 @@ def test_the_lists_are_read_from_the_settings() -> None:
 
 
 
-def test_a_broken_list_costs_the_list_not_the_watchlist(tmp_path) -> None:
+def test_a_broken_list_costs_the_list_not_the_watchlist(tmp_path, data_dir) -> None:
     from datetime import datetime
 
     from ebook_watchlist.config import load_settings
@@ -545,7 +545,7 @@ def test_a_list_can_take_every_card_not_only_recognisable_fiction() -> None:
 
 
 
-def test_a_library_sweeps_the_authors_and_seeds_like_the_shop(tmp_path) -> None:
+def test_a_library_sweeps_the_authors_and_seeds_like_the_shop(tmp_path, data_dir) -> None:
     """Dieselbe Regel wie beim Shop: die Autorin der Leserin wird gesucht, und
     der Fund trägt ihr Interesse, damit der erste Durchgang still sät (#74)."""
     from dataclasses import replace as dc_replace

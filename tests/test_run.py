@@ -207,6 +207,7 @@ def test_run_journal_records_every_run(data_dir: Path) -> None:
         assert all(run.trigger == "cli" for run in runs)
 
 
+@needs_vocabulary
 def test_the_gate_gets_the_sources_from_the_run(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime
 
+from conftest import needs_vocabulary
 from ebook_watchlist.facets import ReadingProfile
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.preferences import book_codes, excluded_by
@@ -76,6 +77,7 @@ def test_a_watchlist_title_is_never_excluded() -> None:
     assert excluded_by(profile, find(reason=MatchReason.WATCHLIST), ("FIC027020",)) is None
 
 
+@needs_vocabulary
 def test_a_liked_genre_adds_a_small_bonus() -> None:
     """Kleiner als ein verstärktes Merkmal, und als eigener Schritt sichtbar."""
     from ebook_watchlist.facets import load_weights
@@ -128,6 +130,7 @@ def test_the_run_drops_what_she_does_not_like_before_the_gate(store: Store) -> N
         ("Jemand", "9783000000602"), ("Pilcher, Rosamunde", None)]
 
 
+@needs_vocabulary
 def test_after_the_gate_the_portrait_code_counts(store: Store) -> None:
     from ebook_watchlist.portrait import Portrait, fingerprint, load_vocabulary
     from ebook_watchlist.run import _without_disliked
@@ -199,6 +202,7 @@ def test_a_genre_is_either_liked_or_disliked(store: Store) -> None:
     assert (profile.liked_genres, profile.disliked_genres) == ((), ("FIC027000",))
 
 
+@needs_vocabulary
 def test_the_liked_genre_bonus_reads_the_publishers_code_first(store: Store) -> None:
     """Wie der Ausschluss: der Verlag vor dem Modell. Gemocht ist Thriller,
     der Steckbrief sagt Fantasy, der Verlag Psychothriller."""
@@ -224,6 +228,7 @@ def test_the_liked_genre_bonus_reads_the_publishers_code_first(store: Store) -> 
     assert any(step.kind == "liked_genre" for step in result.steps)
 
 
+@needs_vocabulary
 def test_importing_a_profile_file_keeps_genres_and_authors(store: Store, tmp_path,
                                                           monkeypatch) -> None:
     """Die Datei kennt die neuen Felder nicht; sie gehen deshalb nicht verloren."""

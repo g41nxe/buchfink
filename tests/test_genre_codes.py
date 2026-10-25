@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from conftest import needs_vocabulary
 from ebook_watchlist.facets import Counterweight, ReadingProfile, genre_matches
 from ebook_watchlist.genres import genre_label
 from ebook_watchlist.portrait import Portrait
@@ -89,6 +90,7 @@ def test_the_migration_codes_portraits_and_counterweights(tmp_path: Path) -> Non
         (["duo"], "FIC009020"), (["funny"], "FIC022070"), (["explicit"], None)]
 
 
+@needs_vocabulary
 def test_the_profile_page_names_the_genre_of_a_counterweight(data_dir: Path) -> None:
     from fastapi.testclient import TestClient
 
@@ -112,6 +114,7 @@ def test_the_profile_page_names_the_genre_of_a_counterweight(data_dir: Path) -> 
 # --- aus dem Review (04.10.2026) ----------------------------------------------
 
 
+@needs_vocabulary
 def test_a_fresh_portrait_carries_its_code_before_it_is_stored() -> None:
     """Das Tor beurteilt den frischen Steckbrief, nicht den gespeicherten —
     ohne Code griff ein Gegengewicht „nur bei High Fantasy" dort nicht."""

@@ -35,5 +35,10 @@ jobs:
       - name: Typprüfung (nur neue Meldungen)
         run: uv run basedpyright
 
+      # Die Oberfläche startet nicht ohne ihre gebauten Dateien (CSS, htmx,
+      # Alpine), und die liegen nicht im Repo.
+      - name: Statische Dateien bauen
+        run: uv run tailwindcss_install && uv run python -m ebook_watchlist.web.build
+
       - name: Tests
         run: uv run pytest

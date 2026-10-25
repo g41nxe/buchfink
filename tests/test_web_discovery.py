@@ -357,6 +357,7 @@ def _stamp() -> str:
     return fingerprint(load_vocabulary())
 
 
+@needs_vocabulary
 def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
     client: TestClient, db: Store, monkeypatch
 ) -> None:

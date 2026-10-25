@@ -418,7 +418,7 @@ def test_a_collection_without_items_is_a_changed_interface() -> None:
         parse.parse_collection({"title": "Lucky Day"}, Collection("1572172", "Lucky Day"))
 
 
-def test_the_run_collects_the_collection_next_to_the_watchlist(tmp_path) -> None:
+def test_the_run_collects_the_collection_next_to_the_watchlist(tmp_path, data_dir) -> None:
     from datetime import datetime
 
     from ebook_watchlist.config import load_settings
@@ -451,7 +451,7 @@ def test_the_collection_is_read_from_the_settings() -> None:
 
 
 
-def test_a_broken_collection_costs_the_collection_not_the_watchlist(tmp_path) -> None:
+def test_a_broken_collection_costs_the_collection_not_the_watchlist(tmp_path, data_dir) -> None:
     """Zieht die Bibliothek eine Sammlung zurück, prüft die Quelle weiter (Review)."""
     from datetime import datetime
 
