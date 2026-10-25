@@ -67,10 +67,16 @@ def _inline() -> bool:
     return bool(os.environ.get(INLINE_ENV))
 
 
+#: Wo die Schlange liegt, wenn nicht in ``data/`` — in Tests einer je Test.
+JOBS_DIR_ENV = "EBW_JOBS_DIR"
+
+
 def _queue_path() -> Path:
-    """``data/jobs.db`` — im Testbetrieb ohne eigenes Datenverzeichnis ein
+    """``data/jobs.db`` — oder ``EBW_JOBS_DIR``. Im Testbetrieb ohne beides ein
     Ordner je Prozess: sonst holte ein laufender Dienst die Aufträge der Tests
     ab, mit echten Quellen."""
+    if os.environ.get(JOBS_DIR_ENV):
+        return Path(os.environ[JOBS_DIR_ENV]) / "jobs.db"
     if _inline() and not os.environ.get("EBW_DATA_DIR"):
         return Path(tempfile.gettempdir()) / f"buchfink-test-jobs-{os.getpid()}" / "jobs.db"
     return paths.data_dir() / "jobs.db"

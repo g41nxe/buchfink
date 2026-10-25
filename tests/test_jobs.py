@@ -138,6 +138,7 @@ def test_an_old_heartbeat_is_no_service(data_dir: Path, monkeypatch) -> None:
 
 def test_the_queue_lives_in_its_own_file(data_dir: Path, monkeypatch) -> None:
     monkeypatch.delenv("EBW_JOBS_INLINE", raising=False)
+    monkeypatch.delenv(jobs.JOBS_DIR_ENV, raising=False)
     jobs.heartbeat(now=datetime.now())
 
     assert (paths.data_dir() / "jobs.db").is_file()
@@ -167,6 +168,7 @@ def test_tests_never_queue_into_the_real_data_dir(monkeypatch) -> None:
     """Ohne eigenes Datenverzeichnis läge die Schlange sonst in `data/jobs.db` —
     und ein laufender Dienst holte sich die Aufträge der Tests ab."""
     monkeypatch.delenv("EBW_DATA_DIR", raising=False)
+    monkeypatch.delenv(jobs.JOBS_DIR_ENV, raising=False)
 
     where = Path(jobs._queue_path())
 

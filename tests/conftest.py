@@ -334,12 +334,16 @@ def no_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def jobs_inline(monkeypatch: pytest.MonkeyPatch) -> None:
+def jobs_inline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Aufträge arbeitet in Tests ein Faden gleich nach dem Einstellen ab —
-    durch dieselbe Schlange, nur ohne Hintergrunddienst (ADR 40)."""
+    durch dieselbe Schlange, nur ohne Hintergrunddienst (ADR 40).
+
+    Eine Schlange je Test: ein Faden, der den Test überlebt, schriebe seinen
+    Stand sonst in den nächsten — unter demselben Schlüssel."""
     from ebook_watchlist import jobs
 
     monkeypatch.setenv(jobs.INLINE_ENV, "1")
+    monkeypatch.setenv(jobs.JOBS_DIR_ENV, str(tmp_path / "jobs"))
 
 
 @pytest.fixture(autouse=True)
