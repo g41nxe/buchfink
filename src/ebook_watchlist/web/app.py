@@ -43,6 +43,7 @@ from . import (
     intake,
     owned,
     profile_page,
+    settings_form,
     sharpening,
     sorting,
     symbols,
@@ -419,6 +420,12 @@ def create_app() -> FastAPI:
 
     @app.get("/overview", response_class=HTMLResponse)
     def dashboard(request: Request) -> HTMLResponse:
+        return _dashboard(request)
+
+    def _dashboard(
+        request: Request, *, message: str | None = None, error: str | None = None,
+        status_code: int = 200,
+    ) -> HTMLResponse:
         try:
             settings = load_settings()
         except ConfigError as exc:
@@ -435,6 +442,10 @@ def create_app() -> FastAPI:
             request,
             "dashboard.html",
             {
+                "settings_fields": settings_form.FIELDS,
+                "settings_values": settings_form.shown(settings),
+                "settings_message": message,
+                "settings_error": error,
                 "settings": settings,
                 "asset_version": asset_version(),
                 "runs": runs,
@@ -447,7 +458,34 @@ def create_app() -> FastAPI:
                 "sources": source_health(store, settings),
                 "trouble": source_trouble(runs),
             },
+            status_code=status_code,
         )
+
+    @app.post("/settings", response_class=HTMLResponse)
+    async def save_settings(request: Request) -> HTMLResponse:
+        """Die Einstellungen von der Übersicht speichern (#100, #104).
+
+        Gespeichert, zur Probe geladen — mit denselben Regeln wie die Datei —
+        und bei einem Fehler alles zurückgenommen. So gibt es genau eine
+        Stelle, die sagt, was gilt.
+        """
+        form = {key: str(value) for key, value in (await request.form()).items()}
+        store = _store_for(paths.db_path())
+        slug = load_settings().slug
+        try:
+            values = settings_form.parse(form)
+        except settings_form.BadInput as exc:
+            return _dashboard(request, error=str(exc), status_code=400)
+        before = store.saved_settings(slug)
+        store.save_settings(slug, values, now=datetime.now())
+        try:
+            load_settings()
+        except ConfigError as exc:
+            store.save_settings(
+                slug, {key: before.get(key) for key in values}, now=datetime.now()
+            )
+            return _dashboard(request, error=f"Nicht gespeichert: {exc}", status_code=400)
+        return _dashboard(request, message="Einstellungen gespeichert.")
 
     # --- Watchlist (Ticket 06) ---------------------------------------------
 

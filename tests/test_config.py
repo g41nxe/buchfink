@@ -172,7 +172,7 @@ def test_the_cadence_comes_from_the_profile(data_dir: Path) -> None:
     """Wie oft gelaufen wird, ist eine Einstellung und keine Konstante: das
     Journal weiss, wann zuletzt gelaufen wurde, die Kadenz sagt, ab wann
     wieder."""
-    assert load_settings().run_every_hours == 20
+    assert load_settings().run_every_hours == 24
     (data_dir / "settings.yaml").write_text(
         "slug: t\nname: T\nrun_every_hours: 6\nsources: {fake: {fixture: f.yaml}}\n",
         encoding="utf-8",

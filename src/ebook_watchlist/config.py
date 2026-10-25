@@ -60,14 +60,12 @@ class Settings:
     #: Wie viele Vorschläge der Stapel zuerst zeigt; weitere lädt ein Knopf
     #: am Listenende nach, zehn zur Zeit (#115).
     suggestions_shown: int = 20
-    #: Die Kadenz: wie viele Stunden zwischen zwei Rundgängen mindestens
-    #: liegen. Ein Lauf, den eine Maschine anstößt, prüft sie gegen den letzten
-    #: Eintrag im Journal und tut sonst nichts — das ist die ganze Taktung, es
-    #: gibt keinen Zeitplaner (ADR 4). Die Leserin selbst hält sie nicht auf.
-    #:
-    #: Zwanzig und nicht vierundzwanzig: sonst schöbe sich der tägliche Lauf um
-    #: jede angebrochene Minute nach hinten, bis er einen Tag überspringt.
-    run_every_hours: int = 20
+    #: Die Kadenz: alle wie viele Stunden ein Lauf fällig ist (#100). Der
+    #: Hintergrunddienst prüft alle 15 Minuten gegen den Beginn des letzten
+    #: fertigen Laufs (ADR 40); gemessen ab dem Beginn, damit der tägliche
+    #: Lauf nicht um seine eigene Dauer nach hinten wandert. Die Leserin selbst
+    #: hält sie nicht auf: ein Knopf läuft sofort.
+    run_every_hours: int = 24
     #: Bei jedem Lauf durchgesehen. Aus der **Datenbank**, nicht aus der Datei
     #: (#36): ``settings.yaml`` nennt keine Autor:innen, ``seed.yaml`` nur die
     #: zur Erstbefuellung.
@@ -88,6 +86,9 @@ class Settings:
     #: Appended to the outgoing User-Agent so a site operator can reach you.
     #: Opt-in — nothing personal is sent unless you put it here yourself.
     contact: str | None = None
+    #: Wo Buchfink von außen erreichbar ist, etwa ``http://192.168.178.20:8437``
+    #: — für den Link in einer Benachrichtigung (#98). Ohne: kein Link.
+    public_url: str | None = None
 
     def authors_to_sweep(self, include_extended: bool) -> list[str]:
         if not include_extended:
@@ -241,6 +242,20 @@ def _languages(mapping: dict[str, Any], what: str) -> tuple[str, ...]:
     return tuple(value)
 
 
+def _web_address(data: dict, key: str, what: str) -> str | None:
+    """Eine Adresse, unter der Buchfink von außen erreichbar ist (#98) — oder nichts.
+
+    Für den Link in einer Benachrichtigung: `localhost` trägt auf dem Telefon
+    nicht. Ein abschließender Schrägstrich fällt weg, damit `…/book/3` stimmt.
+    """
+    value = data.get(key)
+    if value in (None, ""):
+        return None
+    if not isinstance(value, str) or not value.startswith(("http://", "https://")):
+        raise ConfigError(f"{what}: {key!r} must start with http:// or https://, got {value!r}")
+    return value.rstrip("/")
+
+
 def _positive_int(mapping: dict[str, Any], key: str, default: int, what: str) -> int:
     value = mapping.get(key, default)
     if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
@@ -283,16 +298,57 @@ def _reference_authors(data: dict[str, Any], what: str) -> tuple[list[str], list
     )
 
 
+#: Was die Leserin in der Oberfläche einstellt (#104). Steht ein Wert in der
+#: Datenbank, gilt er; sonst der aus ``settings.yaml``, sonst die Voreinstellung.
+#: Quellen, Sprachen und Kontakt bleiben in der Datei: das ist Betrieb.
+EDITABLE: tuple[str, ...] = (
+    "run_every_hours", "home_offers", "home_suggestions", "suggestions_shown",
+    "strong_deal_max_cents", "deal_max_cents", "min_discount_pct", "rating_budget",
+    "dnb_budget", "public_url",
+)
+
+
+def _saved(slug: str) -> dict:
+    """Die gespeicherten Einstellungen, ohne den Store zu bauen.
+
+    Direkt über `sqlite3` und nur lesend: `load_settings` läuft bei jeder
+    Anfrage, und ein `Store` prüfte dabei jedes Mal das Schema. Gibt es die
+    Datei oder die Tabelle noch nicht, ist eben nichts gespeichert.
+    """
+    import json
+    import sqlite3
+
+    db = paths.db_path()
+    if not db.is_file():
+        return {}
+    try:
+        with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as connection:
+            rows = connection.execute(
+                "SELECT key, value FROM setting WHERE profile_slug = ?", (slug,)
+            ).fetchall()
+    except sqlite3.Error:
+        return {}
+    return {key: json.loads(value) for key, value in rows if key in EDITABLE}
+
+
 def load_settings(path: Path | None = None) -> Settings:
-    """Was der Betrieb braucht, aus ``settings.yaml`` (#36).
+    """Was der Betrieb braucht, aus ``settings.yaml`` (#36) — und darüber, was die
+    Leserin in der Oberfläche geändert hat (#104).
 
     Autor:innen, Themen und Buchlisten stehen hier **nicht**: was davon gilt,
     steht in der Datenbank, und was einmalig hineinging, in ``seed.yaml``.
+
+    Die gespeicherten Werte kommen *vor* der Prüfung dazu: für sie gelten
+    dieselben Regeln wie für die Datei. Mit ausdrücklichem ``path`` nur die
+    Datei — so liest man eine Datei, nicht den Stand dieser Installation.
     """
+    explicit = path is not None
     path = path or paths.settings_path()
     data = _load_yaml(path, "settings.yaml")
     if not isinstance(data, dict):
         raise ConfigError(f"settings.yaml at {path} must be a mapping")
+    if not explicit and data.get("slug"):
+        data = {**data, **_saved(str(data["slug"]))}
 
     what = "settings.yaml"
     _reject_seed_keys(data)
@@ -314,11 +370,12 @@ def load_settings(path: Path | None = None) -> Settings:
         home_offers=_positive_int(data, "home_offers", 5, what),
         home_suggestions=_positive_int(data, "home_suggestions", 3, what),
         suggestions_shown=_positive_int(data, "suggestions_shown", 20, what),
-        run_every_hours=_positive_int(data, "run_every_hours", 20, what),
+        run_every_hours=_positive_int(data, "run_every_hours", 24, what),
         extended_sweep_weekday=weekday,
         languages=_languages(data, what),
         sources=data.get("sources") or {},
         contact=str(data["contact"]) if data.get("contact") else None,
+        public_url=_web_address(data, "public_url", what),
     )
     if settings.strong_deal_max_cents >= settings.deal_max_cents:
         raise ConfigError(

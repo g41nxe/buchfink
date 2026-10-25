@@ -121,6 +121,16 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         help="do not self-check the Sources before the Run",
     )
     parser.add_argument(
+        "--wenn-faellig",
+        dest="when_due",
+        action="store_true",
+        help=(
+            "nur laufen, wenn die Kadenz es sagt ('Lauf alle N Stunden' auf der "
+            "Übersicht) — für einen äußeren Zeitplaner, der stündlich ruft (#100). "
+            "Dasselbe wie '--trigger cron'"
+        ),
+    )
+    parser.add_argument(
         "--fruehestens-nach",
         dest="not_within_hours",
         type=float,
@@ -557,7 +567,7 @@ def _gap(args, settings) -> float:
     """
     if args.not_within_hours is not None:
         return args.not_within_hours
-    return settings.run_every_hours if args.trigger == "cron" else 0
+    return settings.run_every_hours if args.when_due or args.trigger == "cron" else 0
 
 
 def _too_soon(settings, now: datetime, hours: float) -> str:

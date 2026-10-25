@@ -4,7 +4,7 @@ Buchfink besteht aus zwei Prozessen: der **Oberfläche** und dem
 **Hintergrunddienst** (ADR 40). Die Oberfläche zeigt an und stellt Aufträge ein;
 der Dienst arbeitet sie ab — den Lauf, den engen Lauf, den Steckbrief — und
 **holt nach**: alle 15 Minuten prüft er, ob der letzte *fertige* Lauf älter ist
-als die Kadenz (`run_every_hours`, Voreinstellung 20 Stunden). Dann stößt er
+als die Kadenz („Lauf alle N Stunden“ auf der Übersicht, Voreinstellung 24). Dann stößt er
 einen an. Einen festen Termin gibt es nicht, und damit nichts, was ein
 zugeklappter Rechner verpassen könnte.
 
@@ -25,9 +25,9 @@ Lauf, den er anstößt, ist ein eigener Prozess mit seiner Ausgabe in
 `data/run-ui.log`. Eine Dateisperre serialisiert Läufe weiterhin: ein zweiter
 Start beendet sich sofort wieder, egal woher er kommt.
 
-Ein äußerer Zeitplaner ist nicht mehr nötig, aber möglich: `ebw run --trigger
-cron` läuft nur, wenn die Kadenz es erlaubt, und lässt sich deshalb gefahrlos
-stündlich rufen. Ein Umzug auf einen anderen Rechner ist *Repository kopieren,
+Ein äußerer Zeitplaner ist nicht mehr nötig, aber möglich: `ebw run
+--wenn-faellig` läuft nur, wenn die Kadenz es erlaubt, und lässt sich deshalb
+gefahrlos stündlich rufen. Ein Umzug auf einen anderen Rechner ist *Repository kopieren,
 `uv sync`, `data/` mitnehmen*.
 
 ## Container

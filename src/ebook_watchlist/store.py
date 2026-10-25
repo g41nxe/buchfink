@@ -676,6 +676,23 @@ class StateRow(Base):
     value: Mapped[datetime] = mapped_column(DateTime)
 
 
+class SettingRow(Base):
+    """Eine Einstellung, die die Leserin in der Oberfläche geändert hat (#104).
+
+    Liegt über ``settings.yaml``: die Datei ist nur noch der Startwert. Der
+    Wert steht als JSON da, damit Zahlen Zahlen bleiben und eine Adresse eine
+    Zeichenkette. Geprüft wird er beim Laden mit denselben Regeln wie die Datei
+    (`config.load_settings`).
+    """
+
+    __tablename__ = "setting"
+
+    profile_slug: Mapped[str] = mapped_column(String, primary_key=True)
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[str] = mapped_column(String)
+    updated_at: Mapped[datetime] = mapped_column(DateTime)
+
+
 def _to_observation(row: ObservationRow) -> Observation:
     return Observation(
         source=row.source,
@@ -1891,6 +1908,32 @@ class Store:
                 row = StateRow(profile_slug=profile_slug, key=key)
                 session.add(row)
             row.value = value
+            session.commit()
+
+    # --- Einstellungen (#104) ----------------------------------------------
+
+    def saved_settings(self, profile_slug: str) -> dict:
+        """Was die Leserin in der Oberfläche eingestellt hat."""
+        with self.session() as session:
+            rows = session.scalars(
+                select(SettingRow).where(SettingRow.profile_slug == profile_slug)
+            ).all()
+            return {row.key: json.loads(row.value) for row in rows}
+
+    def save_settings(self, profile_slug: str, values: dict, *, now: datetime) -> None:
+        """Einstellungen setzen; ``None`` nimmt eine zurück — dann gilt die Datei."""
+        with self.session() as session:
+            for key, value in values.items():
+                row = session.get(SettingRow, (profile_slug, key))
+                if value is None:
+                    if row is not None:
+                        session.delete(row)
+                    continue
+                if row is None:
+                    row = SettingRow(profile_slug=profile_slug, key=key)
+                    session.add(row)
+                row.value = json.dumps(value)
+                row.updated_at = now
             session.commit()
 
     # --- Bücher (Ticket 04) ------------------------------------------------

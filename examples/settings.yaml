@@ -23,14 +23,12 @@ rating_batch_size: 20
 rating_model:
 rating_budget: 40
 
-# Wie viele Stunden zwischen zwei Rundgängen mindestens liegen. Geprüft wird
-# gegen das Journal, nicht gegen eine Uhr: ein Wirt darf öfter rufen, der Lauf
-# entscheidet. Die Grenze gilt nur automatischen Auslösern — der Knopf „Lauf
-# jetzt starten" und ein getipptes `ebw` laufen sofort.
-#
-# Zwanzig und nicht vierundzwanzig, damit sich der tägliche Lauf nicht um die
-# eigene Dauer nach hinten schiebt, bis ein Tag ausfällt.
-run_every_hours: 20
+# Die Kadenz: alle wie viele Stunden ein Lauf fällig ist. Der Hintergrunddienst
+# prüft alle 15 Minuten gegen den Beginn des letzten fertigen Laufs (ADR 40).
+# Die Grenze gilt nur automatischen Auslösern — der Knopf „Jetzt prüfen" und ein
+# getipptes `ebw run` laufen sofort. Änderbar auf der Übersicht; was dort steht,
+# gilt vor dieser Zeile.
+run_every_hours: 24
 
 # Wie viele Zeilen die Startseite je Abschnitt zeigt: oben die Angebote aus
 # der Watchlist, darunter die offenen Entscheidungen. Der Rest haengt am

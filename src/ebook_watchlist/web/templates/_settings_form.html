@@ -1,0 +1,43 @@
+{# Die Einstellungen der Leserin (#100, #104). Was hier steht, gilt vor
+   settings.yaml; die Datei ist nur noch der Startwert.
+
+   htmx schickt das Formular und tauscht nur diesen Abschnitt aus der Antwort
+   (`hx-select`): eine Route, eine Seite, und ohne JavaScript ist es ein
+   gewöhnliches Formular. #}
+<section id="settings">
+{{ section("Einstellungen", "ic-sliders", margin="mt-10 mb-3") }}
+{% if settings_message %}
+<p class="mb-3 rounded border border-accent/30 bg-accent-bg/40 px-3 py-2 text-sm"
+   role="status">{{ settings_message }}</p>
+{% endif %}
+{% if settings_error %}
+<p class="mb-3 rounded border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+   role="alert">{{ settings_error }}</p>
+{% endif %}
+<form method="post" action="/settings" hx-post="/settings" hx-target="#settings"
+      hx-select="#settings" hx-swap="outerHTML"
+      class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+  {% for f in settings_fields %}
+  <label class="flex flex-col gap-1 text-sm {{ 'sm:col-span-2' if f.kind == 'url' }}">
+    <span class="font-medium">{{ f.label }}</span>
+    <span class="flex items-center gap-2">
+      {% set width = "w-full" if f.kind == "url" else "w-24 tabular-nums" %}
+      {# 16 px auf dem Telefon, sonst zoomt iOS beim Tippen die Seite. #}
+      <input name="{{ f.key }}" value="{{ settings_values[f.key] }}"
+             {% if f.kind == 'url' %}type="url" placeholder="http://…"
+             {% else %}inputmode="{{ 'decimal' if f.kind == 'euro' else 'numeric' }}"{% endif %}
+             autocomplete="off"
+             class="h-10 {{ width }} rounded border border-rule bg-card px-2 text-base text-ink
+                    outline-none focus:border-accent sm:h-9 sm:text-sm">
+      {% if f.unit %}<span class="text-soft">{{ f.unit }}</span>{% endif %}
+    </span>
+    {% if f.hint %}<span class="text-xs text-soft text-pretty">{{ f.hint }}</span>{% endif %}
+  </label>
+  {% endfor %}
+  <div class="sm:col-span-2">
+    <button type="submit"
+            class="tap inline-flex h-10 items-center rounded border border-accent bg-accent/10
+                   px-4 text-sm font-medium text-accent hover:bg-accent/25">Speichern</button>
+  </div>
+</form>
+</section>
