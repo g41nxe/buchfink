@@ -128,12 +128,12 @@ uv sync
 mkdir -p data && cp examples/settings.yaml examples/seed.yaml examples/watchlist.yaml data/
 
 # 2. Deine Titel eintragen (data/watchlist.yaml), dann in die Datenbank und ein erster Lauf
-uv run python -m ebook_watchlist.run seed
-uv run python -m ebook_watchlist.run
+uv run ebw seed
+uv run ebw run
 
-# 3. Oberfläche bauen und starten
+# 3. Oberfläche bauen und starten — mit dem Hintergrunddienst, der Läufe nachholt
 uv run tailwindcss_install && uv run python -m ebook_watchlist.web.build
-uv run python -m ebook_watchlist.web
+uv run ebw serve
 ```
 
 Danach läuft Buchfink unter **http://localhost:8437** — vom Telefon im selben
@@ -205,9 +205,14 @@ beginnen** nennst du deine Bücher, und die Vorschläge bekommen Sterne.
 
 ## Befehle
 
-Alle über `uv run python -m ebook_watchlist.run <befehl>`; dieselben Läufe stößt
-auch die Oberfläche an. Eine Dateisperre sorgt dafür, dass nie zwei
-gleichzeitig laufen.
+Alle über `uv run ebw <befehl>`; dieselben Läufe stößt auch die Oberfläche an,
+und der Hintergrunddienst holt nach, was nach der Kadenz fällig ist (ADR 40).
+Eine Dateisperre sorgt dafür, dass nie zwei gleichzeitig laufen.
+
+| Dienst | Was er tut |
+| --- | --- |
+| `serve` | Oberfläche und Hintergrunddienst zusammen — der übliche Start |
+| `web` / `worker` | je einzeln, etwa für zwei Container oder zwei systemd-Dienste |
 
 | Befehl | Was er tut |
 | --- | --- |

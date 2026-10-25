@@ -32,7 +32,6 @@ from ..facets import GENERAL
 from ..genres import genre_label
 from ..models import LinkOutcome
 from ..relations import RelationKind
-from ..single import Report
 from ..sources import registry
 from ..store import RunRow, Store
 from . import (
@@ -293,45 +292,19 @@ def create_app() -> FastAPI:
     covers.mkdir(parents=True, exist_ok=True)
     app.mount("/covers", StaticFiles(directory=covers), name="covers")
 
-    # Ein Starter je Anwendung. Er haelt nur, was ein Neustart vergessen darf:
-    # das Kind, das wir gestartet und noch nicht im Journal gesehen haben
-    # (Ticket 10).
+    # Die Arbeit selbst tut der Hintergrunddienst (ADR 40); diese drei stellen
+    # nur ein und lesen den Stand. Zustand halten sie keinen.
     launcher = RunLauncher()
-    rechecker = Rechecker()
-
-    #: Wer ausdrücklich um einen neuen Steckbrief gebeten hat (Knopf „neu
-    #: beschreiben"): die Schlüssel der Jobs, die dann auch fragen sollen, wenn
-    #: schon einer steht. Der Job holt sich sein Zeichen beim Start ab.
-    portrait_again: set = set()
-
-    def _portray_work(key) -> Report:
-        """Die Arbeit des zweiten Verwalters: einen Steckbrief anlegen (#45, #48).
-
-        Derselbe Verwalter wie beim engen Lauf, nur mit anderer Arbeit. Der
-        Schlüssel sagt, was beschrieben wird: ``("book", 39)`` für die
-        Buchseite, ``("item", "beam", "7")`` für einen Fund.
-        """
-        store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
-        again = key in portrait_again
-        portrait_again.discard(key)
-        if key[0] == "book":
-            return Report(trouble=book.portray(store, settings, key[1], now=now, again=again))
-        return Report(
-            trouble=discovery.portray(store, settings, key[1], key[2], now=now, again=again)
-        )
-
-    portrait_jobs = Rechecker(work=_portray_work)
+    rechecker = Rechecker("recheck")
+    portrait_jobs = Rechecker("portrait")
 
     def _start_portrait(key, again: str) -> None:
-        """Den Job anstoßen; mit ``again=1`` auch, wenn schon ein Steckbrief steht.
+        """Den Auftrag anstoßen; mit ``again=1`` auch, wenn schon ein Steckbrief steht.
 
-        Das Zeichen wird nur gesetzt, wenn nichts läuft: sonst bliebe es bis zur
-        nächsten Arbeit liegen und machte einen gewöhnlichen Klick teuer.
+        Läuft schon einer, bleibt es bei ihm — ein zweiter Klick macht ihn
+        nicht teurer.
         """
-        running = portrait_jobs.state(key)
-        if again == "1" and not (running is not None and running.busy):
-            portrait_again.add(key)
-        portrait_jobs.start(key)
+        portrait_jobs.start(key, again=again == "1")
 
     def _portrait_status(
         request: Request, key, url: str, *, dom_id: str = "portrait-status",
@@ -1411,16 +1384,9 @@ def create_app() -> FastAPI:
 
     # --- Erstaufnahme (#47) --------------------------------------------------
 
-    def _identify_work(key) -> Report:
-        """Die Arbeit des vierten Verwalters: erkennen, welches Buch gemeint ist.
-
-        Ein eigener Verwalter: während die Leserin das dritte Buch tippt,
-        arbeiten die ersten beiden noch, jedes unter seinem Schlüssel.
-        """
-        store, settings, now = _store_for(paths.db_path()), load_settings(), datetime.now()
-        return Report(trouble=intake.identify(store, settings, key[1], now=now))
-
-    identifier = Rechecker(work=_identify_work)
+    # Erkennen, welches Buch gemeint ist: während die Leserin das dritte Buch
+    # tippt, arbeiten die ersten beiden noch, jedes unter seinem Schlüssel.
+    identifier = Rechecker("identify")
 
     def _intake_jobs(entries) -> dict:
         """Der Stand je Eintrag — und wer noch keinen Steckbrief hat und nicht

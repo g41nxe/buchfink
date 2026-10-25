@@ -1,30 +1,42 @@
-# Betrieb: den Lauf täglich anstoßen, die Oberfläche dauerhaft halten
+# Betrieb: `ebw serve` starten
 
-Es gibt keinen eigenen Zeitplaner — der Lauf wird von außen angestoßen, einmal
-am Tag reicht. Wie oft er dann *wirklich* läuft, entscheidet er selbst: die
-Kadenz steht als `run_every_hours` im Profil, und das Journal weiß, wann
-zuletzt gelaufen wurde. Ein Wirt, der zu dicht taktet, kostet deshalb nichts.
-Eine Dateisperre
-serialisiert parallele Läufe: ein zweiter Start beendet sich sofort wieder.
-Ein Umzug auf einen anderen Rechner ist *Repository kopieren, `uv sync`,
-`data/` mitnehmen*.
+Buchfink besteht aus zwei Prozessen: der **Oberfläche** und dem
+**Hintergrunddienst** (ADR 40). Die Oberfläche zeigt an und stellt Aufträge ein;
+der Dienst arbeitet sie ab — den Lauf, den engen Lauf, den Steckbrief — und
+**holt nach**: alle 15 Minuten prüft er, ob der letzte *fertige* Lauf älter ist
+als die Kadenz (`run_every_hours`, Voreinstellung 20 Stunden). Dann stößt er
+einen an. Einen festen Termin gibt es nicht, und damit nichts, was ein
+zugeklappter Rechner verpassen könnte.
 
-Zwei Dinge wollen eingerichtet werden, und sie sind unabhängig voneinander:
-der **tägliche Lauf** und die **Oberfläche**, die dauerhaft erreichbar sein
-soll. Ohne den Lauf zeigt die Oberfläche nie etwas Neues; ohne die Oberfläche
-läuft das Werkzeug trotzdem.
+```bash
+ebw serve        # Oberfläche und Dienst zusammen, beide enden gemeinsam
+ebw web          # nur die Oberfläche
+ebw worker       # nur der Dienst
+```
 
-Drei Wege stehen hier, und man nimmt genau einen: **Container** (fasst beides
-zusammen), **Windows-Aufgabenplanung** oder **systemd**. Wer den Container
-fährt, legt keine Aufgaben an — sonst streiten zwei Server um Port 8437.
+`ebw` gibt es nach `uv sync` in `.venv`; `python -m ebook_watchlist` ist
+derselbe Befehl. Läuft die Oberfläche ohne Dienst, sagt sie es: die Knöpfe
+melden „Kein Hintergrunddienst“, statt still in eine Schlange zu legen, die
+niemand abarbeitet.
+
+Die Schlange liegt in `data/jobs.db`, getrennt von der Hauptdatenbank. Der Dienst
+schreibt nach `data/worker.log` (unter `ebw serve`) oder auf die Konsole; jeder
+Lauf, den er anstößt, ist ein eigener Prozess mit seiner Ausgabe in
+`data/run-ui.log`. Eine Dateisperre serialisiert Läufe weiterhin: ein zweiter
+Start beendet sich sofort wieder, egal woher er kommt.
+
+Ein äußerer Zeitplaner ist nicht mehr nötig, aber möglich: `ebw run --trigger
+cron` läuft nur, wenn die Kadenz es erlaubt, und lässt sich deshalb gefahrlos
+stündlich rufen. Ein Umzug auf einen anderen Rechner ist *Repository kopieren,
+`uv sync`, `data/` mitnehmen*.
 
 ## Container
 
 Der Weg auf einem Rechner, auf dem schon andere Dienste in Containern laufen.
-Ein Container, nicht zwei: der Webprozess startet den Lauf als Kindprozess und
-verfolgt ihn über dessen pid, und der enge Lauf läuft als Thread in ihm.
-Getrennte Container hätten getrennte pid-Namensräume, und die Lauf-Liste zeigte
-„läuft" für längst beendete Läufe.
+Das Bild startet `ebw serve`, also Oberfläche und Dienst in einem Container.
+Getrennt geht es auch — zwei Container aus demselben Bild, `ebw web` und `ebw
+worker`, auf demselben Volume —, denn seit ADR 40 verfolgt niemand mehr eine
+Prozessnummer über Container hinweg.
 
 ```bash
 cp .env.example .env          # Zeitzone, optional der API-Schluessel
@@ -47,25 +59,17 @@ Was dabei zu wissen ist:
   eingebunden — du bearbeitest sie mit deinem Editor. `settings.yaml` ist dabei
   keine Saatgutdatei, sondern wird bei jeder Anfrage gelesen; `seed.yaml`
   dagegen gilt nur beim Import (ADR 32, `CONTEXT.md`).
-- **Der Lauf taktet sich selbst**: das Einstiegsskript stößt beim Start einen
-  Lauf an und dann alle 24 Stunden. Keine feste Uhrzeit — ein Lauf vergleicht
-  gegen die letzte Aufzeichnung, nie gegen „gestern".
-- **Die Kadenz steht in den Einstellungen, nicht im Wirt.** Ein Lauf mit `--trigger cron`
-  schaut selbst ins Journal und tut nichts, wenn der letzte keine
-  `run_every_hours` Stunden her ist (Voreinstellung **20**); er sagt es und
-  endet mit 0, denn zu eifrig ist kein Fehler. Der Wirt darf deshalb dumm sein
-  und einfach täglich rufen. Ohne das kostete jedes `docker compose up` einen
-  vollen Lauf gegen die echten Quellen — ein Nachmittag mit fünf Neubauten
-  steht bis heute in der Preisgeschichte jedes Buchs.
+- **Der Lauf taktet sich selbst**: der Dienst prüft alle 15 Minuten, ob einer
+  fällig ist, und stößt ihn dann an. Nach einer Pause des Containers ist das beim
+  ersten Prüfen so; ein Neustart kostet keinen Lauf, solange der letzte jünger
+  als die Kadenz ist. Ohne das kostete jedes `docker compose up` einen vollen
+  Lauf gegen die echten Quellen — ein Nachmittag mit fünf Neubauten steht bis
+  heute in der Preisgeschichte jedes Buchs.
 
-  Zwanzig statt vierundzwanzig, weil der tägliche Ruf um die Dauer jedes Laufs
-  nach hinten rutscht und sonst irgendwann ein Tag ausfiele.
-
-  Die Grenze gilt der **Maschine**: der Knopf „Lauf jetzt starten" und ein
-  getipptes `ebw` laufen sofort, immer. Von Hand erzwingen lässt sich ein Lauf
-  mit `--fruehestens-nach 0`, verstellen mit `--fruehestens-nach N`. Enge
-  Läufe zählen ohnehin nicht mit — sie fragen eine Adresse ab und machen
-  keinen Rundgang.
+  Die Grenze gilt der **Maschine**: der Knopf „Jetzt prüfen" und ein getipptes
+  `ebw run` laufen sofort, immer. Enge Läufe zählen nicht mit — sie fragen eine
+  Adresse ab und machen keinen Rundgang. Ein abgebrochener Lauf zählt auch nicht:
+  er ist beim nächsten Prüfen wieder fällig.
 - **Das Bewertungstor braucht eine Anmeldung**, sonst erscheinen alle Funde
   unbewertet — kein Fehler, nur kein Tor. Zwei Wege, in dieser Reihenfolge:
   `ANTHROPIC_API_KEY` aus der Console (getrennt abgerechnet), sonst die im Bild
@@ -133,50 +137,30 @@ Ausdrücklich **keine** `--providers.docker.constraints`-Zeile mit einem
 Projektnamen. Eine solche zwingt jeden, der mitfahren will, den Namen eines
 fremden Projekts zu tragen — und dann kennen sich die Projekte doch wieder.
 
-## Windows — Aufgabenplanung
+## Windows — eine Aufgabe zur Anmeldung
 
-### Der tägliche Lauf
-
-[`scripts/run-daily.cmd`](../scripts/run-daily.cmd) wechselt ins Repository,
-startet den Lauf und hängt die Ausgabe an `data/run.log` an. Die Aufgabe
-zeigt einfach auf diese Datei — die ganze Kommandozeile bei `schtasks` zu
-hinterlegen heißt sonst, sich mit den Anführungszeichen-Regeln von `cmd` zu
-prügeln:
-
-```powershell
-$repo = 'D:\Pfad\zum\repo'
-$ich  = "$env:USERDOMAIN\$env:USERNAME"
-Register-ScheduledTask -TaskName 'Buchfink Lauf' -Force `
-  -Action (New-ScheduledTaskAction -Execute "$repo\scripts\run-daily.cmd" -WorkingDirectory $repo) `
-  -Trigger (New-ScheduledTaskTrigger -Daily -At '06:00') `
-  -Principal (New-ScheduledTaskPrincipal -UserId $ich -LogonType Interactive) `
-  -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
-      -ExecutionTimeLimit (New-TimeSpan -Hours 2) -MultipleInstances IgnoreNew)
-```
-
-`StartWhenAvailable` holt einen verpassten Lauf nach — dieselbe Rolle wie
-`Persistent=true` beim systemd-Timer. Das Zeitlimit von zwei Stunden ist
-keine Schätzung der Dauer, sondern eine Notbremse: ein hängender Lauf hält
-sonst die Sperre und blockiert damit auch den von morgen.
-
-### Die Oberfläche
-
-Sie läuft unter `pythonw.exe` aus der bereits gebauten Umgebung — ohne `uv`,
-weil das zur Laufzeit nichts beiträgt, und ohne Konsolenfenster, das sonst
+`ebw serve` läuft unter `pythonw.exe` aus der bereits gebauten Umgebung — ohne
+`uv`, weil das zur Laufzeit nichts beiträgt, und ohne Konsolenfenster, das sonst
 dauerhaft offen stünde und beim versehentlichen Zuklicken den Server mitnähme.
+Eine Aufgabe für den täglichen Lauf braucht es nicht mehr: der Dienst holt nach,
+sobald der Rechner wieder wach ist.
 
 ```powershell
 $repo = 'D:\Pfad\zum\repo'
 $ich  = "$env:USERDOMAIN\$env:USERNAME"
-Register-ScheduledTask -TaskName 'Buchfink Oberflaeche' -Force `
+Register-ScheduledTask -TaskName 'Buchfink' -Force `
   -Action (New-ScheduledTaskAction -Execute "$repo\.venv\Scripts\pythonw.exe" `
-      -Argument '-m ebook_watchlist.web' -WorkingDirectory $repo) `
+      -Argument '-m ebook_watchlist serve' -WorkingDirectory $repo) `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $ich) `
   -Principal (New-ScheduledTaskPrincipal -UserId $ich -LogonType Interactive) `
   -Settings (New-ScheduledTaskSettingsSet -RestartCount 3 `
       -RestartInterval (New-TimeSpan -Minutes 5) `
       -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew)
 ```
+
+Wer von früher die Aufgaben „Buchfink Lauf“ und „Buchfink Oberflaeche“ hat,
+entfernt sie (`Unregister-ScheduledTask -TaskName 'Buchfink Lauf'`, ebenso die
+Oberfläche) — die Oberfläche startete nur `ebook_watchlist.web`, also ohne Dienst.
 
 Vier Einstellungen, die alle einen Grund haben:
 
@@ -197,62 +181,50 @@ selben Netz auch vom Telefon.
 **Beenden und nachsehen:**
 
 ```powershell
-Stop-ScheduledTask  -TaskName 'Buchfink Oberflaeche'   # anhalten
-Start-ScheduledTask -TaskName 'Buchfink Oberflaeche'   # wieder starten
+Stop-ScheduledTask  -TaskName 'Buchfink'   # anhalten, der Dienst endet mit
+Start-ScheduledTask -TaskName 'Buchfink'   # wieder starten
 Get-ScheduledTask -TaskName 'Buchfink*' | Get-ScheduledTaskInfo
 ```
 
-Im Task-Manager stehen **zwei** `pythonw.exe`, und das ist richtig so: die
+Im Task-Manager stehen mehrere `pythonw.exe`, und das ist richtig so: die
 `pythonw.exe` im `.venv` ist ein Trampolin, das den eigentlichen Interpreter
-startet. Wer den Elternprozess abschießt, nimmt das Kind mit — deshalb hält
-man die Aufgabe an, statt Prozesse zu suchen.
+startet, und der Dienst ist ein zweiter Prozess. Wer den Elternprozess
+abschießt, nimmt die Kinder mit — deshalb hält man die Aufgabe an, statt
+Prozesse zu suchen.
 
-Die Ausgabe der Oberfläche landet in `data/web.log`. Ohne Konsole hat
-`pythonw.exe` keine gültigen Ausgabe-Handles; die Oberfläche erkennt das beim
-Start und schreibt stattdessen in diese Datei
-([`web/__main__.py`](../src/ebook_watchlist/web/__main__.py)). Ohne diese
-Vorkehrung beendete schon die erste Startzeile den Prozess mit Rückgabewert 1
-— ohne Spur, weil die Fehlermeldung denselben kaputten Weg genommen hätte.
+Die Ausgabe der Oberfläche landet in `data/web.log`, die des Dienstes in
+`data/worker.log`. Ohne Konsole hat `pythonw.exe` keine gültigen
+Ausgabe-Handles; Buchfink erkennt das beim Start und schreibt stattdessen in
+diese Datei ([`web/__main__.py`](../src/ebook_watchlist/web/__main__.py)). Ohne
+diese Vorkehrung beendete schon die erste Startzeile den Prozess mit
+Rückgabewert 1 — ohne Spur, weil die Fehlermeldung denselben kaputten Weg
+genommen hätte.
 
-## Linux / Raspberry Pi — systemd-Timer
+## Linux / Raspberry Pi — systemd
 
-[`scripts/run-daily.sh`](../scripts/run-daily.sh) übernimmt dieselbe Rolle.
-Zwei Dateien unter `~/.config/systemd/user/`:
+Ein Benutzerdienst unter `~/.config/systemd/user/buchfink.service`:
 
 ```ini
-# ebook-watchlist.service
 [Unit]
 Description=Buchfink
 
 [Service]
-Type=oneshot
+Type=simple
 WorkingDirectory=%h/ebook-watchlist
-ExecStart=%h/ebook-watchlist/scripts/run-daily.sh
-```
-
-```ini
-# ebook-watchlist.timer
-[Unit]
-Description=Taeglicher Buchfink-Lauf
-
-[Timer]
-OnCalendar=*-*-* 06:00:00
-Persistent=true
+ExecStart=%h/ebook-watchlist/.venv/bin/ebw serve
+Restart=on-failure
 
 [Install]
-WantedBy=timers.target
+WantedBy=default.target
 ```
 
 ```bash
-systemctl --user enable --now ebook-watchlist.timer
+systemctl --user enable --now buchfink.service
 ```
 
-`Persistent=true` holt einen verpassten Lauf nach dem Einschalten nach. Nötig
-ist das nicht, weil ein Lauf immer gegen die letzte Aufzeichnung vergleicht,
-nie gegen „gestern". Alle Zeiten sind Ortszeit; bei der Zeitumstellung kann
-ein Lauf ausfallen oder doppelt laufen. Beides ist unkritisch.
-
-Für die Oberfläche gilt dort dasselbe Muster als eigener Dienst — `Type=simple`,
-`ExecStart=%h/ebook-watchlist/.venv/bin/python -m ebook_watchlist.web`,
-`Restart=on-failure`, `WantedBy=default.target`. Unter systemd braucht es die
-Vorkehrung aus `web/__main__.py` nicht: das Journal nimmt die Ausgabe entgegen.
+Wer Oberfläche und Dienst getrennt haben will, legt zwei solche Dateien an, mit
+`ebw web` und `ebw worker`. Unter systemd braucht es die Vorkehrung aus
+`web/__main__.py` nicht: das Journal nimmt die Ausgabe entgegen. Ein Timer für
+den täglichen Lauf ist überflüssig; wer trotzdem einen will, ruft
+[`scripts/run-daily.sh`](../scripts/run-daily.sh) — der Lauf achtet selbst auf
+die Kadenz.

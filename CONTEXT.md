@@ -949,7 +949,8 @@ serialises concurrent Runs.
 *deutsch: Auftrag*
 
 A unit of background work in the queue (`data/jobs.db`, Huey): a Run, a narrow
-recheck of one Watchlist Entry, or a Portrait request. Delivered at most once;
+recheck of one Watchlist Entry, a Portrait request, or identifying a book in the
+Intake. Delivered at most once;
 a Job lost in a crash is not retried by the queue — Catch-up or the reader
 starts it again. Every Job must be idempotent (ADR 40).
 

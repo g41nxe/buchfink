@@ -28,7 +28,6 @@ PATIENCE = timedelta(seconds=90)
 
 #: Eine Prozessnummer, unter der nichts läuft. Prozessnummern beginnen bei 1,
 #: und diese liegt jenseits jedes üblichen Maximums.
-DEAD_PID = 0x7FFFFFFF
 
 
 @pytest.fixture
@@ -185,8 +184,12 @@ def test_a_killed_run_is_reported_instead_of_running_forever(
     client: TestClient, store: Store
 ) -> None:
     """Ein abgeschossener Lauf schreibt sein Ende nie. Eine Seite, die dann für
-    immer "läuft …" zeigt, ist schlechter als eine Fehlermeldung."""
-    store.start_run("test", "ui", datetime.now(), pid=DEAD_PID)
+    immer "läuft …" zeigt, ist schlechter als eine Fehlermeldung.
+
+    Wer als Nächstes die Sperre hält — ein Lauf, der Dienst beim Start —,
+    kennzeichnet ihn als abgebrochen (ADR 40)."""
+    store.start_run("test", "ui", datetime.now())
+    store.abandon_unfinished("test")
 
     panel = client.get("/run/status").text
 
@@ -199,7 +202,8 @@ def test_a_killed_run_is_reported_instead_of_running_forever(
 def test_a_killed_run_is_not_still_listed_as_running_in_the_journal(
     client: TestClient, store: Store
 ) -> None:
-    store.start_run("test", "cron", datetime.now(), pid=DEAD_PID)
+    store.start_run("test", "cron", datetime.now())
+    store.abandon_unfinished("test")
 
     assert "abgebrochen" in client.get("/overview").text
 
@@ -207,12 +211,10 @@ def test_a_killed_run_is_not_still_listed_as_running_in_the_journal(
 def test_a_run_that_hung_for_hours_is_given_up_on(
     client: TestClient, store: Store
 ) -> None:
-    """Prozessnummern werden wiederverwendet: ein tagealter Eintrag darf nicht
-    dadurch als lebendig gelten, dass zufällig etwas anderes diese Nummer hat."""
-    import os
-
+    """Ein tagealter Eintrag ohne Ende gilt als tot, auch bevor ihn jemand
+    gekennzeichnet hat — kein Lauf dieses Werkzeugs dauert Stunden."""
     long_ago = datetime.now() - timedelta(days=2)
-    store.start_run("test", "cron", long_ago, pid=os.getpid())
+    store.start_run("test", "cron", long_ago)
 
     assert "abgebrochen" in client.get("/run/status").text
 
@@ -277,7 +279,7 @@ def test_the_run_opens_no_console_window(monkeypatch: pytest.MonkeyPatch) -> Non
             seen.update(kwargs)
 
     monkeypatch.setattr(runs.subprocess, "Popen", Popen)
-    RunLauncher()._spawn()
+    runs._spawn()
 
     flags = seen["creationflags"]
     assert flags & subprocess.CREATE_NO_WINDOW
@@ -300,7 +302,7 @@ def test_the_watchlist_only_run_passes_the_flag(monkeypatch: pytest.MonkeyPatch)
             seen["argv"] = argv
 
     monkeypatch.setattr(runs.subprocess, "Popen", Popen)
-    RunLauncher()._spawn(only_watchlist=True)
+    runs._spawn(only_watchlist=True)
 
     assert "--watchlist" in seen["argv"] and "--trigger" in seen["argv"]
 

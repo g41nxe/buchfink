@@ -323,6 +323,15 @@ def no_outside_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def jobs_inline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Aufträge arbeitet in Tests ein Faden gleich nach dem Einstellen ab —
+    durch dieselbe Schlange, nur ohne Hintergrunddienst (ADR 40)."""
+    from ebook_watchlist import jobs
+
+    monkeypatch.setenv(jobs.INLINE_ENV, "1")
+
+
+@pytest.fixture(autouse=True)
 def no_narrow_run(monkeypatch: pytest.MonkeyPatch) -> None:
     """Der enge Lauf aus Ticket 51 tut in Tests nichts.
 

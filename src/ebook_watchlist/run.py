@@ -498,6 +498,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_ALREADY_RUNNING
 
     try:
+        # Wer die Sperre hält, weiß: kein anderer Lauf lebt. Was im Journal
+        # noch auf „läuft“ steht, ist abgebrochen (ADR 40).
+        Store(paths.db_path()).abandon_unfinished(settings.slug)
         if args.command == "doctor":
             return _doctor(sources)
         if args.command == "sources":
@@ -577,7 +580,9 @@ def _too_soon(settings, now: datetime, hours: float) -> str:
         (
             run
             for run in Store(paths.db_path()).recent_runs(settings.slug, limit=20)
-            if run.trigger != ENTRY_TRIGGER
+            # Ein abgebrochener Lauf hat nichts erledigt: er hält den nächsten
+            # nicht auf (ADR 40).
+            if run.trigger != ENTRY_TRIGGER and run.status != "abandoned"
         ),
         None,
     )
@@ -1109,7 +1114,7 @@ def _run(
     with ThreadPoolExecutor(max_workers=1, thread_name_prefix="dnb") as pool:
         library = pool.submit(
             _ask_the_library, store, client.for_another_server(), settings,
-            spent=context.original_titles.spent,
+            spent=context.original_titles.spent if context.original_titles else 0,
         )
         fetch_for_books(store, client, observations)
         _record_foreign_ratings(store, observations)

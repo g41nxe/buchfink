@@ -21,6 +21,7 @@ from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.single import Report
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, recheck
+from ebook_watchlist.web import work as work_module
 
 NOW = datetime(2026, 9, 6, 22, 0)
 
@@ -269,7 +270,8 @@ def test_the_same_keeper_carries_other_work(monkeypatch: pytest.MonkeyPatch) -> 
         done.append(key)
         return Report(trouble="geurteilt")
 
-    rechecker = recheck.Rechecker(work=work)
+    monkeypatch.setitem(work_module.WORK, "probe", work)
+    rechecker = recheck.Rechecker("probe")
     rechecker.start(("item", "beam", "7"), now=NOW)
     for _ in range(100):
         if not rechecker.state(("item", "beam", "7")).busy:

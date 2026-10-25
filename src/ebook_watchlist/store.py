@@ -836,6 +836,31 @@ class Store:
             run.error = error
             session.commit()
 
+    def abandon_unfinished(self, profile_slug: str) -> int:
+        """Zeilen, die noch auf „läuft“ stehen, als abgebrochen kennzeichnen.
+
+        Nur aufrufen, wer die Lauf-Sperre hält: dann lebt kein anderer Lauf,
+        und was noch läuft, ist ein Prozess, der nie zum Abschluss kam —
+        abgeschossen, oder der Rechner ging aus (ADR 40). Bis dahin stand dafür
+        die Prozessnummer; die trägt nicht über Container hinweg.
+
+        ``finished_at`` bleibt leer: fertig ist der Lauf nicht geworden, und
+        alles, was nach dem letzten fertigen Lauf fragt, soll ihn weiter
+        übergehen.
+        """
+        with self.session() as session:
+            rows = session.scalars(
+                select(RunRow).where(
+                    RunRow.profile_slug == profile_slug,
+                    RunRow.finished_at.is_(None),
+                    RunRow.status == "running",
+                )
+            ).all()
+            for row in rows:
+                row.status = "abandoned"
+            session.commit()
+            return len(rows)
+
     def recent_runs(self, profile_slug: str, limit: int = 20) -> list[RunRow]:
         """The Run journal, newest first — what the Dashboard shows.
 

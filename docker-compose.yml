@@ -6,9 +6,8 @@ services:
     image: buchfink:local
     container_name: buchfink
     restart: unless-stopped
-    # tini als PID 1. Das Einstiegsskript laesst die Laufschleife im
-    # Hintergrund laufen; ohne init blieben deren beendete Prozesse als
-    # Zombies stehen, weil die Oberflaeche als PID 1 niemanden einsammelt.
+    # tini als PID 1. Der Hintergrunddienst startet jeden Lauf als eigenen
+    # Prozess; ohne init blieben beendete Prozesse als Zombies stehen.
     init: true
     environment:
       # Lokale Zeit, nicht UTC: der Dateiname des Tagesberichts ist das lokale

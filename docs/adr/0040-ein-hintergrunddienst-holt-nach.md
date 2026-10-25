@@ -91,3 +91,20 @@ in `data/secrets.env` oder der Umgebung.
 - Ein Auftrag, der während eines Absturzes lief, wiederholt sich nicht von
   selbst — das ist gewollt und durch das Nachholen gedeckt, nicht durch
   Wiederholungslogik.
+
+## Nachtrag 25.10.2026: Umsetzung
+
+- Der Dienst startet den Lauf weiterhin als **eigenen Prozess** und wartet auf
+  ihn: der Lauf behält seine Ausgabe (`data/run-ui.log`), seine Sperre und seinen
+  Rückgabewert, und ein Absturz darin reißt den Dienst nicht mit. Enger Lauf,
+  Steckbrief und Erkennen laufen in den Fäden des Dienstes.
+- Der Stand kleiner Aufträge und die Anforderung eines Laufs liegen in Hueys
+  Schlüsselablage (`put`/`get`), nicht in seinen Ergebnissen. So können
+  Oberfläche und Dienst getrennte Prozesse sein.
+- Der Dienst meldet sich jede Minute. Ist die letzte Meldung älter als drei
+  Minuten, stellt die Oberfläche nichts ein und sagt „Kein Hintergrunddienst“.
+- „Abgebrochen“ setzt, wer die Lauf-Sperre hält: jeder Lauf beim Start und der
+  Dienst beim Start und bei jedem Prüfen. Die Prozessnummer wird noch ins
+  Journal geschrieben, aber nicht mehr gelesen.
+- In Tests arbeitet ein Faden jeden Auftrag gleich nach dem Einstellen ab, durch
+  dieselbe Schlange (`EBW_JOBS_INLINE`).

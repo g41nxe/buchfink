@@ -465,7 +465,10 @@ def test_the_cadence_from_the_profile_is_what_counts(data_dir: Path) -> None:
     """Die Kadenz ist eine Einstellung, keine Konstante im Code — derselbe
     Abstand entscheidet je nach Profil verschieden."""
     store = Store(paths.db_path())
-    store.start_run("test", "cron", datetime.now() - timedelta(hours=2))
+    # Fertig: ein unfertiger gälte als abgebrochen und hielte nichts auf (ADR 40).
+    earlier = datetime.now() - timedelta(hours=2)
+    store.finish_run(store.start_run("test", "cron", earlier), status="ok", delta_count=0,
+                     finished_at=earlier)
     before = len(store.recent_runs("test"))
 
     # Voreinstellung sind 20 Stunden; zwei sind zu wenig.

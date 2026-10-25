@@ -224,6 +224,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "fastapi" },
     { name = "filelock" },
+    { name = "huey" },
     { name = "jinja2" },
     { name = "lxml" },
     { name = "python-multipart" },
@@ -249,6 +250,7 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "filelock", specifier = ">=4.2.1" },
+    { name = "huey", specifier = ">=3.5.3" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "lxml", specifier = ">=5.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
@@ -404,6 +406,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cd/c4/0e5636363151a2a1795e0a77617168b9ca438e1748ec05fc9b5687f93d64/httpx2_jsfetch-1.0.tar.gz", hash = "sha256:70a0e3eabfef7cce5ad9c629f7d01ca05e418f586646f4ddf14782e4c1454c60", size = 6872, upload-time = "2026-08-07T00:13:07.492Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/43/832f631d32e4f1211caa2ba368317739fe71f0b8530e4c9d15dc454bac2a/httpx2_jsfetch-1.0-py3-none-any.whl", hash = "sha256:cb916b707601e69a07721aabc8f3f6659be3a6893bc1ff5c6f9e02241df2da32", size = 6382, upload-time = "2026-08-07T00:13:06.567Z" },
+]
+
+[[package]]
+name = "huey"
+version = "3.5.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/34/a5193a2658b0e21a787bf23c4f58ed95238c9882371e26e4d169059d91fc/huey-3.5.3.tar.gz", hash = "sha256:3d9e8fe95638bde843fbcfe38c063d906afa0d4b0cf94955a24c0f90eb09bb44", size = 625867, upload-time = "2026-10-24T02:08:57.018Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/2c/bce2ca816fa58424d56792b520336651a0f17c13739d88ddfa8385199718/huey-3.5.3-py3-none-any.whl", hash = "sha256:30cbf102f2074570709cf5a5f8e4a1826cf1fbb55d7fcffda1272a0cfa74f55d", size = 139585, upload-time = "2026-10-24T02:08:55.779Z" },
 ]
 
 [[package]]

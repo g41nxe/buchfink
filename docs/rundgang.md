@@ -215,7 +215,9 @@ trifft (ADR 29).
 | `/suggestions` | Der Stapel: entweder je Zeile ein Zeichen, oder mehrere ankreuzen und unten gemeinsam entscheiden. Zuerst `suggestions_shown` Zeilen (20), „Weitere 10 anzeigen“ hängt unten an |
 | `/profile` | Was das Werkzeug über dich zu wissen glaubt. Nur zum Lesen — mit Absicht |
 
-Start mit `python -m ebook_watchlist.web`. Die Oberfläche bindet an alle
+Start mit `ebw serve` — Oberfläche und Hintergrunddienst, der Läufe, enge Läufe
+und Steckbriefe abarbeitet und nachholt, was fällig ist (ADR 40). Die Oberfläche
+bindet an alle
 Schnittstellen, damit sie vom Handy im selben Netz erreichbar ist, und hat
 **keine Authentifizierung** — sie gehört nicht ins offene Internet
 (`--host 127.0.0.1` schränkt sie auf diesen Rechner ein).

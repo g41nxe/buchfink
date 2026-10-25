@@ -1,40 +1,42 @@
-"""Den engen Lauf anstoßen und sagen, wo er steht (Ticket 51).
+"""Kleine Aufträge anstoßen und sagen, wo sie stehen (Ticket 51, ADR 40).
 
-Ein Faden, kein Prozess: gemessen dauert ein enger Lauf mit bekannter Adresse
-**2,1 s**, und ein eigener Prozess käme mit rund einer Sekunde Python-Hochlauf
-dazu — die Hälfte der Arbeit nochmal, für einen Vorgang, dessen ganzer Zweck
-die sofortige Rückmeldung ist. ``uvicorn`` läuft ohne ``workers``, Zustand im
-Speicher ist damit sicher.
+Der enge Lauf, der Steckbrief und das Erkennen in der Erstaufnahme sind
+Aufträge in der Warteschlange (`jobs`); der Hintergrunddienst arbeitet sie ab.
+Bis ADR 40 liefen sie als Fäden im Webprozess — gemessen, weil ein eigener
+Prozess je engem Lauf rund eine Sekunde Hochlauf gekostet hätte. Der Dienst
+läuft ohnehin, also kostet ein Auftrag nur noch seine Abholung (höchstens eine
+Sekunde, `jobs.worker_main`).
 
-Nebenläufiges Schreiben ist unkritisch: ``journal_mode=WAL`` und
-``busy_timeout=15000`` stehen in :class:`~ebook_watchlist.store.Store` bereits.
-
-Nachgefragt wird über htmx, genau wie beim großen Lauf (``_run_panel.html``):
-der Trigger steht nur dran, solange etwas läuft, also hört die Seite von
-selbst auf zu fragen. Kein Websocket (ADR 3).
+Der Stand je Auftrag liegt in der Schlüsselablage der Schlange, damit
+Oberfläche und Dienst getrennte Prozesse sein können. Nachgefragt wird über
+htmx, genau wie beim großen Lauf (``_run_panel.html``): der Trigger steht nur
+dran, solange etwas läuft. Kein Websocket (ADR 3).
 """
 
 from __future__ import annotations
 
-import threading
-from collections.abc import Callable, Hashable
+from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import datetime
 
+from .. import jobs
 from ..single import Report, check_one
 
-#: Nach so langer Ruhe wird ein fertiger Zustand vergessen. Lang genug, dass
-#: die Seite ihn sicher einmal abgeholt hat, kurz genug, dass die Ablage nicht
-#: unbegrenzt waechst.
-FORGET_AFTER_SECONDS = 300
+__all__ = ["Check", "Rechecker", "check_one"]
+
+#: Was ein Auftrag sagt, dessen Dienst nicht läuft.
+NO_SERVICE = "Kein Hintergrunddienst — `ebw serve` starten"
+
+#: Was ein Auftrag sagt, der mit seinem Dienst untergegangen ist.
+LOST = "Abgebrochen — bitte noch einmal anstoßen"
 
 
 @dataclass(frozen=True, slots=True)
 class Check:
-    """Wo ein Hintergrundjob gerade steht — ein enger Lauf oder ein Urteil.
+    """Wo ein Auftrag gerade steht — ein enger Lauf, ein Steckbrief, ein Erkennen.
 
-    ``key`` ist, woran der Job haengt: beim engen Lauf die Buchnummer, beim
-    Urteil das, was beurteilt wird (#15).
+    ``key`` ist, woran der Auftrag hängt: beim engen Lauf die Buchnummer, beim
+    Steckbrief das, was beschrieben wird (#15).
     """
 
     key: Hashable
@@ -66,63 +68,49 @@ class Check:
 
 
 class Rechecker:
-    """Haelt die laufenden Hintergrundjobs — einen je Schluessel.
+    """Stößt Aufträge einer Art an — einen je Schlüssel — und liest ihren Stand.
 
-    Gebaut fuer den engen Lauf (Ticket 51), inzwischen auch fuer das Urteil
-    (#15): welche Arbeit getan wird, kommt herein, statt fest eingebaut zu
-    sein. Zwei Instanzen derselben Klasse statt zweier Klassen, die dasselbe
-    tun. Ohne ``work`` ist es der enge Lauf, wie bisher.
-
-    Eine Instanz je Anwendung und kein Modul-Global, damit der Zustand eines
-    Tests nicht in den naechsten leckt — dieselbe Ueberlegung wie bei
-    :class:`~ebook_watchlist.web.runs.RunLauncher`.
+    ``kind`` nennt die Arbeit (`web.work.WORK`): ``recheck`` für den engen
+    Lauf, ``portrait`` für den Steckbrief, ``identify`` für die Erstaufnahme.
+    Gebaut wird je Art eine Instanz; der Zustand liegt nicht in ihr, sondern
+    in der Schlange.
     """
 
-    def __init__(self, work: Callable[[Hashable], Report] | None = None) -> None:
-        self._checks: dict[Hashable, Check] = {}
-        self._guard = threading.Lock()
-        self._task = work
+    def __init__(self, kind: str = "recheck") -> None:
+        self.kind = kind
 
-    def start(self, key: Hashable, *, now: datetime | None = None) -> Check:
-        """Anstossen, falls fuer diesen Schluessel nicht schon etwas laeuft."""
+    def start(self, key: Hashable, *, now: datetime | None = None, **options) -> Check:
+        """Anstossen, falls fuer diesen Schluessel nicht schon etwas laeuft.
+
+        ``options`` gehen an die Arbeit mit (etwa ``again`` beim Steckbrief).
+        Ohne laufenden Dienst wird nichts eingestellt — der Auftrag läge sonst
+        still in der Schlange, und die Zeile sagte „wartet …“ für immer.
+        """
         now = now or datetime.now()
-        with self._guard:
-            self._forget_old(now)
-            running = self._checks.get(key)
-            if running is not None and running.busy:
-                return running
-            self._checks[key] = Check(key=key, started_at=now)
-        threading.Thread(target=self._work, args=(key,), daemon=True).start()
-        return self._checks[key]
+        running = self.state(key, now=now)
+        if running is not None and running.busy:
+            return running
+        if not jobs.service_alive():
+            return Check(key=key, started_at=now, report=Report(trouble=NO_SERVICE),
+                         finished_at=now)
+        jobs.job_started(self.kind, key, now)
+        jobs.enqueue("job", self.kind, key, options)
+        return self.state(key, now=now) or Check(key=key, started_at=now)
 
-    def state(self, key: Hashable) -> Check | None:
-        """Wo dieser eine Job steht — ``None``, wenn keiner bekannt ist."""
-        with self._guard:
-            return self._checks.get(key)
-
-    def _work(self, key: Hashable) -> None:
-        # Erst hier nachgeschlagen, nicht beim Bauen: Tests ersetzen
-        # ``check_one`` auf dem Modul, und das soll auch dann greifen.
-        task = self._task or check_one
-        try:
-            report = task(key)
-        except Exception as exc:  # noqa: BLE001 - ein Faden darf nichts mitreissen
-            report = Report(trouble=f"{type(exc).__name__}: {exc}")
-        with self._guard:
-            previous = self._checks.get(key)
-            if previous is not None:
-                self._checks[key] = Check(
-                    key=key,
-                    started_at=previous.started_at,
-                    report=report,
-                    finished_at=datetime.now(),
-                )
-
-    def _forget_old(self, now: datetime) -> None:
-        self._checks = {
-            key: check
-            for key, check in self._checks.items()
-            if check.busy
-            or check.finished_at is None
-            or (now - check.finished_at).total_seconds() < FORGET_AFTER_SECONDS
-        }
+    def state(self, key: Hashable, *, now: datetime | None = None) -> Check | None:
+        """Wo dieser eine Auftrag steht — ``None``, wenn keiner bekannt ist."""
+        raw = jobs.job_state(self.kind, key)
+        if raw is None:
+            return None
+        started = raw["started_at"]
+        if raw["finished_at"] is None:
+            if jobs.job_lost(raw):
+                return Check(key=key, started_at=started, report=Report(trouble=LOST),
+                             finished_at=datetime.now())
+            return Check(key=key, started_at=started)
+        return Check(
+            key=key,
+            started_at=started,
+            report=Report(trouble=raw["trouble"]),
+            finished_at=raw["finished_at"],
+        )

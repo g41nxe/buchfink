@@ -1,27 +1,24 @@
 """Starting a Run from the Dashboard, and saying what became of it (Ticket 10).
 
-The Run does not happen in the web process (ADR 3). This module spawns
-``python -m ebook_watchlist.run --trigger ui`` as a detached child and then
-answers one question for the page: *what is that Run doing right now?*
+The Run does not happen in the web process (ADR 3). Since ADR 40 the button
+puts a job into the queue (`jobs`), and the background service starts
+``python -m ebook_watchlist.run`` as a child of its own and waits for it. This
+module answers one question for the page: *what is that Run doing right now?*
 
-Three things make that question harder than it looks, and each is answered by a
-different piece of evidence:
+Three pieces of evidence, each for a different part of the answer:
 
 - **Is a Run already going?** The file lock is the only authority, and only Run
-  processes ever touch it (the web process must never hold it). So we do not
-  ask: we start the child and let it bounce off the lock itself, which it does
-  by exiting 0 without writing a run row. That is race-free by construction.
+  processes ever touch it (the web process must never hold it). The child
+  bounces off it by exiting 0 without writing a run row.
 - **Did the Run get off the ground at all?** Bad settings make the Run exit
-  before it writes anything to the journal. The journal therefore cannot report
-  it; the child's own exit code and output can, so a launch is remembered until
-  a run row supersedes it.
-- **Is a Run that never finished still alive?** An unfinished row looks the
-  same whether the Run is working or was killed. The Run signs its row with its
-  pid, so the answer is whether that process still exists.
-
-The remembered launch lives in this process and nowhere else. Restarting the
-web app forgets it and falls back to the journal — which is correct: the Run is
-a separate process and carries on regardless (ADR 3).
+  before it writes anything to the journal. The service remembers the
+  *launch* in the queue's key store, and what became of it if the journal
+  cannot tell.
+- **Is a Run that never finished still alive?** Whoever holds the lock marks
+  older unfinished rows as abandoned (`Store.abandon_unfinished`); the service
+  does it when it starts and every time it checks for a due Run. Until then,
+  an unfinished row younger than :data:`ASSUME_DEAD_AFTER` is taken to be
+  running. The pid this used to rest on did not reach across containers.
 """
 
 from __future__ import annotations
@@ -29,18 +26,14 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
-from .. import paths
+from .. import jobs, paths
+from ..jobs import ASSUME_DEAD_AFTER
 from ..store import RunRow, Store
-
-#: A Run this old that still has not finished is treated as gone, whatever its
-#: pid says. Two reasons: rows written before pids were recorded have none, and
-#: an operating system reuses pids, so a very old row can point at an unrelated
-#: process that happens to be alive. No Run of this tool takes hours.
-ASSUME_DEAD_AFTER = timedelta(hours=6)
 
 #: The child's console output. The Digest itself is written as HTML by the Run;
 #: this is here so a Run that fell over before that has left something to read.
@@ -50,41 +43,18 @@ LOG_NAME = "run-ui.log"
 #: not so much that the Dashboard becomes a log viewer.
 LOG_TAIL_BYTES = 2000
 
+#: Where the launch is remembered, between the button and the journal.
+LAUNCH_KEY = "run:launch"
 
-def _alive(pid: int) -> bool:
-    """Does a process with this id exist?
+#: A launch the journal never confirmed, older than this, was lost with its
+#: service (Huey delivers at most once). The button may then offer itself again.
+LAUNCH_LOST_AFTER = timedelta(minutes=10)
 
-    Deliberately no ``psutil``: one cross-platform question does not justify a
-    dependency (ADR 12), and both platforms answer it in a few lines.
-    """
-    if sys.platform == "win32":  # pragma: no cover - the other branch on Linux
-        return _alive_windows(pid)
-    try:
-        os.kill(pid, 0)  # signal 0 checks for existence without delivering one
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True  # somebody else's process, but it is there
-    return True
-
-
-def _alive_windows(pid: int) -> bool:  # pragma: no cover - platform-specific
-    import ctypes
-
-    query_limited_information = 0x1000
-    still_active = 259
-
-    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-    handle = kernel32.OpenProcess(query_limited_information, False, pid)
-    if not handle:
-        return False
-    try:
-        code = ctypes.c_ulong()
-        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
-            return False
-        return code.value == still_active
-    finally:
-        kernel32.CloseHandle(handle)
+NO_SERVICE_DETAIL = (
+    "Der Hintergrunddienst läuft nicht — Läufe, enge Läufe und Steckbriefe "
+    "bleiben liegen. Starten mit `ebw serve` (Oberfläche und Dienst) oder "
+    "`ebw worker`."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +83,7 @@ class RunState:
 
     @property
     def trouble(self) -> bool:
-        return self.kind in {"failed", "abandoned"}
+        return self.kind in {"failed", "abandoned", "no-service"}
 
     @property
     def started_label(self) -> str | None:
@@ -143,140 +113,178 @@ def _log_tail() -> str | None:
     return text or None
 
 
-@dataclass(slots=True)
-class _Launch:
-    """A child we started and have not yet seen appear in the journal."""
+@dataclass(frozen=True, slots=True)
+class Launch:
+    """A Run the button asked for and the journal has not shown yet."""
 
-    process: subprocess.Popen
     at: datetime
+    only_watchlist: bool = False
+    trigger: str = "ui"
     #: A verdict worth repeating on every poll and page load until something
-    #: better comes along. Only failure is kept: it is the end of that Run's
-    #: story and nothing else records it, so forgetting it after one poll would
-    #: make a failed click look like a click that did nothing.
+    #: better comes along. Only failure is kept for good: it is the end of that
+    #: Run's story and nothing else records it.
     outcome: RunState | None = None
+
+
+def _no_service() -> RunState:
+    return RunState("no-service", "Kein Hintergrunddienst", NO_SERVICE_DETAIL)
 
 
 class RunLauncher:
     """Owns the "Run now" button's side of things.
 
-    One per application instance rather than a module-level global, so that the
-    state of one test's launcher cannot leak into the next.
+    Holds no state of its own any more: the launch lives in the queue's key
+    store, where the service can answer it (ADR 40).
     """
-
-    def __init__(self) -> None:
-        self._launch: _Launch | None = None
 
     # -- starting ----------------------------------------------------------
 
     def start(
-        self, store: Store, profile_slug: str, *, only_watchlist: bool = False
+        self,
+        store: Store,
+        profile_slug: str,
+        *,
+        only_watchlist: bool = False,
+        trigger: str = "ui",
     ) -> RunState:
         """Start a Run, unless one is already going.
 
         ``only_watchlist``: die Übersicht bietet neben dem vollen Lauf einen
         zweiten Knopf an, der nur prüft, was auf der Watchlist steht — ohne
         nach Autor:innen, Themen oder Bibliothekslisten zu fegen (``ebw run
-        --watchlist``). Derselbe Prozess, dieselbe Dateisperre: ein Klick auf
-        den einen Knopf sperrt den anderen genauso.
+        --watchlist``). Derselbe Prozess, dieselbe Dateisperre.
 
-        The check below is for the *message*, not for correctness: between
-        asking and spawning, a cron Run could take the lock. That is harmless —
-        the child bounces off the lock and reports it — so this is allowed to
-        be a fraction of a second out of date.
+        ``trigger``: ``ui`` für den Knopf, ``cron`` für das Nachholen des
+        Dienstes — der Lauf achtet dann selbst noch einmal auf die Kadenz.
+
+        Ohne laufenden Dienst wird nichts eingestellt: ein Knopf, der still in
+        eine Schlange legt, die niemand abarbeitet, wäre kaputt.
         """
         state = self.state(store, profile_slug)
         if state.busy:
             return state
-        self._launch = _Launch(
-            process=self._spawn(only_watchlist=only_watchlist), at=datetime.now()
-        )
+        if not jobs.service_alive():
+            return _no_service()
+        jobs.put(LAUNCH_KEY, Launch(datetime.now(), only_watchlist, trigger))
+        jobs.enqueue("run", only_watchlist, trigger)
         return self.state(store, profile_slug)
-
-    def _spawn(self, *, only_watchlist: bool = False) -> subprocess.Popen:
-        log = _log_path()
-        log.parent.mkdir(parents=True, exist_ok=True)
-        environment = dict(os.environ, EBW_DATA_DIR=str(paths.data_dir()))
-        # Eigene Prozessgruppe, und die Ausgabe geht in eine Datei statt in
-        # unsere Leitungen: eine Leitung, die niemand liest, laeuft voll und
-        # haelt den Lauf an, und ein Kind in unserer Gruppe ginge mit der
-        # Oberflaeche unter, sobald jemand dort Strg-C drueckt.
-        #
-        # ``CREATE_NO_WINDOW`` statt ``DETACHED_PROCESS``: abgekoppelt bekommt
-        # ein Konsolenprogramm unter Windows sein *eigenes* Fenster, und das
-        # sprang bei jedem Lauf auf dem Schreibtisch auf. Losgeloest genug ist
-        # der Lauf schon durch die eigene Prozessgruppe.
-        if sys.platform == "win32":  # pragma: no cover - the other branch on Linux
-            extra = {
-                "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
-                | subprocess.CREATE_NO_WINDOW
-            }
-        else:
-            extra = {"start_new_session": True}
-        argv = [sys.executable, "-m", "ebook_watchlist.run", "--trigger", "ui"]
-        if only_watchlist:
-            argv.append("--watchlist")
-        with log.open("wb") as sink:
-            return subprocess.Popen(  # noqa: S603 - fixed argv, no user input
-                # ``--trigger ui`` ist hier nicht nur eine Notiz fuer das
-                # Journal: der Mindestabstand zwischen zwei Rundgaengen
-                # (``run.MIN_RUN_GAP``) gilt nur ``cron``. Hier hat ein Mensch
-                # gedrueckt, und der meint es.
-                argv,
-                stdin=subprocess.DEVNULL,
-                stdout=sink,
-                stderr=subprocess.STDOUT,
-                env=environment,
-                **extra,
-            )
 
     # -- reporting ---------------------------------------------------------
 
     def state(self, store: Store, profile_slug: str) -> RunState:
         latest = store.latest_run(profile_slug)
-        pending = self._pending(latest)
+        pending = _pending(latest)
         if pending is not None:
             return pending
         return _from_journal(latest)
 
-    def _pending(self, latest: RunRow | None) -> RunState | None:
-        """What our own child is doing, while the journal cannot say yet.
 
-        Returns ``None`` once a run row exists that this launch produced — from
-        then on the journal is the better witness and the launch is forgotten.
-        """
-        launch = self._launch
-        if launch is None:
-            return None
-        if latest is not None and latest.started_at >= launch.at:
-            self._launch = None
-            return None
-        if launch.outcome is not None:
-            return launch.outcome
+def _pending(latest: RunRow | None, now: datetime | None = None) -> RunState | None:
+    """What the requested Run is doing, while the journal cannot say yet.
 
-        code = launch.process.poll()
-        if code is None:
-            return RunState("starting", "Lauf wird gestartet …")
-
-        if code == 0:
-            # Exited cleanly without ever writing a run row: the only way that
-            # happens is bouncing off the lock (run.EXIT_ALREADY_RUNNING).
-            #
+    Returns ``None`` once a run row exists that this launch produced — from
+    then on the journal is the better witness and the launch is forgotten.
+    """
+    launch = jobs.get(LAUNCH_KEY)
+    if not isinstance(launch, Launch):
+        return None
+    if latest is not None and latest.started_at >= launch.at:
+        jobs.forget(LAUNCH_KEY)
+        return None
+    if launch.outcome is not None:
+        if launch.outcome.kind == "already-running":
             # Not remembered, unlike a failure: the Run that is holding the
-            # lock has a row of its own, and from the next poll on that row is
-            # the better witness — it can also say when the thing finishes.
-            self._launch = None
-            return RunState(
-                "already-running",
-                "Es läuft bereits ein Lauf",
-                "Angestoßen von cron oder der Kommandozeile. Dieser Knopf hat "
-                "keinen zweiten gestartet.",
-            )
-        launch.outcome = RunState(
+            # lock has a row of its own, and from the next poll on that row
+            # is the better witness.
+            jobs.forget(LAUNCH_KEY)
+        return launch.outcome
+    if (now or datetime.now()) - launch.at > LAUNCH_LOST_AFTER:
+        jobs.forget(LAUNCH_KEY)
+        return None
+    if not jobs.service_alive():
+        return _no_service()
+    return RunState("starting", "Lauf wird gestartet …")
+
+
+def execute(*, only_watchlist: bool, trigger: str) -> None:
+    """The service's half: start the Run as a process of its own and wait.
+
+    A process, not a call: the Run owns its console output, the lock and its
+    exit code, and a crash in it cannot take the service down.
+
+    Queue, database and profile are fixed before the wait: the Run takes
+    minutes, and what the data directory is must not change underneath.
+    """
+    from ..config import ConfigError, load_settings
+
+    queue, db = jobs.queue(), paths.db_path()
+    try:
+        slug: str | None = load_settings().slug
+    except ConfigError:
+        slug = None
+    launch = queue.get(LAUNCH_KEY, peek=True)
+    at = launch.at if isinstance(launch, Launch) else datetime.now()
+    code = _spawn(only_watchlist=only_watchlist, trigger=trigger).wait()
+
+    latest = Store(db).latest_run(slug) if slug else None
+    if latest is not None and latest.started_at >= at:
+        return  # the journal tells the rest
+    if code == 0:
+        # Exited cleanly without ever writing a run row: bouncing off the lock
+        # (run.EXIT_ALREADY_RUNNING), or the cadence said not yet.
+        outcome = RunState(
+            "already-running",
+            "Es läuft bereits ein Lauf",
+            "Angestoßen von cron oder der Kommandozeile. Dieser Knopf hat "
+            "keinen zweiten gestartet.",
+        )
+    else:
+        outcome = RunState(
             "failed",
             "Der Lauf ist gar nicht erst angelaufen",
             _log_tail() or f"Der Prozess endete mit Rückgabecode {code}.",
         )
-        return launch.outcome
+    if isinstance(launch, Launch):
+        queue.put(LAUNCH_KEY, replace(launch, outcome=outcome))
+
+
+def _spawn(*, only_watchlist: bool = False, trigger: str = "ui") -> subprocess.Popen:
+    log = _log_path()
+    log.parent.mkdir(parents=True, exist_ok=True)
+    environment = dict(os.environ, EBW_DATA_DIR=str(paths.data_dir()))
+    environment.pop(jobs.INLINE_ENV, None)
+    # Eigene Prozessgruppe, und die Ausgabe geht in eine Datei statt in
+    # unsere Leitungen: eine Leitung, die niemand liest, laeuft voll und
+    # haelt den Lauf an, und ein Kind in unserer Gruppe ginge mit dem Dienst
+    # unter, sobald jemand dort Strg-C drueckt.
+    #
+    # ``CREATE_NO_WINDOW`` statt ``DETACHED_PROCESS``: abgekoppelt bekommt
+    # ein Konsolenprogramm unter Windows sein *eigenes* Fenster, und das
+    # sprang bei jedem Lauf auf dem Schreibtisch auf. Losgeloest genug ist
+    # der Lauf schon durch die eigene Prozessgruppe.
+    extra: dict[str, Any]
+    if sys.platform == "win32":  # pragma: no cover - the other branch on Linux
+        extra = {
+            "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
+            | subprocess.CREATE_NO_WINDOW
+        }
+    else:
+        extra = {"start_new_session": True}
+    # ``--trigger`` ist hier nicht nur eine Notiz fuer das Journal: die
+    # Kadenz (``run_every_hours``) gilt nur ``cron``. Beim Knopf hat ein
+    # Mensch gedrueckt, und der meint es.
+    argv = [sys.executable, "-m", "ebook_watchlist.run", "--trigger", trigger]
+    if only_watchlist:
+        argv.append("--watchlist")
+    with log.open("wb") as sink:
+        return subprocess.Popen(  # noqa: S603 - fixed argv, no user input
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=sink,
+            stderr=subprocess.STDOUT,
+            env=environment,
+            **extra,
+        )
 
 
 def _from_journal(latest: RunRow | None) -> RunState:
@@ -286,7 +294,7 @@ def _from_journal(latest: RunRow | None) -> RunState:
     if latest.finished_at is None:
         if _still_working(latest):
             return RunState("running", "Lauf läuft …", run=latest)
-        # Started, never wrote an ending, and its process is gone. Saying
+        # Started, never wrote an ending, and nobody works on it. Saying
         # "läuft" forever would be the one answer that is certainly wrong.
         return RunState(
             "abandoned",
@@ -306,9 +314,8 @@ def _from_journal(latest: RunRow | None) -> RunState:
 def journal_status(runs: list[RunRow]) -> dict[int, str]:
     """How each Run reads in the journal list, keyed by run id.
 
-    The stored ``status`` of an unfinished Run is "running" and stays that way
-    for good, because the process that would have corrected it is gone. The
-    list would otherwise show a Run killed weeks ago as still going.
+    The stored ``status`` of an unfinished Run is "running" until whoever holds
+    the lock next marks it abandoned. Until then, its age decides.
     """
     now = datetime.now()
     lines: dict[int, str] = {}
@@ -321,13 +328,12 @@ def journal_status(runs: list[RunRow]) -> dict[int, str]:
 
 
 def _still_working(run: RunRow, now: datetime | None = None) -> bool:
-    at = now or datetime.now()
-    if at - run.started_at > ASSUME_DEAD_AFTER:
+    if run.status == "abandoned":
         return False
-    if run.pid is None:
-        # Written before Runs signed their rows; age is all we have.
-        return True
-    return _alive(run.pid)
+    return (now or datetime.now()) - run.started_at <= ASSUME_DEAD_AFTER
 
 
-__all__ = ["ASSUME_DEAD_AFTER", "LOG_NAME", "RunLauncher", "RunState", "journal_status"]
+__all__ = [
+    "ASSUME_DEAD_AFTER", "LOG_NAME", "Launch", "RunLauncher", "RunState", "execute",
+    "journal_status",
+]
