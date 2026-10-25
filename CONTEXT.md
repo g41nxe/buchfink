@@ -938,11 +938,39 @@ and no errors — an error-only Digest still renders.
 ### Run
 *deutsch: Lauf*
 
-One execution of the scrape-diff-report cycle for a Profile. Fired three ways
-against one entrypoint: cron (best-effort), the UI "Run now" button, or the CLI.
-A Run is stateless with respect to schedule: it diffs current reality against the
-Snapshot whenever the Snapshot was last written, so skipped runs lose nothing —
-the next Run reports the accumulated Deltas. A lock serialises concurrent Runs.
+One execution of the scrape-diff-report cycle for a Profile. It is a Job for
+the Worker, enqueued by Catch-up, by the UI "Run now" button, or run directly by
+the CLI (ADR 40). A Run is stateless with respect to schedule: it diffs current
+reality against the Snapshot whenever the Snapshot was last written, so skipped
+runs lose nothing — the next Run reports the accumulated Deltas. A lock
+serialises concurrent Runs.
+
+### Job
+*deutsch: Auftrag*
+
+A unit of background work in the queue (`data/jobs.db`, Huey): a Run, a narrow
+recheck of one Watchlist Entry, or a Portrait request. Delivered at most once;
+a Job lost in a crash is not retried by the queue — Catch-up or the reader
+starts it again. Every Job must be idempotent (ADR 40).
+
+### Worker
+*deutsch: Hintergrunddienst*
+
+The process that works off Jobs (`ebw worker`, or together with the web UI via
+`ebw serve`). No Job ever runs inside the web process (ADR 3, ADR 40).
+
+### Cadence
+*deutsch: Kadenz*
+
+How often a Run is due: "a Run every N hours", 24 by default, a Setting in the
+database. Not a time of day — see Catch-up.
+
+### Catch-up
+*deutsch: Nachholen*
+
+The Worker's check every 15 minutes: if the last *finished* Run is older than
+the Cadence, enqueue a Run. It replaces a fixed schedule, so a machine that was
+asleep runs as soon as it wakes, and a Run lost in a crash becomes due again.
 
 ### Seed file
 *deutsch: Saatgutdatei*

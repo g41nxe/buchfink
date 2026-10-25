@@ -1,5 +1,9 @@
 # 3. Local Web UI
 
+> **Nachtrag (ADR 40):** Der Lauf ist kein Kindprozess der Oberfläche mehr. Alle
+> Hintergrundarbeit — Lauf, enger Lauf, Steckbrief — ist ein Auftrag für einen
+> eigenen Hintergrunddienst; im Webprozess läuft keine Arbeit mehr.
+
 > **Nachtrag:** Die Konfiguration wandert **nicht vollständig** in die
 > Datenbank. `docs/leseprofil.md` bleibt Repo-Datei mit eigenem
 > Änderungsverfahren (ADR 17), und Selektoren bleiben beim Parser (ADR 18).

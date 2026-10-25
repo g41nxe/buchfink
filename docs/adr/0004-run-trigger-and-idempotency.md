@@ -1,5 +1,9 @@
 # 4. Run Trigger and Idempotency
 
+> **Nachtrag (ADR 40):** Statt Cron holt ein Hintergrunddienst nach, was nach der
+> Kadenz fällig ist; `ebw run --wenn-faellig` bleibt für Cron. Die Idempotenz
+> dieses ADR ist die Voraussetzung dafür, dass Huey höchstens einmal zustellt.
+
 A Run can be fired three ways and must be correct regardless of when the last Run
 happened.
 
