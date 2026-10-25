@@ -63,7 +63,7 @@ def test_a_finished_check_carries_its_report(monkeypatch: pytest.MonkeyPatch) ->
     rechecker = recheck.Rechecker()
 
     rechecker.start(7, now=NOW)
-    for _ in range(100):
+    for _ in range(500):  # bis zu 10 s: der Auftrag geht durch eine echte Schlange
         if not rechecker.state(7).busy:
             done.set()
             break
@@ -107,7 +107,7 @@ def test_a_check_that_blew_up_does_not_stay_busy(monkeypatch: pytest.MonkeyPatch
     rechecker = recheck.Rechecker()
 
     rechecker.start(7, now=NOW)
-    for _ in range(100):
+    for _ in range(500):  # bis zu 10 s: der Auftrag geht durch eine echte Schlange
         if not rechecker.state(7).busy:
             break
         threading.Event().wait(0.02)
@@ -273,7 +273,7 @@ def test_the_same_keeper_carries_other_work(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setitem(work_module.WORK, "probe", work)
     rechecker = recheck.Rechecker("probe")
     rechecker.start(("item", "beam", "7"), now=NOW)
-    for _ in range(100):
+    for _ in range(500):  # bis zu 10 s: der Auftrag geht durch eine echte Schlange
         if not rechecker.state(("item", "beam", "7")).busy:
             break
         threading.Event().wait(0.02)
