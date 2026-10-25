@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 from filelock import FileLock, Timeout
 
-from . import gate, paths, series_watch
+from . import gate, notify, paths, series_watch
 from .bundle_deal import advantage_finder
 from .cleaning import clean_blurb
 from .config import (
@@ -546,6 +546,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             # gegen eine Datei, von der alle annehmen, sie sei abgelöst.
             print(f"{exc}", file=sys.stderr)
             return EXIT_CONFIG_ERROR
+        except Exception as exc:
+            # Ein Lauf, der ganz abbricht, sagt es sofort (#98).
+            notify.run_broke(exc)
+            raise
     finally:
         lock.release()
 
@@ -1186,6 +1190,13 @@ def _run(
         delta_count=len(deltas),
         finished_at=finished_at,
         error="; ".join(f.message for f in failures) or None,
+    )
+
+    # Aufs Telefon unter derselben Bedingung, unter der der Tagesbericht nicht
+    # schweigt (#98) — und Quellen, die zum zweiten Mal ausfallen.
+    notify.after_run(
+        digest, settings, store, failures=failures,
+        ran=[source.name for source in sources], now=finished_at,
     )
 
     # Nothing changed and nothing broke — stay quiet.

@@ -922,6 +922,16 @@ unknown-author titles is out of scope for v1 (a possible v2 feature); v1 genre
 discovery is category-based instead (see Genre Category). The Profile's `no_gos`
 stay dormant until keyword refinement or v2.
 
+### Notification
+*deutsch: Benachrichtigung*
+
+A short message sent through Apprise after a Run whose Digest is not empty:
+a headline with counts ("3 jetzt zu haben · 5 neue Vorschläge"), at most three
+Watchlist hits, and a link built from the setting "Adresse von Buchfink". The
+address (`EBW_NOTIFY_URL`) is a secret in `data/secrets.env` or the environment.
+Source failures are notified only on the second Run in a row; a Run that breaks
+off is notified at once (#98).
+
 ### Digest
 *deutsch: Tagesbericht*
 

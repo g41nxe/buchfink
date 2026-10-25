@@ -25,6 +25,14 @@ Lauf, den er anstößt, ist ein eigener Prozess mit seiner Ausgabe in
 `data/run-ui.log`. Eine Dateisperre serialisiert Läufe weiterhin: ein zweiter
 Start beendet sich sofort wieder, egal woher er kommt.
 
+**Benachrichtigung** (#98): Mit einer Apprise-Adresse in `data/secrets.env`
+(`EBW_NOTIFY_URL=ntfy://dein-geheimes-thema`) oder der Umgebung meldet sich
+Buchfink nach jedem Lauf, dessen Tagesbericht etwas zu sagen hat — „Nichts
+Neues“ nie. Damit der Link in der Nachricht auf dem Telefon trägt, steht auf der
+Übersicht die „Adresse von Buchfink“ (etwa `http://192.168.178.20:8437`). Eine
+Quelle wird gemeldet, wenn sie zweimal hintereinander ausfällt; ein Lauf, der
+abbricht, sofort.
+
 Ein äußerer Zeitplaner ist nicht mehr nötig, aber möglich: `ebw run
 --wenn-faellig` läuft nur, wenn die Kadenz es erlaubt, und lässt sich deshalb
 gefahrlos stündlich rufen. Ein Umzug auf einen anderen Rechner ist *Repository kopieren,

@@ -1901,6 +1901,13 @@ class Store:
             row = session.get(StateRow, (profile_slug, key))
             return row.value if row is not None else None
 
+    def clear_state(self, profile_slug: str, key: str) -> None:
+        with self.session() as session:
+            row = session.get(StateRow, (profile_slug, key))
+            if row is not None:
+                session.delete(row)
+                session.commit()
+
     def set_state(self, profile_slug: str, key: str, value: datetime) -> None:
         with self.session() as session:
             row = session.get(StateRow, (profile_slug, key))

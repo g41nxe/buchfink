@@ -24,6 +24,8 @@ services:
       #    Abonnement traegt es.
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
       EBW_DATA_DIR: /data
+      # Wohin der Tagesbericht als Benachrichtigung geht (Apprise, #98).
+      EBW_NOTIFY_URL: ${EBW_NOTIFY_URL:-}
       # Gesetzt: die Kopfzeile bekommt einen Punkt "CWA", der in einem neuen
       # Tab zur eigenen Calibre-Web-Installation fuehrt. Leer: kein Punkt.
       EBW_CWA_URL: ${EBW_CWA_URL:-}

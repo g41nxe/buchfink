@@ -323,6 +323,17 @@ def no_outside_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def no_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests verschicken nie etwas (#98) — auch nicht mit einer Adresse aus der
+    echten ``data/secrets.env``, die ein Test ohne eigenes Datenverzeichnis
+    fände."""
+    from ebook_watchlist import notify
+
+    monkeypatch.delenv(notify.ADDRESS_ENV, raising=False)
+    monkeypatch.setattr(notify, "deliver", lambda address, title, body: None)
+
+
+@pytest.fixture(autouse=True)
 def jobs_inline(monkeypatch: pytest.MonkeyPatch) -> None:
     """Aufträge arbeitet in Tests ein Faden gleich nach dem Einstellen ab —
     durch dieselbe Schlange, nur ohne Hintergrunddienst (ADR 40)."""
