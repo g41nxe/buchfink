@@ -28,17 +28,18 @@
    von allem hier fern, `inert` jeden Klick; aussehen tun sie wie immer. #}
 <p class="mb-4 text-xs text-soft">Nichts hier löst etwas aus.</p>
 
-{# A2′ (ADR 39) erst hier, umschaltbar gegen den heutigen Stand. Die Wahl gilt
-   nur auf dieser Seite und wird im Browser gemerkt; ohne Speicher bleibt A2′. #}
+{# A2′ (ADR 39) gilt überall; hier lässt es sich zum Vergleich gegen den
+   früheren Stand umschalten. Die Wahl gilt nur auf dieser Seite und wird im
+   Browser gemerkt; ohne Speicher bleibt A2′. #}
 <script>
 (function () {
   var look = "a2";
   try { look = localStorage.getItem("look:design") || "a2"; } catch (e) {}
-  if (look === "a2") document.documentElement.dataset.look = "a2";
+  if (look !== "a2") delete document.documentElement.dataset.look;
 })();
 </script>
 <div class="mb-6 inline-flex rounded border border-rule text-xs" role="group" aria-label="Bildsprache">
-  {% for value, label in (("", "heute"), ("a2", "A2′")) %}
+  {% for value, label in (("", "vorher"), ("a2", "A2′")) %}
   <button type="button" data-look-choice="{{ value }}"
           class="tap px-3 py-1.5 first:rounded-l last:rounded-r"
           onclick="(function (v) { if (v) document.documentElement.dataset.look = v; else delete document.documentElement.dataset.look;

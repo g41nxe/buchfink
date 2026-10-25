@@ -44,3 +44,23 @@ Handschrift in die Navigation — dort, wo man am häufigsten liest.
 - Die Knopfrahmen bleiben schwach (1,45:1), wie bisher — die Knöpfe erkennt man
   an ihren Zeichen. Wird das ein Problem, ist es eine Frage der Barrierefreiheit,
   nicht dieser Entscheidung.
+
+## Nachtrag 25.10.2026: Rollen statt Bernstein, A2′ überall
+
+Bernstein trug sechs Bedeutungen. Jede hat jetzt eine eigene Rolle in
+`app.css`; die Templates nennen die Rolle, nie mehr `amber`. Ohne A2′ zeigen
+alle Rollen auf die alte Farbe, das frühere Bild bleibt also unverändert.
+
+| Rolle | Wofür | unter A2′ |
+| --- | --- | --- |
+| `price` | Betrag, Schnäppchen, Shop-Zeichen, „Hab ich“ (= Kauf) | Orange |
+| `pill` / `pill-bg` | „knapp“, Sammelausgabe, Themen | Textgrau auf hellem Grund |
+| `choice` | verstärkt, gewählte Filter, Merken-Knöpfe | Petrol |
+| `book-mark` | „dieses Buch“ in Spinne und Abgleich | Gold |
+| `warn` | veraltete Statuszeile | Rot (mit Wort „vor n Tagen“) |
+| `heading` | Abschnittstitel | Textfarbe |
+| `header*` | Kopfzeile | Petrol, heller Text |
+
+A2′ gilt seitdem auf allen Seiten (`data-look="a2"` am `<html>`). Die
+Bausteinseite kann zum Vergleich auf den früheren Stand zurückschalten; das
+merkt sich nur der Browser.

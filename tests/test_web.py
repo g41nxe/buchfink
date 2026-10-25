@@ -368,7 +368,8 @@ def test_the_server_never_decides_the_colour(client: TestClient) -> None:
     keine Route, kein Attribut im ausgelieferten HTML."""
     body = client.get("/").text
 
-    assert "<html lang=\"de\">" in body
+    # `data-look` ist der Look (ADR 39), kein Farbschema.
+    assert '<html lang="de" data-look="a2">' in body
     assert "data-theme=" not in body
 
 
