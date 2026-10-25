@@ -9,8 +9,9 @@ and a hard stop the moment a site says 429.
 from __future__ import annotations
 
 import random
+import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 
 import requests
 
@@ -50,7 +51,14 @@ def build_user_agent(contact: str | None) -> str:
 
 @dataclass(slots=True)
 class HttpClient:
-    """Serial, rate-limited GETs. One instance per Run, shared by all Sources."""
+    """Serial, rate-limited GETs — one queue per server.
+
+    Every Source gets its own instance (:meth:`for_another_server`), so the
+    shops and libraries are asked side by side while each of them still sees
+    one request at a time (#101). Within one instance the queue holds across
+    threads too: two Sources that share a server — the DNB, asked during
+    Resolution — wait for each other.
+    """
 
     user_agent: str = DEFAULT_USER_AGENT
     timeout: float = DEFAULT_TIMEOUT_SECONDS
@@ -58,8 +66,11 @@ class HttpClient:
     max_delay: float = MAX_DELAY_SECONDS
     session: requests.Session | None = None
     _last_request_at: float | None = None
+    _given_session: bool = False
+    _turn: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        self._given_session = self.session is not None
         if self.session is None:
             self.session = requests.Session()
         self.session.headers.update(
@@ -68,6 +79,19 @@ class HttpClient:
                 "Accept": "text/html,application/xhtml+xml",
                 "Accept-Language": "de-DE,de;q=0.9",
             }
+        )
+
+    def for_another_server(self) -> HttpClient:
+        """The same manners for a different server: its own pause, its own queue.
+
+        A session handed in from outside (a test, a recording) is kept —
+        whoever passed it wants every request to go through it.
+        """
+        return replace(
+            self,
+            session=self.session if self._given_session else None,
+            _last_request_at=None,
+            _turn=threading.Lock(),
         )
 
     def _wait_turn(self) -> None:
@@ -98,6 +122,10 @@ class HttpClient:
         return self._fetch(url, None).content
 
     def _fetch(self, url: str, params: dict[str, str] | None) -> requests.Response:
+        with self._turn:
+            return self._fetch_in_turn(url, params)
+
+    def _fetch_in_turn(self, url: str, params: dict[str, str] | None) -> requests.Response:
         assert self.session is not None  # set in __post_init__
         last_error: Exception | None = None
 

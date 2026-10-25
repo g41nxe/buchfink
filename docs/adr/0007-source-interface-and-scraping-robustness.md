@@ -29,7 +29,8 @@ than coverage.
 
 ### Cross-cutting (framework-enforced)
 
-- Serial requests, fixed 2-4 s delay between them, descriptive `User-Agent` with
+- Serial requests per server, fixed 2-4 s delay between them (since #101 each
+  Source has its own client and the Sources run side by side), descriptive `User-Agent` with
   contact info, one retry with backoff on 5xx/timeout, hard stop on HTTP 429.
 - A Source **raises** only on "site structure changed / unparseable response",
   including login failure. Per-item "not found" returns `None`.

@@ -206,5 +206,7 @@ def build_sources(settings: Settings, client: HttpClient) -> list[Source]:
         if builder is None:
             known = ", ".join(sorted(_BUILDERS))
             raise ConfigError(f"settings.yaml: unknown source {kind!r} (known: {known})")
-        sources.append(builder(name, options, client))
+        # Jede Quelle ihr eigener Client: die Pause gilt je Server, und die
+        # Quellen fragen nebeneinander (#101).
+        sources.append(builder(name, options, client.for_another_server()))
     return sources

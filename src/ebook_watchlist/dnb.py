@@ -34,6 +34,7 @@ seriell und mit Pause abfragen.
 from __future__ import annotations
 
 import re
+import threading
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -239,8 +240,15 @@ class OriginalTitles:
     #: Was davon verbraucht ist. Eine gedrosselte DNB verbraucht den Rest:
     #: 429 heisst Halt, auch fuer alles, was nach der Zuordnung noch kaeme.
     spent: int = 0
+    #: Onleihe und OverDrive ordnen nebeneinander zu (#101) und teilen sich
+    #: Budget und DNB: einer fragt zur Zeit.
+    _asking: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def __call__(self, isbns: Sequence[str]) -> dict[str, tuple[str, ...]]:
+        with self._asking:
+            return self._ask(isbns)
+
+    def _ask(self, isbns: Sequence[str]) -> dict[str, tuple[str, ...]]:
         known = self.store.dnb_original_titles(isbns)
         for isbn in isbns:
             if isbn in known or self.dnb is None or self.spent >= self.budget:

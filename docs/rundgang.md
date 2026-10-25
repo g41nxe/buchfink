@@ -237,8 +237,8 @@ Schnittstellen, damit sie vom Handy im selben Netz erreichbar ist, und hat
 Vier Regeln, die sich durch den ganzen Code ziehen. Jede stammt aus einem
 Fehler, nicht aus einem Lehrbuch.
 
-**Wir sind Gast auf fremden Servern.** Eine Anfrage zur Zeit, 2 bis 4 Sekunden
-Pause dazwischen, ein ehrlicher User-Agent, genau ein Wiederholungsversuch. Ein
+**Wir sind Gast auf fremden Servern.** Eine Anfrage zur Zeit je Server, 2 bis 4
+Sekunden Pause dazwischen — die Quellen selbst fragen nebeneinander (#101), ein ehrlicher User-Agent, genau ein Wiederholungsversuch. Ein
 `429` beendet den Lauf sofort, statt die Grenze auszutesten. Ein Titelbild ist
 eine Anfrage wie jede andere und wird genauso behandelt (ADR 7).
 

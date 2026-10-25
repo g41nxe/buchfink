@@ -11,6 +11,7 @@ import argparse
 import os
 import sys
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -203,16 +204,34 @@ def _partition_enabled(sources, store: Store) -> tuple[list, list[str]]:
 def _collect(
     sources, settings, watchlist, context: RunContext
 ) -> tuple[list[Observation], list[SourceFailure]]:
-    """Poll every Source. One failing Source does not stop the others (ADR 7)."""
+    """Poll every Source. One failing Source does not stop the others (ADR 7).
+
+    Side by side, one thread per Source (#101): the pauses between requests
+    are per server, so a Run takes as long as its slowest Source instead of
+    all of them added up. Each Source has its own client and therefore its own
+    queue (`build_sources`); a 429 stops only the Source that heard it.
+
+    The Observations come back in the order of the Sources, not of the
+    clock, and are written later on this thread — the Snapshot reads the same
+    on every Run. What a Source keeps on its own way (Resolutions, DNB
+    answers) is small and goes through WAL and `busy_timeout`, which were
+    measured for two processes writing at once (`_tune_sqlite`).
+    """
+    def ask(source) -> list[Observation] | SourceFailure:
+        try:
+            return list(source.collect(settings, watchlist, context))
+        except Exception as exc:  # noqa: BLE001 - deliberate: isolate one Source
+            return SourceFailure(source=source.name, message=f"{type(exc).__name__}: {exc}")
+
     observations: list[Observation] = []
     failures: list[SourceFailure] = []
-    for source in sources:
-        try:
-            observations.extend(source.collect(settings, watchlist, context))
-        except Exception as exc:  # noqa: BLE001 - deliberate: isolate one Source
-            failures.append(
-                SourceFailure(source=source.name, message=f"{type(exc).__name__}: {exc}")
-            )
+    with ThreadPoolExecutor(max_workers=max(len(sources), 1),
+                            thread_name_prefix="source") as pool:
+        for answer in pool.map(ask, sources):
+            if isinstance(answer, SourceFailure):
+                failures.append(answer)
+            else:
+                observations.extend(answer)
     # One place, every Source, before anything is compared or stored. Cleaning
     # inside each parser would mean two implementations that drift (Ticket 16).
     return [_cleaned(observation) for observation in observations], failures
@@ -1084,10 +1103,18 @@ def _run(
     # davor, und ein 403 auf ein Bild riss den Lauf ab, bevor eine einzige
     # Beobachtung geschrieben war — dieselbe Regel wie beim Tor eine Zeile
     # weiter unten: ein Ausfall kostet nie Geschichte.
-    fetch_for_books(store, client, observations)
-    _record_foreign_ratings(store, observations)
-    fetch_for_candidates(store, settings.slug, client)
-    _ask_the_library(store, client, settings, spent=context.original_titles.spent)
+    #
+    # Die DNB und die Bildserver sind verschiedene Server: sie warten nicht
+    # aufeinander (#101). Ein Fehler der DNB-Seite kommt mit `result()` hier an.
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="dnb") as pool:
+        library = pool.submit(
+            _ask_the_library, store, client.for_another_server(), settings,
+            spent=context.original_titles.spent,
+        )
+        fetch_for_books(store, client, observations)
+        _record_foreign_ratings(store, observations)
+        fetch_for_candidates(store, settings.slug, client)
+        library.result()
 
     # Hinter der DNB-Abfrage, denn erst jetzt ist die Sprache neuer Funde
     # bekannt — und vor dem Tor, damit ein fremdsprachiger Fund kein Urteil
