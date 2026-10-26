@@ -196,6 +196,29 @@ Discovery whose Work the reader already has a relation to is not suggested; a
 Watchlist Entry is left alone and only says „hast du schon als …". Never derived
 from a Portrait's original title.
 
+In library terms (FRBR, IFLA LRM, RDA) this is the Work level proper. It stays a
+computed key over Editions (`work_entry`), not a record of its own: nothing is
+stored under it, only looked up through it, because Works grow together as the
+DNB answers days after a first sighting (ADR 42). Every Discovery has a Work
+through its Edition, and every Work one page.
+
+### Edition
+*deutsch: Ausgabe*
+
+What an ISBN identifies — in library terms (FRBR, IFLA LRM, RDA) the
+Manifestation; without an ISBN, Source plus item number. Price, availability and
+Observations belong to the Edition; owning and watching too (ADR 36). Pages and
+links name an Edition (`/work/<isbn>`), never a Work key, because ISBNs do not
+change and Work keys do (ADR 42).
+
+### Reading Languages
+*deutsch: Lesesprachen*
+
+The languages the reader reads, in order of preference (`languages`, ISO 639-2,
+a Setting since ADR 42). Discoveries in other languages are not shown; the
+Watchlist resolves to an Edition in the first language, then the next, and only
+then any — saying so instead of losing the title. Unknown is never foreign.
+
 ### Series
 *deutsch: Reihe*
 
