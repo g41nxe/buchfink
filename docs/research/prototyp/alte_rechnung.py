@@ -10,7 +10,7 @@ import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from ebook_watchlist.facets import (
+from ebook_watchlist.judging.facets import (
     Counterweight,
     Facet,
     Liked,
@@ -22,7 +22,7 @@ from ebook_watchlist.facets import (
     genre_matches,
     is_pattern,
 )
-from ebook_watchlist.portrait import Portrait, Vocabulary
+from ebook_watchlist.judging.portrait import Portrait, Vocabulary
 
 
 @dataclass(frozen=True, slots=True)

@@ -18,9 +18,9 @@ from sqlalchemy import select
 
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.facets import ReadingProfile, genre_matches, is_pattern
-from ebook_watchlist.judging import load_judge
-from ebook_watchlist.portrait import Portrait, Trait
+from ebook_watchlist.judging.facets import ReadingProfile, genre_matches, is_pattern
+from ebook_watchlist.judging.judge import load_judge
+from ebook_watchlist.judging.portrait import Portrait, Trait
 from ebook_watchlist.store import PortraitRow, Store, _portrait_of
 
 _sys.path.insert(0, str(Path(__file__).parent))

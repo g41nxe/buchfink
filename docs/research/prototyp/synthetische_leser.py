@@ -39,7 +39,7 @@ from alte_rechnung import Weights as OldWeights  # noqa: E402
 from alte_rechnung import fit as old_fit  # noqa: E402
 
 from ebook_watchlist import paths  # noqa: E402
-from ebook_watchlist.facets import (  # noqa: E402
+from ebook_watchlist.judging.facets import (  # noqa: E402
     Counterweight,
     Facet,
     Liked,
@@ -48,9 +48,14 @@ from ebook_watchlist.facets import (  # noqa: E402
     is_pattern,
     load_weights,
 )
-from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary  # noqa: E402
+from ebook_watchlist.judging.portrait import (  # noqa: E402
+    Portrait,
+    Trait,
+    fingerprint,
+    load_vocabulary,
+)
+from ebook_watchlist.judging.taste_form import RatedBook, book_terms, learn, overlap  # noqa: E402
 from ebook_watchlist.store import PortraitRow, Store, _portrait_of  # noqa: E402
-from ebook_watchlist.taste_form import RatedBook, book_terms, learn, overlap  # noqa: E402
 
 OUT = sys.argv[1]
 V, W, OLD = load_vocabulary(), load_weights(), OldWeights()

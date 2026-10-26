@@ -20,9 +20,9 @@ from pathlib import Path
 
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.judging import load_judge
-from ebook_watchlist.portrait import Portrait, Trait, load_vocabulary
-from ebook_watchlist.portrayer import build_portrayer
+from ebook_watchlist.judging.judge import load_judge
+from ebook_watchlist.judging.portrait import Portrait, Trait, load_vocabulary
+from ebook_watchlist.judging.portrayer import build_portrayer
 from ebook_watchlist.store import Store
 
 ORDNER = Path(paths.data_dir()) / "experimente" / "sprachfassungen"
