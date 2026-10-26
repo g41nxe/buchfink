@@ -151,7 +151,11 @@ def context(now: datetime) -> dict:
             "failed": RunState(
                 "failed",
                 "Lauf mit Fehlern beendet",
-                "SourceStructureError: OverDrive: Titel '7802220' nennt kein ownedCopies",
+                "SourceStructureError: OverDrive: Titel '7802220' nennt kein ownedCopies\n"
+                # Ein Pfad ohne Leerzeichen, wie ihn ein Traceback bringt: er
+                # darf die Seite nicht breit schieben.
+                '  File "/home/buchfink/.venv/lib/python3.12/site-packages/'
+                'ebook_watchlist/sources/overdrive/parse.py", line 412',
             ),
         },
     }

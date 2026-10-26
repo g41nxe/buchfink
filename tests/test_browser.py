@@ -102,7 +102,18 @@ def _no_sideways_scroll(page) -> None:
     overflow = page.evaluate(
         "document.documentElement.scrollWidth - document.documentElement.clientWidth"
     )
-    assert overflow <= 0, f"die Seite ragt {overflow} px seitlich heraus"
+    if overflow > 0:
+        # Wer herausragt, mit Klasse und Textanfang: sonst bleibt im CI nur die Zahl.
+        culprits = page.evaluate("""() => {
+            const edge = document.documentElement.clientWidth;
+            return [...document.querySelectorAll('body *')]
+                .filter(el => el.getBoundingClientRect().right > edge + 1)
+                .filter(el => ![...el.children].some(
+                    child => child.getBoundingClientRect().right > edge + 1))
+                .slice(0, 3)
+                .map(el => `${el.tagName}.${el.className}: ${el.textContent.trim().slice(0, 80)}`);
+        }""")
+        raise AssertionError(f"die Seite ragt {overflow} px seitlich heraus — {culprits}")
 
 
 def _one_line(buttons) -> None:
@@ -223,3 +234,12 @@ def test_the_checks_notice_a_break(server: str, browser) -> None:
     with pytest.raises(AssertionError, match="seitlich"):
         _no_sideways_scroll(page)
     context.close()
+
+
+def test_a_long_run_message_does_not_widen_the_page(server: str, page) -> None:
+    """Ein Traceback trägt Pfade ohne Leerzeichen; im CI schob einer die
+    Watchlist um 355 px breit (#105)."""
+    page.goto(server + "/_design")
+    page.locator("text=Lauf mit Fehlern beendet").first.wait_for()
+
+    _no_sideways_scroll(page)

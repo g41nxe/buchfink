@@ -80,6 +80,8 @@
   </div>
 
   {% if run_state.detail %}
-  <p class="mt-2 text-sm whitespace-pre-wrap text-soft">{{ run_state.detail }}</p>
+  {# `wrap-anywhere`: ein Traceback trägt Pfade ohne Leerzeichen, und die
+     schoben die Seite sonst breit (im CI gemessen, #105). #}
+  <p class="mt-2 text-sm whitespace-pre-wrap wrap-anywhere text-soft">{{ run_state.detail }}</p>
   {% endif %}
 </section>
