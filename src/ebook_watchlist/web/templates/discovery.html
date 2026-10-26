@@ -106,6 +106,8 @@
 
 {# Unter dem Urteil, nicht darüber (#110): erst was das Buch ist und ob es
    passt, dann der Text des Verlags. #}
+{% include "_editions.html" %}
+
 {% if page.blurb %}
 {{ section("Klappentext", "ic-doc") }}
 {{ blurb(page.blurb) }}

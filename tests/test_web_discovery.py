@@ -154,7 +154,7 @@ def test_the_head_names_title_author_and_source_and_nothing_else(
     Satz "neu im Thema Psychothriller" sagte dasselbe ein zweites Mal."""
     put_discovery(db, isbn="9783104911854")
 
-    body = client.get("/discovery/beam/7").text
+    body = client.get("/discovery/beam/7", follow_redirects=True).text
 
     assert "9783104911854" not in body
     assert "neu im Thema" not in body
@@ -420,7 +420,7 @@ def test_a_bundle_names_its_volumes_and_what_she_said_to_them(
     db.put_relation("test", book.id, "watching", now=NOW)
     db.series_from_bundles("test")
 
-    page = client.get("/discovery/beam/4").text
+    page = client.get("/discovery/beam/4", follow_redirects=True).text
 
     assert "Harry Hole" in page
     assert "Enthält" in page

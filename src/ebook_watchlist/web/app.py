@@ -40,6 +40,7 @@ from . import (
     book,
     design,
     discovery,
+    editions,
     home,
     intake,
     owned,
@@ -892,8 +893,49 @@ def create_app() -> FastAPI:
 
     # --- Buchseite (Ticket 07) ---------------------------------------------
 
+    def _has_relation(store: Store, slug: str, book_id: int | None) -> bool:
+        return book_id is not None and any(
+            row.active for row in store.relations_of(slug, book_id)
+        )
+
+    @app.get("/work/{ref}", response_class=HTMLResponse)
+    def work_page(request: Request, ref: str) -> HTMLResponse:
+        """Eine Seite je Werk (#111, ADR 42), genannt nach einer Ausgabe.
+
+        ``ref`` ist eine ISBN oder, für einen Fund ohne, ``quelle:nummer``.
+        Gibt es zur Ausgabe ein Buch mit geltender Beziehung, ist es die
+        Buchseite, sonst die des Funds — beide mit allen Ausgaben und Quellen
+        des Werks. Diese Adresse leitet nie weiter: die alten tun es hierher.
+        """
+        settings = load_settings()
+        store = _store_for(paths.db_path())
+        if ":" in ref:
+            source, _, item_id = ref.partition(":")
+            return _discovery_page(request, source, item_id)
+        book_id = store.book_by_isbn(ref)
+        if _has_relation(store, settings.slug, book_id):
+            assert book_id is not None
+            return _book_page(request, book_id)
+        seen = store.sightings_by_isbn(settings.slug, [ref]).get(ref) or []
+        if not seen:
+            # Ein Buch ohne Beobachtung — etwa frisch aus dem Saatgut — ist
+            # trotzdem eine Seite: die Buchseite.
+            if book_id is not None:
+                return _book_page(request, book_id)
+            raise HTTPException(status_code=404, detail="keine solche Ausgabe")
+        newest = max(seen, key=lambda o: (o.observed_at is not None, o.observed_at or 0))
+        return _discovery_page(request, newest.source, newest.source_item_id)
+
     @app.get("/book/{book_id}", response_class=HTMLResponse)
-    def book_page(request: Request, book_id: int) -> HTMLResponse:
+    def book_page(request: Request, book_id: int) -> Response:
+        """Mit ISBN dauerhaft zur Werkseite (ADR 42); ohne bleibt diese Adresse."""
+        store = _store_for(paths.db_path())
+        found = store.book(book_id)
+        if found is not None and found.isbn:
+            return RedirectResponse(f"/work/{found.isbn}", status_code=301)
+        return _book_page(request, book_id)
+
+    def _book_page(request: Request, book_id: int) -> HTMLResponse:
         try:
             settings = load_settings()
         except ConfigError as exc:
@@ -921,6 +963,7 @@ def create_app() -> FastAPI:
                 "portrait_job": portrait_jobs.state(("book", book_id)),
                 "run_in_progress": _run_in_progress(store, settings),
                 "sharpening": sharpening.build(store, settings, book_id),
+                "editions": editions.build(store, settings, page.isbn),
             },
         )
 
@@ -1111,7 +1154,7 @@ def create_app() -> FastAPI:
     # --- Die Seite zu einem Fund (Issue #9) ---------------------------------
 
     @app.get("/discovery/{source}/{item_id}", response_class=HTMLResponse)
-    def discovery_page(request: Request, source: str, item_id: str) -> HTMLResponse:
+    def discovery_page(request: Request, source: str, item_id: str) -> Response:
         """Die Buchseite ohne das, was es vor einer Entscheidung nicht gibt.
 
         Sobald der Fund eine Buch-Zeile mit einer *geltenden* Beziehung hat,
@@ -1129,10 +1172,22 @@ def create_app() -> FastAPI:
         settings = load_settings()
         store = _store_for(paths.db_path())
         book_id = store.book_by_source_item(source, item_id)
-        if book_id is not None and any(
-            row.active for row in store.relations_of(settings.slug, book_id)
-        ):
-            return RedirectResponse(f"/book/{book_id}", status_code=303)
+        if _has_relation(store, settings.slug, book_id):
+            assert book_id is not None
+            found = store.book(book_id)
+            target = (
+                f"/work/{found.isbn}" if found is not None and found.isbn else f"/book/{book_id}"
+            )
+            return RedirectResponse(target, status_code=303)
+        seen = store.observations_for_item(settings.slug, source, item_id, limit=1)
+        if seen and seen[0].isbn:
+            # Mit ISBN gehört der Fund zu einem Werk, und das hat eine Seite (ADR 42).
+            return RedirectResponse(f"/work/{seen[0].isbn}", status_code=301)
+        return _discovery_page(request, source, item_id)
+
+    def _discovery_page(request: Request, source: str, item_id: str) -> HTMLResponse:
+        settings = load_settings()
+        store = _store_for(paths.db_path())
         page = discovery.build(store, settings, source, item_id)
         if page is None:
             raise HTTPException(status_code=404, detail="kein solcher Fund")
@@ -1147,6 +1202,7 @@ def create_app() -> FastAPI:
                 "icons": symbols.RELATION_ICONS,
                 "portrait_job": portrait_jobs.state(("item", source, item_id)),
                 "run_in_progress": _run_in_progress(store, settings),
+                "editions": editions.build(store, settings, page.isbn),
             },
         )
 

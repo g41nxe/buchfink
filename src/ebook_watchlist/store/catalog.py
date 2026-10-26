@@ -1058,6 +1058,11 @@ class CatalogMixin(ObservationsMixin):
                 session.expunge(row)
             return rows
 
+    def book_by_isbn(self, isbn: str) -> int | None:
+        """Das Buch, das diese ISBN trägt — falls es eine Buchzeile gibt (ADR 18)."""
+        with self.session() as session:
+            return session.scalars(select(BookRow.id).where(BookRow.isbn == isbn)).first()
+
     def book_by_source_item(self, source: str, source_item_id: str) -> int | None:
         """Welches Buch diese Quelle unter dieser Nummer fuehrt, falls bekannt.
 

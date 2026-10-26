@@ -1,0 +1,41 @@
+{# Ausgaben und Quellen eines Werks (#111, ADR 42): je Ausgabe ihre Kacheln.
+
+   Dasselbe Buch bei beam und in der Onleihe, die deutsche und die englische
+   Ausgabe — alles, was zu diesem Werk zu haben ist, auf einer Seite. Die
+   genannte Ausgabe zuerst, dann nach Lesesprachen; fremde Sprachen hinter
+   „weitere Ausgaben“. Erwartet: `editions` (eine `Editions`). #}
+{% from "_section.html" import section %}
+{% from "_source_tile.html" import tile %}
+{% macro _edition(e) %}
+<li class="py-3 first:pt-0">
+  <p class="mb-2 text-sm">
+    <span class="font-serif {{ 'font-semibold' if e.named }}">{{ e.title }}</span>
+    <span class="text-soft">· ISBN <span class="tabular-nums">{{ e.isbn }}</span>
+      {%- if e.language %} · {{ e.language }}{% endif %}
+      {%- if e.named %} · diese Ausgabe{% endif %}</span>
+  </p>
+  <div class="grid gap-2 sm:grid-cols-2">
+    {% for t in e.tiles %}
+    {{ tile(t.display, library=t.library, url=t.url, price=t.price,
+            availability=t.availability, deal=t.deal, fills=true) }}
+    {% endfor %}
+  </div>
+</li>
+{% endmacro %}
+{% if editions and editions.worth_showing %}
+<div data-editions>
+{{ section("Ausgaben und Quellen", "ic-lib") }}
+<ul class="divide-y divide-hair">
+  {% for e in editions.shown %}{{ _edition(e) }}{% endfor %}
+</ul>
+{% if editions.more %}
+<details class="mt-2">
+  <summary class="cursor-pointer text-sm text-soft hover:text-ink">
+    weitere Ausgaben in anderen Sprachen ({{ editions.more | length }})</summary>
+  <ul class="mt-2 divide-y divide-hair">
+    {% for e in editions.more %}{{ _edition(e) }}{% endfor %}
+  </ul>
+</details>
+{% endif %}
+</div>
+{% endif %}
