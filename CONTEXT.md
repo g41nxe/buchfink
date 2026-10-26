@@ -783,9 +783,11 @@ sample the model was not given) and, for a term but not for a story pattern, its
 
 It is kept at the book's subject, the ISBN where there is one, append-only. The
 same book always has the same Steckbrief: a new one is asked for only when the
-instructions or the Appeal Terms change, never when the Appeal Families do,
-because those are applied when it is read. Rules the answer breaks are kept
-beside it rather than used to discard it. A book the model does not know gets a
+Appeal Terms or the required fields of the answer change, never when the wording
+of the instructions or the Appeal Families do (ADR 43). Rules the answer breaks
+are kept beside it rather than used to discard it; between two Steckbriefe with
+text, the one with fewer of them counts. An optional *Form* (short story,
+novella, novel) stands in where no page count is known. A book the model does not know gets a
 Steckbrief too — *unbekannt*, without terms — so it is not asked again.
 
 **Reader-facing name: *Steckbrief*.**
