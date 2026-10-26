@@ -76,6 +76,10 @@ class GateNote:
     no_profile: bool = False
     #: Kurzgeschichten nach der Seitenzahl der Detailseite (#73): nicht gezeigt.
     short_stories: int = 0
+    #: Warum nicht bewertet werden konnte, wie das Modell es sagte (#95).
+    reason: str | None = None
+    #: Kein einziges Buch wurde beschrieben: der Weg zum Modell ist kaputt (#95).
+    all_failed: bool = False
 
     @property
     def is_worth_saying(self) -> bool:
@@ -99,8 +103,9 @@ class GateNote:
                 "und deshalb ungeprüft gezeigt"
             )
         if self.unrated:
+            because = f" ({self.reason})" if self.reason else ""
             parts.append(
-                f"{self.unrated} konnten nicht bewertet werden und werden "
+                f"{self.unrated} konnten nicht bewertet werden{because} und werden "
                 "ungeprüft gezeigt"
             )
         if self.no_profile:

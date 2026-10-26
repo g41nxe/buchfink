@@ -298,7 +298,7 @@ def no_portrayer(monkeypatch: pytest.MonkeyPatch) -> None:
     real = portrayer.build_portrayer
     for name, module in list(sys.modules.items()):
         if name.startswith("ebook_watchlist") and getattr(module, "build_portrayer", None) is real:
-            monkeypatch.setattr(module, "build_portrayer", lambda model=None, vocabulary=None: None)
+            monkeypatch.setattr(module, "build_portrayer", lambda *_: None)
 
 
 def portrayer_via(channel):
@@ -309,7 +309,17 @@ def portrayer_via(channel):
     """
     from ebook_watchlist.judging.portrayer import Portrayer
 
-    return lambda model=None, vocabulary=None: Portrayer(channel, vocabulary)
+    def build(model, vocabulary, settings=None):
+        portrayer = Portrayer(channel, vocabulary)
+        if settings is not None:
+            # Wie das echte ``build_portrayer`` (#95): der Holer für die
+            # Leseprobe kommt mit, und Tests ersetzen ``sample.fetcher_for``.
+            from ebook_watchlist import sample
+
+            portrayer.samples = sample.fetcher_for(settings)
+        return portrayer
+
+    return build
 
 
 @pytest.fixture(autouse=True)
@@ -320,7 +330,9 @@ def no_outside_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(book, "evidence_sources", lambda settings, store: [])
     # Die Leseprobe als zweite Stufe (#76) holt in Tests nichts.
-    monkeypatch.setattr(book, "sample_fetcher", lambda settings: lambda url: None)
+    from ebook_watchlist import sample
+
+    monkeypatch.setattr(sample, "fetcher_for", lambda settings: lambda url: None)
 
 
 @pytest.fixture(autouse=True)

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from ebook_watchlist import credentials, notify, paths
-from ebook_watchlist.config import load_settings
+from ebook_watchlist.config import Settings, load_settings
 from ebook_watchlist.digest import (
     SECTION_AUTHORS,
     SECTION_GENRE,
@@ -210,3 +211,48 @@ def test_the_run_sends_exactly_when_it_writes_a_digest(data_dir: Path, sent) -> 
     messages = [title for title, _ in sent if "Quelle" not in title]
     assert len(messages) == len(written)
 
+
+
+def test_a_gate_that_failed_for_every_book_is_reported(sent) -> None:
+    """Eine abgelaufene Anmeldung bemerkt sonst niemand (#95)."""
+    from ebook_watchlist.digest import GateNote
+
+    note = GateNote(unrated=12, reason="Claude Code meldet: OAuth session expired",
+                    all_failed=True)
+    blocked = replace(digest(), gate=note)
+
+    notify.after_run(blocked, Settings(slug="t", name="T"),
+                     _NoStore(), failures=[], ran=[], now=NOW)  # type: ignore[arg-type]
+
+    assert any("Bewertungstor" in title and "OAuth" in body for title, body in sent)
+
+
+def test_a_single_unrated_book_stays_quiet(sent) -> None:
+    from ebook_watchlist.digest import GateNote
+
+    note = GateNote(unrated=1, reason="Zeitüberschreitung", all_failed=False)
+
+    notify.after_run(replace(digest(), gate=note),
+                     Settings(slug="t", name="T"),
+                     _NoStore(), failures=[], ran=[], now=NOW)  # type: ignore[arg-type]
+
+    assert not any("Bewertungstor" in title for title, _ in sent)
+
+
+def test_the_gate_line_names_the_reason() -> None:
+    from ebook_watchlist.digest import GateNote
+
+    note = GateNote(unrated=12, reason="Claude Code meldet: OAuth session expired")
+
+    assert "OAuth session expired" in note.text
+
+
+class _NoStore:
+    def get_state(self, *a):
+        return None
+
+    def set_state(self, *a):
+        pass
+
+    def clear_state(self, *a):
+        pass

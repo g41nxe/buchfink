@@ -337,6 +337,9 @@ class Portrayer:
     #: Holt den Anfang einer Leseprobe zu ihrer Adresse, oder nichts (#76).
     #: Ohne ihn gibt es keine zweite Stufe.
     samples: Callable[[str], str | None] | None = None
+    #: Der letzte Grund, warum das Modell nicht antwortete (#95) — für den
+    #: Tagesbericht, der sonst nur eine Zahl hätte.
+    trouble: str | None = None
 
     def portray(
         self, title: str, author: str | None, blurb: str | None, sample: str | None = None
@@ -436,11 +439,21 @@ class Portrayer:
                 for number, portrait in parse_many(answer, self.vocabulary, len(chunk)).items():
                     book = chunk[number - 1]
                     portrait = replace(portrait, with_text=bool(self._book(book)[2]))
+                    if not portrait.known and portrait.with_text:
+                        # Im Bündel verliert das Modell bei abseitigen Titeln den
+                        # Mut; einzeln kannte es am 6.10. vier von fünf (#95).
+                        # Genau einmal, bevor gespeichert wird.
+                        try:
+                            results[book.key] = self.portray_find(book)
+                            continue
+                        except PortrayalUnavailable as exc:
+                            self.trouble = str(exc)
                     try:
                         results[book.key] = self.with_sample(book, portrait)
                     except PortrayalUnavailable:
                         results[book.key] = portrait
-            except PortrayalUnavailable:
+            except PortrayalUnavailable as exc:
+                self.trouble = str(exc)
                 continue
         return results
 
@@ -476,7 +489,9 @@ def _batch_id(observation: Observation) -> str:
     return re.sub(r"[^A-Za-z0-9_-]", "_", raw)[:64]
 
 
-def build_portrayer(model: str | None, vocabulary: Vocabulary) -> Portrayer | None:
+def build_portrayer(
+    model: str | None, vocabulary: Vocabulary, settings=None
+) -> Portrayer | None:
     """Der Steckbrief-Ersteller, falls ein Weg zum Modell da ist — sonst ``None``.
 
     Zwei Wege, in dieser Reihenfolge:
@@ -491,6 +506,17 @@ def build_portrayer(model: str | None, vocabulary: Vocabulary) -> Portrayer | No
     sondern der Zustand ohne neue Steckbriefe — alles bleibt unbeschrieben und
     wird gezeigt.
     """
+    portrayer = _portrayer(model, vocabulary)
+    if portrayer is not None and settings is not None:
+        # Die Leseprobe als zweite Stufe (#76), hier und nur hier angehängt
+        # (#95): vorher hatte nur der Lauf sie, ``ebw rate`` nie.
+        from .. import sample
+
+        portrayer.samples = sample.fetcher_for(settings)
+    return portrayer
+
+
+def _portrayer(model: str | None, vocabulary: Vocabulary) -> Portrayer | None:
     key = os.environ.get(KEY_ENV)
     if key:
         return Portrayer(ApiChannel(api_key=key, model=model or DEFAULT_MODEL), vocabulary)

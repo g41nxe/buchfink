@@ -792,14 +792,6 @@
                     "endColumn": 37,
                     "lineCount": 1
                 }
-            },
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 66,
-                    "endColumn": 76,
-                    "lineCount": 1
-                }
             }
         ],
         "./tests/test_books.py": [

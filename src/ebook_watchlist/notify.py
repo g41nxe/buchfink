@@ -141,6 +141,13 @@ def after_run(
     note = message(digest, public_url=settings.public_url)
     if note is not None:
         send(note)
+    if digest.gate is not None and digest.gate.all_failed:
+        # Eine abgelaufene Anmeldung bemerkt sonst niemand — bis der Stapel
+        # tagelang unsortiert ist (#95).
+        send(Message(
+            title="Buchfink: Bewertungstor ohne Modell",
+            body=f"{digest.gate.unrated} Funde unbewertet. {digest.gate.reason}",
+        ))
     if twice:
         names = ", ".join(sorted(failure.source for failure in twice))
         send(Message(

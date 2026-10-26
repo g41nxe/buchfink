@@ -7,6 +7,7 @@ die API sind ersetzt.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -491,8 +492,10 @@ def _find(number: int) -> Observation:
 
 
 class BatchChannel:
-    """Antwortet auf ein Bündel mit ``{"bekannt": false}`` je Buch — außer dort, wo
-    die Antwort etwas anderes vorsieht."""
+    """Antwortet auf ein Bündel mit einem knappen bekannten Steckbrief je Buch —
+    außer dort, wo die Antwort etwas anderes vorsieht. Bekannt, nicht
+    „unbekannt“: ein unbekanntes Buch mit Klappentext würde einzeln
+    nachgefragt (#95), und diese Tests zählen das Bündeln."""
 
     def __init__(self, fail_on=(), skip=()) -> None:
         self.calls: list[tuple[str, int]] = []
@@ -505,8 +508,8 @@ class BatchChannel:
         if "--- BUCH 1 ---" not in text:  # ein einzelnes Buch
             return '{"bekannt": false}'
         count = text.count("--- ENDE BUCH ")
-        return json.dumps({str(i): {"bekannt": False} for i in range(1, count + 1)
-                           if i not in self.skip})
+        known = {"bekannt": True, "titel": "T", "merkmale": [], "erzaehlmuster": []}
+        return json.dumps({str(i): known for i in range(1, count + 1) if i not in self.skip})
 
 
 @needs_vocabulary
@@ -650,3 +653,68 @@ def test_the_sample_is_evidence_only_when_it_came_along() -> None:
     portrait = Portrayer(Recorder(KNOWN), load_vocabulary()).portray("Maddrax 697", "Wer", "Text")
 
     assert any("ungültiger Beleg" in v for v in portrait.violations)
+
+
+# --- #95: einmal einzeln nachfragen, Grund behalten, Leseprobe überall ------------
+
+
+class KnowsAlone:
+    """Im Bündel „unbekannt“, einzeln gefragt bekannt — wie am 6.10.2026."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def ask(self, text: str, max_tokens: int = 2000) -> str:
+        self.calls.append(text)
+        if "--- BUCH 1 ---" in text:
+            count = text.count("--- ENDE BUCH ")
+            return json.dumps({str(i): {"bekannt": False} for i in range(1, count + 1)})
+        return json.dumps({"bekannt": True, "titel": "T", "pitch": "Ein Satz.",
+                           "merkmale": [], "erzaehlmuster": []})
+
+
+@needs_vocabulary
+def test_unknown_in_a_bundle_despite_a_blurb_is_asked_once_alone() -> None:
+    channel = KnowsAlone()
+    portrayer = Portrayer(channel, load_vocabulary(), batch_size=8)
+    finds = [_find(n) for n in range(3)]
+
+    results = portrayer.portray_finds(finds)
+
+    singles = [c for c in channel.calls if "--- BUCH 1 ---" not in c]
+    assert len(singles) == 3
+    assert all(results[f.key].known for f in finds)
+
+
+@needs_vocabulary
+def test_unknown_without_a_blurb_is_not_asked_again() -> None:
+    channel = KnowsAlone()
+    portrayer = Portrayer(channel, load_vocabulary(), batch_size=8)
+    finds = [replace(_find(n), blurb=None) for n in range(2)]
+
+    portrayer.portray_finds(finds)
+
+    assert [c for c in channel.calls if "--- BUCH 1 ---" not in c] == []
+
+
+@needs_vocabulary
+def test_the_portrayer_keeps_the_last_reason_it_failed() -> None:
+    portrayer = Portrayer(BatchChannel(fail_on={1}), load_vocabulary(), batch_size=8)
+
+    portrayer.portray_finds([_find(n) for n in range(3)])
+
+    assert portrayer.trouble == "kein Netz"
+
+
+@needs_vocabulary
+def test_the_sample_fetcher_comes_with_the_portrayer(monkeypatch) -> None:
+    """An einer Stelle angehängt: Lauf, ebw rate und Buchseite bekommen ihn gleich."""
+    from ebook_watchlist import sample
+    from ebook_watchlist.config import Settings
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    monkeypatch.setattr(sample, "fetcher_for", lambda settings: "der-holer")
+
+    portrayer = build_portrayer(None, load_vocabulary(), Settings(slug="t", name="T"))
+
+    assert portrayer is not None and portrayer.samples == "der-holer"

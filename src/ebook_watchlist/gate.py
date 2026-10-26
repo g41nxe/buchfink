@@ -49,6 +49,8 @@ class GateReport:
     #: Über dem Budget und deshalb ungefragt durchgelassen — unbewertet und
     #: gezeigt, nie verworfen.
     over_budget: int = 0
+    #: Warum das Modell nicht antwortete, wenn es das sagte (#95).
+    unrated_reason: str | None = None
     #: Es gibt kein Leseprofil, und der Lauf hatte Funde: nichts wurde
     #: geurteilt, und das soll dastehen (ADR 33, Punkt 8).
     no_profile: bool = False

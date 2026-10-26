@@ -43,7 +43,6 @@ from ..judging.ratings import (
 from ..models import Availability, MatchReason
 from ..reasons import is_library_list, short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
-from ..sample import fetcher
 from ..sources import build_sources, registry
 from ..store import Store
 from .comparison import Comparison, compare
@@ -873,10 +872,6 @@ def price_points(history: tuple[Sighting, ...]) -> list[Sighting]:
     return seen
 
 
-def sample_fetcher(settings: Settings):
-    """Der Holer für die Leseprobe als zweite Stufe (#76) — eine Stelle, damit
-    Tests ihn wie die Quellen ersetzen können."""
-    return fetcher(HttpClient(user_agent=build_user_agent(settings.contact)))
 
 
 def evidence_sources(settings: Settings, store: Store) -> list:
@@ -920,13 +915,12 @@ def portray_observation(
     # gibt, weiß erst die Detailseite (unten).
     if stored is not None and not again and (stored.known or stored.with_sample):
         return ""
-    portrayer = build_portrayer(settings.rating_model, vocabulary)
+    portrayer = build_portrayer(settings.rating_model, vocabulary, settings)
     if portrayer is None:
         return (
             "Kein Weg zum Modell: weder ein API-Schlüssel in der Umgebung "
             "noch eine angemeldete Claude-Code-Installation."
         )
-    portrayer.samples = sample_fetcher(settings)
     if with_evidence:
         observation = gather_evidence(
             store, settings, [observation], evidence_sources(settings, store)

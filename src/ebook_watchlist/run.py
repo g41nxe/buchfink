@@ -460,7 +460,11 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         return deltas, gate.unrated_report(deltas)
 
     profile = store.reading_profile(settings.slug)
-    portrayer = build_portrayer(settings.rating_model, vocabulary) if profile is not None else None
+    portrayer = (
+        build_portrayer(settings.rating_model, vocabulary, settings)
+        if profile is not None
+        else None
+    )
     form = (
         learn(
             profile,
@@ -471,13 +475,6 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         if profile is not None
         else None
     )
-
-    if portrayer is not None:
-        # Die zweite Stufe (#76): unbekannt trotz Klappentext, dann einmal mit
-        # dem Anfang der Leseprobe, sofern der Shop eine verlinkt.
-        from .sample import fetcher
-
-        portrayer.samples = fetcher(HttpClient(user_agent=build_user_agent(settings.contact)))
 
     kept, report = gate.apply(
         deltas,
@@ -505,6 +502,9 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
             f"({report.rated} beschrieben, {report.reused} aus dem Speicher)",
             file=sys.stderr,
         )
+    # ``getattr``: nicht jeder Ersteller führt Buch über seine Gründe.
+    if trouble := getattr(portrayer, "trouble", None):
+        report.unrated_reason = trouble
     return kept, report
 
 
@@ -815,7 +815,7 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
             file=sys.stderr,
         )
         return EXIT_CONFIG_ERROR
-    portrayer = build_portrayer(settings.rating_model, judge.vocabulary)
+    portrayer = build_portrayer(settings.rating_model, judge.vocabulary, settings)
     if portrayer is None:
         print(
             "Kein Weg zum Modell: weder ANTHROPIC_API_KEY noch eine angemeldete "
@@ -886,6 +886,10 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
     )
     print(f"\n  Verteilung: {summary or 'keine'}")
     print(f"  Regelverstöße: {violations} in {flawed} von {len(described)} Steckbriefen")
+    if trouble := getattr(portrayer, "trouble", None):
+        # Der Grund, wenn das Modell nicht antwortete (#95): ohne ihn sähe eine
+        # abgelaufene Anmeldung aus wie viele unbekannte Bücher.
+        print(f"  Nicht beschrieben, weil: {trouble}")
 
     _fetch_suggestion_covers(store, settings, client)
     return EXIT_OK
@@ -923,7 +927,7 @@ def _judge(settings: Settings, titles: Sequence[str], file: Path | None, *, ask:
             file=sys.stderr,
         )
         return EXIT_CONFIG_ERROR
-    portrayer = build_portrayer(settings.rating_model, judge.vocabulary) if ask else None
+    portrayer = build_portrayer(settings.rating_model, judge.vocabulary, settings) if ask else None
     if ask and portrayer is None:
         print("Kein Weg zum Modell: nur beurteilt, was einen Steckbrief hat.", file=sys.stderr)
 
@@ -1224,6 +1228,12 @@ def _run(
             unrated=gate_report.unrated,
             no_profile=gate_report.no_profile,
             short_stories=gate_report.short_stories,
+            reason=gate_report.unrated_reason,
+            # Kein einziger Steckbrief, und das Modell nannte einen Grund: dann
+            # ist der Weg kaputt, nicht ein Buch (#95).
+            all_failed=bool(
+                gate_report.unrated_reason and gate_report.unrated and not gate_report.rated
+            ),
         ),
     )
 

@@ -154,3 +154,12 @@ def _page_text(archive: zipfile.ZipFile, path: str) -> str | None:
     for gone in page(["head", "script", "style"]):
         gone.decompose()
     return " ".join(page.get_text(" ").split())
+
+
+def fetcher_for(settings) -> Callable[[str], str | None]:
+    """Der Holer, wie ihn `build_portrayer` anhängt (#95): eine Stelle für
+    Lauf, ``ebw rate``, Buchseite und Erstaufnahme — und für Tests, die ihn
+    ersetzen."""
+    from .http import HttpClient, build_user_agent
+
+    return fetcher(HttpClient(user_agent=build_user_agent(settings.contact)))

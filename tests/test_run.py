@@ -342,7 +342,7 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
 
     monkeypatch.setattr(
         run_module, "build_portrayer",
-        lambda model=None, vocabulary=None: SimpleNamespace(
+        lambda model=None, vocabulary=None, settings=None: SimpleNamespace(
             vocabulary=vocabulary, portray_finds=portray_finds
         ),
     )
@@ -772,8 +772,10 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
     )
     monkeypatch.setattr(
         run_module, "build_portrayer",
-        lambda model=None, vocabulary=None: SimpleNamespace(
-            portray_finds=lambda observations: {o.key: portrayer(o) for o in observations}
+        lambda model=None, vocabulary=None, settings=None: SimpleNamespace(
+            portray_finds=lambda observations, batch=False: {
+                o.key: portrayer(o) for o in observations
+            }
         ),
     )
 
@@ -791,7 +793,7 @@ def test_the_run_without_a_profile_judges_nothing_and_asks_nobody(
     from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
 
-    def never(model=None, vocabulary=None):
+    def never(model=None, vocabulary=None, settings=None):
         raise AssertionError("ohne Profil braucht es keinen Steckbrief-Ersteller")
 
     monkeypatch.setattr(run_module, "build_portrayer", never)
@@ -820,7 +822,7 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
                                         "Fund 2": ("leisurely", "lyrical")})
     store.put_portrait(subject_of(poor.current), described(poor.current),
                        now=datetime.now())
-    monkeypatch.setattr(run_module, "build_portrayer", lambda model=None, vocabulary=None: None)
+    monkeypatch.setattr(run_module, "build_portrayer", lambda *_: None)
 
     kept, report = run_module._apply_gate(store, [good, poor], settings, datetime.now())
 

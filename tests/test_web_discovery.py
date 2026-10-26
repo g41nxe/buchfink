@@ -387,7 +387,9 @@ def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
                                               "gewicht": "praegend"}], "erzaehlmuster": []})
 
     monkeypatch.setattr(book_view, "build_portrayer", portrayer_via(Channel()))
-    monkeypatch.setattr(book_view, "sample_fetcher", lambda settings: lambda url: "Der Anfang.")
+    from ebook_watchlist import sample
+
+    monkeypatch.setattr(sample, "fetcher_for", lambda settings: lambda url: "Der Anfang.")
     monkeypatch.setattr(book_view, "gather_evidence",
                         lambda store, settings, obs, sources: [
                             replace(o, sample_url="https://x.invalid/p.epub") for o in obs])
