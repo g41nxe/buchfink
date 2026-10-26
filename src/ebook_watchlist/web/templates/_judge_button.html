@@ -48,8 +48,10 @@
                text-paper opacity-0 transition group-hover:opacity-100
                group-focus-within:opacity-100 sm:block">{{ label }}</span>
   {% if job and job.trouble %}
-  <span class="pointer-events-none absolute top-full left-1/2 z-30 mt-6 hidden
-               -translate-x-1/2 rounded bg-danger px-1.5 py-0.5 text-xs whitespace-nowrap
+  {# Der Grund kann ein langer Pfad sein (CI, 26.10.2026: 355 px über den Rand):
+     umbrechen und rechtsbündig am Knopf, der rechts in der Zeile sitzt. #}
+  <span class="pointer-events-none absolute top-full right-0 z-30 mt-6 hidden w-64
+               rounded bg-danger px-1.5 py-0.5 text-xs wrap-anywhere
                text-paper opacity-0 transition group-hover:opacity-100 sm:block"
         >{{ job.trouble }}</span>
   {% endif %}
