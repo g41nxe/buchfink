@@ -121,3 +121,35 @@ def test_when_due_runs_only_when_the_cadence_says_so(data_dir: Path, store: Stor
 
     assert main(["run", "--wenn-faellig"]) == EXIT_OK
     assert len(store.recent_runs(slug)) == before + 1
+
+
+def test_the_reading_languages_are_set_by_name_in_order(client: TestClient) -> None:
+    """Lesesprachen (ADR 42): Namen in Rangfolge, gespeichert als Codes."""
+    response = client.post("/settings", data={"languages": "Englisch, deutsch"})
+
+    assert response.status_code == 200
+    assert load_settings().languages == ("eng", "ger")
+    assert 'value="englisch, deutsch"' in client.get("/overview").text
+
+
+def test_an_unknown_language_is_refused(client: TestClient) -> None:
+    response = client.post("/settings", data={"languages": "klingonisch"})
+
+    assert response.status_code == 400
+    assert load_settings().languages == ("ger",)
+
+
+def test_the_build_hands_the_reading_languages_to_overdrive(store: Store) -> None:
+    from dataclasses import replace
+
+    from ebook_watchlist.http import HttpClient
+    from ebook_watchlist.sources.overdrive import OverdriveSource
+    from ebook_watchlist.sources.registry import build_sources
+
+    settings = replace(load_settings(), languages=("eng", "ger"),
+                       sources={"overdrive": {"library": "voebb"}})
+
+    (source,) = build_sources(settings, HttpClient())
+
+    assert isinstance(source, OverdriveSource)
+    assert source.languages == ("eng", "ger")

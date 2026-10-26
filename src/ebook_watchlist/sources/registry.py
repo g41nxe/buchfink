@@ -208,5 +208,9 @@ def build_sources(settings: Settings, client: HttpClient) -> list[Source]:
             raise ConfigError(f"settings.yaml: unknown source {kind!r} (known: {known})")
         # Jede Quelle ihr eigener Client: die Pause gilt je Server, und die
         # Quellen fragen nebeneinander (#101).
-        sources.append(builder(name, options, client.for_another_server()))
+        source = builder(name, options, client.for_another_server())
+        # Eine Quelle mit Sprachfilter sucht in den Lesesprachen (ADR 42).
+        if hasattr(source, "languages"):
+            source.languages = settings.languages  # type: ignore[attr-defined]
+        sources.append(source)
     return sources

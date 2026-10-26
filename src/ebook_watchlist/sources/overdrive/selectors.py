@@ -65,12 +65,6 @@ SEARCH_PARAMS: dict[str, str] = {
     "format": "ebook-epub-adobe",
 }
 
-#: Zuerst wird nur deutsch gesucht. Entfaellt fuer die zweite Suche nach
-#: einem Watchlist-Titel, die die deutsche nicht zuordnen konnte (#77) — ein
-#: Titel, den die Leserin selbst benannt hat, ist nie fremd.
-LANGUAGE_PARAMS: dict[str, str] = {
-    "language": "de",
-}
 
 #: Die Sprache einer Karte (``languages[].id``) in den Codes der DNB (ISO
 #: 639-2/B), damit eine Sprache ueberall gleich heisst. Was hier fehlt,
@@ -100,3 +94,10 @@ PER_PAGE = 20
 #: die Felder noch da sind, nie welche Werte sie tragen.
 PROBE_TITLE_ID = "3222096"
 PROBE_QUERY = "Der Zeitenläufer"
+
+
+#: Umgekehrt: eine Lesesprache (ISO 639-2) als Suchparameter von OverDrive.
+#: Gesucht wird in der Rangfolge der Lesesprachen (ADR 42), erst danach ohne
+#: Sprachfilter — ein Titel, den die Leserin selbst benannt hat, ist nie fremd
+#: (#77).
+OVERDRIVE_CODES: dict[str, str] = {iso: code for code, iso in LANGUAGE_CODES.items()}

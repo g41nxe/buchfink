@@ -287,6 +287,40 @@ def test_a_german_find_needs_no_second_search(context) -> None:
     assert len(overdrive.client.requests) == 1
 
 
+def test_the_reading_languages_are_searched_in_their_order(context) -> None:
+    """Lesesprachen „englisch, deutsch“ (ADR 42): zuerst Englisch, dann
+    Deutsch, erst dann jede Sprache."""
+    client = ScriptedClient(fixture("search-no-hits.json"), fixture("search-no-hits.json"),
+                            answer(ENGLISH))
+    overdrive = OverdriveSource(client=client, languages=("eng", "ger"))  # type: ignore[arg-type]
+
+    overdrive.linked_entry(SCYTHE, context)
+
+    asked = [params.get("language") for _, params in overdrive.client.requests]  # type: ignore[attr-defined]
+    assert asked == ["en", "de", None]
+
+
+def test_the_first_language_that_finds_it_wins(context) -> None:
+    overdrive = OverdriveSource(client=ScriptedClient(answer(ENGLISH)),  # type: ignore[arg-type]
+                                languages=("eng", "ger"))
+
+    linked = overdrive.linked_entry(SCYTHE, context)
+
+    assert linked is not None
+    assert linked.resolved_links["overdrive"] == "https://voebb.overdrive.com/media/1911111"
+    assert len(overdrive.client.requests) == 1  # type: ignore[attr-defined]
+
+
+def test_a_language_overdrive_does_not_know_is_skipped(context) -> None:
+    overdrive = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json")),  # type: ignore[arg-type]
+                                languages=("xxx", "ger"))
+
+    overdrive.linked_entry(SCYTHE, context)
+
+    asked = [params.get("language") for _, params in overdrive.client.requests]  # type: ignore[attr-defined]
+    assert asked == ["de", None]
+
+
 def test_nothing_in_any_language_is_still_an_answer(context) -> None:
     overdrive = OverdriveSource(client=ScriptedClient(fixture("search-no-hits.json")))
 

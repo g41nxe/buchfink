@@ -304,7 +304,7 @@ def _reference_authors(data: dict[str, Any], what: str) -> tuple[list[str], list
 EDITABLE: tuple[str, ...] = (
     "run_every_hours", "home_offers", "home_suggestions", "suggestions_shown",
     "strong_deal_max_cents", "deal_max_cents", "min_discount_pct", "rating_budget",
-    "dnb_budget", "public_url",
+    "dnb_budget", "public_url", "languages",
 )
 
 

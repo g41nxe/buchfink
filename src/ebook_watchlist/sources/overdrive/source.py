@@ -71,8 +71,12 @@ class OverdriveSource(LibrarySource):
         base: str = sel.BASE,
         library: str = sel.LIBRARY,
         collections: tuple[Collection, ...] = (),
+        languages: tuple[str, ...] = ("ger",),
     ) -> None:
         self.client = client
+        #: Die Lesesprachen in ihrer Rangfolge, als ISO 639-2 (ADR 42). Die
+        #: Zuordnung sucht in dieser Reihenfolge, erst danach in jeder Sprache.
+        self.languages = tuple(languages)
         self.name = name
         self.base = base
         self.library = library
@@ -82,7 +86,7 @@ class OverdriveSource(LibrarySource):
     # --- Vorschläge (#74) --------------------------------------------------
 
     def _finds(self, params: dict, reason: MatchReason, category: str | None = None):
-        query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **sel.LANGUAGE_PARAMS,
+        query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **self._finds_language(),
                      **sel.AVAILABLE_ONLY, **params)
         text = self.client.get(self._url(sel.SEARCH_PATH), params=query)
         return parse.parse_finds(
@@ -107,7 +111,7 @@ class OverdriveSource(LibrarySource):
         # Die neuesten Bände stehen hinten, und gerade die zählen: geblättert
         # wird, bis eine Seite nicht mehr voll ist (Review, 04.10.2026).
         for page in range(1, MAX_SERIES_PAGES + 1):
-            query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **sel.LANGUAGE_PARAMS,
+            query = dict(sel.SEARCH_PARAMS, perPage=str(sel.PER_PAGE), **self._finds_language(),
                          seriesId=ref)
             if page > 1:
                 query["page"] = str(page)
@@ -194,10 +198,18 @@ class OverdriveSource(LibrarySource):
     def _url(self, path: str, **kwargs: str) -> str:
         return urljoin(self.base, path.format(library=self.library, **kwargs))
 
-    def _search_page(self, query: str, page: int, *, any_language: bool = False) -> str:
+    def _finds_language(self) -> dict[str, str]:
+        """Für Vorschläge: eine Lesesprache sucht nur in ihr; mehrere suchen in
+        allen, und der Filter nach Lesesprachen sortiert danach aus (ADR 42)."""
+        codes = [c for c in (sel.OVERDRIVE_CODES.get(lang) for lang in self.languages) if c]
+        return {"language": codes[0]} if len(codes) == 1 and len(self.languages) == 1 else {}
+
+    def _search_page(
+        self, query: str, page: int, *, any_language: bool = False, language: str = "de"
+    ) -> str:
         params = dict(sel.SEARCH_PARAMS, query=query, perPage=str(sel.PER_PAGE))
         if not any_language:
-            params.update(sel.LANGUAGE_PARAMS)
+            params["language"] = language
         if page:
             # Seiten sind 1-basiert; ``page=1`` ist die Voreinstellung und wird
             # deshalb gar nicht erst mitgeschickt.
@@ -218,7 +230,19 @@ class OverdriveSource(LibrarySource):
         return f"{entry.title} {surname}"
 
     def resolve(self, entry: WatchlistEntry) -> Resolution | None:
-        return self._resolve(entry, any_language=False)
+        """In den Lesesprachen nacheinander suchen (ADR 42); die erste, in der
+        eine Ausgabe angenommen wird, gewinnt. Sprachen, die OverDrive nicht
+        kennt, werden übersprungen."""
+        best: Resolution | None = None
+        for language in self.languages:
+            code = sel.OVERDRIVE_CODES.get(language)
+            if code is None:
+                continue
+            resolution = self._resolve(entry, any_language=False, language=code)
+            if resolution is not None and resolution.accepted is not None:
+                return resolution
+            best = best or resolution
+        return best
 
     def resolve_in_any_language(self, entry: WatchlistEntry) -> Resolution | None:
         """Dieselbe Suche ohne ``language=de`` (#77).
@@ -229,7 +253,9 @@ class OverdriveSource(LibrarySource):
         """
         return self._resolve(entry, any_language=True)
 
-    def _resolve(self, entry: WatchlistEntry, *, any_language: bool) -> Resolution | None:
+    def _resolve(
+        self, entry: WatchlistEntry, *, any_language: bool, language: str = "de"
+    ) -> Resolution | None:
         # ``identifier``: der Matcher nimmt eine uebereinstimmende Kennung als
         # Zuordnung ("Kennung stimmt ueberein") — dieselbe Mechanik, mit der
         # beam dieses Buch findet. Hier traegt sie die Quelle: der deutsche
@@ -246,7 +272,8 @@ class OverdriveSource(LibrarySource):
 
         for page in range(MAX_RESOLUTION_PAGES):
             found = parse.parse_search(
-                self._search_page(self._query_for(entry), page, any_language=any_language)
+                self._search_page(self._query_for(entry), page, any_language=any_language,
+                                  language=language)
             )
             if found is None:
                 # Kein Treffer — eine Antwort, keine Stoerung.

@@ -11,19 +11,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..config import EDITABLE, Settings
+from ..language import LANGUAGE_NAMES
 
 
 @dataclass(frozen=True, slots=True)
 class Field:
     key: str
     label: str
-    #: ``int``, ``euro`` (Eingabe in Euro, gespeichert in Cent) oder ``url``.
+    #: ``int``, ``euro`` (Eingabe in Euro, gespeichert in Cent), ``url`` oder
+    #: ``languages`` (Namen in Rangfolge, gespeichert als ISO 639-2).
     kind: str = "int"
     unit: str = ""
     hint: str = ""
 
 
 FIELDS: tuple[Field, ...] = (
+    Field("languages", "Lesesprachen", kind="languages",
+          hint="In Rangfolge, etwa „deutsch, englisch“. Vorschläge in anderen Sprachen "
+               "erscheinen nicht; die Watchlist sucht zuerst in der ersten."),
     Field("run_every_hours", "Lauf alle", unit="Stunden",
           hint="Der Hintergrunddienst prüft alle 15 Minuten, ob ein Lauf fällig ist."),
     Field("home_offers", "Startseite: Angebote", unit="Zeilen"),
@@ -54,6 +59,8 @@ def shown(settings: Settings) -> dict[str, str]:
         value = getattr(settings, f.key)
         if f.kind == "euro":
             out[f.key] = f"{value / 100:.2f}".replace(".", ",")
+        elif f.kind == "languages":
+            out[f.key] = ", ".join(LANGUAGE_NAMES.get(str(c), str(c)) for c in value)
         else:
             out[f.key] = "" if value is None else str(value)
     return out
@@ -73,6 +80,10 @@ def parse(form: dict[str, str]) -> dict:
         if f.kind == "url":
             values[f.key] = raw or None
             continue
+        if f.kind == "languages":
+            if raw:
+                values[f.key] = _language_codes(f, raw)
+            continue
         if not raw:
             continue
         try:
@@ -83,3 +94,22 @@ def parse(form: dict[str, str]) -> dict:
         except ValueError as exc:
             raise BadInput(f"„{f.label}“: {raw!r} ist keine Zahl") from exc
     return values
+
+
+_BY_NAME = {name.casefold(): code for code, name in LANGUAGE_NAMES.items()}
+
+
+def _language_codes(f: Field, raw: str) -> list[str]:
+    """„Englisch, deutsch“ → ``["eng", "ger"]``; ein Code geht auch."""
+    codes = []
+    for word in (w.strip().casefold() for w in raw.split(",")):
+        if not word:
+            continue
+        code = _BY_NAME.get(word) or (word if word in LANGUAGE_NAMES else None)
+        if code is None:
+            raise BadInput(f"„{f.label}“: {word!r} ist keine Sprache, die Buchfink kennt")
+        if code not in codes:
+            codes.append(code)
+    if not codes:
+        raise BadInput(f"„{f.label}“: mindestens eine Sprache")
+    return codes

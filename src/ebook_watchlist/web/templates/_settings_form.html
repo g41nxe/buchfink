@@ -18,13 +18,14 @@
       hx-select="#settings" hx-swap="outerHTML"
       class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
   {% for f in settings_fields %}
-  <label class="flex flex-col gap-1 text-sm {{ 'sm:col-span-2' if f.kind == 'url' }}">
+  <label class="flex flex-col gap-1 text-sm {{ 'sm:col-span-2' if f.kind in ('url', 'languages') }}">
     <span class="font-medium">{{ f.label }}</span>
     <span class="flex items-center gap-2">
-      {% set width = "w-full" if f.kind == "url" else "w-24 tabular-nums" %}
+      {% set width = "w-full" if f.kind in ("url", "languages") else "w-24 tabular-nums" %}
       {# 16 px auf dem Telefon, sonst zoomt iOS beim Tippen die Seite. #}
       <input name="{{ f.key }}" value="{{ settings_values[f.key] }}"
              {% if f.kind == 'url' %}type="url" placeholder="http://…"
+             {% elif f.kind == 'languages' %}type="text" placeholder="deutsch, englisch"
              {% else %}inputmode="{{ 'decimal' if f.kind == 'euro' else 'numeric' }}"{% endif %}
              autocomplete="off"
              class="h-10 {{ width }} rounded border border-rule bg-card px-2 text-base text-ink
