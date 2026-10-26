@@ -538,16 +538,6 @@
                 }
             }
         ],
-        "./src/ebook_watchlist/web/app.py": [
-            {
-                "code": "reportReturnType",
-                "range": {
-                    "startColumn": 19,
-                    "endColumn": 72,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./src/ebook_watchlist/web/book.py": [
             {
                 "code": "reportReturnType",
