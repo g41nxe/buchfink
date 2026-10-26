@@ -34,6 +34,8 @@ from pathlib import Path
 
 import yaml
 
+from ..junk import SHORT_STORY_FORM
+
 #: Wo das Vokabular liegt. Nicht in Git: es beruht auf NoveList, und ob es
 #: veröffentlicht werden darf, ist ungeklärt (#59). Ein anderes Verzeichnis
 #: lässt sich mit ``EBW_VOCABULARY_DIR`` angeben.
@@ -63,6 +65,9 @@ MIN_DIMENSIONS, MOST_PER_DIMENSION = 3, 3
 FEWEST_PATTERNS, MOST_PATTERNS = 1, 3
 #: Wie lang der Kurztext höchstens sein darf.
 PITCH_MAX = 200
+#: Die Formen, die ein Steckbrief nennen darf (ADR 43). Nur die erste blendet
+#: aus; eine Novelle bleibt ein Buch (#73).
+FORMS = (SHORT_STORY_FORM, "novelle", "roman")
 #: Eine Antwort mit acht Merkmalen, drei Mustern und ihren Sätzen braucht rund
 #: 1000 Tokens.
 MAX_TOKENS = 2000
@@ -212,6 +217,10 @@ class Portrait:
     #: angehängt — nicht gespeichert. Sie gehen dem ``genre_code`` vor
     #: (ADR 37, Review 04.10.2026).
     source_codes: tuple[str, ...] = ()
+    #: Kurzgeschichte, Novelle oder Roman, wie das Modell es sagt (ADR 43).
+    #: Freiwillig: ``None`` heißt unbekannt, bei jedem Steckbrief von vorher.
+    #: Eine bekannte Seitenzahl geht vor (ADR 34).
+    form: str | None = None
 
 
 def worth_asking_again(portrait: Portrait, *, text_now: bool, sample_now: bool = False) -> bool:
@@ -367,9 +376,14 @@ deutlichsten prägen.
 
 Regeln:
 - Vier bis acht Merkmale, ohne die Erzählmuster.
-- Aus mindestens drei verschiedenen Dimensionen, höchstens drei aus derselben.
-  Zähle vor der Antwort nach: hat eine Dimension mehr als drei, lass das mit dem
-  geringsten Gewicht weg.
+- Aus mindestens drei verschiedenen Dimensionen (Tempo, Handlung, Stimmung,
+  Figuren, Stil; die Erzählmuster zählen nicht mit), höchstens drei aus
+  derselben.
+- Zähle vor der Antwort nach, Dimension für Dimension. Sind es weniger als
+  drei, nimm aus einer fehlenden Dimension das Merkmal, das dieses Buch dort am
+  deutlichsten trägt — fast jedes Buch hat ein erkennbares Tempo, eine
+  Figurenzeichnung oder einen Stil. Hat eine Dimension mehr als drei, lass das
+  mit dem geringsten Gewicht weg.
 - Erzählmuster gehören nie unter "merkmale", sondern nur unter "erzaehlmuster".
   Was im Vokabular unter "Erzählmuster" steht, ist ein Muster, kein Merkmal.
 - Was auf fast jedes Buch seines Genres zutrifft, nimmst du nur, wenn es hier
@@ -411,9 +425,14 @@ Keine Spoiler — die Leserin hat das Buch womöglich noch vor sich:
 Nenne außerdem Genre und Untergenre auf Deutsch, so wie eine Buchhandlung das
 Buch einordnen würde.
 
-Und schreib den Pitch: ein bis zwei Sätze, höchstens 180 Zeichen. Zuerst, was
-das Buch ist; dann, was es ausmacht. Wähle ein Bild, an dem dieses Buch hängt,
-statt es zusammenzufassen. Beschreiben, nicht loben.
+Und die Form, nach dem Umfang: "kurzgeschichte" (eine einzelne Erzählung oder
+ein Heft, weniger als rund 80 Seiten), "novelle" (bis rund 160 Seiten) oder
+"roman". Weißt du es nicht, null — rate nicht.
+
+Und schreib den Pitch: ein bis zwei Sätze, höchstens 160 Zeichen — zähle nach,
+bevor du antwortest. Zuerst, was das Buch ist; dann, was es ausmacht. Wähle ein
+Bild, an dem dieses Buch hängt, statt es zusammenzufassen. Beschreiben, nicht
+loben.
 
 --- VOKABULAR ---
 {vokabular}
@@ -426,6 +445,7 @@ statt es zusammenzufassen. Beschreiben, nicht loben.
 Antworte ausschließlich mit JSON in genau dieser Form:
 {{"bekannt": true, "titel": "...", "autor": "...", "originaltitel": "... oder null",
   "genre": "...", "untergenre": "...", "pitch": "...",
+  "form": "kurzgeschichte, novelle, roman oder null",
   "merkmale": [{{"id": "...", "satz": "...", "beleg": "...",
                 "gewicht": "praegend, deutlich oder rand"}}],
   "erzaehlmuster": [{{"id": "...", "satz": "...", "beleg": "..."}}]}}
@@ -462,7 +482,11 @@ def fingerprint(vocabulary: Vocabulary) -> str:
     known = _FINGERPRINTS.get(id(vocabulary))
     if known is not None and known[0] is vocabulary:
         return known[1]
-    material = TEMPLATE + vocabulary.prompt_text()
+    # Nicht ``TEMPLATE``: eine besser formulierte Regel verwirft keinen
+    # Steckbrief (ADR 43). Was der Abdruck rechnet, steht in `answer_form`.
+    from .answer_form import ANSWER_FORM_V1
+
+    material = ANSWER_FORM_V1 + vocabulary.prompt_text()
     stamp = hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
     if len(_FINGERPRINTS) >= 16:
         _FINGERPRINTS.clear()
@@ -610,12 +634,15 @@ ANSWER_SCHEMA: dict = {
         "untergenre": _maybe("string"),
         "pitch": _maybe("string"),
         "genre_code": _maybe("string"),
+        # Freiwillig in der Bedeutung, nicht im Schema: ``null`` heißt
+        # unbekannt (ADR 43). Ein Feld, das fehlen darf, wäre hier dasselbe.
+        "form": {"anyOf": [{"type": "string", "enum": list(FORMS)}, {"type": "null"}]},
         "merkmale": {"type": "array", "items": _TRAIT_SCHEMA},
         "erzaehlmuster": {"type": "array", "items": _PATTERN_SCHEMA},
     },
     "required": [
         "bekannt", "titel", "autor", "originaltitel", "genre", "untergenre", "pitch",
-        "genre_code", "merkmale", "erzaehlmuster",
+        "genre_code", "form", "merkmale", "erzaehlmuster",
     ],
     "additionalProperties": False,
 }
@@ -755,6 +782,13 @@ def parse_answer(
 
         code = genre_code(_text(data.get("genre")), _text(data.get("untergenre")))
 
+    # Die Form (ADR 43): freiwillig, also fehlt sie ohne Verstoß. Ein Wort
+    # außerhalb der drei aber ist einer, wie ein erfundener Genre-Code.
+    form = _text(data.get("form"))
+    if form is not None and form not in FORMS:
+        violations.append(f"Form {form} ist keine der drei")
+        form = None
+
     return Portrait(
         known=True,
         fingerprint=stamp,
@@ -767,6 +801,7 @@ def parse_answer(
         traits=tuple(traits),
         violations=tuple(violations),
         genre_code=code,
+        form=form,
     )
 
 

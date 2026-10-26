@@ -22,6 +22,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     delete,
+    func,
     select,
     update,
 )
@@ -471,6 +472,8 @@ class PortraitRow(Base):
     #: ``genre``/``subgenre`` bleibt daneben.
     genre_code: Mapped[str | None] = mapped_column(String, nullable=True)
     genre_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Kurzgeschichte, Novelle, Roman (ADR 43); ``NULL`` heißt unbekannt.
+    form: Mapped[str | None] = mapped_column(String, nullable=True)
     #: JSON-Liste aus ``{"term", "sentence", "evidence", "weight"}``.
     traits: Mapped[str] = mapped_column(String, default="[]")
     #: JSON-Liste der verletzten Regeln.
@@ -750,10 +753,14 @@ def _better_spelling(kept: str | None, seen: str | None) -> str | None:
 
 
 #: Welcher Steckbrief eines Buchs gilt: einer mit Text vor jedem ohne, dann
-#: der jüngste. Eine Zeile aus der Zeit vor der Spalte (``NULL``) zählt wie
-#: „ohne Text" — ob einer dabei war, weiß niemand mehr.
+#: ein bekannter vor einem „unbekannt", dann der mit den wenigsten
+#: Regelverstößen (ADR 43), dann der jüngste. Eine Zeile aus der Zeit vor der
+#: Spalte (``NULL``) zählt wie „ohne Text" — ob einer dabei war, weiß niemand
+#: mehr.
 _BEST_PORTRAIT_FIRST = (
     PortraitRow.with_text.is_(True).desc(),
+    PortraitRow.known.desc(),
+    func.json_array_length(PortraitRow.violations).asc(),
     PortraitRow.created_at.desc(),
     PortraitRow.id.desc(),
 )
@@ -778,6 +785,7 @@ def _portrait_of(row: PortraitRow) -> Portrait:
         with_text=row.with_text,
         with_sample=row.with_sample,
         genre_code=row.genre_code,
+        form=row.form,
     )
 
 

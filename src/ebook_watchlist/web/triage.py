@@ -466,7 +466,7 @@ def pending(
             hidden["junk"].add(subject_of(observation))
             continue
         # Wie eine Sammelausgabe eine Frage der Form, nicht des Geschmacks (#73).
-        if is_short_story(observation):
+        if is_short_story(observation, portraits.get(subject_of(observation))):
             hidden["short"].add(subject_of(observation))
             continue
         # Vor der Preisregel und vor dem Urteil: ein Fund in fremder Sprache

@@ -151,3 +151,19 @@ def test_a_short_title_she_chose_herself_stays() -> None:
                          match_reason=MatchReason.WATCHLIST, pages=40)
     assert not is_short_story(itself)
     assert is_short_story(replace(by_author("Kurz"), pages=40))
+
+
+def test_without_pages_the_portrait_can_say_short_story() -> None:
+    """Die Form aus dem Steckbrief springt ein, wo keine Seitenzahl bekannt ist
+    (ADR 43); wo eine bekannt ist, entscheidet sie (ADR 34)."""
+    from dataclasses import replace
+
+    from ebook_watchlist.judging.portrait import Portrait
+    from ebook_watchlist.junk import is_short_story
+
+    short = Portrait(known=True, fingerprint="x", form="kurzgeschichte")
+    novel = Portrait(known=True, fingerprint="x", form="roman")
+
+    assert is_short_story(shelf("BattleTech - Onikuma"), short)
+    assert not is_short_story(shelf("BattleTech - Onikuma"), novel)
+    assert not is_short_story(replace(shelf("BattleTech - Onikuma"), pages=200), short)

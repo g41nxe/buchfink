@@ -66,9 +66,9 @@ class Portrayer:
     """Legt zu jedem Fund einen Steckbrief an — und merkt sich, wen er fragte."""
 
     def __init__(self, vocabulary, terms=GOOD, *, error: Exception | None = None, known=True,
-                 skip=()):
+                 skip=(), form=None):
         self.vocabulary, self.terms, self.error, self.known = vocabulary, terms, error, known
-        self.skip = set(skip)
+        self.skip, self.form = set(skip), form
         self.calls: list[Observation] = []
 
     def __call__(self, observations) -> dict[tuple[str, str], Portrait]:
@@ -82,6 +82,7 @@ class Portrayer:
                 fingerprint=fingerprint(self.vocabulary),
                 pitch="Ein Buch.",
                 traits=traits if self.known else (),
+                form=self.form,
             )
             for o in observations
             if o.key not in self.skip
@@ -513,6 +514,27 @@ def test_a_short_story_costs_no_portrait_and_is_held_back(store, vocabulary, wei
     assert kept == [] and portrayer.calls == []
     assert report.short_stories == 1
 
+
+
+def test_without_pages_the_portrait_can_hold_back_a_short_story(store, vocabulary, weights) -> None:
+    """Die Seitenzahl kennen die wenigsten Funde; dann springt die Form des
+    Steckbriefs ein (ADR 43). Den Steckbrief kostet es trotzdem — die Form
+    steht erst in ihm."""
+    found_item = discovery(isbn="9783104911854")
+    portrayer = Portrayer(vocabulary, GOOD, form="kurzgeschichte")
+
+    kept, report = run(store, vocabulary, weights, [first_seen(found_item)], portrayer)
+
+    assert kept == [] and report.short_stories == 1
+
+
+def test_a_known_page_count_outranks_the_form(store, vocabulary, weights) -> None:
+    found_item = discovery(isbn="9783104911854", pages=320)
+    portrayer = Portrayer(vocabulary, GOOD, form="kurzgeschichte")
+
+    kept, report = run(store, vocabulary, weights, [first_seen(found_item)], portrayer)
+
+    assert report.short_stories == 0
 
 
 # --- aus dem Review (26.09.2026) ----------------------------------------------------------

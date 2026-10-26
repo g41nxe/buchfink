@@ -44,7 +44,12 @@ from .dnb import Dnb, OriginalTitles
 from .evidence import gather as gather_evidence
 from .http import HttpClient, RateLimited, build_user_agent
 from .judging.facets import load_weights
-from .judging.portrait import VocabularyError, fingerprint, load_vocabulary
+from .judging.portrait import (
+    PortrayalUnavailable,
+    VocabularyError,
+    fingerprint,
+    load_vocabulary,
+)
 from .judging.portrayer import build_portrayer
 from .models import Observation, SourceFailure
 from .render import render_html, render_text
@@ -502,10 +507,64 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
             f"({report.rated} beschrieben, {report.reused} aus dem Speicher)",
             file=sys.stderr,
         )
+    if portrayer is not None:
+        reworked = _rework_flawed(
+            store, settings, portrayer, vocabulary,
+            settings.rating_budget - report.rated, now, sources,
+        )
+        if reworked:
+            print(f"Bewertungstor: {reworked} Steckbriefe mit Regelverstößen neu beschrieben",
+                  file=sys.stderr)
     # ``getattr``: nicht jeder Ersteller führt Buch über seine Gründe.
     if trouble := getattr(portrayer, "trouble", None):
         report.unrated_reason = trouble
     return kept, report
+
+
+def _rework_flawed(store: Store, settings: Settings, portrayer, vocabulary, budget: int,
+                   now: datetime, sources=()) -> int:
+    """Steckbriefe mit Regelverstößen nach und nach neu beschreiben (ADR 43).
+
+    Mit dem Budget, das der Lauf übrig lässt, und jedes Buch genau einmal: der
+    neue Steckbrief verdrängt den alten nur, wenn er weniger Verstöße hat
+    (``_BEST_PORTRAIT_FIRST``), und ein dritter Versuch brächte kaum mehr als
+    der zweite. Zuerst die mit zu wenigen Dimensionen — der häufigste Verstoß
+    und der einzige, der das Urteil verschiebt (129 von 221, 26.10.2026).
+    """
+    from .judging.ratings import subject_of
+
+    if budget <= 0:
+        return 0
+    finds: dict[str, Observation] = {}
+    for observation in store.latest_discoveries(settings.slug):
+        finds.setdefault(subject_of(observation), observation)
+    stamp = fingerprint(vocabulary)
+    portraits = store.portraits_for(finds, stamp)
+    flawed = [
+        subject for subject, portrait in portraits.items()
+        if portrait.known and portrait.with_text and portrait.violations
+    ]
+    tries = store.asked_with_text(flawed, stamp)
+    flawed = [subject for subject in flawed if tries.get(subject, 0) < 2]
+    flawed.sort(key=lambda subject: not any(
+        "Dimensionen" in violation for violation in portraits[subject].violations
+    ))
+    chosen = [finds[subject] for subject in flawed[:budget]]
+    if not chosen:
+        return 0
+    if sources:
+        chosen = gather_evidence(store, settings, chosen, sources)
+    try:
+        described = portrayer.portray_finds(chosen)
+    except PortrayalUnavailable:
+        return 0
+    reworked = 0
+    for observation in chosen:
+        portrait = described.get(observation.key)
+        if portrait is not None:
+            store.put_portrait(subject_of(observation), portrait, now=now)
+            reworked += 1
+    return reworked
 
 
 def _write_html(digest, generated_at: datetime) -> Path:

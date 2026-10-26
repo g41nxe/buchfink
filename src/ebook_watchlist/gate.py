@@ -224,7 +224,7 @@ def apply(
         # nicht zurück: die Seitenzahl reist mit der Beobachtung (#73).
         if delta.current.key in short or (
             delta.current.match_reason is not MatchReason.WATCHLIST
-            and is_short_story(delta.current)
+            and is_short_story(delta.current, portraits.get(delta.current.key))
         ):
             report.count("short_stories", delta.current)
             continue

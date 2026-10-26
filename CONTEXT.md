@@ -256,7 +256,9 @@ A Discovery under 80 pages, or one whose title or subtitle says so
 („Kurzgeschichte", „Episode"; `junk.is_short_story`, #73). Not suggested and
 not portrayed; counted on the Digest as „Kurzgeschichte (unter 80 Seiten)". A
 Watchlist Entry is never one. Without a known Page Count a book counts as a
-novel — unknown is not short.
+novel — unknown is not short — unless its Steckbrief names its *Form* a short
+story (ADR 43); that one has cost its Steckbrief already. A known Page Count
+outranks the Form.
 
 ### Page Count
 *deutsch: Seitenzahl*

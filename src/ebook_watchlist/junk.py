@@ -15,8 +15,12 @@ das.
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from .models import MatchReason, Observation
+
+if TYPE_CHECKING:
+    from .judging.portrait import Portrait
 
 #: Sammelwörter, die ein Bündel benennen, plus das Muster "Zahl + Genre +
 #: Doppelpunkt" ("2 Gruselkrimis: …", "4 Spuk Thriller: …").
@@ -80,6 +84,8 @@ def is_junk(observation: Observation) -> bool:
 #: darüber Roman. Heftromane haben um die 64 Seiten. Unter 80 fällt also, was
 #: eine einzelne Erzählung oder ein Heft ist; eine Novelle bleibt ein Buch.
 SHORT_STORY_PAGES = 80
+#: Wie ein Steckbrief eine Kurzgeschichte nennt (ADR 43).
+SHORT_STORY_FORM = "kurzgeschichte"
 
 
 #: Was ein Titel oder Untertitel über seine Form sagt: „Eine
@@ -87,9 +93,10 @@ SHORT_STORY_PAGES = 80
 _SHORT_WORDS = re.compile(r"Kurzgeschichte|Kurzkrimi|\bShort Story\b", re.IGNORECASE)
 
 
-def is_short_story(observation: Observation) -> bool:
+def is_short_story(observation: Observation, portrait: Portrait | None = None) -> bool:
     """Eine Kurzgeschichte: ein Fund mit bekannter Seitenzahl unter der Schwelle —
-    oder einer, dessen Titel es selbst sagt.
+    oder einer, dessen Titel es selbst sagt, oder ohne Seitenzahl einer, den
+    der Steckbrief eine Kurzgeschichte nennt (ADR 43).
 
     Vor allem nach der Seitenzahl, die die Detailseite nennt. Der Klappentext taugt
     nicht: „Kurzgeschichten" steht meist in der Autorenbiografie („über 100
@@ -102,6 +109,12 @@ def is_short_story(observation: Observation) -> bool:
     if observation.match_reason is MatchReason.WATCHLIST:
         return False
     if observation.pages is not None and observation.pages < SHORT_STORY_PAGES:
+        return True
+    if (
+        observation.pages is None
+        and portrait is not None
+        and portrait.form == SHORT_STORY_FORM
+    ):
         return True
     named = f"{observation.title or ''} {observation.subtitle or ''}"
     return bool(_SHORT_WORDS.search(named) or _EPISODE.search(named))

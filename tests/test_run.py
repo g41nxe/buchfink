@@ -830,6 +830,54 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
     assert (report.held_back, report.unrated) == (1, 1)
 
 
+
+@needs_vocabulary
+def test_a_flawed_portrait_gets_one_more_try_within_the_budget(data_dir: Path) -> None:
+    """ADR 43: was gegen die Regeln verstößt, wird nach und nach neu
+    beschrieben — zuerst „nur 2 Dimensionen", jedes Buch genau einmal, und
+    nur so viele, wie das Budget des Laufs übrig lässt."""
+    from dataclasses import replace
+
+    from ebook_watchlist import run as run_module
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.judging.portrait import load_vocabulary
+    from ebook_watchlist.judging.ratings import subject_of
+    from ebook_watchlist.models import MatchReason, Observation
+
+    store, settings = Store(paths.db_path()), load_settings()
+    vocabulary = load_vocabulary()
+    now = datetime(2026, 10, 26, 12, 0)
+    finds = [
+        Observation(source="beam", source_item_id=n, title=f"Fund {n}", isbn=f"97800000000{n}",
+                    blurb="Ein Klappentext.", match_reason=MatchReason.GENRE_CATEGORY,
+                    observed_at=now)
+        for n in ("1", "2", "3")
+    ]
+    store.append(store.start_run(settings.slug, "cli", now), settings.slug, finds, now)
+    described = _portraits(vocabulary, {f.title: ("brooding", "gritty") for f in finds})
+    flaws = {"1": ("Pitch hat 230 Zeichen, höchstens 200",),
+             "2": ("nur 2 Dimensionen statt mindestens drei",), "3": ()}
+    for find in finds:
+        store.put_portrait(subject_of(find), replace(
+            described(find), with_text=True, violations=flaws[find.source_item_id]), now=now)
+
+    asked: list[str] = []
+
+    def portray_finds(observations, batch=False):
+        asked.extend(o.title for o in observations)
+        return {o.key: replace(described(o), with_text=True) for o in observations}
+
+    portrayer = SimpleNamespace(portray_finds=portray_finds)
+    later = now.replace(hour=13)
+
+    assert run_module._rework_flawed(store, settings, portrayer, vocabulary, 1, later) == 1
+    assert asked == ["Fund 2"]
+    assert run_module._rework_flawed(store, settings, portrayer, vocabulary, 5, later) == 1
+    assert asked == ["Fund 2", "Fund 1"]
+    assert run_module._rework_flawed(store, settings, portrayer, vocabulary, 5, later) == 0
+    assert run_module._rework_flawed(store, settings, portrayer, vocabulary, 0, later) == 0
+
+
 # --- die Kommandozeile: --watchlist -----------------------------------------
 
 

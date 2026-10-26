@@ -699,6 +699,13 @@ def _a_theme_is_seeded_at_an_address(connection: Connection) -> None:
         add_column(connection, "interest_seeded", "address", "VARCHAR")
 
 
+def _a_portrait_names_its_form(connection: Connection) -> None:
+    """Kurzgeschichte, Novelle oder Roman (ADR 43). Alte Zeilen bleiben ``NULL``:
+    die Form ist dort unbekannt, und das ist kein Grund, neu zu fragen."""
+    if _has_table(connection, "portrait"):
+        add_column(connection, "portrait", "form", "VARCHAR")
+
+
 def _genres_become_codes(connection: Connection) -> None:
     """Steckbriefe und Gegengewichte bekommen den Code der Genre-Liste (#89).
 
@@ -816,6 +823,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _themes_become_genre_codes,
     _a_theme_is_seeded_at_an_address,
     _genres_become_codes,
+    _a_portrait_names_its_form,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

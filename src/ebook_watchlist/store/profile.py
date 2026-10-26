@@ -217,6 +217,7 @@ class ProfileMixin(CatalogMixin):
                     with_sample=portrait.with_sample,
                     genre_code=code,
                     genre_name=load_genres().name(code),
+                    form=portrait.form,
                 )
             )
             session.commit()
@@ -271,6 +272,28 @@ class ProfileMixin(CatalogMixin):
                     if asked not in best:
                         best[asked] = _portrait_of(row)
         return self._with_source_codes(best)
+
+    def asked_with_text(self, subjects: Iterable[str], fingerprint: str) -> dict[str, int]:
+        """Wie oft jeder Schlüssel mit Text beschrieben wurde, je Werk (ADR 36).
+
+        Für den zweiten Versuch bei einem Steckbrief mit Regelverstößen (ADR
+        43): einmal, nicht bei jedem Lauf wieder.
+        """
+        wanted = set(subjects)
+        if not wanted:
+            return {}
+        with self.session() as session:
+            groups = _work_subjects(session, wanted)
+            members = {member for group in groups.values() for member in group}
+            rows = session.execute(
+                select(PortraitRow.subject, func.count())
+                .where(PortraitRow.subject.in_(members),
+                       PortraitRow.fingerprint == fingerprint,
+                       PortraitRow.with_text.is_(True))
+                .group_by(PortraitRow.subject)
+            ).all()
+            counts = {subject: count for subject, count in rows}
+        return {asked: sum(counts.get(m, 0) for m in group) for asked, group in groups.items()}
 
     def _with_source_codes(self, portraits: dict[str, Portrait]) -> dict[str, Portrait]:
         """Die BISAC-Codes des Verlags an die Steckbriefe mit ISBN hängen —

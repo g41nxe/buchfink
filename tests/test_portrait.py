@@ -321,7 +321,10 @@ def test_the_instruction_keeps_patterns_out_of_the_terms_and_trims_by_weight() -
 
     assert 'nie unter "merkmale"' in text
     assert "geringsten Gewicht" in text
-    assert "180 Zeichen" in text
+    # ADR 43: knapper als die Grenze von 200, damit sie hält, und die
+    # Dimensionen werden nachgezählt.
+    assert "160 Zeichen" in text
+    assert "Dimension für Dimension" in text
 
 
 def test_a_pitch_that_is_too_long_is_a_violation() -> None:
@@ -734,3 +737,101 @@ def test_a_code_off_the_list_is_noted_and_left_out() -> None:
     assert portrait.genre_code == genre_code(portrait.genre, portrait.subgenre)
     assert portrait.genre_code != "FIC999999"
     assert any("FIC999999" in v for v in portrait.violations)
+
+
+# --- bessere Regeln verwerfen keine Steckbriefe (ADR 43, #69) ---------------------
+
+
+def test_a_better_wording_keeps_the_fingerprint(monkeypatch) -> None:
+    """Eine geschärfte Regel gilt für neue Steckbriefe, ohne die 500 alten zu
+    verwerfen: der Abdruck rechnet das Vokabular und die Form der Antwort."""
+    from ebook_watchlist.judging import portrait as module
+
+    vocabulary = load_vocabulary()
+    before = fingerprint(vocabulary)
+    sharper = module.TEMPLATE.replace("Nichts erfinden.", "Erfinde nichts, auch keinen Namen.")
+    assert sharper != module.TEMPLATE
+    monkeypatch.setattr(module, "TEMPLATE", sharper)
+    monkeypatch.setattr(module, "_FINGERPRINTS", {})
+
+    assert fingerprint(vocabulary) == before
+
+
+def test_the_frozen_answer_form_stays_as_it_was() -> None:
+    """Die Grundlage des Abdrucks ist die Anweisung vom 26.09.2026, Wort für
+    Wort. Wer sie ändert, verwirft jeden Steckbrief — das soll eine
+    Entscheidung sein, kein Versehen."""
+    import hashlib
+
+    from ebook_watchlist.judging.answer_form import ANSWER_FORM_V1
+
+    assert hashlib.sha256(ANSWER_FORM_V1.encode("utf-8")).hexdigest()[:16] == "17013a357309cd2b"
+
+
+def test_among_portraits_with_text_fewer_violations_win(store: Store) -> None:
+    vocabulary = load_vocabulary()
+    base = parse_answer(answer(), vocabulary)
+    two = replace(base, pitch="Zwei.", with_text=True, violations=("a", "b"))
+    one = replace(base, pitch="Einer.", with_text=True, violations=("a",))
+    later_two = replace(base, pitch="Später zwei.", with_text=True, violations=("a", "b"))
+
+    store.put_portrait("isbn:1", two, now=NOW)
+    store.put_portrait("isbn:1", one, now=NOW.replace(hour=11))
+    store.put_portrait("isbn:1", later_two, now=NOW.replace(hour=12))
+
+    assert (best := store.portrait("isbn:1", base.fingerprint)) is not None
+    assert best.pitch == "Einer."
+    assert store.portraits_for(["isbn:1"], base.fingerprint)["isbn:1"].pitch == "Einer."
+
+
+def test_an_unknown_answer_does_not_displace_a_known_portrait(store: Store) -> None:
+    """Ein „unbekannt" hat keine Verstöße — und weiß doch weniger. Wird ein
+    Steckbrief wegen seiner Verstöße neu gefragt, darf ein „unbekannt" ihn
+    nicht verdrängen."""
+    vocabulary = load_vocabulary()
+    known = replace(parse_answer(answer(), vocabulary), with_text=True, violations=("a",))
+    unknown = Portrait(known=False, fingerprint=known.fingerprint, with_text=True)
+
+    store.put_portrait("isbn:1", known, now=NOW)
+    store.put_portrait("isbn:1", unknown, now=NOW.replace(hour=11))
+
+    assert (best := store.portrait("isbn:1", known.fingerprint)) is not None and best.known
+
+
+def test_the_form_is_read_when_given() -> None:
+    vocabulary = load_vocabulary()
+
+    assert parse_answer(answer(form="kurzgeschichte"), vocabulary).form == "kurzgeschichte"
+    assert parse_answer(answer(form="roman"), vocabulary).form == "roman"
+
+
+def test_without_a_form_it_is_unknown_and_no_violation() -> None:
+    """Ein freiwilliges Feld: die alten Steckbriefe haben es nicht."""
+    portrait = parse_answer(answer(), load_vocabulary())
+
+    assert portrait.form is None
+    assert not any("Form" in v for v in portrait.violations)
+
+
+def test_an_unknown_form_is_noted_and_left_out() -> None:
+    portrait = parse_answer(answer(form="erzaehlung"), load_vocabulary())
+
+    assert portrait.form is None
+    assert any("erzaehlung" in v for v in portrait.violations)
+
+
+def test_the_form_is_kept(store: Store) -> None:
+    portrait = parse_answer(answer(form="novelle"), load_vocabulary())
+
+    store.put_portrait("isbn:1", portrait, now=NOW)
+
+    assert (kept := store.portrait("isbn:1", portrait.fingerprint)) is not None
+    assert kept.form == "novelle"
+
+
+def test_the_schema_offers_the_form_but_does_not_insist() -> None:
+    from ebook_watchlist.judging.portrait import ANSWER_SCHEMA
+
+    form = ANSWER_SCHEMA["properties"]["form"]
+    assert {"type": "null"} in form["anyOf"]
+    assert {"kurzgeschichte", "novelle", "roman"} <= set(form["anyOf"][0]["enum"])
