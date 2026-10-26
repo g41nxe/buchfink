@@ -305,8 +305,8 @@ def test_describing_the_backlog_asks_only_about_what_has_no_portrait(
     fehlenden Steckbriefe an, statt Sterne zu vergeben."""
     from conftest import describe, give_profile
     from ebook_watchlist import run as run_module
+    from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
     from ebook_watchlist.models import MatchReason, Observation
-    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
     from ebook_watchlist.store import Store
 
     now = datetime(2026, 9, 5, 9, 0)
@@ -728,7 +728,7 @@ def _finds():
 
 
 def _portraits(vocabulary, by_title):
-    from ebook_watchlist.portrait import Portrait, Trait, fingerprint
+    from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint
 
     def portrayer(observation):
         terms = by_title[observation.title]
@@ -742,7 +742,7 @@ def _portraits(vocabulary, by_title):
 
 def _profile(store):
     from ebook_watchlist.config import load_settings
-    from ebook_watchlist.facets import Facet, Liked, ReadingProfile
+    from ebook_watchlist.judging.facets import Facet, Liked, ReadingProfile
 
     store.put_reading_profile(
         load_settings().slug,
@@ -761,7 +761,7 @@ def test_the_run_judges_finds_from_the_profile_in_the_database(
 ) -> None:
     from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
-    from ebook_watchlist.portrait import load_vocabulary
+    from ebook_watchlist.judging.portrait import load_vocabulary
 
     store, settings = Store(paths.db_path()), load_settings()
     _profile(store)
@@ -809,8 +809,8 @@ def test_the_run_without_a_rater_still_judges_what_has_a_portrait(
 ) -> None:
     from ebook_watchlist import run as run_module
     from ebook_watchlist.config import load_settings
-    from ebook_watchlist.portrait import load_vocabulary
-    from ebook_watchlist.ratings import subject_of
+    from ebook_watchlist.judging.portrait import load_vocabulary
+    from ebook_watchlist.judging.ratings import subject_of
 
     store, settings = Store(paths.db_path()), load_settings()
     _profile(store)

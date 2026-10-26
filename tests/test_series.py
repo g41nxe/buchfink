@@ -10,8 +10,8 @@ from dataclasses import replace
 
 import pytest
 
+from ebook_watchlist.catalog.series import MidSeries, series_key
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.series import MidSeries, series_key
 
 
 def find(title: str, *, subtitle: str | None = None, author: str = "Tad Williams",
@@ -135,7 +135,7 @@ def test_a_watchlist_title_is_never_mid_series() -> None:
 
 # --- Der Titel als Zeuge der Reihe (ADR 38) -----------------------------------
 
-from ebook_watchlist.series import series_from_title  # noqa: E402
+from ebook_watchlist.catalog.series import series_from_title  # noqa: E402
 
 
 @pytest.mark.parametrize(("title", "subtitle", "expected"), [

@@ -19,8 +19,8 @@ import json
 from collections.abc import Iterable
 from datetime import datetime
 
-from .relations import REASON_KINDS
-from .store import Store
+from ..relations import REASON_KINDS
+from ..store import Store
 
 
 def parse(details: str | None) -> tuple[dict, dict[str, list[str]]]:

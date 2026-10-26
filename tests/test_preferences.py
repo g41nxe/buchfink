@@ -6,7 +6,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from conftest import needs_vocabulary
-from ebook_watchlist.facets import ReadingProfile
+from ebook_watchlist.judging.facets import ReadingProfile
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.preferences import book_codes, excluded_by
 from ebook_watchlist.store import Store
@@ -80,14 +80,14 @@ def test_a_watchlist_title_is_never_excluded() -> None:
 @needs_vocabulary
 def test_a_liked_genre_adds_a_small_bonus() -> None:
     """Kleiner als ein verstärktes Merkmal, und als eigener Schritt sichtbar."""
-    from ebook_watchlist.facets import load_weights
-    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
-    from ebook_watchlist.taste_form import learn, overlap
+    from ebook_watchlist.judging.facets import load_weights
+    from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
+    from ebook_watchlist.judging.taste_form import learn, overlap
 
     vocabulary, weights = load_vocabulary(), load_weights()
     portrait = Portrait(known=True, fingerprint=fingerprint(vocabulary), genre_code="FIC028030",
                         traits=(Trait("world_building", "Satz.", "wissen", "praegend"),))
-    from ebook_watchlist.facets import Liked
+    from ebook_watchlist.judging.facets import Liked
 
     plain = replace(EMPTY, liked=(Liked(vocabulary.family_of("world_building").id),))
     liking = replace(plain, liked_genres=("FIC028000",))
@@ -132,7 +132,7 @@ def test_the_run_drops_what_she_does_not_like_before_the_gate(store: Store) -> N
 
 @needs_vocabulary
 def test_after_the_gate_the_portrait_code_counts(store: Store) -> None:
-    from ebook_watchlist.portrait import Portrait, fingerprint, load_vocabulary
+    from ebook_watchlist.judging.portrait import Portrait, fingerprint, load_vocabulary
     from ebook_watchlist.run import _without_disliked
 
     store.put_reading_profile("t", replace(EMPTY, disliked_genres=("FIC027000",)),
@@ -207,9 +207,9 @@ def test_the_liked_genre_bonus_reads_the_publishers_code_first(store: Store) -> 
     """Wie der Ausschluss: der Verlag vor dem Modell. Gemocht ist Thriller,
     der Steckbrief sagt Fantasy, der Verlag Psychothriller."""
     from ebook_watchlist.dnb import Record
-    from ebook_watchlist.facets import Liked, load_weights
-    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
-    from ebook_watchlist.taste_form import learn, overlap
+    from ebook_watchlist.judging.facets import Liked, load_weights
+    from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
+    from ebook_watchlist.judging.taste_form import learn, overlap
 
     vocabulary, weights = load_vocabulary(), load_weights()
     stamp = fingerprint(vocabulary)
@@ -232,7 +232,8 @@ def test_the_liked_genre_bonus_reads_the_publishers_code_first(store: Store) -> 
 def test_importing_a_profile_file_keeps_genres_and_authors(store: Store, tmp_path,
                                                           monkeypatch) -> None:
     """Die Datei kennt die neuen Felder nicht; sie gehen deshalb nicht verloren."""
-    from ebook_watchlist import facets, paths
+    from ebook_watchlist import paths
+    from ebook_watchlist.judging import facets
 
     store.put_reading_profile("t", replace(EMPTY, disliked_genres=("FIC027000",),
                                            disliked_authors=("Rosamunde Pilcher",)),

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from urllib.parse import urljoin
 
+from ...catalog.series import series_key
 from ...config import WatchlistEntry
 from ...http import HttpClient, NotFound
 from ...matching import Candidate, Query, Resolution, author_matches, match
 from ...models import MatchReason, Observation
-from ...series import series_key
 from ..base import Item, ShopSource, SourceStructureError
 from . import parse
 from . import selectors as sel

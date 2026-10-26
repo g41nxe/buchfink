@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile
-from ebook_watchlist.portrait import load_vocabulary, parse_answer
+from ebook_watchlist.judging.facets import Counterweight, Facet, Liked, ReadingProfile
+from ebook_watchlist.judging.portrait import load_vocabulary, parse_answer
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web.app import create_app
@@ -511,7 +511,7 @@ def test_taking_a_counterweight_back_names_the_book(client, db, profile) -> None
 
 def test_a_counterweight_of_another_book_stays(client, db, profile) -> None:
     """Das Gegengewicht verliert nur dieses Buch; trägt es ein anderes, bleibt es."""
-    from ebook_watchlist.facets import Counterweight, ReadingProfile
+    from ebook_watchlist.judging.facets import Counterweight, ReadingProfile
 
     db.put_reading_profile(slug(), ReadingProfile(
         profile.facets,
@@ -543,7 +543,7 @@ def test_the_profile_page_leads_to_where_things_are_changed(client, db, profile)
 
 def test_taking_back_a_genre_counterweight_leaves_the_general_one(client, db, profile) -> None:
     """„X (nur bei Fantasy)" und „X" sind zwei Gegengewichte (Review)."""
-    from ebook_watchlist.facets import Counterweight, ReadingProfile
+    from ebook_watchlist.judging.facets import Counterweight, ReadingProfile
 
     b = book(db, "Herr der Ringe", ["world_building", "leisurely", "bittersweet",
                                     "descriptive"], kind="disliked")

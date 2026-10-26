@@ -11,15 +11,20 @@ import json
 import pytest
 
 from conftest import needs_vocabulary
-from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.portrait import ANSWER_SCHEMA, Parts, PortrayalUnavailable, load_vocabulary
-from ebook_watchlist.portrayer import (
+from ebook_watchlist.judging.portrait import (
+    ANSWER_SCHEMA,
+    Parts,
+    PortrayalUnavailable,
+    load_vocabulary,
+)
+from ebook_watchlist.judging.portrayer import (
     ApiChannel,
     CliChannel,
     Portrayer,
     _cli_text,
     build_portrayer,
 )
+from ebook_watchlist.models import MatchReason, Observation
 
 ANSWER = '{"bekannt": false}'
 
@@ -36,7 +41,7 @@ def _completed(stdout: str = "", stderr: str = "", returncode: int = 0):
 def test_the_cli_answer_is_read_out_of_its_json_envelope(monkeypatch) -> None:
     """``--output-format json`` verpackt das Ergebnis in ``result``."""
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run",
+        "ebook_watchlist.judging.portrayer.subprocess.run",
         lambda *a, **k: _completed(stdout=json.dumps({"result": ANSWER, "is_error": False})),
     )
 
@@ -47,7 +52,8 @@ def test_a_bare_answer_is_read_too(monkeypatch) -> None:
     """Auf das Hüllenformat zu bestehen hieße, an einer fremden Version zu
     hängen. Fehlt sie, geht der Text unverändert weiter."""
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run", lambda *a, **k: _completed(stdout=ANSWER)
+        "ebook_watchlist.judging.portrayer.subprocess.run",
+        lambda *a, **k: _completed(stdout=ANSWER),
     )
 
     assert CliChannel().ask("Frage") == ANSWER
@@ -57,7 +63,7 @@ def test_a_missing_executable_is_no_reason_to_fail_a_run(monkeypatch) -> None:
     def boom(*a, **k):
         raise FileNotFoundError
 
-    monkeypatch.setattr("ebook_watchlist.portrayer.subprocess.run", boom)
+    monkeypatch.setattr("ebook_watchlist.judging.portrayer.subprocess.run", boom)
 
     with pytest.raises(PortrayalUnavailable, match="nicht gefunden"):
         CliChannel().ask("Frage")
@@ -69,7 +75,7 @@ def test_a_timeout_is_reported_as_unavailable(monkeypatch) -> None:
     def slow(*a, **k):
         raise TimeoutExpired(cmd="claude", timeout=1)
 
-    monkeypatch.setattr("ebook_watchlist.portrayer.subprocess.run", slow)
+    monkeypatch.setattr("ebook_watchlist.judging.portrayer.subprocess.run", slow)
 
     with pytest.raises(PortrayalUnavailable, match="antwortete nicht"):
         CliChannel(timeout=1).ask("Frage")
@@ -77,7 +83,7 @@ def test_a_timeout_is_reported_as_unavailable(monkeypatch) -> None:
 
 def test_a_nonzero_exit_names_what_the_cli_said(monkeypatch) -> None:
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run",
+        "ebook_watchlist.judging.portrayer.subprocess.run",
         lambda *a, **k: _completed(returncode=1, stderr="not logged in"),
     )
 
@@ -95,7 +101,7 @@ def test_the_prompt_reaches_the_cli_over_stdin(monkeypatch) -> None:
         seen.append((command, kwargs.get("input")))
         return _completed(stdout=ANSWER)
 
-    monkeypatch.setattr("ebook_watchlist.portrayer.subprocess.run", capture)
+    monkeypatch.setattr("ebook_watchlist.judging.portrayer.subprocess.run", capture)
 
     CliChannel(executable="claude").ask("Blindflug von Peter Watts")
 
@@ -117,7 +123,7 @@ def test_the_cli_runs_lean_with_the_configured_model(monkeypatch) -> None:
         seen.append((command, kwargs))
         return _completed(stdout=ANSWER)
 
-    monkeypatch.setattr("ebook_watchlist.portrayer.subprocess.run", capture)
+    monkeypatch.setattr("ebook_watchlist.judging.portrayer.subprocess.run", capture)
 
     CliChannel(executable="claude", model="haiku").ask("Frage")
 
@@ -134,7 +140,7 @@ def test_the_cli_runs_lean_with_the_configured_model(monkeypatch) -> None:
 def test_the_thinking_budget_can_be_turned_off(monkeypatch) -> None:
     seen: list[dict] = []
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run",
+        "ebook_watchlist.judging.portrayer.subprocess.run",
         lambda command, **kwargs: seen.append(kwargs) or _completed(stdout=ANSWER),
     )
 
@@ -162,7 +168,7 @@ def test_a_failing_call_names_what_the_envelope_says(monkeypatch) -> None:
     und der einzige Hinweis — "Not logged in · Please run /login" — stand in der
     Hülle auf stdout."""
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run",
+        "ebook_watchlist.judging.portrayer.subprocess.run",
         lambda *a, **k: _completed(
             stdout=json.dumps({"is_error": True, "result": "Not logged in · Please run /login"}),
             returncode=1,
@@ -175,7 +181,7 @@ def test_a_failing_call_names_what_the_envelope_says(monkeypatch) -> None:
 
 def test_a_failure_without_an_envelope_still_names_the_return_code(monkeypatch) -> None:
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run",
+        "ebook_watchlist.judging.portrayer.subprocess.run",
         lambda *a, **k: _completed(stdout="", stderr="Killed", returncode=137),
     )
 
@@ -370,7 +376,9 @@ def test_rate_uses_the_batch_when_asked() -> None:
 def test_a_key_in_the_environment_wins(monkeypatch) -> None:
     """Wer ihn setzt, hat sich für ihn entschieden."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
-    monkeypatch.setattr("ebook_watchlist.portrayer.shutil.which", lambda name: "/usr/bin/claude")
+    monkeypatch.setattr(
+        "ebook_watchlist.judging.portrayer.shutil.which", lambda name: "/usr/bin/claude"
+    )
 
     portrayer = build_portrayer(None, load_vocabulary())
 
@@ -382,7 +390,9 @@ def test_without_a_key_the_local_installation_is_used(monkeypatch) -> None:
     """API-Zugang ist in keinem Claude-Abo enthalten; die angemeldete
     Installation ist der Weg ohne zusätzliches Guthaben."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr("ebook_watchlist.portrayer.shutil.which", lambda name: "/usr/bin/claude")
+    monkeypatch.setattr(
+        "ebook_watchlist.judging.portrayer.shutil.which", lambda name: "/usr/bin/claude"
+    )
 
     portrayer = build_portrayer(None, load_vocabulary())
 
@@ -394,7 +404,9 @@ def test_without_a_key_the_local_installation_is_used(monkeypatch) -> None:
 @needs_vocabulary
 def test_the_configured_model_reaches_the_cli_too(monkeypatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr("ebook_watchlist.portrayer.shutil.which", lambda name: "/usr/bin/claude")
+    monkeypatch.setattr(
+        "ebook_watchlist.judging.portrayer.shutil.which", lambda name: "/usr/bin/claude"
+    )
 
     portrayer = build_portrayer("sonnet", load_vocabulary())
 
@@ -415,7 +427,7 @@ def test_with_neither_there_is_simply_no_portrayer(monkeypatch) -> None:
     """Kein Fehler, sondern der Zustand ohne neue Steckbriefe: alles bleibt
     unbeschrieben und wird gezeigt."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr("ebook_watchlist.portrayer.shutil.which", lambda name: None)
+    monkeypatch.setattr("ebook_watchlist.judging.portrayer.shutil.which", lambda name: None)
 
     assert build_portrayer(None, load_vocabulary()) is None
 
@@ -555,7 +567,7 @@ def test_the_thinking_budget_grows_with_the_batch(monkeypatch) -> None:
     """Es gilt je Buch: acht Bücher mit dem Budget für eines würden flüchtig."""
     seen: list[dict] = []
     monkeypatch.setattr(
-        "ebook_watchlist.portrayer.subprocess.run",
+        "ebook_watchlist.judging.portrayer.subprocess.run",
         lambda command, **kwargs: seen.append(kwargs["env"]) or _completed(stdout=ANSWER),
     )
 

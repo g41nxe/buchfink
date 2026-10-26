@@ -12,16 +12,16 @@ import pytest
 
 from conftest import needs_vocabulary
 from ebook_watchlist import gate
-from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
-from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
-from ebook_watchlist.portrait import (
+from ebook_watchlist.judging.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
+from ebook_watchlist.judging.portrait import (
     Portrait,
     PortrayalUnavailable,
     Trait,
     fingerprint,
     load_vocabulary,
 )
-from ebook_watchlist.ratings import BY_READER, book_subject
+from ebook_watchlist.judging.ratings import BY_READER, book_subject
+from ebook_watchlist.models import Delta, DeltaKind, MatchReason, Observation
 
 pytestmark = needs_vocabulary
 

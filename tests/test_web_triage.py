@@ -15,8 +15,8 @@ from fastapi.testclient import TestClient
 from conftest import describe, give_profile, needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
+from ebook_watchlist.judging.ratings import subject_of
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.ratings import subject_of
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, sorting
@@ -657,7 +657,7 @@ def test_an_unjudged_find_is_never_hidden_as_weak(client: TestClient, db: Store)
 def test_the_page_uses_the_same_threshold_as_the_digest(client: TestClient, db: Store) -> None:
     """Zwei Ansichten desselben Stapels mit zwei Schwellen waeren genau die
     Drift, die dieses Projekt schon dreimal eingefangen hat."""
-    from ebook_watchlist.facets import load_weights
+    from ebook_watchlist.judging.facets import load_weights
 
     tight = found(db, item_id="a", title="Genau an der Schwelle")
     verdict(db, tight, stars=load_weights().gate_stars, pitch="Gerade so.")
@@ -928,7 +928,7 @@ def test_a_new_profile_reorders_the_stack_without_asking_the_model(
 ) -> None:
     """Eine neue Fassung wirkt sofort auf alles, weil der Code rechnet
     (Abnahme in #48)."""
-    from ebook_watchlist.facets import Liked, ReadingProfile
+    from ebook_watchlist.judging.facets import Liked, ReadingProfile
 
     verdict(db, found(db, item_id="a", title="Trägt eine Sache"), stars=2, pitch="Eins.")
     assert view.pending(db, load_settings()).hidden_weak == 1
@@ -979,8 +979,8 @@ def test_a_pile_with_an_unreadable_vocabulary_does_not_blame_the_missing_profile
 ) -> None:
     """Es gibt ein Profil, nur das Vokabular fehlt: "erst die Erstaufnahme
     machen" wäre dann falsch."""
-    from ebook_watchlist import judging
-    from ebook_watchlist.facets import Liked, ReadingProfile
+    from ebook_watchlist.judging import judge as judging
+    from ebook_watchlist.judging.facets import Liked, ReadingProfile
 
     db.put_reading_profile(
         load_settings().slug, ReadingProfile((), (), (Liked("quest"),)), cause="Test", now=NOW

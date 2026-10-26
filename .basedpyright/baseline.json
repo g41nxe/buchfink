@@ -46,17 +46,7 @@
                 }
             }
         ],
-        "./src/ebook_watchlist/matching/matcher.py": [
-            {
-                "code": "reportArgumentType",
-                "range": {
-                    "startColumn": 28,
-                    "endColumn": 93,
-                    "lineCount": 1
-                }
-            }
-        ],
-        "./src/ebook_watchlist/portrait.py": [
+        "./src/ebook_watchlist/judging/portrait.py": [
             {
                 "code": "reportAssignmentType",
                 "range": {
@@ -74,7 +64,7 @@
                 }
             }
         ],
-        "./src/ebook_watchlist/portrayer.py": [
+        "./src/ebook_watchlist/judging/portrayer.py": [
             {
                 "code": "reportCallIssue",
                 "range": {
@@ -168,6 +158,16 @@
                 "range": {
                     "startColumn": 18,
                     "endColumn": 27,
+                    "lineCount": 1
+                }
+            }
+        ],
+        "./src/ebook_watchlist/matching/matcher.py": [
+            {
+                "code": "reportArgumentType",
+                "range": {
+                    "startColumn": 28,
+                    "endColumn": 93,
                     "lineCount": 1
                 }
             }

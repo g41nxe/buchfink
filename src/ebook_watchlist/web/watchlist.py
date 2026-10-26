@@ -11,13 +11,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
+from ..catalog.series import SeriesOf
 from ..config import Settings
 from ..deals import is_strong_deal
-from ..judging import load_judge
+from ..judging.judge import load_judge
+from ..judging.ratings import book_subject, subject_of
 from ..language import is_other_language, language_name
 from ..matching.bundles import looks_like_bundle
 from ..models import Availability, LinkOutcome, Observation
-from ..ratings import book_subject, subject_of
 from ..relations import (
     DONE_LABELS,
     REMOVED,
@@ -26,7 +27,6 @@ from ..relations import (
     label_of,
     labelled_actions,
 )
-from ..series import SeriesOf
 from ..sources import registry
 from ..store import Store
 from . import sorting

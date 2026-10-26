@@ -639,7 +639,7 @@ def test_the_row_carries_the_verdict_of_the_code(client: TestClient, db: Store) 
 def test_a_title_without_a_find_carries_its_portrait_at_the_book(db: Store) -> None:
     """Beim Hinzufügen gibt es keinen Fund, an dem der Steckbrief hängen könnte
     (#38) — er hängt am Buch."""
-    from ebook_watchlist.ratings import book_subject
+    from ebook_watchlist.judging.ratings import book_subject
 
     book = db.books()[0]
     give_profile(db)

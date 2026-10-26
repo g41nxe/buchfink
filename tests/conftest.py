@@ -161,7 +161,7 @@ def data_dir(unseeded_data_dir: Path, schema_template: Path) -> Path:
 
 
 def _vocabulary_present() -> bool:
-    from ebook_watchlist.portrait import PATTERNS_PATH, VOCABULARY_PATH
+    from ebook_watchlist.judging.portrait import PATTERNS_PATH, VOCABULARY_PATH
 
     return VOCABULARY_PATH.exists() and PATTERNS_PATH.exists()
 
@@ -192,7 +192,7 @@ STAR_TERMS = {
 
 def judging_profile():
     """Ein Leseprofil, an dem sich Sterne von 1 bis 5 genau steuern lassen."""
-    from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile
+    from ebook_watchlist.judging.facets import Counterweight, Facet, Liked, ReadingProfile
 
     return ReadingProfile(
         facets=(Facet(("brooding", "harsh"), ("Leichenblässe", "Sharp Objects")),),
@@ -221,7 +221,7 @@ def describe(db, subject: str, stars: int, pitch: str | None = "Ein Buch.") -> N
     diese Sterne kommt."""
     from datetime import datetime
 
-    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+    from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
 
     db.put_portrait(
         subject,
@@ -291,7 +291,8 @@ def no_portrayer(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     import sys
 
-    from ebook_watchlist import portrayer, run  # noqa: F401 - laden, damit sie erfasst werden
+    from ebook_watchlist import run  # noqa: F401 - laden, damit sie erfasst werden
+    from ebook_watchlist.judging import portrayer
     from ebook_watchlist.web import book, intake  # noqa: F401
 
     real = portrayer.build_portrayer
@@ -306,7 +307,7 @@ def portrayer_via(channel):
     Für ``monkeypatch.setattr(modul, "build_portrayer", portrayer_via(stub))``: der
     Stub muss nur ``ask(text, max_tokens)`` können.
     """
-    from ebook_watchlist.portrayer import Portrayer
+    from ebook_watchlist.judging.portrayer import Portrayer
 
     return lambda model=None, vocabulary=None: Portrayer(channel, vocabulary)
 

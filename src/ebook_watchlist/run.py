@@ -19,8 +19,9 @@ from pathlib import Path
 import yaml
 from filelock import FileLock, Timeout
 
-from . import first_start, gate, notify, paths, series_watch
-from .bundle_deal import advantage_finder
+from . import first_start, gate, notify, paths
+from .catalog import series_watch
+from .catalog.bundle_deal import advantage_finder
 from .cleaning import clean_blurb
 from .config import (
     ConfigError,
@@ -41,11 +42,11 @@ from .dismissals import dismissed_books
 from .dismissals import resolve as resolve_dismissals
 from .dnb import Dnb, OriginalTitles
 from .evidence import gather as gather_evidence
-from .facets import load_weights
 from .http import HttpClient, RateLimited, build_user_agent
+from .judging.facets import load_weights
+from .judging.portrait import VocabularyError, fingerprint, load_vocabulary
+from .judging.portrayer import build_portrayer
 from .models import Observation, SourceFailure
-from .portrait import VocabularyError, fingerprint, load_vocabulary
-from .portrayer import build_portrayer
 from .render import render_html, render_text
 from .seed import sow
 from .sources import build_sources
@@ -355,9 +356,9 @@ def _without_disliked(store: Store, profile_slug: str, deltas) -> list:
     Verlags, damit ein solcher Fund keinen Steckbrief kostet; danach noch einmal
     mit dem Code, den der frische Steckbrief trägt. Ein Watchlist-Titel bleibt.
     """
-    from .portrait import VocabularyError, fingerprint, load_vocabulary
+    from .judging.portrait import VocabularyError, fingerprint, load_vocabulary
+    from .judging.ratings import subject_of
     from .preferences import book_codes, excluded_by
-    from .ratings import subject_of
 
     profile = store.reading_profile(profile_slug)
     if profile is None or not (profile.disliked_genres or profile.disliked_authors):
@@ -388,7 +389,7 @@ def _without_mid_series(store: Store, profile_slug: str, deltas) -> list:
     Vor dem Tor wie Sprache und Autorschaft: das ist eine Frage des Einstiegs,
     nicht des Geschmacks, und kostet darum keinen Steckbrief (`series`).
     """
-    from .series import mid_series_finder
+    from .catalog.series import mid_series_finder
 
     mid_series = mid_series_finder(store, profile_slug)
     kept = [d for d in deltas if not mid_series(d.current)]
@@ -409,8 +410,8 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
     Zeichen und ist zu 85 % abgeschnitten, die Detailseite rund das Zehnfache.
     Es sind höchstens so viele Anfragen wie das Budget Bücher zulässt.
     """
-    from .judging import rated_books
-    from .taste_form import learn
+    from .judging.judge import rated_books
+    from .judging.taste_form import learn
 
     try:
         vocabulary = load_vocabulary()
@@ -669,7 +670,7 @@ def _record_foreign_ratings(store: Store, observations: Sequence[Observation]) -
     Anzahl fehlt, wird nichts geschrieben — ein Schnitt ohne sie ist keine
     Auskunft.
     """
-    from .ratings import BY_ONLEIHE_READERS, subject_of
+    from .judging.ratings import BY_ONLEIHE_READERS, subject_of
 
     now = datetime.now()
     for observation in observations:
@@ -762,8 +763,8 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
     Ohne Leseprofil wird nichts beschrieben (ADR 33, Punkt 8): es gäbe nichts,
     wogegen sich rechnen ließe.
     """
-    from .judging import load_judge
-    from .ratings import subject_of
+    from .judging.judge import load_judge
+    from .judging.ratings import subject_of
     from .web import triage
 
     store = Store(paths.db_path())
@@ -859,7 +860,7 @@ def _judge(settings: Settings, titles: Sequence[str], file: Path | None, *, ask:
     geraten (ADR 33, Punkt 8).
     """
     from .judge_titles import Entry, judge_titles, read_entries, update_yaml
-    from .judging import load_judge
+    from .judging.judge import load_judge
 
     if file is None and not titles:
         print("Nichts zu beurteilen: Titel nennen oder --datei angeben.", file=sys.stderr)

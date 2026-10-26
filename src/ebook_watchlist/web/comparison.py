@@ -19,10 +19,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..facets import family_name, is_pattern
-from ..judging import Judge
-from ..portrait import Portrait
-from ..taste_form import book_terms, overlap
+from ..judging.facets import family_name, is_pattern
+from ..judging.judge import Judge
+from ..judging.portrait import Portrait
+from ..judging.taste_form import book_terms, overlap
 from .spider import SECTOR_ORDER
 
 #: Ab diesem Betrag spricht eine Familie für oder gegen das Buch; darunter ist

@@ -24,10 +24,11 @@ from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 
-from .. import reader_reasons
 from ..cleaning import author_key
 from ..config import Settings
-from ..facets import (
+from ..genres import load_genres
+from ..judging import reader_reasons
+from ..judging.facets import (
     GENERAL,
     HERE,
     MOST_BOOSTED,
@@ -47,8 +48,7 @@ from ..facets import (
     strength,
     strength_level,
 )
-from ..genres import load_genres
-from ..portrait import (
+from ..judging.portrait import (
     CLEAR,
     DEFINING,
     MARGINAL,
@@ -58,7 +58,7 @@ from ..portrait import (
     fingerprint,
     load_vocabulary,
 )
-from ..portrayer import build_portrayer
+from ..judging.portrayer import build_portrayer
 from ..relations import InterestKey, RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait

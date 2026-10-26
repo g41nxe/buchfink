@@ -12,8 +12,8 @@ import pytest
 
 from conftest import STAR_TERMS, describe, give_profile, needs_vocabulary
 from ebook_watchlist.judge_titles import Entry, judge_titles, read_entries, update_yaml
-from ebook_watchlist.judging import load_judge
-from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+from ebook_watchlist.judging.judge import load_judge
+from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
 from ebook_watchlist.web.intake import intake_subject
 
 NOW = datetime(2026, 9, 25, 12, 0)
@@ -177,7 +177,7 @@ def test_the_entries_are_read_from_the_file() -> None:
 
 def test_stars_and_reason_are_written_back_and_comments_stay() -> None:
     from ebook_watchlist.judge_titles import Result
-    from ebook_watchlist.judging import Verdict
+    from ebook_watchlist.judging.judge import Verdict
 
     results = [
         Result(Entry("Der Schwarm", "Frank Schätzing"), Verdict(4, 63), "vorhanden", "63 % — hart"),
@@ -203,7 +203,7 @@ def test_a_blank_line_inside_an_entry_does_not_split_it() -> None:
     """``stars`` steht nach dem letzten Feld des Eintrags, nicht vor der Lücke —
     sonst stünde es zweimal, und YAML nähme still das letzte."""
     from ebook_watchlist.judge_titles import Result
-    from ebook_watchlist.judging import Verdict
+    from ebook_watchlist.judging.judge import Verdict
 
     text = "- title: Der Schwarm\n\n  stars: 1\n  why: alt\n\n- title: Anderes\n"
     results = [Result(Entry("Der Schwarm", None), Verdict(4, 63), "vorhanden", "63 %")]
@@ -217,7 +217,7 @@ def test_the_written_file_reads_back_the_same_way() -> None:
     import yaml
 
     from ebook_watchlist.judge_titles import Result
-    from ebook_watchlist.judging import Verdict
+    from ebook_watchlist.judging.judge import Verdict
 
     results = [Result(Entry("Der Schwarm", "Frank Schätzing"), Verdict(4, 63), "vorhanden",
                       'Anführungszeichen " und: Doppelpunkt')]

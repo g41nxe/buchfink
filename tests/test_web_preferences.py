@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.facets import ReadingProfile
+from ebook_watchlist.judging.facets import ReadingProfile
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app
 

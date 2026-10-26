@@ -16,8 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..config import Settings
-from ..judging import load_judge
-from ..ratings import BY_READER, book_subject
+from ..judging.judge import load_judge
+from ..judging.ratings import BY_READER, book_subject
 from ..relations import RelationKind
 from ..store import Store
 from . import sorting

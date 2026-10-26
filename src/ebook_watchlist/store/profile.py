@@ -14,9 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.exc import IntegrityError
 
-from ..facets import Counterweight, Facet, Liked, ReadingProfile
-from ..portrait import Portrait
-from ..ratings import RATING_ORIGINS
+from ..judging.facets import Counterweight, Facet, Liked, ReadingProfile
+from ..judging.portrait import Portrait
+from ..judging.ratings import RATING_ORIGINS
 from ..relations import check_details, check_interest_key, check_relation_kind
 from .catalog import CatalogMixin
 from .rows import (

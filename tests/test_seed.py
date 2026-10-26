@@ -10,7 +10,7 @@ from datetime import datetime
 import pytest
 
 from ebook_watchlist.config import OwnedBook, Seed, Settings, WatchlistEntry
-from ebook_watchlist.ratings import book_subject
+from ebook_watchlist.judging.ratings import book_subject
 from ebook_watchlist.relations import (
     ConfigurationError,
     InterestKey,

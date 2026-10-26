@@ -84,7 +84,7 @@ def test_an_old_dnb_answer_is_filed_on_the_next_run(store: Store) -> None:
 def test_her_series_is_not_a_namesake_by_another_author(store: Store) -> None:
     """Sie besitzt einen Band von „Die Chroniken" (A); Band 4 von „Die
     Chroniken" einer anderen Autorin bleibt ein Folgeband (Review 04.10.2026)."""
-    from ebook_watchlist.series import mid_series_finder
+    from ebook_watchlist.catalog.series import mid_series_finder
 
     seen(store, at_overdrive("9783000000301", "Die Chroniken", "1", author="Eine Autorin"))
     book = store.find_or_create_book(isbn="9783000000301", title="Erster Teil",
@@ -98,7 +98,7 @@ def test_her_series_is_not_a_namesake_by_another_author(store: Store) -> None:
 
 def test_her_own_books_make_their_series_followed(store: Store) -> None:
     """Die Ausnahme „eine Reihe, die sie schon liest" vergleicht Schlüssel."""
-    from ebook_watchlist.series import mid_series_finder
+    from ebook_watchlist.catalog.series import mid_series_finder
 
     store.save_dnb("9783000000066", Record(title="Wayward", series="Ein Wayward-Pines-Thriller",
                                            series_index="2"), NOW)

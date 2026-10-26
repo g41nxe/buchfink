@@ -15,12 +15,12 @@ from dataclasses import dataclass
 
 import yaml
 
+from ..relations import RelationKind
+from ..store import Store
 from . import reader_reasons
 from .facets import ReadingProfile, Reason, Weights, load_weights
 from .portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
 from .ratings import book_subject
-from .relations import RelationKind
-from .store import Store
 from .taste_form import RatedBook, TasteForm, book_terms, learn, overlap
 
 

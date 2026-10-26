@@ -15,7 +15,8 @@ from datetime import datetime, timedelta
 import yaml
 
 from ..config import Settings
-from ..facets import (
+from ..genres import genre_label
+from ..judging.facets import (
     STRENGTHS,
     family_description,
     family_name,
@@ -24,9 +25,8 @@ from ..facets import (
     load_weights,
     strength,
 )
-from ..genres import genre_label
-from ..judging import load_judge
-from ..portrait import VocabularyError, load_vocabulary
+from ..judging.judge import load_judge
+from ..judging.portrait import VocabularyError, load_vocabulary
 from ..reasons import genre_category_name
 from ..relations import InterestKey, RelationKind, labelled
 from ..store import Store

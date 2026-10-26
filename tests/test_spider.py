@@ -10,9 +10,9 @@ from __future__ import annotations
 import pytest
 
 from conftest import needs_vocabulary
-from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
-from ebook_watchlist.portrait import Portrait, Trait, load_vocabulary
-from ebook_watchlist.taste_form import TasteForm, learn
+from ebook_watchlist.judging.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
+from ebook_watchlist.judging.portrait import Portrait, Trait, load_vocabulary
+from ebook_watchlist.judging.taste_form import TasteForm, learn
 from ebook_watchlist.web.spider import SECTOR_ORDER, book_spiders, reader_spiders
 
 pytestmark = needs_vocabulary

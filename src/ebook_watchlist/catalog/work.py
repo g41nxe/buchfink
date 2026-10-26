@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import re
 
-from .cleaning import author_key
-from .matching.normalize import fold
+from ..cleaning import author_key
+from ..matching.normalize import fold
 
 _NOT_A_WORD = re.compile(r"[^\w]+")
 

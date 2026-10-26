@@ -18,10 +18,10 @@ from typing import Protocol
 
 import yaml
 
-from .judging import Judge, Verdict, readers_verdict
+from .judging.judge import Judge, Verdict, readers_verdict
+from .judging.portrait import Portrait
+from .judging.ratings import BY_READER, book_subject, subject_of
 from .models import MatchReason, Observation
-from .portrait import Portrait
-from .ratings import BY_READER, book_subject, subject_of
 from .store import Store
 from .web.intake import intake_subject
 

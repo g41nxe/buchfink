@@ -7,12 +7,12 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from ebook_watchlist.catalog.work import work_key
 from ebook_watchlist.dnb import Record
+from ebook_watchlist.judging.portrait import Portrait
+from ebook_watchlist.judging.ratings import BY_READER, book_subject
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.portrait import Portrait
-from ebook_watchlist.ratings import BY_READER, book_subject
 from ebook_watchlist.store import Store
-from ebook_watchlist.work import work_key
 
 NOW = datetime(2026, 10, 3, 12, 0)
 GERMAN = "9783641253486"

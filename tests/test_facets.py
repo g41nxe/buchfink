@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from conftest import needs_vocabulary
-from ebook_watchlist.facets import (
+from ebook_watchlist.judging.facets import (
     Counterweight,
     Facet,
     Liked,
@@ -20,7 +20,7 @@ from ebook_watchlist.facets import (
     genre_matches,
     load_profile_file,
 )
-from ebook_watchlist.portrait import Portrait, Trait, load_vocabulary
+from ebook_watchlist.judging.portrait import Portrait, Trait, load_vocabulary
 from ebook_watchlist.store import Store
 
 pytestmark = needs_vocabulary
@@ -134,7 +134,7 @@ def test_a_reader_without_a_profile_has_none(store: Store) -> None:
 def test_the_command_stores_a_new_version(data_dir: Path, tmp_path: Path) -> None:
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_settings
-    from ebook_watchlist.facets import main
+    from ebook_watchlist.judging.facets import main
 
     file = _file(tmp_path, "facetten:\n  - familien: [harsh, brooding]\n")
 
@@ -148,7 +148,7 @@ def test_the_command_refuses_a_broken_profile(
 ) -> None:
     from ebook_watchlist import paths
     from ebook_watchlist.config import load_settings
-    from ebook_watchlist.facets import main
+    from ebook_watchlist.judging.facets import main
 
     file = _file(tmp_path, "facetten:\n  - familien: [harsh]\n")
 
@@ -197,7 +197,7 @@ CARRIERS = {
 
 
 def test_facets_come_from_families_the_same_books_carry() -> None:
-    from ebook_watchlist.facets import derive_facets
+    from ebook_watchlist.judging.facets import derive_facets
 
     facets = derive_facets(
         ["harsh", "brooding", "nerve_racking", "menacing", "funny", "likeable"], CARRIERS
@@ -213,7 +213,7 @@ def test_facets_come_from_families_the_same_books_carry() -> None:
 
 def test_not_only_identical_book_sets_form_a_facet() -> None:
     """Schauplatz (L, O, C) und große Ideen (O, C): beide tragen O und C."""
-    from ebook_watchlist.facets import derive_facets
+    from ebook_watchlist.judging.facets import derive_facets
 
     facets = derive_facets(["atmospheric", "thought_provoking"], CARRIERS)
 
@@ -224,7 +224,7 @@ def test_not_only_identical_book_sets_form_a_facet() -> None:
 
 def test_a_single_family_is_no_facet() -> None:
     """Zählt für sich (#64), aber bündelt nichts."""
-    from ebook_watchlist.facets import derive_facets
+    from ebook_watchlist.judging.facets import derive_facets
 
     facets = derive_facets(["harsh", "brooding", "thought_provoking"], CARRIERS)
 
@@ -234,13 +234,13 @@ def test_a_single_family_is_no_facet() -> None:
 def test_one_book_alone_makes_no_facet() -> None:
     """Eine Kombination aus einem Buch sagt mehr über das Buch als über den
     Geschmack (24.09.2026)."""
-    from ebook_watchlist.facets import derive_facets
+    from ebook_watchlist.judging.facets import derive_facets
 
     assert derive_facets(["quirky", "funny", "likeable"], CARRIERS) == []
 
 
 def test_the_strength_is_a_scale() -> None:
-    from ebook_watchlist.facets import strength
+    from ebook_watchlist.judging.facets import strength
 
     assert [strength(n) for n in (1, 2, 3, 4, 7)] == [
         "schwach", "mittel", "stark", "sehr stark", "sehr stark"
@@ -249,7 +249,7 @@ def test_the_strength_is_a_scale() -> None:
 
 def test_a_defining_book_lifts_the_strength_by_one_step_up_to_the_top() -> None:
     """#62: ein Buch, in dem die Facette prägt, soll nicht als „schwach“ dastehen."""
-    from ebook_watchlist.facets import strength
+    from ebook_watchlist.judging.facets import strength
 
     assert [strength(n, defining=True) for n in (1, 2, 3, 4, 7)] == [
         "mittel", "stark", "sehr stark", "sehr stark", "sehr stark"
@@ -303,7 +303,7 @@ def test_a_family_of_one_book_does_not_grow_a_facet_of_that_book() -> None:
     daraus wurde eine Facette aus allem, was *Leichenblässe* trägt. Facetten
     aus einem einzigen Buch gibt es nur für ein Buch, das sonst in keiner
     steckt (Abdeckung)."""
-    from ebook_watchlist.facets import derive_facets
+    from ebook_watchlist.judging.facets import derive_facets
 
     carriers = {**CARRIERS, "discovery": {"L"}}
     facets = derive_facets(

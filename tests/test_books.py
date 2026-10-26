@@ -9,7 +9,7 @@ from datetime import datetime
 
 import pytest
 
-from ebook_watchlist.books import BY_ISBN, BY_MATCH, BookLike, find
+from ebook_watchlist.catalog.books import BY_ISBN, BY_MATCH, BookLike, find
 from ebook_watchlist.models import LinkOutcome
 from ebook_watchlist.store import Store
 

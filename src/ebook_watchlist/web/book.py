@@ -12,16 +12,16 @@ import json
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from .. import series_watch
+from ..catalog import series_watch
+from ..catalog.series_watch import SeriesView
 from ..cleaning import is_truncated
 from ..config import Settings
 from ..deals import is_strong_deal
 from ..evidence import gather as gather_evidence
-from ..facets import Reason
 from ..http import HttpClient, build_user_agent
-from ..judging import load_judge
-from ..models import Availability, MatchReason
-from ..portrait import (
+from ..judging.facets import Reason
+from ..judging.judge import load_judge
+from ..judging.portrait import (
     Portrait,
     PortrayalUnavailable,
     Vocabulary,
@@ -30,8 +30,8 @@ from ..portrait import (
     load_vocabulary,
     worth_asking_again,
 )
-from ..portrayer import build_portrayer
-from ..ratings import (
+from ..judging.portrayer import build_portrayer
+from ..judging.ratings import (
     BY_ONLEIHE_READERS,
     BY_READER,
     FOREIGN_ORIGINS,
@@ -40,10 +40,10 @@ from ..ratings import (
     book_subject,
     subject_of,
 )
+from ..models import Availability, MatchReason
 from ..reasons import is_library_list, short_why, why_shown
 from ..relations import RELATION_KINDS, RelationKind, labelled_actions
 from ..sample import fetcher
-from ..series_watch import SeriesView
 from ..sources import build_sources, registry
 from ..store import Store
 from .comparison import Comparison, compare

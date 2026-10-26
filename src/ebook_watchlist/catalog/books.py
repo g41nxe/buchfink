@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from .matching import Candidate, Confidence, Query, match
+from ..matching import Candidate, Confidence, Query, match
 
 
 @dataclass(frozen=True, slots=True)

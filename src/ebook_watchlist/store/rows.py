@@ -27,11 +27,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
+from ..catalog.series import series_key
+from ..catalog.work import work_key
 from ..cleaning import author_key, preferred_spelling
+from ..judging.portrait import Portrait, Trait
 from ..models import Availability, MatchReason, Observation
-from ..portrait import Portrait, Trait
-from ..series import series_key
-from ..work import work_key
 
 #: Wie oft eine neue Fassung bei einer Kollision der Nummer erneut versucht wird.
 _VERSION_ATTEMPTS = 20

@@ -33,9 +33,10 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from .. import reader_reasons
 from ..config import Settings
-from ..facets import (
+from ..genres import genre_label
+from ..judging import reader_reasons
+from ..judging.facets import (
     MOST_BOOSTED,
     Counterweight,
     Facet,
@@ -51,8 +52,7 @@ from ..facets import (
     strength,
     strength_level,
 )
-from ..genres import genre_label
-from ..portrait import VocabularyError, fingerprint, load_vocabulary
+from ..judging.portrait import VocabularyError, fingerprint, load_vocabulary
 from ..relations import RelationKind
 from ..store import Store
 from .book import _stored_portrait as stored_portrait

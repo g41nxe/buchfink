@@ -38,7 +38,7 @@ import yaml
 #: veröffentlicht werden darf, ist ungeklärt (#59). Ein anderes Verzeichnis
 #: lässt sich mit ``EBW_VOCABULARY_DIR`` angeben.
 VOCABULARY_DIR = Path(
-    os.environ.get("EBW_VOCABULARY_DIR") or Path(__file__).resolve().parents[2] / "vocabulary"
+    os.environ.get("EBW_VOCABULARY_DIR") or Path(__file__).resolve().parents[3] / "vocabulary"
 )
 VOCABULARY_PATH = VOCABULARY_DIR / "merkmale.yaml"
 PATTERNS_PATH = VOCABULARY_DIR / "erzaehlmuster.yaml"
@@ -440,7 +440,7 @@ def genre_section() -> str:
     sind schon migriert (#89). Käme die Liste in den Abdruck, veralteten sie
     alle und kosteten je einen Aufruf.
     """
-    from .genres import load_genres
+    from ..genres import load_genres
 
     lines = [f"{'  ' if genre.parent else ''}{genre.code} {genre.name}" for genre in load_genres()]
     return (
@@ -742,7 +742,7 @@ def parse_answer(
 
     # Das Genre aus der Liste (#90). Ein erfundener Code zählt nicht; beim
     # Speichern gilt dann die Ableitung aus dem Freitext (#89).
-    from .genres import load_genres
+    from ..genres import load_genres
 
     code = _text(data.get("genre_code"))
     if code is not None and code not in load_genres():
@@ -751,7 +751,7 @@ def parse_answer(
     if code is None:
         # Schon hier, nicht erst beim Speichern: das Tor beurteilt den frischen
         # Steckbrief (Review 04.10.2026).
-        from .genre_migration import genre_code
+        from ..genre_migration import genre_code
 
         code = genre_code(_text(data.get("genre")), _text(data.get("untergenre")))
 

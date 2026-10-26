@@ -85,7 +85,7 @@ def test_each_row_can_be_found_by_the_search(client, db) -> None:
 
 def test_her_own_stars_stand_in_the_row(client, db) -> None:
     b = owned(db, "Leopard", "Jo Nesbø")
-    from ebook_watchlist.ratings import BY_READER, book_subject
+    from ebook_watchlist.judging.ratings import BY_READER, book_subject
 
     db.put_rating(book_subject(b), stars=4, confidence="belegt", reason="",
                   profile_version=0, now=NOW, origin=BY_READER)

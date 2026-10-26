@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from conftest import STAR_TERMS, judging_profile, needs_vocabulary
-from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
-from ebook_watchlist.judging import Verdict, judge, load_judge, readers_verdict
-from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+from ebook_watchlist.judging.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
+from ebook_watchlist.judging.judge import Verdict, judge, load_judge, readers_verdict
+from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
 
 pytestmark = needs_vocabulary
 
@@ -171,7 +171,7 @@ def test_the_judge_learns_from_the_rated_books(store, vocabulary) -> None:
 def test_the_judge_reads_her_reasons_from_the_rating(store, vocabulary) -> None:
     from datetime import datetime
 
-    from ebook_watchlist.judging import rated_books
+    from ebook_watchlist.judging.judge import rated_books
 
     store.put_reading_profile("test", PROFILE, cause="Test", now=datetime(2026, 9, 26, 12, 0))
     _read_book(store, vocabulary, "Der Schwarm", "disliked", "intensifying", "world_building",
@@ -192,7 +192,7 @@ def test_a_verdict_close_to_the_gate_is_borderline() -> None:
     """Ein Steckbrief streut um etwa 7 Punkte (Versuch zu #81): ein Urteil so nah
     an der Schwelle kann mit einem anderen Steckbrief auf der anderen Seite
     liegen. Das wird gesagt, nicht versteckt."""
-    from ebook_watchlist.facets import load_weights
+    from ebook_watchlist.judging.facets import load_weights
 
     weights = load_weights()
 
@@ -202,9 +202,9 @@ def test_a_verdict_close_to_the_gate_is_borderline() -> None:
 
 def test_the_verdict_says_whether_it_is_borderline() -> None:
     from conftest import STAR_TERMS, judging_profile
-    from ebook_watchlist.facets import load_weights
-    from ebook_watchlist.judging import judge
-    from ebook_watchlist.portrait import Portrait, Trait, fingerprint, load_vocabulary
+    from ebook_watchlist.judging.facets import load_weights
+    from ebook_watchlist.judging.judge import judge
+    from ebook_watchlist.judging.portrait import Portrait, Trait, fingerprint, load_vocabulary
 
     vocabulary, weights = load_vocabulary(), load_weights()
     for stars in (1, 3, 5):

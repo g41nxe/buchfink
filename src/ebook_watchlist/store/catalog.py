@@ -17,15 +17,15 @@ from sqlalchemy import (
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
-from ..books import BookLike
-from ..books import find as find_book
+from ..catalog.books import BookLike
+from ..catalog.books import find as find_book
+from ..catalog.series import SeriesOf, series_key, volume_span
 from ..cleaning import author_key
 from ..dnb import Record
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..matching.normalize import normalize_title
 from ..models import LINK_OUTCOMES, Observation
 from ..relations import RelationKind
-from ..series import SeriesOf, series_key, volume_span
 from .observations import ObservationsMixin
 from .rows import (
     BISAC_ORIGINS,

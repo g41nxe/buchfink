@@ -10,8 +10,8 @@ from ebook_watchlist.digest import (
     GateNote,
     build_digest,
 )
-from ebook_watchlist.facets import Reason
-from ebook_watchlist.judging import Verdict
+from ebook_watchlist.judging.facets import Reason
+from ebook_watchlist.judging.judge import Verdict
 from ebook_watchlist.models import (
     Availability,
     Delta,

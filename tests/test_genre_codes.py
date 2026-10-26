@@ -7,9 +7,9 @@ from datetime import datetime
 from pathlib import Path
 
 from conftest import needs_vocabulary
-from ebook_watchlist.facets import Counterweight, ReadingProfile, genre_matches
 from ebook_watchlist.genres import genre_label
-from ebook_watchlist.portrait import Portrait
+from ebook_watchlist.judging.facets import Counterweight, ReadingProfile, genre_matches
+from ebook_watchlist.judging.portrait import Portrait
 from ebook_watchlist.store import Store
 
 NOW = datetime(2026, 10, 4, 12, 0)
@@ -118,7 +118,7 @@ def test_the_profile_page_names_the_genre_of_a_counterweight(data_dir: Path) -> 
 def test_a_fresh_portrait_carries_its_code_before_it_is_stored() -> None:
     """Das Tor beurteilt den frischen Steckbrief, nicht den gespeicherten —
     ohne Code griff ein Gegengewicht „nur bei High Fantasy" dort nicht."""
-    from ebook_watchlist.portrait import load_vocabulary, parse_answer
+    from ebook_watchlist.judging.portrait import load_vocabulary, parse_answer
 
     text = json.dumps({"bekannt": True, "titel": "T", "autor": "A", "genre": "Fantasy",
                        "untergenre": "High Fantasy, Epos", "pitch": "Ein Buch.",

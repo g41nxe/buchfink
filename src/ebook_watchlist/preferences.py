@@ -19,11 +19,11 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from .cleaning import author_key
-from .facets import ReadingProfile
 from .genres import load_genres
+from .judging.facets import ReadingProfile
+from .judging.portrait import VocabularyError, fingerprint, load_vocabulary
+from .judging.ratings import book_subject
 from .models import MatchReason, Observation
-from .portrait import VocabularyError, fingerprint, load_vocabulary
-from .ratings import book_subject
 from .relations import InterestKey
 from .store import Store
 

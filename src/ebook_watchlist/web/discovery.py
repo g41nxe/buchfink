@@ -18,13 +18,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from .. import series_watch
+from ..catalog import series_watch
+from ..catalog.series_watch import SeriesView
 from ..config import Settings
 from ..deals import is_strong_deal
-from ..portrait import VocabularyError, fingerprint, load_vocabulary
-from ..ratings import subject_of
+from ..judging.portrait import VocabularyError, fingerprint, load_vocabulary
+from ..judging.ratings import subject_of
 from ..reasons import genre_category_name
-from ..series_watch import SeriesView
 from ..sources import registry
 from ..store import Store
 from .book import (

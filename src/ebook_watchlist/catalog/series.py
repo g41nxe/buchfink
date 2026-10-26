@@ -25,13 +25,13 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .cleaning import author_key
-from .matching.normalize import named_volume, volume_of
-from .models import MatchReason, Observation
-from .relations import InterestKey
+from ..cleaning import author_key
+from ..matching.normalize import named_volume, volume_of
+from ..models import MatchReason, Observation
+from ..relations import InterestKey
 
 if TYPE_CHECKING:
-    from .store import Store
+    from ..store import Store
 
 _LEADING_NUMBER = re.compile(r"\s*(\d{1,3})")
 #: „Die Flüsse-von-London-Reihe (Peter Grant)": der Zusatz in Klammern nennt

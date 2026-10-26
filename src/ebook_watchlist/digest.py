@@ -12,7 +12,7 @@ from datetime import datetime
 
 from .config import Settings
 from .deals import deal_flags
-from .judging import Verdict
+from .judging.judge import Verdict
 from .junk import SHORT_STORY_PAGES
 from .models import Attention, Delta, DeltaKind, MatchReason, SourceFailure
 from .reasons import why_shown

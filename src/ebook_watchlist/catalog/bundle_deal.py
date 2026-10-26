@@ -34,9 +34,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .config import Settings
-from .matching.bundles import looks_like_bundle, volume_titles
-from .models import MatchReason, Observation
+from ..config import Settings
+from ..matching.bundles import looks_like_bundle, volume_titles
+from ..models import MatchReason, Observation
 
 #: Anlässe, bei denen eine Sammelausgabe überhaupt gemeldet werden darf.
 REPORTABLE = frozenset({MatchReason.WATCHLIST, MatchReason.PROFILE_AUTHOR})
@@ -149,7 +149,7 @@ def advantage_finder(store, settings):
     Shops zu addieren waere eine Summe, die niemand bezahlen kann, also wird
     je Shop verglichen.
     """
-    from .sources import registry
+    from ..sources import registry
 
     tables = [
         (

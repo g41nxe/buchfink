@@ -25,7 +25,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
-from .models import Observation
+from ..models import Observation
 from .portrait import (
     ANSWER_SCHEMA,
     EVIDENCE,

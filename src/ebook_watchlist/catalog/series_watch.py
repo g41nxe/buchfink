@@ -19,12 +19,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from . import paths
-from .covers import CoverStore, file_name
-from .junk import is_short_story
-from .models import MatchReason, Observation
-from .relations import REMOVED, RelationKind
-from .store import Store
+from .. import paths
+from ..covers import CoverStore, file_name
+from ..junk import is_short_story
+from ..models import MatchReason, Observation
+from ..relations import REMOVED, RelationKind
+from ..store import Store
 
 WATCHING = str(RelationKind.WATCHING)
 #: Vermerk an einem Band, den „Nicht mehr beobachten" entfernt hat — nicht sie.

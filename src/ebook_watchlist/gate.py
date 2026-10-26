@@ -17,14 +17,14 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .facets import ReadingProfile, Weights
-from .judging import Verdict, judge, readers_verdict
+from .judging.facets import ReadingProfile, Weights
+from .judging.judge import Verdict, judge, readers_verdict
+from .judging.portrait import Portrait, PortrayalUnavailable, Vocabulary, fingerprint
+from .judging.ratings import BY_READER, book_subject, subject_of
+from .judging.taste_form import TasteForm
 from .junk import is_short_story
 from .models import Delta, DeltaKind, MatchReason, Observation
-from .portrait import Portrait, PortrayalUnavailable, Vocabulary, fingerprint
-from .ratings import BY_READER, book_subject, subject_of
 from .store import Store
-from .taste_form import TasteForm
 
 
 @dataclass(slots=True)

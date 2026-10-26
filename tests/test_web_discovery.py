@@ -16,8 +16,8 @@ from fastapi.testclient import TestClient
 
 from conftest import describe, give_profile, needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
+from ebook_watchlist.judging.ratings import subject_of
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.ratings import subject_of
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app
 
@@ -353,7 +353,7 @@ def test_a_find_nobody_saw_cannot_be_described(db: Store) -> None:
 
 
 def _stamp() -> str:
-    from ebook_watchlist.portrait import fingerprint, load_vocabulary
+    from ebook_watchlist.judging.portrait import fingerprint, load_vocabulary
 
     return fingerprint(load_vocabulary())
 
@@ -367,7 +367,7 @@ def test_an_unknown_find_with_text_is_asked_once_more_with_the_sample(
     from dataclasses import replace
 
     from ebook_watchlist.config import load_settings
-    from ebook_watchlist.portrait import Portrait, fingerprint, load_vocabulary
+    from ebook_watchlist.judging.portrait import Portrait, fingerprint, load_vocabulary
     from ebook_watchlist.web import book as book_view
 
     observation = put_discovery(db)

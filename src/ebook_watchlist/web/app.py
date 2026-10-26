@@ -26,10 +26,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from .. import paths, preferences, series_watch
+from .. import paths, preferences
+from ..catalog import series_watch
 from ..config import ConfigError, load_settings
-from ..facets import GENERAL
 from ..genres import genre_label
+from ..judging.facets import GENERAL
 from ..models import LinkOutcome
 from ..relations import RelationKind
 from ..sources import registry

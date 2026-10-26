@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Container, Iterable, Mapping, Sequence
 
-from .bundle_deal import BundleAdvantage
+from .catalog.bundle_deal import BundleAdvantage
 from .config import Settings
 from .deals import is_strong_deal
 from .junk import is_junk

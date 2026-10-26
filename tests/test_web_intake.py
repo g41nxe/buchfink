@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
-from ebook_watchlist.facets import Liked
+from ebook_watchlist.judging.facets import Liked
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import intake
@@ -287,7 +287,7 @@ def test_the_profile_page_leads_into_the_intake(client) -> None:
 
 
 def _portrait(genre, subgenre, terms, patterns="quest"):
-    from ebook_watchlist.portrait import load_vocabulary, parse_answer
+    from ebook_watchlist.judging.portrait import load_vocabulary, parse_answer
 
     return parse_answer(json.dumps({
         "bekannt": True, "titel": "x", "autor": "y", "genre": genre, "untergenre": subgenre,
@@ -493,7 +493,7 @@ def test_deselecting_everything_starts_over(client, db, books) -> None:
 
 def test_frequent_families_go_last_only_with_a_neutral_stock(db, books) -> None:
     """Gemessen am neutralen Bestand, nie an den eigenen Büchern (#44)."""
-    from ebook_watchlist.portrait import load_vocabulary
+    from ebook_watchlist.judging.portrait import load_vocabulary
 
     vocabulary = load_vocabulary()
     assert intake.frequent_families(db, load_settings(), vocabulary) == set()
@@ -516,7 +516,7 @@ def test_the_profile_page_hides_the_way_in_once_there_is_a_profile(client, db, b
 
     assert "Erstaufnahme beginnen" not in body and "data-reading-profile" in body
     # Jede Facette nennt ihre Merkmale mit dem Satz, was sie heißen — wie im Entwurf.
-    from ebook_watchlist.portrait import load_vocabulary
+    from ebook_watchlist.judging.portrait import load_vocabulary
 
     vocabulary = load_vocabulary()
     facet = body.split("Erkannte Kombinationen", 1)[1]
@@ -599,7 +599,7 @@ def test_only_here_in_the_intake_keeps_the_family_out_of_the_form(client, db, bo
 def test_frequent_families_are_not_recounted_for_every_tap(db, books, monkeypatch) -> None:
     """Gezählt wird neu, wenn ein Steckbrief oder eine Beziehung dazukommt —
     nicht bei jedem Tipp auf Bildschirm 3 und 4 (#58)."""
-    from ebook_watchlist.portrait import load_vocabulary
+    from ebook_watchlist.judging.portrait import load_vocabulary
 
     vocabulary = load_vocabulary()
     for i in range(intake.NEUTRAL_MIN_BOOKS):
@@ -680,7 +680,7 @@ def test_screen_5_lets_a_new_like_win_over_an_old_dislike(client, db, books) -> 
     """Wie auf der Profilseite: das Neue gilt (Review 04.10.2026)."""
     from dataclasses import replace
 
-    from ebook_watchlist.facets import ReadingProfile
+    from ebook_watchlist.judging.facets import ReadingProfile
 
     slug = load_settings().slug
     db.put_reading_profile(slug, replace(ReadingProfile((), ()), disliked_genres=("FIC009060",),

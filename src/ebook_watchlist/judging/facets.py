@@ -50,7 +50,7 @@ class ProfileError(Exception):
 
 #: Die Gewichte, mit denen der Code urteilt — und nichts sonst (ADR 33). Sie
 #: nennen keinen Geschmack und gelten für jede Leserin gleich.
-SCHEME_PATH = Path(__file__).resolve().parents[2] / "docs" / "bewertungsschema.yaml"
+SCHEME_PATH = Path(__file__).resolve().parents[3] / "docs" / "bewertungsschema.yaml"
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,15 +243,15 @@ def genre_matches(counterweight: Counterweight, portrait: Portrait) -> bool:
     """
     if counterweight.genre is None:
         return True
-    from .genres import load_genres
+    from ..genres import load_genres
 
     genres = load_genres()
     if counterweight.genre in genres:
         # Ein Code (ADR 37): er gilt für sich und alle Untergenres darunter,
         # gleich wie das Modell das Genre geschrieben hat. Ein Steckbrief ohne
         # Code bekommt ihn hier nach denselben Regeln wie beim Speichern.
-        from .genre_migration import genre_code
-        from .preferences import book_codes
+        from ..genre_migration import genre_code
+        from ..preferences import book_codes
 
         code = portrait.genre_code or genre_code(portrait.genre, portrait.subgenre)
         # Der Verlag vor dem Modell, wie bei Bonus und Ausschluss (ADR 37).
@@ -471,9 +471,9 @@ def load_profile_file(path: Path, vocabulary: Vocabulary) -> ReadingProfile:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Ein Profil aus einer Datei als neue Fassung speichern."""
-    from . import paths
-    from .config import load_settings
-    from .store import Store
+    from .. import paths
+    from ..config import load_settings
+    from ..store import Store
 
     arguments = list(sys.argv[1:] if argv is None else argv)
     if len(arguments) != 1:

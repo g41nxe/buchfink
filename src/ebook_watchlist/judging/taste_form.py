@@ -22,6 +22,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from ..genres import genre_label
 from .facets import (
     Counterweight,
     ReadingProfile,
@@ -32,7 +33,6 @@ from .facets import (
     genre_matches,
     is_pattern,
 )
-from .genres import genre_label
 from .portrait import Portrait, Vocabulary
 
 #: Ab welchem Wert der Form ein Merkmal in der Begründung als gemocht oder als
@@ -308,7 +308,7 @@ def overlap(
         share = 1 - (1 - share) * (1 - weights.facet_bonus)
     # Ein gemochtes Genre hebt wenig: das Spiegelbild des Genre-Gegengewichts
     # (ADR 37, #91).
-    from .preferences import book_codes, liked_genre
+    from ..preferences import book_codes, liked_genre
 
     if profile.liked_genres and liked_genre(
         profile, book_codes(portrait.source_codes, portrait.genre_code)

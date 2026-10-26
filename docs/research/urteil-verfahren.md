@@ -1080,7 +1080,7 @@ Reihenfolge nach Verwendung; jede Quelle mit Lesestand.
 
 **Eigene Quellen im Repository**
 
-- `src/ebook_watchlist/facets.py` (`fit`, `Weights`), `docs/bewertungsschema.yaml`,
+- `src/ebook_watchlist/judging/facets.py` (`fit`, `Weights`), `docs/bewertungsschema.yaml`,
   `CONTEXT.md` (Fit, Facet, Counterweight, Portrait, Strength), ADR 19 und 33.
 - `data/snapshots.db`, nur lesend (Stand 25.09.2026): `portrait` (107 Zeilen,
   92 Subjekte, 97 bekannt), `book_relation` (`liked` 15, `disliked` 2 aktiv),

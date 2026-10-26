@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from ebook_watchlist import series_watch
+from ebook_watchlist.catalog import series_watch
 from ebook_watchlist.models import MatchReason, Observation
 from ebook_watchlist.store import Store
 

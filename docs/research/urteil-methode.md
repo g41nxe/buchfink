@@ -459,7 +459,7 @@ Ablehnung, die erst mit mehr enttäuschenden Büchern prüfbar ist.
 
 ## 12. Umsetzung (26.09.2026)
 
-Die einzelne Form ist im Code (`src/ebook_watchlist/taste_form.py`, Nachtrag zu
+Die einzelne Form ist im Code (`src/ebook_watchlist/judging/taste_form.py`, Nachtrag zu
 ADR 33). Abweichungen vom Prototyp, beide nach Review:
 
 - **Ablehnung ohne Teilung durch die Zahl der enttäuschenden Bücher.** Der

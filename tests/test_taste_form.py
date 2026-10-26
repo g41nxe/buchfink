@@ -11,9 +11,16 @@ from __future__ import annotations
 import pytest
 
 from conftest import needs_vocabulary
-from ebook_watchlist.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
-from ebook_watchlist.portrait import CLEAR, DEFINING, MARGINAL, Portrait, Trait, load_vocabulary
-from ebook_watchlist.taste_form import RatedBook, TasteForm, book_terms, learn, overlap
+from ebook_watchlist.judging.facets import Counterweight, Facet, Liked, ReadingProfile, load_weights
+from ebook_watchlist.judging.portrait import (
+    CLEAR,
+    DEFINING,
+    MARGINAL,
+    Portrait,
+    Trait,
+    load_vocabulary,
+)
+from ebook_watchlist.judging.taste_form import RatedBook, TasteForm, book_terms, learn, overlap
 
 pytestmark = needs_vocabulary
 

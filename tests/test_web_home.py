@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 from conftest import describe, give_profile, needs_vocabulary
 from ebook_watchlist import paths
 from ebook_watchlist.config import load_settings
+from ebook_watchlist.judging.ratings import subject_of
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.ratings import subject_of
 from ebook_watchlist.run import main as run_main
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, home, watchlist

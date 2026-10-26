@@ -9,8 +9,8 @@ from sqlalchemy import (
     select,
 )
 
+from ..catalog.series import series_from_title
 from ..models import Observation
-from ..series import series_from_title
 from .core import StoreCore
 from .rows import (
     ENTRY_TRIGGER,

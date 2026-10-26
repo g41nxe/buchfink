@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from ebook_watchlist.bundle_deal import advantage_for
+from ebook_watchlist.catalog.bundle_deal import advantage_for
 from ebook_watchlist.config import Settings
 from ebook_watchlist.models import MatchReason, Observation
 

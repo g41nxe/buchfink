@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from conftest import needs_vocabulary
-from ebook_watchlist.portrait import (
+from ebook_watchlist.judging.portrait import (
     Portrait,
     PortrayalUnavailable,
     Trait,
@@ -27,7 +27,7 @@ from ebook_watchlist.portrait import (
     prompt,
     prompt_many,
 )
-from ebook_watchlist.portrayer import Portrayer
+from ebook_watchlist.judging.portrayer import Portrayer
 from ebook_watchlist.store import Store
 
 pytestmark = needs_vocabulary
@@ -459,7 +459,7 @@ def test_story_patterns_are_in_the_vocabulary_under_their_master_plot() -> None:
 def test_the_master_plots_bind_lotr_and_otherland_and_the_genre_pattern_parts_them() -> None:
     """Beide sind eine Heldenreise; nur *Herr der Ringe* hat einen dunklen
     Herrscher. Genau diese Trennung verlangte das Gegengewicht (#44)."""
-    from ebook_watchlist.facets import families_of
+    from ebook_watchlist.judging.facets import families_of
 
     vocabulary = load_vocabulary()
     lord_of_the_rings = Portrait(known=True, fingerprint="x", traits=(
@@ -633,7 +633,7 @@ def test_the_note_is_kept_with_the_portrait(store: Store) -> None:
 
 
 def test_only_an_unknown_book_described_without_text_is_asked_again_when_a_text_appears() -> None:
-    from ebook_watchlist.portrait import worth_asking_again
+    from ebook_watchlist.judging.portrait import worth_asking_again
 
     known = Portrait(known=True, fingerprint="x", with_text=False)
     unknown_with = Portrait(known=False, fingerprint="x", with_text=True)
@@ -679,7 +679,7 @@ def test_an_answer_without_json_fails_the_batch_but_raises_cleanly() -> None:
 
 def test_an_unknown_book_is_asked_again_once_a_sample_is_there() -> None:
     """Unbekannt trotz Text: einmal noch mit der Leseprobe, nie wieder danach (#76)."""
-    from ebook_watchlist.portrait import Portrait, worth_asking_again
+    from ebook_watchlist.judging.portrait import Portrait, worth_asking_again
 
     with_text = Portrait(known=False, fingerprint="x", with_text=True)
     with_sample = Portrait(known=False, fingerprint="x", with_text=True, with_sample=True)
@@ -693,7 +693,7 @@ def test_an_unknown_book_is_asked_again_once_a_sample_is_there() -> None:
 
 
 def test_the_model_is_asked_for_a_code_from_the_genre_list() -> None:
-    from ebook_watchlist.portrait import prompt
+    from ebook_watchlist.judging.portrait import prompt
 
     text = prompt("Der Leopard", "Jo Nesbø", "Ein Mörder in Oslo.", load_vocabulary())
 
@@ -705,7 +705,7 @@ def test_the_model_is_asked_for_a_code_from_the_genre_list() -> None:
 def test_the_genre_list_does_not_change_the_fingerprint() -> None:
     """Die Steckbriefe sind migriert (#89); käme die Liste in den Abdruck,
     veralteten sie alle und kosteten je einen Aufruf."""
-    from ebook_watchlist import portrait as module
+    from ebook_watchlist.judging import portrait as module
 
     assert "FIC031080" not in module.TEMPLATE
     assert "genre_code" not in module.TEMPLATE

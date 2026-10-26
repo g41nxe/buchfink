@@ -16,9 +16,9 @@ from fastapi.testclient import TestClient
 from conftest import needs_vocabulary, portrayer_via
 from ebook_watchlist import paths
 from ebook_watchlist.config import Settings, load_settings
+from ebook_watchlist.judging.portrait import PortrayalUnavailable
+from ebook_watchlist.judging.ratings import BY_READER, book_subject
 from ebook_watchlist.models import Availability, LinkOutcome, MatchReason, Observation
-from ebook_watchlist.portrait import PortrayalUnavailable
-from ebook_watchlist.ratings import BY_READER, book_subject
 from ebook_watchlist.relations import RelationKind
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import book as view
@@ -425,7 +425,7 @@ def test_the_reason_survives_a_later_watchlist_check(client: TestClient, db: Sto
 def test_foreign_voices_stand_apart_from_the_fit(client, db) -> None:
     """Eine 4 aus 1641 fremden Stimmen ist etwas ganz anderes als die
     Übereinstimmung mit dem Profil. Sie stehen für sich (ADR 19, Ticket 54)."""
-    from ebook_watchlist.ratings import BY_ONLEIHE_READERS
+    from ebook_watchlist.judging.ratings import BY_ONLEIHE_READERS
 
     book = db.find_or_create_book(
         isbn="9783641117009", title="Die sieben Schwestern", author="Riley", now=NOW
@@ -1116,7 +1116,7 @@ def test_without_a_model_nothing_changes_and_the_page_says_why(
 
 @needs_vocabulary
 def test_a_failed_call_stores_nothing(db: Store, monkeypatch: pytest.MonkeyPatch) -> None:
-    from ebook_watchlist.portrait import fingerprint, load_vocabulary
+    from ebook_watchlist.judging.portrait import fingerprint, load_vocabulary
 
     book = db.books()[0]
     monkeypatch.setattr(
@@ -1140,7 +1140,7 @@ def test_a_book_with_an_isbn_keeps_its_portrait_at_the_isbn(
 
     view.portray(db, load_settings(), book.id, now=NOW)
 
-    from ebook_watchlist.portrait import fingerprint, load_vocabulary
+    from ebook_watchlist.judging.portrait import fingerprint, load_vocabulary
 
     assert db.portrait("isbn:9783548289441", fingerprint(load_vocabulary())).known
 
@@ -1174,7 +1174,7 @@ def test_a_portrait_survives_the_book_getting_an_isbn(
 
 
 def _profile():
-    from ebook_watchlist.facets import Counterweight, Facet, ReadingProfile
+    from ebook_watchlist.judging.facets import Counterweight, Facet, ReadingProfile
 
     return ReadingProfile(
         facets=(Facet(("harsh", "brooding"), ("Leichenblässe", "Kruzifix Killer")),),
@@ -1231,7 +1231,7 @@ def test_the_fit_stands_under_the_judgement(
     # sobald die Form auch Erzählmuster kennt.
     from dataclasses import replace
 
-    from ebook_watchlist.facets import Liked
+    from ebook_watchlist.judging.facets import Liked
 
     with_patterns = replace(_profile(), liked=(Liked("pursuit"), Liked("quest"), Liked("escape")))
     db.put_reading_profile(load_settings().slug, with_patterns, cause="Test", now=NOW)

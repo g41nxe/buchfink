@@ -15,18 +15,19 @@ from datetime import datetime, timedelta
 
 from .. import paths
 from ..authorship import ai_authors, is_ai_authored
-from ..bundle_deal import BundleAdvantage, advantage_finder
+from ..catalog.bundle_deal import BundleAdvantage, advantage_finder
+from ..catalog.series import SeriesOf, mid_series_finder
 from ..config import Settings
 from ..covers import CoverStore, file_name
 from ..deals import is_strong_deal
 from ..diff import worth_announcing
-from ..judging import load_judge
+from ..judging.judge import load_judge
+from ..judging.ratings import subject_of
 from ..junk import is_junk, is_short_story
 from ..language import is_foreign, language_finder
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
 from ..preferences import book_codes, excluded_by
-from ..ratings import subject_of
 from ..reasons import (
     genre_category_name,
     is_library_list,
@@ -35,7 +36,6 @@ from ..reasons import (
     why_shown,
 )
 from ..relations import RELATION_KINDS, RelationKind, label_of, labelled_actions
-from ..series import SeriesOf, mid_series_finder
 from ..sources import registry
 from ..store import Store
 from . import sorting

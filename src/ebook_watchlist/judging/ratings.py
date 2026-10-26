@@ -12,7 +12,7 @@ importieren — der Store hat damit nichts zu tun.
 
 from __future__ import annotations
 
-from .models import Observation
+from ..models import Observation
 
 #: Die Leserin selbst.
 BY_READER = "reader"

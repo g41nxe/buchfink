@@ -30,9 +30,9 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from ..facets import Weights, family_name
-from ..portrait import Family, Portrait, Vocabulary
-from ..taste_form import TasteForm, book_terms
+from ..judging.facets import Weights, family_name
+from ..judging.portrait import Family, Portrait, Vocabulary
+from ..judging.taste_form import TasteForm, book_terms
 
 #: Die Reihenfolge der Sektoren im Uhrzeigersinn. So stehen vier der fünf
 #: Familien, die zu zwei Dimensionen gehören, an der Grenze zu ihrer zweiten

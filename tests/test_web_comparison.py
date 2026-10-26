@@ -7,10 +7,17 @@ from __future__ import annotations
 import pytest
 
 from conftest import needs_vocabulary
-from ebook_watchlist.facets import Facet, Liked, ReadingProfile, load_weights
-from ebook_watchlist.judging import Judge
-from ebook_watchlist.portrait import CLEAR, DEFINING, Portrait, Trait, fingerprint, load_vocabulary
-from ebook_watchlist.taste_form import TasteForm
+from ebook_watchlist.judging.facets import Facet, Liked, ReadingProfile, load_weights
+from ebook_watchlist.judging.judge import Judge
+from ebook_watchlist.judging.portrait import (
+    CLEAR,
+    DEFINING,
+    Portrait,
+    Trait,
+    fingerprint,
+    load_vocabulary,
+)
+from ebook_watchlist.judging.taste_form import TasteForm
 from ebook_watchlist.web.comparison import compare
 
 pytestmark = needs_vocabulary

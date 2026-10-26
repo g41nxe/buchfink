@@ -10,8 +10,8 @@ from datetime import datetime
 
 import pytest
 
+from ebook_watchlist.judging.ratings import BY_ONLEIHE_READERS, BY_READER, book_subject, subject_of
 from ebook_watchlist.models import MatchReason, Observation
-from ebook_watchlist.ratings import BY_ONLEIHE_READERS, BY_READER, book_subject, subject_of
 from ebook_watchlist.run import _record_foreign_ratings
 from ebook_watchlist.store import Store
 
