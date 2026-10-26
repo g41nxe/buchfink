@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from .. import paths
 from ..authorship import ai_authors, is_ai_authored
 from ..catalog.bundle_deal import BundleAdvantage, advantage_finder
+from ..catalog.one_per_work import collapse
 from ..catalog.series import SeriesOf, mid_series_finder
 from ..config import Settings
 from ..covers import CoverStore, file_name
@@ -24,7 +25,7 @@ from ..diff import worth_announcing
 from ..judging.judge import load_judge
 from ..judging.ratings import subject_of
 from ..junk import is_junk, is_short_story
-from ..language import is_foreign, language_finder
+from ..language import is_foreign, language_finder, language_name, language_of_isbn
 from ..matching.bundles import looks_like_bundle, volume_titles
 from ..models import Availability, MatchReason, Observation
 from ..preferences import book_codes, excluded_by
@@ -110,6 +111,9 @@ class Suggestion:
     series: SeriesOf | None = None
     #: Was eine Sammelausgabe enthält, und was sie zu jedem Band gesagt hat (ADR 38).
     contains: tuple[ContainedVolume, ...] = ()
+    #: Andere Ausgaben desselben Werks im Stapel, als „Titel (Sprache, Quelle)“
+    #: — die Zeile vertritt das Werk (ADR 42).
+    also: tuple[str, ...] = ()
 
     @property
     def byline(self) -> str | None:
@@ -358,24 +362,37 @@ def _origin(observation: Observation) -> str:
     return LIBRARY_LIST if is_library_list(observation) else str(observation.match_reason)
 
 
-def _one_per_book(items: list[Suggestion]) -> list[Suggestion]:
-    """Ein Buch, eine Zeile — auch wenn zwei Quellen es führen.
+def _one_per_work(
+    store: Store, settings: Settings, items: list[Suggestion], language_of
+) -> list[Suggestion]:
+    """Ein Werk, eine Zeile (ADR 42) — auch wenn es in mehreren Ausgaben oder
+    bei mehreren Quellen auftaucht.
 
-    „Broken House" stand zweimal im Stapel, bei beam und bei OverDrive, mit
-    derselben ISBN. Entschieden wurde schon je ISBN, gezeigt noch je Quelle.
-    Es bleibt der Fund, der am wenigsten kostet: ausleihbar vor dem
-    günstigsten Preis.
+    Vertreten wird es von der Ausgabe in der höchsten Lesesprache, darunter
+    wie bisher von der, die am wenigsten kostet. Die anderen stehen als
+    „auch als …“ in der Zeile. Dieselbe ISBN bei zwei Quellen ist dabei nur
+    der einfachste Fall eines Werks.
     """
-    best: dict[str, Suggestion] = {}
-    kept: list[Suggestion] = []
-    for item in items:
-        if not item.isbn:
-            kept.append(item)
-            continue
-        other = best.get(item.isbn)
-        if other is None or _cost(item) < _cost(other):
-            best[item.isbn] = item
-    return [*kept, *best.values()]
+    def code(item: Suggestion) -> str | None:
+        return (language_of(item.isbn) or language_of_isbn(item.isbn)) if item.isbn else None
+
+    siblings = store.work_siblings(item.isbn for item in items if item.isbn)
+    rows = []
+    for winner, others in collapse(
+        items, isbn_of=lambda item: item.isbn, siblings=siblings, language_of=code,
+        languages=settings.languages, cost=_cost,
+    ):
+        also = tuple(dict.fromkeys(
+            f"{o.title} ({', '.join(x for x in (_language_word(code(o)), o.source_label) if x)})"
+            for o in others
+            if (o.isbn, o.source) != (winner.isbn, winner.source)
+        ))
+        rows.append(replace(winner, also=also) if also else winner)
+    return rows
+
+
+def _language_word(code: str | None) -> str | None:
+    return language_name(code) if code else None
 
 
 def _cost(item: Suggestion) -> tuple[int, int]:
@@ -495,7 +512,7 @@ def pending(
                        described=subject in portraits)
         )
 
-    items = _one_per_book(items)
+    items = _one_per_work(store, settings, items, language_of)
     named = store.series_of(item.isbn for item in items if item.isbn)
     items = [replace(item, series=named.get(item.isbn or "")) for item in items]
     # Die Bände der Sammelausgaben, mit einem Titelindex für alle (ADR 38).

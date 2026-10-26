@@ -398,6 +398,45 @@ def _without_mid_series(store: Store, profile_slug: str, deltas) -> list:
     return kept
 
 
+def _one_per_work(store: Store, settings, deltas: list) -> list:
+    """Ein Werk meldet der Tagesbericht einmal (ADR 42) — mit der Ausgabe in
+    der höchsten Lesesprache, darunter der, die am wenigsten kostet.
+
+    Nur für Funde: die Watchlist bleibt je Ausgabe (ADR 36), wer zwei
+    Sprachen beobachtet, will beide hören. Die Reihenfolge bleibt.
+    """
+    from .catalog.one_per_work import collapse
+    from .language import language_finder, language_of_isbn
+    from .models import Availability, MatchReason
+
+    found = [d for d in deltas if d.current.match_reason is not MatchReason.WATCHLIST]
+    if len(found) < 2:
+        return deltas
+    language_of = language_finder(store)
+
+    def code(delta) -> str | None:
+        isbn = delta.current.isbn
+        return (language_of(isbn) or language_of_isbn(isbn)) if isbn else None
+
+    def cost(delta) -> tuple:
+        current = delta.current
+        price = current.price_cents if current.price_cents is not None else 10**9
+        return (0 if current.availability is Availability.AVAILABLE else 1, price)
+
+    siblings = store.work_siblings(d.current.isbn for d in found if d.current.isbn)
+    winners = {
+        id(winner)
+        for winner, _ in collapse(
+            found, isbn_of=lambda d: d.current.isbn, siblings=siblings, language_of=code,
+            languages=settings.languages, cost=cost,
+        )
+    }
+    return [
+        d for d in deltas
+        if d.current.match_reason is MatchReason.WATCHLIST or id(d) in winners
+    ]
+
+
 def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources=()):
     """Entdeckungen gegen das Leseprofil prüfen (ADR 19, ADR 33, #48).
 
@@ -1164,6 +1203,9 @@ def _run(
             interest_id, source_name, now=started_at,
             address=context.addresses.get((source_name, interest_id)),
         )
+
+    # Ein Werk einmal, nicht je Ausgabe (ADR 42).
+    deltas = _one_per_work(store, settings, deltas)
 
     last_run = store.last_finished_run(settings.slug, run_id)
     digest = build_digest(

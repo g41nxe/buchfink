@@ -45,6 +45,11 @@
     {% else %}
     <span class="text-rule"><svg class="i"><use href="#ic-shop"/></svg></span>
     {% endif %}
+    {# Andere Ausgaben desselben Werks (ADR 42): die Zeile vertritt das Werk. #}
+    {% if item.also %}
+    <span class="text-xs text-soft" title="{{ item.also | join(' · ') }}">auch als:
+      {{ item.also | join(" · ") }}</span>
+    {% endif %}
     {% endset %}
 
     {% set figures %}
