@@ -11,8 +11,8 @@
    (`book_id`). Beides kommt als **Steckplatz** herein, fertig gerendert.
 #}
 {% macro undo_bar(title, done, target, fields) %}
-<div class="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-rule
-            bg-card px-4 py-2 text-sm">
+<div class="enter mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-rule
+            bg-card px-4 py-2 text-sm" role="status">
   <span>„{{ title }}" {{ done }}.</span>
   <form method="post" action="{{ target }}">
     {{ fields }}

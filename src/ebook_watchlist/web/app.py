@@ -403,8 +403,9 @@ def create_app() -> FastAPI:
             settings, store = load_settings(), _store_for(paths.db_path())
             real = design.real_rows(store, settings)
             intake_cards = design.real_intake(store, settings)
+            real_fit = design.real_fit(store, settings)
         except ConfigError:
-            real, intake_cards = {"watchlist": [], "suggestions": []}, None
+            real, intake_cards, real_fit = {"watchlist": [], "suggestions": []}, None, None
         return TEMPLATES.TemplateResponse(
             request,
             "design.html",
@@ -412,6 +413,7 @@ def create_app() -> FastAPI:
                 "asset_version": asset_version(),
                 "real": real,
                 "intake_cards": intake_cards,
+                "real_fit": real_fit,
                 "now": datetime.now(),
                 "portrait_jobs_by_book": {},
                 "portrait_jobs_by_item": {},

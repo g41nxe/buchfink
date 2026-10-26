@@ -17,7 +17,7 @@ from types import SimpleNamespace
 
 from ..config import Settings
 from ..store import Store
-from . import home, intake, symbols, triage, watchlist
+from . import home, intake, sorting, symbols, triage, watchlist
 from .runs import RunState
 
 #: Der längste Titel, den der Stapel bisher gesehen hat, und noch etwas mehr:
@@ -94,6 +94,27 @@ def real_intake(store: Store, settings: Settings) -> dict | None:
     return {"cards": picked, "lost": picked_lost, "can_boost": choice.can_boost}
 
 
+#: So viele Watchlist-Bücher werden höchstens nach einem Urteil durchgesehen:
+#: die Seite soll schnell bleiben, auch bei einem großen Bestand.
+FIT_CANDIDATES = 40
+
+
+def real_fit(store: Store, settings: Settings):
+    """Das Urteil eines echten Buchs — Sterne, Satz, Abgleich und Spinne (#112).
+
+    Das erste Watchlist-Buch mit Steckbrief und Urteil. Ohne Leseprofil oder
+    Steckbrief gibt es keins, dann `None`: ein erfundenes Urteil zeigte
+    Zahlen, die nichts bedeuten.
+    """
+    from . import book
+
+    for entry in watchlist.entries(store, settings, include_paused=False)[:FIT_CANDIDATES]:
+        page = book.build(store, settings, entry.book_id)
+        if page is not None and page.fit is not None:
+            return SimpleNamespace(title=entry.title, fit=page.fit)
+    return None
+
+
 def _unique(picked: list[tuple[str, object]]) -> list[tuple[str, object]]:
     """Ein Buch, das zwei Fälle erfüllt, steht nur einmal da."""
     seen, out = set(), []
@@ -108,6 +129,7 @@ def context(now: datetime) -> dict:
     """Die erfundenen Daten für jeden Zustand, den die Seite zeigt."""
     return {
         "closings": watchlist.CLOSINGS,
+        "orders": sorting.SUGGESTIONS,
         "actions": triage.ACTIONS,
         "icons": symbols.RELATION_ICONS,
         "color_tokens": COLOR_TOKENS,

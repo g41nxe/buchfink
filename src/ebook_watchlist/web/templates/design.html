@@ -14,6 +14,7 @@
 {% from "_verdict_stars.html" import verdict_stars %}
 {% from "_undo_bar.html" import undo_bar %}
 {% from "_family_pill.html" import family_card, loss_card %}
+{% from "_sort_select.html" import sort_select %}
 
 {% block content %}
 <h1 class="mb-1 font-serif text-2xl font-semibold tracking-tight">Bausteine</h1>
@@ -220,6 +221,22 @@
 {% else %}
 <p class="text-sm text-soft">Die Karten der Erstaufnahme brauchen das Vokabular und
   genannte Bücher — hier gibt es noch keine.</p>
+{% endif %}
+
+{% call section("Sortierauswahl", "ic-unlist") %}{% endcall %}
+<div class="flex flex-wrap items-center gap-2">
+  {{ sort_select(orders, orders[0].slug, "/_design") }}
+</div>
+
+{% call section("Urteil, Abgleich und Spinne", "ic-star") %}{% endcall %}
+{% if real_fit %}
+{# Ein echtes Urteil, mit derselben Vorlage wie Buch- und Fundseite: oben die
+   Antwort, hinter „Warum?“ Begründung, Pillen, Abgleich und Spinne. #}
+<p class="text-xs font-medium text-soft">aus „{{ real_fit.title }}“</p>
+{% with fit=real_fit.fit %}{% include "_fit.html" %}{% endwith %}
+{% else %}
+<p class="text-sm text-soft">Ein Urteil braucht ein Leseprofil und ein Watchlist-Buch mit
+  Steckbrief — hier gibt es noch keins.</p>
 {% endif %}
 
 {% call section("Rückgängig", "ic-refresh") %}{% endcall %}
