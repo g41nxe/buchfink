@@ -38,6 +38,8 @@
 {# Ein Sprite statt einer Icon-Schrift: keine Fremdanfrage, kein Nachladen,
    und die Icons erben Farbe und Groesse vom Text (ADR 20). #}
 <svg class="hidden" aria-hidden="true">
+  {# Die Zeichen der Merkmalsfamilien (#55), wenn sie neben dem Vokabular liegen. #}
+  {{ family_art.sprite if family_art is defined }}
   <symbol id="ic-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="ic-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
   <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/></symbol>

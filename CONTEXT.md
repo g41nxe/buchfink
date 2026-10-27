@@ -593,6 +593,21 @@ language, not placelessness; Kafka's readers do seek it ("parabelhaft").
 **Reader-facing name: none.** The reader sees the families' own names, "hart"
 or "witzig"; the word itself belongs to the documentation.
 
+### Family Sign
+*deutsch: Familienzeichen*
+
+The two pictures every Appeal Family and every basic Story Pattern carries
+(#55) — including a trait without a family, which is its own: a **Mood Image**
+(*Stimmungsbild*), a square illustration on cream paper shown only where the
+reader chooses — the cards of the Intake and of sharpening — and a **Family
+Icon** (*Familienicon*), a symbol on the 24 grid for the places where the family
+is only named: pills, the book page, the profile, the spokes of the Taste Form.
+The icon simplifies the image's motif (police tape for the crime scene of
+"hart", the magnifier for the detective of "Rätsel"), so the one is recognised
+in the other. A card shows the image instead of the icon, never both; the
+heart, which says whether the family holds the reader, stands at the trailing
+edge of the name. Both live beside the vocabulary and stay out of Git (#59).
+
 ### Story Pattern
 *deutsch: Erzählmuster*
 

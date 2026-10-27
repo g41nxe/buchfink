@@ -9,6 +9,32 @@
    Erzählmuster sagt, dass es eins ist. Ausgeblendet wird nichts (#44).
 
    Erwartet: `p` (die Pille), `side` (loved oder lost), `step`. #}
+{# Kopf einer Karte (#55, Variante A+′): links das Stimmungsbild, wenn es eins
+   gibt, daneben der Name und am Ende der Zustand — ♥ oder ⊘. Das Zeichen steht
+   nur ohne Bild vor dem Namen; beide zeigen dasselbe Motiv. Ohne Bild und
+   Zeichen bleibt es die schlichte Karte von vorher.
+
+   Erwartet: `p` (die Pille), `state_icon`, `state_class`, dann den Rest der
+   Karte als `caller()`. #}
+{% macro card_head(p, state_icon, state_class) %}
+{% set picture = family_art.picture(p.family_id) if family_art is defined else None %}
+<span class="flex gap-3">
+  {% if picture %}
+  <span class="family-pic-frame h-[88px] w-[88px] flex-none rounded-md">
+    <img src="{{ picture }}" alt="" width="88" height="88" loading="lazy"
+         class="family-pic h-full w-full rounded-md object-cover"></span>
+  {% endif %}
+  <span class="flex min-w-0 flex-1 flex-col">
+    <span class="flex items-center gap-1.5 text-sm font-semibold {{ state_class }}">
+      {{ family_art.sign(p.family_id) if family_art is defined and not picture }}
+      <span class="min-w-0 flex-1 break-words hyphens-auto">{{ p.name }}</span>
+      <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#{{ state_icon }}"/></svg>
+    </span>
+    {{ caller() }}
+  </span>
+</span>
+{% endmacro %}
+
 {% macro title_row(titles) -%}
 {% for t in titles %}<span class="font-serif italic text-ink">{{ t }}</span>{% if not loop.last %}{{ " und " if loop.revindex == 2 else ", " }}{% endif %}{% endfor %}
 {%- endmacro %}
@@ -39,20 +65,17 @@
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-family="{{ p.family_id }}"
             class="tap flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
-      <span class="flex items-center gap-1.5 text-sm font-semibold
-                   {{ 'text-accent' if p.on else 'text-ink' }}">
-        <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-heart"/></svg>
-        {{ p.name }}
-      </span>
+      {% call card_head(p, "ic-heart", 'text-accent' if p.on else 'text-ink') %}
       <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
-      <span class="mt-2 flex items-center gap-2 text-xs text-soft"
+      <span class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-soft"
             aria-label="Stärke: {{ k.strength }}">
         <span class="inline-flex gap-0.5">
           {% for i in range(1, 5) %}
           <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= k.level else 'bg-hair' }}"></i>
           {% endfor %}
-        </span>{{ k.strength }}{% if p.frequent %}<span class="opacity-70">· bei vielen Büchern</span>{% endif %}
+        </span>{{ k.strength }}{% if p.frequent %}<span class="whitespace-nowrap opacity-70">· bei vielen Büchern</span>{% endif %}
       </span>
+      {% endcall %}
     </button>
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
@@ -106,11 +129,7 @@
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-family="{{ p.family_id }}"
             class="tap flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
-      <span class="flex items-center gap-1.5 text-sm font-semibold
-                   {{ 'text-accent' if p.on else 'text-ink' }}">
-        <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-heart"/></svg>
-        {{ p.name }}
-      </span>
+      {% call card_head(p, "ic-heart", 'text-accent' if p.on else 'text-ink') %}
       <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
       <span class="mt-2 flex items-center gap-2 text-xs text-soft"
             aria-label="Stärke: {{ k.strength }}">
@@ -120,6 +139,7 @@
           {% endfor %}
         </span>{{ k.strength }}
       </span>
+      {% endcall %}
     </button>
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
@@ -173,14 +193,11 @@
     <button type="submit" aria-pressed="{{ 'true' if p.on else 'false' }}"
             data-family="{{ p.family_id }}"
             class="tap flex flex-col h-full w-full px-4 pt-3 pb-2 text-left">
-      <span class="flex items-center gap-1.5 text-sm font-semibold
-                   {{ 'text-danger' if p.on else 'text-ink' }}">
-        <svg class="i {{ '' if p.on else 'opacity-30' }}"><use href="#ic-ban"/></svg>
-        {{ p.name }}
-      </span>
+      {% call card_head(p, "ic-ban", 'text-danger' if p.on else 'text-ink') %}
       {% if k.description %}
       <span class="mt-1 block text-xs leading-relaxed text-soft">{{ k.description }}</span>
       {% endif %}
+      {% endcall %}
     </button>
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">

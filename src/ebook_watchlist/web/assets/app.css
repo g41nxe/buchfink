@@ -184,6 +184,34 @@
     vertical-align: -0.13em;
   }
 
+  /* Die Zeichen der Familien (#55) sind Flächen, keine Striche: kein Kontur
+     darüber, sonst laufen die feinen Teile zu. */
+  svg.i.fz {
+    stroke: none;
+    fill: currentColor;
+  }
+
+  /* Die Stimmungsbilder (#55) stehen auf hellem Papier. Das Papier ist gewollt:
+     ein eingelegtes Kärtchen mit Kante und leichtem Schatten, kein Fleck auf
+     der getönten Karte. Im Dunkeln wären sie helle Löcher: dort gedämpft, die
+     Kante hell statt dunkel und ohne Schatten, der auf Dunkel nichts trägt.
+
+     Gedämpft wird über Farbe, nicht über `filter`: nur Farben kennen
+     `light-dark()`, und eine Medienabfrage ließe sich nicht wegklicken (#19).
+     Das Bild multipliziert sich mit dem Grund seines Rahmens — weiß ändert
+     nichts, grau dunkelt ab. */
+  .family-pic-frame {
+    isolation: isolate;
+    background-color: light-dark(#fff, oklch(0.74 0 0));
+    outline: 1px solid light-dark(oklch(0 0 0 / 0.12), oklch(1 0 0 / 0.1));
+    outline-offset: -1px;
+    box-shadow: 0 1px 2px light-dark(oklch(0 0 0 / 0.08), transparent),
+      0 2px 6px light-dark(oklch(0 0 0 / 0.06), transparent);
+  }
+  .family-pic {
+    mix-blend-mode: multiply;
+  }
+
   /* --- Zuordnung entscheiden (Ticket 41) --------------------------------
      Ein Streifen statt einer umbrechenden Reihe: die Ausgaben werden
      verglichen, und dafuer muessen sie nebeneinander liegen. Waehlen ist ein

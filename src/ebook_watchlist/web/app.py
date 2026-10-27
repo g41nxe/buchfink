@@ -41,6 +41,7 @@ from . import (
     design,
     discovery,
     editions,
+    family_art,
     home,
     intake,
     owned,
@@ -294,6 +295,16 @@ def create_app() -> FastAPI:
     covers = paths.covers_dir()
     covers.mkdir(parents=True, exist_ok=True)
     app.mount("/covers", StaticFiles(directory=covers), name="covers")
+    # Bilder und Zeichen der Familien liegen neben dem Vokabular, nicht in Git
+    # (#55, #59). Gelesen wird beim Start; fehlen sie, fehlen sie überall.
+    art = family_art.load()
+    TEMPLATES.env.globals["family_art"] = art
+    if art.pictures:
+        app.mount(
+            family_art.PICTURES_URL,
+            StaticFiles(directory=family_art.PICTURES_DIR),
+            name="familien",
+        )
 
     # Die Arbeit selbst tut der Hintergrunddienst (ADR 40); diese drei stellen
     # nur ein und lesen den Stand. Zustand halten sie keinen.

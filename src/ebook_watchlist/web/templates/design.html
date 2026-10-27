@@ -208,7 +208,7 @@
 {% if intake_cards %}
 {# Karten aus deinem eigenen Leseprofil, mit denselben Bausteinen wie
    Bildschirm 3 und 4 — je Zustand eine. #}
-<ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
+<ul class="grid items-start gap-3 grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
   {% for label, k in intake_cards.cards %}
   <li class="list-none text-xs font-medium text-soft">Bildschirm 3 · {{ label }}
     <ul class="mt-1">{{ family_card(k, 3, intake_cards.can_boost) }}</ul></li>
