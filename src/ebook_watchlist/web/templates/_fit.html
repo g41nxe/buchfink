@@ -57,7 +57,12 @@
       <use href="#ic-chevron"/></svg>
   </button>
 
-  <div id="fit-why" x-show="why" x-cloak data-why class="mt-2">
+  {# Auf und zu im Takt des Pfeils, 150 ms; die Höhe bleibt, der Block ist groß. #}
+  <div id="fit-why" x-show="why" x-cloak data-why class="mt-2"
+       x-transition:enter="transition-[opacity,translate] duration-150 ease-out"
+       x-transition:enter-start="opacity-0 -translate-y-1"
+       x-transition:leave="transition-opacity duration-100 ease-in"
+       x-transition:leave-end="opacity-0">
   {% if fit.borderline %}
   {# Gemessen (#81): ein Steckbrief streut um etwa sieben Punkte. Mehrere zu
      mitteln half kaum; also wird es gesagt. #}

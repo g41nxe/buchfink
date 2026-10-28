@@ -75,7 +75,11 @@
 
   {% for shelf in view.counts %}
   {% if shelf.count %}
+  {# Nur ein Eingang: mit Ausgang stünden beim Wechsel zweier Regale beide kurz
+     untereinander, und die Seite spränge. #}
   <div id="shelf-{{ shelf.kind }}" x-show="openShelf === '{{ shelf.kind }}'" x-cloak
+       x-transition:enter="transition-[opacity,translate] duration-200 ease-out"
+       x-transition:enter-start="opacity-0 -translate-y-1.5"
        class="mt-3 rounded-xl border border-rule bg-card px-5 py-3">
     <p class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-soft">
       <span>{{ shelf.count }} {{ "Buch" if shelf.count == 1 else "Bücher" }} · {{ shelf.label }}</span>

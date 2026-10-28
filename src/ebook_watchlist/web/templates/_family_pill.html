@@ -111,7 +111,11 @@
     </form>
     {% endif %}
   </div>
-  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft"
+      x-transition:enter="transition-[opacity,translate] duration-150 ease-out"
+      x-transition:enter-start="opacity-0 -translate-y-1"
+      x-transition:leave="transition-opacity duration-100 ease-in"
+      x-transition:leave-end="opacity-0">
     {% for title, sentence in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
@@ -178,7 +182,11 @@
     </form>
     {% endif %}
   </div>
-  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft"
+      x-transition:enter="transition-[opacity,translate] duration-150 ease-out"
+      x-transition:enter-start="opacity-0 -translate-y-1"
+      x-transition:leave="transition-opacity duration-100 ease-in"
+      x-transition:leave-end="opacity-0">
     {% for title, sentence in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
@@ -221,7 +229,11 @@
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
   </div>
-  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft">
+  <ul x-show="showEvidence" x-cloak class="mx-4 mb-3 space-y-1.5 text-xs text-soft"
+      x-transition:enter="transition-[opacity,translate] duration-150 ease-out"
+      x-transition:enter-start="opacity-0 -translate-y-1"
+      x-transition:leave="transition-opacity duration-100 ease-in"
+      x-transition:leave-end="opacity-0">
     {% for title, sentence in k.evidence %}
     <li><span class="font-serif italic text-ink">{{ title }}</span>: {{ sentence }}</li>
     {% endfor %}
