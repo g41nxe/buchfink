@@ -215,6 +215,16 @@
     stroke: none;
     fill: currentColor;
   }
+  /* Vor einem Familiennamen im Fließtext (#117): die Zeichen sind gefüllte
+     Formen aus dem 24er-Raster und verschwimmen bei 1em neben 13-px-Text.
+     1,25em, auf die Mitte gesetzt; der negative Rand hält die Zeile so hoch
+     wie ohne Zeichen. */
+  svg.i.fz-inline {
+    width: 1.25em;
+    height: 1.25em;
+    margin-block: -0.125em;
+    vertical-align: -0.25em;
+  }
 
   /* Die Stimmungsbilder (#55) stehen auf hellem Papier. Das Papier ist gewollt:
      ein eingelegtes Kärtchen mit Kante und leichtem Schatten, kein Fleck auf

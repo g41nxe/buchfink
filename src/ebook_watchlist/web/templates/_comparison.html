@@ -45,7 +45,8 @@
       {% for p in g.pills %}
       <span class="inline-flex items-center rounded-full ring-1 ring-inset
                    {{ _pill_size[p.weight_word] }} {{ _pill_tone[p.side] }}"
-            title="{{ p.weight_word }} im Buch · {{ _word[p.side] }}{% if p.sentence %} — {{ p.sentence }}{% endif %}">{{ p.name }}{% if p.side == "unknown" %}<span class="ml-1 opacity-60">?</span>{% endif %}</span>
+            title="{{ p.weight_word }} im Buch · {{ _word[p.side] }}{% if p.sentence %} — {{ p.sentence }}{% endif %}">
+        {{- family_art.sign(p.family_id, "fz-inline mr-1") if family_art is defined }}{{ p.name }}{% if p.side == "unknown" %}<span class="ml-1 opacity-60">?</span>{% endif %}</span>
       {% endfor %}
     </div>
   </div>
@@ -69,7 +70,8 @@
   <li class="flex items-center gap-2">
     <span class="inline-block h-2 w-8 shrink-0 rounded-sm {{ 'bg-accent' if m.value > 0 else 'bg-danger' }}"
           style="opacity: {{ 1 if m.hit else 0.35 }}"></span>
-    <span class="{{ 'text-ink' if m.hit else 'text-soft' }}">{{ m.name }}</span>
+    <span class="{{ 'text-ink' if m.hit else 'text-soft' }}">
+      {{- family_art.sign(m.family_id, "fz-inline mr-1") if family_art is defined }}{{ m.name }}</span>
     <span class="ml-auto text-xs {{ 'text-accent' if m.hit and m.value > 0 else 'text-danger' if m.hit else 'text-soft' }}">
       {{ ('im Buch' if m.value > 0 else 'im Buch — dagegen') if m.hit
          else ('fehlt' if m.value > 0 else 'nicht im Buch') }}</span>

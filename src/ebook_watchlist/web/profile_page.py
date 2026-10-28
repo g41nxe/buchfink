@@ -151,6 +151,8 @@ class LikedLine:
     #: Ein gemochtes Buch, das es trägt: dort lässt es sich abwählen (#51). Die
     #: Profilseite selbst bleibt zum Lesen.
     book_id: int | None = None
+    #: Für das Familienzeichen vor dem Namen (#117).
+    family_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -320,6 +322,7 @@ def _facet_profile(store: Store, settings: Settings):
         LikedLine(
             family_name(g.family, vocabulary), is_pattern(g.family, vocabulary), g.boosted,
             book_id=next((b.book_id for b in shelf if g.family in b.families), None),
+            family_id=g.family,
         )
         for g in sorted(profile.liked, key=lambda g: not g.boosted)
     )

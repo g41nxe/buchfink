@@ -601,7 +601,10 @@ The two pictures every Appeal Family and every basic Story Pattern carries
 (*Stimmungsbild*), a square illustration on cream paper shown only where the
 reader chooses — the cards of the Intake and of sharpening — and a **Family
 Icon** (*Familienicon*), a symbol on the 24 grid for the places where the family
-is only named: pills, the book page, the profile, the spokes of the Taste Form.
+is only named: the pills of a rating, the coverage list of the comparison, and
+what the profile says the reader likes (#117). It stands before the word, never
+instead of it, in the word's colour; graphics with no room for it — the
+waterfall, the shape, the spokes of the Taste Form — keep the bare name.
 The icon simplifies the image's motif (police tape for the crime scene of
 "hart", the magnifier for the detective of "Rätsel"), so the one is recognised
 in the other. A card shows the image instead of the icon, never both; the

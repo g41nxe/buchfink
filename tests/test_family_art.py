@@ -130,3 +130,58 @@ def test_a_locked_boost_says_why_where_it_is_seen(art, data_dir) -> None:
     ).render(k=k)
 
     assert ">schon drei verstärkt<" in card
+
+
+# --- Die übrigen Orte (#117) -----------------------------------------------------
+
+
+def _overview(family_id: str) -> str:
+    pill = SimpleNamespace(family_id=family_id, name="hart", side="for",
+                           weight_word="deutlich", sentence="")
+    c = SimpleNamespace(groups=[SimpleNamespace(dimension="Stimmung", pills=[pill])])
+    return TEMPLATES.env.from_string(
+        '{% from "_comparison.html" import overview %}{{ overview(c) }}'
+    ).render(c=c)
+
+
+def _bridge(family_id: str) -> str:
+    mine = SimpleNamespace(family_id=family_id, name="hart", value=1.0, hit=True)
+    b = SimpleNamespace(mine=[mine], book=[], links=[])
+    return TEMPLATES.env.from_string(
+        '{% from "_comparison.html" import bridge %}{{ bridge(b) }}'
+    ).render(b=b)
+
+
+def test_the_rating_pills_carry_the_sign_before_the_word(art, data_dir) -> None:
+    create_app()
+
+    html = _overview("harsh")
+
+    assert html.index("#fz-harsh") < html.index(">hart")
+    assert "fz-inline" in html
+
+
+def test_the_coverage_list_carries_the_sign(art, data_dir) -> None:
+    create_app()
+
+    assert "#fz-harsh" in _bridge("harsh").split("data-bridge-list", 1)[1].split("</ul>", 1)[0]
+
+
+def test_without_a_sign_the_pills_stay_as_they_were(art, data_dir) -> None:
+    create_app()
+
+    assert "#fz-" not in _overview("funny")
+    assert "#fz-" not in _bridge("funny").split("data-bridge-list", 1)[1].split("</ul>", 1)[0]
+
+
+def test_the_profile_names_what_you_like_with_its_sign(art, data_dir) -> None:
+    from conftest import give_profile
+    from ebook_watchlist import paths
+    from ebook_watchlist.store import Store
+
+    client = TestClient(create_app())
+    give_profile(Store(paths.db_path()))
+
+    liked = client.get("/profile").text.split("Das magst du", 1)[1].split("</section>", 1)[0]
+
+    assert "#fz-harsh" in liked
