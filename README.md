@@ -73,7 +73,8 @@ verdienen: als Schnäppchen, in deiner Sprache, ohne Ramsch.
 <img src="docs/bilder/readme/zeichen-profil.svg" width="32" alt=""><br>
 <b>Geschmack aus deinen Büchern</b><br>
 Nenn ein paar Bücher, die du geliebt hast, und ein paar, die dich enttäuscht
-haben. Daraus entsteht dein Leseprofil — kein Fragebogen, kein Freitext.
+haben, und tipp an, was sie verbindet. Daraus entsteht dein Leseprofil — kein
+Fragebogen, kein Freitext.
 </td>
 <td valign="top">
 <img src="docs/bilder/readme/zeichen-urteil.svg" width="32" alt=""><br>
@@ -139,8 +140,9 @@ zweiten meldet er, was sich geändert hat. Unter **Profil → Erstaufnahme
 beginnen** nennst du deine Bücher, und die Vorschläge bekommen Sterne.
 
 > [!NOTE]
-> Für Sterne braucht Buchfink das Vokabular der Merkmale (`vocabulary/`), das
-> wegen einer offenen Lizenzfrage nicht im Repository liegt (#59), und einen Weg
+> Für Sterne braucht Buchfink das Vokabular der Merkmale (`vocabulary/`, samt
+> den Bildern und Zeichen der Erstaufnahme), das wegen einer offenen Lizenzfrage
+> nicht im Repository liegt (#59), und einen Weg
 > zum Sprachmodell: eine angemeldete [Claude-Code](https://claude.com/claude-code)-Installation
 > oder `ANTHROPIC_API_KEY` in der Umgebung. Ohne beides beobachtet und sammelt
 > Buchfink wie beschrieben, nur ohne Urteil.
@@ -150,6 +152,9 @@ beginnen** nennst du deine Bücher, und die Vorschläge bekommen Sterne.
 > Internet; `--host 127.0.0.1` beschränkt sie auf diesen Rechner.
 
 ## Bilder
+
+Aufgenommen mit dem lokalen Vokabular: ein frischer Klon zeigt dieselben Seiten,
+nur ohne Sterne, Merkmale und Abgleich (siehe oben).
 
 <details>
 <summary><b>Die Seiten am Desktop</b> (aufklappen)</summary>
