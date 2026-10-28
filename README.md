@@ -4,7 +4,8 @@
 </p>
 
 <p align="center">
-  <b>Dein Bücherfink für E-Books aus der Berliner Bibliothek und dem Shop.</b><br>
+  <b>Weniger suchen. Mehr lesen.</b><br>
+  Dein Bücherfink für E-Books aus der Berliner Bibliothek und dem Shop.<br>
   Er sieht jeden Tag nach, was auf deiner Watchlist ausleihbar oder billig geworden ist,<br>
   findet Bücher, nach denen du nie gesucht hättest — und sagt dir, ob sie zu dir passen.
 </p>

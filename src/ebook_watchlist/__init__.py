@@ -1,4 +1,4 @@
-"""Buchfink — weniger Suchen, mehr Lesen.
+"""Buchfink — Weniger suchen. Mehr lesen.
 
 Das Paket heisst weiter `ebook_watchlist`: wie die Anwendung heisst, ist eine
 Sache der Oberflaeche; wie das Paket heisst, eine der Importe.
