@@ -441,6 +441,10 @@ details[open] > summary > .when-open { display: inline-flex; }
   --color-action-hover: light-dark(oklch(0.38 0.07 200), oklch(0.55 0.07 200));
   --color-action-edge: var(--color-action);
   --color-on-action: oklch(0.98 0.01 80);
+  /* Ruhige Knöpfe hell auf Kartenweiß; dunkel eine Stufe über der Karte,
+     denn die Karte liegt dort nur 0,045 über dem Papier und ein Knopf darauf
+     verschwand — auf der Karte wie auf dem Papier. */
+  --color-button: light-dark(oklch(0.985 0.01 80), oklch(0.29 0.03 215));
   /* Felder hell weiß, dunkel eine Stufe unter der Karte: eingelassen statt
      aufs Papier gemalt. Ihr Rand erreicht 3:1 (hell 3,5, dunkel 3,8). */
   --color-field: light-dark(oklch(1 0 0), oklch(0.2 0.028 215));

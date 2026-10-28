@@ -79,7 +79,10 @@ def test_no_template_tints_the_accent_over_the_paper() -> None:
     """Petrol mit 10 % Deckkraft über Creme ergibt Mint, und das biss sich mit
     dem warmen Papier. Ein Hauptknopf trägt die volle Fläche (`bg-action`), eine
     gewählte Pille nur Rand und Schrift, ein Chip `bg-accent-bg`."""
-    tinted = {name: re.findall(r"bg-accent/\d+", text) for name, text in _template_text().items()}
+    tinted = {
+        name: re.findall(r"bg-(?:accent|choice)/\d+", text)
+        for name, text in _template_text().items()
+    }
 
     assert {name: hits for name, hits in tinted.items() if hits} == {}
 

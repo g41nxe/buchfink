@@ -125,16 +125,16 @@
   <form method="post" action="/book/{{ page.book_id }}/edit"
         class="mt-2 flex flex-wrap items-end gap-3 rounded-lg border border-rule
                bg-card p-4">
-    <label class="flex flex-col gap-1">
+    <label class="flex w-full flex-col gap-1 sm:w-auto">
       <span class="text-xs font-medium text-soft">Titel</span>
       <input name="title" required autocomplete="off" value="{{ page.title }}"
-             class="w-56 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
+             class="w-full sm:w-56 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
                     outline-none focus:border-accent">
     </label>
-    <label class="flex flex-col gap-1">
+    <label class="flex w-full flex-col gap-1 sm:w-auto">
       <span class="text-xs font-medium text-soft">Autor:in</span>
       <input name="author" autocomplete="off" value="{{ page.author or '' }}"
-             class="w-48 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
+             class="w-full sm:w-48 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
                     outline-none focus:border-accent">
     </label>
     <button type="submit"

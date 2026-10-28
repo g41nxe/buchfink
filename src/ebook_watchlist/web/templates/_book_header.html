@@ -65,7 +65,7 @@
               aria-pressed="{{ 'true' if series_view.watched else 'false' }}"
               class="pill tap inline-flex h-7 items-center gap-1.5 rounded border px-3 text-xs
                      transition sm:rounded-full
-                     {{ 'border-accent text-accent font-medium'
+                     {{ 'border-accent bg-button text-accent font-medium'
                         if series_view.watched
                         else 'border-rule bg-button text-soft hover:border-accent hover:text-accent' }}">
         <svg class="i"><use href="#ic-binoculars"/></svg>

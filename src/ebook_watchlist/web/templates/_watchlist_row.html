@@ -128,16 +128,16 @@
         </p>
         <form method="post" action="/watchlist/{{ entry.book_id }}/rename"
               class="flex flex-wrap items-end gap-2">
-          <label class="flex flex-col gap-1">
+          <label class="flex w-full flex-col gap-1 sm:w-auto">
             <span class="text-xs font-medium text-soft">Titel</span>
             <input name="title" required autocomplete="off" value="{{ entry.title }}"
-                   class="w-64 rounded border border-field-border bg-card h-9 px-2 text-sm
+                   class="w-full rounded border border-field-border bg-field sm:w-64 h-9 px-2 text-sm
                           text-ink outline-none focus:border-accent">
           </label>
-          <label class="flex flex-col gap-1">
+          <label class="flex w-full flex-col gap-1 sm:w-auto">
             <span class="text-xs font-medium text-soft">Autor:in</span>
             <input name="author" autocomplete="off" value="{{ entry.author or '' }}"
-                   class="w-52 rounded border border-field-border bg-card h-9 px-2 text-sm
+                   class="w-full rounded border border-field-border bg-field sm:w-52 h-9 px-2 text-sm
                           text-ink outline-none focus:border-accent">
           </label>
           <button type="submit"

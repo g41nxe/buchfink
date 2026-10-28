@@ -413,7 +413,7 @@ def test_a_boosted_family_shows_as_boosted(client, books) -> None:
     body = tap(client, "harsh", page="boost")
 
     card = body.split('data-card="harsh"', 1)[1].split("</li>", 1)[0]
-    assert 'data-boost="harsh"' in card and "verstärkt" in card
+    assert 'data-boost="harsh"' in card and ">Verstärkt<" in card
 
 
 def test_patterns_are_tappable_and_boostable_like_traits(client, books) -> None:
@@ -423,7 +423,7 @@ def test_patterns_are_tappable_and_boostable_like_traits(client, books) -> None:
     body = tap(client, "pursuit", page="boost")
 
     card = body.split('data-card="pursuit"', 1)[1].split("</li>", 1)[0]
-    assert 'data-boost="pursuit"' in card and "verstärkt" in card
+    assert 'data-boost="pursuit"' in card and ">Verstärkt<" in card
     # Erzählmuster bilden nie eine Facette (#63).
     assert "data-facet" not in body.split("data-draft", 1)[1]
 

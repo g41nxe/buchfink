@@ -88,3 +88,9 @@ zeigen" — also wie der Knopf daneben.
 Die Reihenfolge auf der Buchseite folgt daraus: vorn die drei, die es auch im
 Stapel gibt, hinten die beiden Urteile nach dem Lesen. Sie beantworten eine
 andere Frage — nicht „was tue ich damit?", sondern „wie war es?".
+
+**Groß oder klein (28.10.2026).** Ein Knopf mit Rand oder Fläche beginnt groß
+(„Verstärken", „Alle", „Los"): er steht für sich wie eine Überschrift. Ein
+Textknopf im Satzfluss — unterstrichen, ohne Rand — bleibt klein
+(„zurücknehmen", „neu beschreiben"), weil er Teil des Satzes ist. Vorher
+standen beide Schreibweisen nebeneinander, mal am selben Ort.

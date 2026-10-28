@@ -166,7 +166,7 @@
           <{{ 'a' if g.book_id else 'span' }}
              {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening" title="beim Buch ändern"{% endif %}
              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1
-                    ring-inset {{ 'bg-choice/10 text-choice ring-choice/30' if g.boosted
+                    ring-inset {{ 'bg-card text-choice ring-choice/50' if g.boosted
                                   else 'bg-accent-bg text-accent ring-accent/20' }}
                     {{ ('hover:ring-choice/60' if g.boosted else 'hover:ring-accent/50') if g.book_id }}">
             {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>{% endif %}

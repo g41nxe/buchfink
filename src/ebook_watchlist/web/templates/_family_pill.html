@@ -95,10 +95,10 @@
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
               class="tap inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
-                     {{ 'border-choice bg-choice/10 text-choice' if p.boosted
-                        else 'border-rule text-soft hover:border-choice hover:text-choice' }}">
+                     {{ 'border-choice bg-button font-medium text-choice' if p.boosted
+                        else 'border-rule bg-button text-soft hover:border-choice hover:text-choice' }}">
         <svg class="i" {% if p.boosted %}style="fill:currentColor"{% endif %}>
-          <use href="#ic-star"/></svg>{{ "verstärkt" if p.boosted else "verstärken" }}</button>
+          <use href="#ic-star"/></svg>{{ "Verstärkt" if p.boosted else "Verstärken" }}</button>
     </form>
     {% endif %}
   </div>
@@ -156,10 +156,10 @@
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
               class="tap inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
-                     {{ 'border-choice bg-choice/10 text-choice' if p.boosted
-                        else 'border-rule text-soft hover:border-choice hover:text-choice' }}">
+                     {{ 'border-choice bg-button font-medium text-choice' if p.boosted
+                        else 'border-rule bg-button text-soft hover:border-choice hover:text-choice' }}">
         <svg class="i" {% if p.boosted %}style="fill:currentColor"{% endif %}>
-          <use href="#ic-star"/></svg>{{ "verstärkt" if p.boosted else "verstärken" }}</button>
+          <use href="#ic-star"/></svg>{{ "Verstärkt" if p.boosted else "Verstärken" }}</button>
     </form>
     {% endif %}
   </div>

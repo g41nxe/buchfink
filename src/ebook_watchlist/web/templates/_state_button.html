@@ -27,11 +27,14 @@
    Stapel schaltet ihn aus, solange nichts angehakt ist. `|safe`, weil Jinja
    den Wert sonst als Text maskiert: aus `a && b` wuerde `a &amp;&amp; b`,
    und Alpine wertet das stumm nicht aus. Der Wert kommt aus der Vorlage,
-   nie von aussen. #}
+   nie von aussen.
+   Unter 360 Pixeln fällt das Zeichen weg: bei 320 sind die Spalten der
+   Buchseite 84 Pixel breit, „Ausschließen“ mit Zeichen braucht 90 und lief
+   über den Rand (Review vom 28.10.). Das Wort trägt die Bedeutung allein. #}
 <button type="submit"{% if value %} name="kind" value="{{ value }}"{% endif %}
         {%- if off_when %} :disabled="{{ off_when|safe }}"{% endif %}
         class="tap inline-flex h-10 items-center justify-center gap-1.5 rounded border
-               px-2 text-xs font-medium transition disabled:opacity-40
+               px-2 text-xs font-medium transition disabled:opacity-40 max-[359px]:[&>svg]:hidden
                sm:h-9 sm:px-3 sm:text-sm {{ extra }}
                {% if active %}border-action-edge bg-action text-on-action
                {% elif kind in ('dismissed', 'disliked') %}border-rule bg-button text-soft hover:border-danger hover:text-danger
