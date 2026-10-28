@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import needs_vocabulary
 from ebook_watchlist.web import family_art
 from ebook_watchlist.web.app import TEMPLATES, create_app
 
@@ -174,6 +175,7 @@ def test_without_a_sign_the_pills_stay_as_they_were(art, data_dir) -> None:
     assert "#fz-" not in _bridge("funny").split("data-bridge-list", 1)[1].split("</ul>", 1)[0]
 
 
+@needs_vocabulary
 def test_the_profile_names_what_you_like_with_its_sign(art, data_dir) -> None:
     from conftest import give_profile
     from ebook_watchlist import paths
@@ -200,6 +202,7 @@ def _profile_page(liked, counterweights, facets=()) -> str:
     return client.get("/profile").text
 
 
+@needs_vocabulary
 def test_a_boosted_family_wears_a_shower_of_stars(art, data_dir) -> None:
     """Der Stern vor dem Namen stand neben dem Familienzeichen — zwei Symbole
     hintereinander. Verstärkt heißt jetzt: Sterne im Hintergrund der Pille."""
@@ -213,6 +216,7 @@ def test_a_boosted_family_wears_a_shower_of_stars(art, data_dir) -> None:
     assert "#fz-harsh" in liked
 
 
+@needs_vocabulary
 def test_a_counterweight_carries_its_sign_instead_of_the_ban_icon(art, data_dir) -> None:
     """Die Karte heißt schon „Zählt gegen ein Buch“; das Verbotszeichen vor
     jedem Namen sagte es ein zweites Mal. Dort steht jetzt die Familie."""
@@ -225,6 +229,7 @@ def test_a_counterweight_carries_its_sign_instead_of_the_ban_icon(art, data_dir)
     assert "#fz-harsh" in against
 
 
+@needs_vocabulary
 def test_a_combination_shows_its_two_pictures(art, data_dir) -> None:
     """Zwei Stimmungsbilder, leicht übereinander gelegt, vor der Kombination —
     wie die Karten der Erstaufnahme, aus denen sie stammt (28.10.2026)."""
@@ -239,6 +244,7 @@ def test_a_combination_shows_its_two_pictures(art, data_dir) -> None:
     assert "data-facet-pictures" in combos
 
 
+@needs_vocabulary
 def test_a_combination_without_all_pictures_shows_none(art, data_dir) -> None:
     from ebook_watchlist.judging.facets import Facet
 
