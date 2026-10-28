@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="docs/bilder/github.jpg" width="100%"
-       alt="Banner im Cartoon-Stil: der Schriftzug BUCHFINK, daneben eine Schreibtischszene mit dem Vogel-Maskottchen, Bücherstapeln und der geöffneten Watchlist">
+  <img src="docs/bilder/banner.jpg" width="100%"
+       alt="Gezeichnete Lesenische am Fenster an einem Regentag: eine Leserin auf dem Polster, Tee, Bücherstapel, der Buchfink auf der Fensterbank, darüber der Schriftzug Buchfink">
 </p>
 
 <p align="center">
@@ -18,9 +18,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.12%2B-3f8f86" alt="Python 3.12+">
-  <img src="https://img.shields.io/badge/l%C3%A4uft-bei%20dir-3f8f86" alt="Läuft bei dir">
-  <img src="https://img.shields.io/badge/Lizenz-MIT-3f8f86" alt="Lizenz: MIT">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-2E6B68" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/l%C3%A4uft-bei%20dir-2E6B68" alt="Läuft bei dir">
+  <img src="https://img.shields.io/badge/Lizenz-MIT-2E6B68" alt="Lizenz: MIT">
 </p>
 
 <p align="center">
