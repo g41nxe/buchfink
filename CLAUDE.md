@@ -18,7 +18,8 @@ ohne den Code zu lesen.
 
 ## Entwicklung
 
-- `uv run pytest && uv run ruff check .` — Smoke-Tests gegen die echten Quellen
+- `uv run pytest && uv run ruff check . && uv run basedpyright` — die Typprüfung
+  läuft in CI vor den Tests und meldet nur Neues. Smoke-Tests gegen die echten Quellen
   sind mit `@pytest.mark.live` markiert und laufen nicht mit. Die Browser-Tests (#105)
   laufen mit `uv run pytest -m browser -n 0` (lokal reicht ein installiertes Edge).
 - Oberfläche: `uv run ebw serve` (Port 8437, mit Hintergrunddienst; `ebw web` ohne
