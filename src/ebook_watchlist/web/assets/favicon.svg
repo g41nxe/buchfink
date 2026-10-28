@@ -8,9 +8,9 @@
     21 und 40; Abzeichen 20 Durchmesser, 4 ueber die obere und rechte Kante
     hinaus, Ring 2 breit, Symbol 12 mit Strichstaerke 2,4.
 
-    Der Farbton: die Liste waehlt ihn je Titel aus 160 bis 187, damit sich
-    zwei Buecher nebeneinander unterscheiden. Ein Zeichen hat keinen Titel,
-    also steht hier die Mitte, 174 — derselbe Ton wie `color-accent`.
+    Die Farben (28.10.2026) folgen den Stimmungsbildern und A2′: der Deckel
+    im Petrol der Bilder (#2E6B68), das Abzeichen im Preis-Orange, der Ring im
+    Papier. Vorher stand hier das kühle Türkis der Liste, 174 — derselbe Ton wie `color-accent`.
 
     Umgerechnet wird ueber eine Gruppe: die Zeile misst mit dem Abzeichen
     50 x 70, das Zeichen ist 32 x 32, also Faktor 32/70 = 0,457 und die
@@ -22,18 +22,18 @@
     blass. Genauigkeit vor Lesbarkeit im Kleinsten — so war es gewuenscht.
   -->
   <style>
-    .deckel { fill: hsl(174 30% 30%) }
-    .ruecken{ fill: hsl(174 32% 21%) }
-    .zeile1 { fill: hsl(174 24% 60%) }
-    .zeile2 { fill: hsl(174 24% 53%) }
-    .zeile3 { fill: hsl(174 24% 46%) }
-    .ring   { fill: #faf8f4 }
-    .marke  { fill: #876125 }
-    .schild { stroke: #faf8f4 }
+    .deckel { fill: #2E6B68 }
+    .ruecken{ fill: #24504E }
+    .zeile1 { fill: #9DBDB8 }
+    .zeile2 { fill: #86ACA7 }
+    .zeile3 { fill: #6F9A95 }
+    .ring   { fill: #F6EFE5 }
+    .marke  { fill: #BA480D }
+    .schild { stroke: #F6EFE5 }
     @media (prefers-color-scheme: dark) {
-      .ring   { fill: #0f0f13 }
-      .marke  { fill: #ccac76 }
-      .schild { stroke: #0f0f13 }
+      .ring   { fill: #05191E }
+      .marke  { fill: #F8935D }
+      .schild { stroke: #05191E }
     }
   </style>
 
