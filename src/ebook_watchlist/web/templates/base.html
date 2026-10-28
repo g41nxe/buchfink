@@ -32,6 +32,21 @@
     }
   } catch (e) {}
 </script>
+{# Nach einer Entscheidung im Stapel rückt die nächste Zeile nach, und ihre
+   Knöpfe liegen dann genau unter dem Mauszeiger. Ein zweiter Klick kurz
+   danach — ein Doppelklick aus Gewohnheit — entschied so das nächste Buch mit
+   (gemessen, 28.10.2026). 400 ms lang nehmen die Entscheidungsknöpfe darum
+   keinen Mausklick an; die Tastatur ist davon nicht betroffen. #}
+<script>
+  document.addEventListener("htmx:beforeSwap", function (event) {
+    var path = event.detail.requestConfig && event.detail.requestConfig.path;
+    if (!path || path.indexOf("/decide") < 0) return;
+    var root = document.documentElement;
+    root.dataset.cooling = "";
+    clearTimeout(window.buchfinkCooling);
+    window.buchfinkCooling = setTimeout(function () { delete root.dataset.cooling; }, 400);
+  });
+</script>
 </head>
 <body class="m-0 flex min-h-screen flex-col font-sans text-base antialiased">
 

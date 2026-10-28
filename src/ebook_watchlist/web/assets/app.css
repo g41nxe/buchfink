@@ -121,6 +121,11 @@
   .theme-switching * {
     transition: none !important;
   }
+  /* Siehe das Skript in `base.html`: kurz nach einer Entscheidung nehmen die
+     nachgerückten Entscheidungsknöpfe keinen Mausklick an. */
+  [data-cooling] [hx-post$="/decide"] {
+    pointer-events: none;
+  }
   body {
     background-color: var(--color-paper);
     color: var(--color-ink);

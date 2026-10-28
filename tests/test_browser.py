@@ -255,3 +255,31 @@ def test_the_header_stays_one_row_on_a_small_phone(server: str, browser) -> None
     links = page.locator("header nav > a").all()
     _one_line(links)
     context.close()
+
+
+def test_a_double_click_decides_only_one_find(server: str, browser) -> None:
+    """Nach einer Entscheidung rückt die nächste Zeile nach, und ihre Knöpfe
+    liegen dann unter dem Mauszeiger. Ein Doppelklick darf trotzdem nur das
+    eine Buch entscheiden (Nebenbefund der Bewegungssuche, 28.10.2026)."""
+    store = Store(paths.db_path())
+    _found(store, "d1", "Das erste Buch")
+    _found(store, "d2", "Das zweite Buch")
+    context = browser.new_context(viewport={"width": 1280, "height": 900})
+    page = context.new_page()
+    page.goto(server + "/suggestions")
+    first = page.locator("li", has_text="Das erste Buch").first
+    first.wait_for()
+
+    # Der zweite Klick kommt kurz nach dem Austausch, auf dieselbe Stelle — dort
+    # liegt jetzt der Knopf des nächsten Buchs (gemessen: dieselbe Höhe).
+    box = first.get_by_role("button", name="Ausschließen").bounding_box()
+    assert box is not None
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.click(x, y)
+    page.locator("li", has_text="Das erste Buch").first.wait_for(state="detached")
+    page.mouse.click(x, y)
+    page.wait_for_timeout(800)
+    page.reload()
+
+    assert page.locator("li", has_text="Das zweite Buch").count() >= 1
+    context.close()
