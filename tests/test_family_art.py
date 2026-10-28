@@ -115,3 +115,17 @@ def test_the_evidence_toggle_says_whether_it_is_open(art, data_dir) -> None:
 
     assert 'aria-expanded="false"' in card
     assert ":aria-expanded=" in card
+
+
+def test_a_locked_boost_says_why_where_it_is_seen(art, data_dir) -> None:
+    """Warum „Verstärken“ gesperrt ist, sagte nur ein `title` — auf dem Telefon
+    nie zu sehen (#118). Der Grund steht jetzt daneben."""
+    create_app()
+    pill = SimpleNamespace(family_id="harsh", name="hart", on=True, boosted=False,
+                           frequent=False, pattern=False)
+    k = SimpleNamespace(pill=pill, description="", strength="trägt", level=2, evidence=[])
+    card = TEMPLATES.env.from_string(
+        '{% from "_family_pill.html" import family_card %}{{ family_card(k, 3, False) }}'
+    ).render(k=k)
+
+    assert ">schon drei verstärkt<" in card

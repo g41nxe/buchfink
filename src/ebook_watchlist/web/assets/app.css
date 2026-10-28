@@ -49,6 +49,9 @@
   --color-button: var(--color-card);
   --color-field: var(--color-paper);
   --color-field-border: var(--color-rule);
+  /* Was leer oder noch nicht da ist, aber gesehen werden muss — ein nicht
+     gewählter Stern: als Grafik 3:1, nicht 4,5 wie Text. */
+  --color-faint: var(--color-rule);
   /* Thema - das Regal, dem noch niemand zugestimmt hat. */
   --color-amber: light-dark(oklch(0.52 0.09 75), oklch(0.76 0.08 80));
   --color-amber-bg: light-dark(oklch(0.95 0.03 80), oklch(0.27 0.03 80));
@@ -460,6 +463,9 @@ details[open] > summary > .when-open { display: inline-flex; }
      aufs Papier gemalt. Ihr Rand erreicht 3:1 (hell 3,5, dunkel 3,8). */
   --color-field: light-dark(oklch(1 0 0), oklch(0.2 0.028 215));
   --color-field-border: light-dark(oklch(0.62 0.03 72), oklch(0.55 0.03 215));
+  /* Leere Sterne lagen in `rule` bei 1,35:1 (#118). Dieselben Werte wie der
+     Feldrand, aber eine eigene Rolle: Sterne sind kein Rand. */
+  --color-faint: light-dark(oklch(0.62 0.03 72), oklch(0.55 0.03 215));
   --color-danger: light-dark(oklch(0.5 0.15 25), oklch(0.74 0.12 25));
   --color-gold: light-dark(oklch(0.64 0.12 70), oklch(0.82 0.13 78));
   /* Orange heißt Preis — Betrag und Schnäppchen-Abzeichen. */

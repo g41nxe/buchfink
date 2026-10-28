@@ -70,6 +70,10 @@ class RunState:
     headline: str
     detail: str | None = None
     run: RunRow | None = None
+    #: The technical text — exception, traceback, log tail — for whoever
+    #: reports the problem. The panel keeps it folded away; ``detail`` is the
+    #: German sentence a reader sees (#118).
+    trace: str | None = None
 
     @property
     def busy(self) -> bool:
@@ -242,7 +246,8 @@ def execute(*, only_watchlist: bool, trigger: str) -> None:
         outcome = RunState(
             "failed",
             "Der Lauf ist gar nicht erst angelaufen",
-            _log_tail() or f"Der Prozess endete mit Rückgabecode {code}.",
+            "Buchfink konnte den Lauf nicht starten.",
+            trace=_log_tail() or f"Der Prozess endete mit Rückgabecode {code}.",
         )
     if isinstance(launch, Launch):
         queue.put(LAUNCH_KEY, replace(launch, outcome=outcome))
@@ -306,9 +311,19 @@ def _from_journal(latest: RunRow | None) -> RunState:
 
     if latest.status == "ok":
         changes = latest.delta_count or 0
-        detail = f"{changes} Änderung(en)" if changes else "Nichts hat sich geändert."
+        detail = (
+            f"{changes} {'Änderung' if changes == 1 else 'Änderungen'}"
+            if changes
+            else "Nichts hat sich geändert."
+        )
         return RunState("done", "Lauf abgeschlossen", detail, run=latest)
-    return RunState("failed", "Lauf mit Fehlern beendet", latest.error, run=latest)
+    return RunState(
+        "failed",
+        "Lauf mit Fehlern beendet",
+        "Ein Schritt ist auf einen Fehler gestoßen.",
+        run=latest,
+        trace=latest.error,
+    )
 
 
 def journal_status(runs: list[RunRow]) -> dict[int, str]:

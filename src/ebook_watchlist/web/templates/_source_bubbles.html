@@ -18,7 +18,7 @@
   {% for state in category.sources %}
   {% set found = state.outcome in ("linked", "confirmed") %}
   {% set tone = ("text-accent border-accent/40" if category.library else "text-price border-price/40")
-                if found else "border-rule text-soft opacity-60" %}
+                if found else "border-rule text-soft line-through" %}
   <{{ "a" if state.url and found else "span" }}
      {% if state.url and found %}href="{{ state.url }}" target="_blank" rel="noopener"
      class="hover:opacity-80 {% else %}class="{% endif %}

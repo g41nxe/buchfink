@@ -24,7 +24,7 @@
     <button type="submit" title="{{ value }} von 5" aria-label="{{ value }} von 5"
             class="tap inline-flex aspect-square items-center justify-center p-0.5
                    text-lg transition
-                   {{ 'text-ink' if on else 'text-rule hover:text-soft' }}">
+                   {{ 'text-ink' if on else 'text-faint hover:text-soft' }}">
       <svg class="i" {% if on %}style="fill:currentColor"{% endif %}><use href="#ic-star"/></svg>
     </button>
   </form>

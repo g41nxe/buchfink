@@ -56,7 +56,7 @@
     {% endfor %}
 {% endmacro %}
 
-{% macro _label_tone(p) %}{{ 'fill-soft opacity-50' if not p.known
+{% macro _label_tone(p) %}{{ 'fill-soft italic' if not p.known
   else 'fill-danger' if p.tone == 'danger'
   else 'fill-ink font-semibold' if p.carried
   else 'fill-soft' }}{% endmacro %}
@@ -119,7 +119,7 @@
         {% endfor %}
       </ul>
       {% if unknown %}
-      <p class="mt-0.5 text-xs text-soft/70">noch unbekannt: {{ unknown | join(", ") }}</p>
+      <p class="mt-0.5 text-xs text-soft">noch unbekannt: {{ unknown | join(", ") }}</p>
       {% endif %}
     </section>
     {% endfor %}

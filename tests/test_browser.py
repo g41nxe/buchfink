@@ -243,3 +243,15 @@ def test_a_long_run_message_does_not_widen_the_page(server: str, page) -> None:
     page.locator("text=Lauf mit Fehlern beendet").first.wait_for()
 
     _no_sideways_scroll(page)
+
+
+def test_the_header_stays_one_row_on_a_small_phone(server: str, browser) -> None:
+    """Bei 360 px brach die Kopfzeile auf drei Reihen um, 109 px hoch — ein
+    Siebtel des Bildschirms für Zeichen und fünf Verweise (Review, #118)."""
+    context = browser.new_context(viewport={"width": 360, "height": 780})
+    page = context.new_page()
+    page.goto(server + "/watchlist")
+
+    links = page.locator("header nav > a").all()
+    _one_line(links)
+    context.close()

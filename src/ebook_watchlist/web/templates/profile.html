@@ -134,7 +134,8 @@
             {% endfor %}
           </ul>
         </div>
-        <div class="flex shrink-0 flex-col items-end gap-1" aria-label="Stärke: {{ f.strength }}">
+        <div class="flex shrink-0 flex-col items-end gap-1">
+          <span class="sr-only">Stärke:</span>
           <span class="inline-flex gap-0.5">
             {% for i in range(1, 5) %}
             <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>

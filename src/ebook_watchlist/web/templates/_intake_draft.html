@@ -53,7 +53,8 @@
           <span class="text-soft">— {{ sentence }}</span></li>
         {% endfor %}
       </ul>
-      <p class="mt-1.5 flex items-center gap-2 text-xs text-soft" aria-label="Stärke: {{ f.strength }}">
+      <p class="mt-1.5 flex items-center gap-2 text-xs text-soft">
+          <span class="sr-only">Stärke:</span>
         <span class="inline-flex gap-0.5">
           {% for i in range(1, 5) %}
           <i class="h-1.5 w-3 rounded-full {{ 'bg-accent' if i <= f.level else 'bg-hair' }}"></i>

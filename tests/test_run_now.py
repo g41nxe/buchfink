@@ -255,8 +255,8 @@ def test_a_run_that_never_got_off_the_ground_shows_why(
 
     state = launcher.state(store, "test")
     assert runs_of(store) == []
-    assert state.detail is not None
-    assert "config error" in state.detail
+    assert state.trace is not None
+    assert "config error" in state.trace
 
 
 @pytest.mark.skipif(
@@ -344,3 +344,33 @@ def test_pressing_the_watchlist_button_only_checks_the_watchlist(
     )
 
     assert runs_of(store)[0].status == "ok"
+
+
+# --- Was das Panel sagt (#118) ---------------------------------------------------
+
+
+def _finished(status: str, *, delta: int | None = None, error: str | None = None):
+    from types import SimpleNamespace
+
+    now = datetime.now()
+    return SimpleNamespace(started_at=now, finished_at=now, status=status,
+                           delta_count=delta, error=error)
+
+
+def test_a_failed_run_speaks_german_and_keeps_the_trace_aside() -> None:
+    """Das Panel zeigte die englische Ausnahme samt Serverpfad als Satz. Der
+    Satz ist jetzt deutsch; die Einzelheiten bleiben, aber zum Aufklappen."""
+    from ebook_watchlist.web.runs import _from_journal
+
+    trace = "SourceStructureError: kaputt\n  File \"/home/x/parse.py\", line 4"
+    state = _from_journal(_finished("failed", error=trace))
+
+    assert "Error" not in (state.detail or "")
+    assert state.trace == trace
+
+
+def test_the_change_count_has_a_proper_plural() -> None:
+    from ebook_watchlist.web.runs import _from_journal
+
+    assert _from_journal(_finished("ok", delta=1)).detail == "1 Änderung"
+    assert _from_journal(_finished("ok", delta=3)).detail == "3 Änderungen"

@@ -108,9 +108,13 @@
      Zwischenraeume und das Zeichen mit 28 px plus Abstand (36) — zusammen 310.
      Wer ein weiteres *Wort* hinzufuegt, muss neu rechnen; ein Punkt, der auf
      dem Telefon nur sein Zeichen zeigt, kostet rund 28 statt 75 px, und so
-     sind die Uebersicht (#25) und CWA hineingekommen. #}
+     sind die Uebersicht (#25) und CWA hineingekommen.
+
+     Der Seitenrand ist auf dem Telefon 16 statt 24 px, in Kopfzeile, Inhalt
+     und Fuss gleich: bei 360 px fehlten mit 24 die 16 px, und die Kopfzeile
+     brach auf drei Reihen um, 109 px hoch (#118). #}
   <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-2 gap-y-1
-              px-6 py-2 sm:gap-x-3 sm:py-3">
+              px-4 py-2 sm:gap-x-3 sm:px-6 sm:py-3">
     {# Der Namensgeber, und hier nicht dieselbe Datei wie im Tab.
        Urspruenglich war es eine: ein Zeichen, das die Anwendung meint, sollte
        nicht zweimal gezeichnet sein. Der Vogel traegt die 40 px der Kopfzeile,
@@ -212,7 +216,7 @@
    steht (`max-w-prose`, rund 65 Zeichen) — sonst liefe ein Absatz hier auf 130
    Zeichen je Zeile. Die Kopfzeile traegt dieselbe Breite, damit die linke
    Kante durchgeht. #}
-<main class="mx-auto w-full max-w-5xl flex-1 px-6 pt-8 pb-24">
+<main class="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-24 sm:px-6">
 {% block content %}{% endblock %}
 </main>
 
@@ -225,7 +229,7 @@
    dorthin, wo man jeden Tag hinsieht. #}
 <footer class="mt-8 border-t border-rule">
   <div class="mx-auto flex max-w-5xl items-center justify-between gap-3
-              px-6 py-4 text-xs text-soft sm:py-5">
+              px-4 py-4 text-xs text-soft sm:px-6 sm:py-5">
     {# Auf dem Telefon nicht: die Zeile umbrach dort auf eine eigene Reihe und
        machte den Fussbereich 116 px hoch — fuer einen Satz, der in der
        Kopfzeile ohnehin steht, sobald der Bildschirm ihn traegt. #}

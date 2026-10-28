@@ -80,8 +80,17 @@
   </div>
 
   {% if run_state.detail %}
-  {# `wrap-anywhere`: ein Traceback trägt Pfade ohne Leerzeichen, und die
-     schoben die Seite sonst breit (im CI gemessen, #105). #}
-  <p class="mt-2 text-sm whitespace-pre-wrap wrap-anywhere text-soft">{{ run_state.detail }}</p>
+  <p class="mt-2 text-sm text-soft">{{ run_state.detail }}</p>
+  {% endif %}
+  {# Die Ausnahme samt Traceback stand vorher als Satz da — englisch, mit
+     Serverpfad (#118). Sie bleibt, wer den Fehler meldet, braucht sie, aber
+     zugeklappt. `wrap-anywhere`: ein Traceback trägt Pfade ohne Leerzeichen,
+     und die schoben die Seite sonst breit (im CI gemessen, #105). #}
+  {% if run_state.trace %}
+  <details class="mt-2 text-xs text-soft">
+    <summary class="cursor-pointer underline decoration-rule underline-offset-2
+                    hover:text-ink">Technische Einzelheiten</summary>
+    <pre class="mt-2 font-mono whitespace-pre-wrap wrap-anywhere">{{ run_state.trace }}</pre>
+  </details>
   {% endif %}
 </section>
