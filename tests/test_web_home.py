@@ -107,6 +107,15 @@ def test_the_empty_state_greets_with_the_hero(client: TestClient) -> None:
     assert "hero-mit-titel.jpg" in body
 
 
+def test_the_hero_carries_the_name_as_text(client: TestClient) -> None:
+    """Der Schriftzug liegt als Text über dem Bild, nicht im Bild: scharf in
+    jeder Größe und in der Schrift der App. Vorgelesen wird er nicht, der Name
+    steht schon in der Kopfzeile."""
+    body = client.get("/").text
+
+    assert 'data-hero-title aria-hidden="true">Buchfink<' in body
+
+
 def test_a_broken_configuration_is_reported_on_the_start_page_too(
     client: TestClient, data_dir: Path
 ) -> None:

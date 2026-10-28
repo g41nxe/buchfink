@@ -25,8 +25,23 @@
    Seite endet mit 500.
 #}
 {% macro hero() %}
-<div class="overflow-hidden rounded-lg border border-hair">
+{# Der Schriftzug liegt als Text über der Fensterscheibe in der Mitte, nicht
+   im Bild: scharf in jeder Größe und in der Schrift der App. Die Größe folgt
+   der Breite des Bildes (`cqi`), damit er auf dem Telefon wie auf dem
+   Schreibtisch dieselbe Stelle der Scheibe füllt. Vorgelesen wird er nicht —
+   der Name steht schon in der Kopfzeile.
+   Die Fensterbalken liefen mitten durch die Buchstaben; ein weicher
+   Creme-Schein in der Form des Wortes nimmt sie zurück, ohne die Äste ganz
+   zu verdecken. Ein Oval stand zu breit übers Fenster. Farben fest statt aus
+   der Palette: das Bild bleibt im Dunkeln dasselbe, also auch die Schrift
+   darauf (Textbraun der hellen Fassung). #}
+<div class="@container relative overflow-hidden rounded-lg border border-hair">
   <img src="{{ url_for('static', path='hero-mit-titel.jpg') }}?v={{ asset_version }}" alt=""
        width="2048" height="682" class="block w-full">
+  <p class="pointer-events-none absolute top-[12%] left-1/2 m-0 -translate-x-1/2
+            whitespace-nowrap rounded-[0.3em] bg-[rgb(244_236_221/0.7)] px-[0.2em] pt-[0.02em]
+            pb-[0.1em] font-serif text-[7.5cqi] font-semibold leading-none tracking-[0.01em]
+            text-[oklch(0.27_0.03_45)] shadow-[0_0_0.45em_0.25em_rgb(244_236_221/0.7)]"
+     data-hero-title aria-hidden="true">Buchfink</p>
 </div>
 {% endmacro %}
