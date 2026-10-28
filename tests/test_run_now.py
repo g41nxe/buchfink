@@ -350,11 +350,11 @@ def test_pressing_the_watchlist_button_only_checks_the_watchlist(
 
 
 def _finished(status: str, *, delta: int | None = None, error: str | None = None):
-    from types import SimpleNamespace
+    from ebook_watchlist.store.rows import RunRow
 
     now = datetime.now()
-    return SimpleNamespace(started_at=now, finished_at=now, status=status,
-                           delta_count=delta, error=error)
+    return RunRow(started_at=now, finished_at=now, status=status,
+                  delta_count=delta, error=error)
 
 
 def test_a_failed_run_speaks_german_and_keeps_the_trace_aside() -> None:

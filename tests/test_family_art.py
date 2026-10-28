@@ -31,7 +31,8 @@ def art(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(family_art, "SIGNS_DIR", signs)
     # Jinja hält das importierte `_family_pill.html` samt dem `family_art`, das
     # beim ersten Import galt; ohne Leeren sähe dieser Test das des vorigen.
-    TEMPLATES.env.cache.clear()
+    if TEMPLATES.env.cache is not None:
+        TEMPLATES.env.cache.clear()
     return tmp_path
 
 
