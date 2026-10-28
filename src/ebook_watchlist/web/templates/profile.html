@@ -124,8 +124,7 @@
                  sub="Was in deinen Lieblingsbüchern zusammen auftritt.") %}
     <ul class="divide-y divide-hair">
       {% for f in view.facets %}
-      <li class="group flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3
-                 first:pt-0 last:pb-0 sm:flex-nowrap">
+      <li class="group flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
         {# Die Stimmungsbilder der Familien, leicht übereinander gelegt wie zwei
            Karten der Erstaufnahme, aus denen die Kombination stammt. Nur wenn
            jede ihr Bild hat — eins allein sähe aus wie die ganze Kombination. #}
@@ -133,18 +132,18 @@
         {% set pictures = [] %}
         {% for fid in f.family_ids %}{% set _ = pictures.append(family_art.picture(fid)) %}{% endfor %}
         {% if pictures and pictures | select | list | length == pictures | length %}
-        {# Auf dem Telefon in eigener Zeile über dem Text: daneben blieben dem
-           Text kaum vier Wörter je Zeile. #}
-        <span class="flex basis-full items-center pr-1 sm:basis-auto sm:flex-none"
+        {# Auf dem Telefon untereinander und kleiner: nebeneinander blieben dem
+           Text dort kaum vier Wörter je Zeile. #}
+        <span class="flex flex-none flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-0 sm:pr-1"
               data-facet-pictures>
           {% for url in pictures %}
           {# Unter der Maus fächern die Karten auf — selten genug für Bewegung,
              kurz und nur ohne reduzierte Bewegung. #}
-          <span class="family-pic-frame h-14 w-14 flex-none rounded-md
+          <span class="family-pic-frame h-10 w-10 flex-none rounded-md sm:h-14 sm:w-14
                        transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]
-                       {{ '-ml-4 rotate-[4deg] motion-safe:group-hover:translate-x-3 motion-safe:group-hover:rotate-[12deg]'
+                       {{ 'sm:-ml-4 sm:rotate-[4deg] sm:motion-safe:group-hover:translate-x-3 sm:motion-safe:group-hover:rotate-[12deg]'
                           if not loop.first
-                          else 'motion-safe:group-hover:-translate-x-1.5 motion-safe:group-hover:-rotate-[8deg]' }}">
+                          else 'sm:motion-safe:group-hover:-translate-x-1.5 sm:motion-safe:group-hover:-rotate-[8deg]' }}">
             <img src="{{ url }}" alt="" width="56" height="56" loading="lazy"
                  class="family-pic h-full w-full rounded-md object-cover"></span>
           {% endfor %}
