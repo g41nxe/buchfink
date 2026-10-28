@@ -10,8 +10,6 @@
 {% from "_section.html" import section %}
 {% from "_hero.html" import hero with context %}
 {% from "_book_row.html" import row %}
-{% from "_source_icons.html" import source_icons %}
-{% from "_watchlist_actions.html" import watchlist_actions %}
 {% from "_verdict_stars.html" import verdict_stars %}
 {% from "_decisions.html" import decisions %}
 {% from "_undo_bar.html" import undo_bar %}
@@ -99,36 +97,11 @@
   {% endcall %}
   <ul class="divide-y divide-hair">
   {% for entry in view.offers %}
-    {# Dieselbe Kennung wie auf der Watchlist: der enge Lauf tauscht die Zeile
-       gegen sich selbst aus, und das soll hier wie dort gehen. #}
-    <li id="entry-{{ entry.book_id }}">
-      {% set under_author %}
-      {{ source_icons(entry.source_groups) }}
-      {% endset %}
-      {# Dieselben vier Zeichen wie auf der Watchlist (#22): es ist dieselbe
-         Zeile, und bei einem Schnaeppchen ist "Hab ich" die wahrscheinlichste
-         Handlung ueberhaupt. #}
-      {% set row_actions %}
-      {{ watchlist_actions(entry, closings, icons, back="/") }}
-      {% endset %}
-      {# Dieselbe Spalte wie auf der Watchlist und im Stapel (#16): es ist
-         dieselbe Zeile, und sie soll ueberall dasselbe sagen. #}
-      {% set figures %}{{ verdict_stars(entry.stars, entry.percent) }}{% endset %}
-      {{ row(
-           entry.title,
-           title_url="/book/" ~ entry.book_id,
-           author=entry.author,
-           cover_file=entry.cover_file,
-           borrowable=entry.borrowable,
-           deal=entry.deal,
-           under_author=under_author,
-           above=entry.availability,
-           above_tone="text-accent" if entry.borrowable else "text-soft",
-           price=entry.price,
-           figures=figures,
-           pitch=entry.pitch,
-           actions=row_actions) }}
-    </li>
+    {# Dieselbe Zeile wie auf der Watchlist, nicht eine eigene Fassung: hier
+       fehlten dadurch der Hammer und der Klappentext, während die Vorschläge
+       darunter beides trugen (28.10.2026). `back` führt nach einer
+       Entscheidung hierher zurück. #}
+    {% with back="/" %}{% include "_watchlist_row.html" %}{% endwith %}
   {% endfor %}
   </ul>
   {% if not view.offers %}

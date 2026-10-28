@@ -30,7 +30,8 @@ def db(data_dir: Path) -> Store:
     return Store(paths.db_path())
 
 
-def seen(db: Store, book_id: int, *, price: int | None, available: bool) -> None:
+def seen(db: Store, book_id: int, *, price: int | None, available: bool,
+         blurb: str | None = None) -> None:
     """Eine Beobachtung *an einem Buch*, wie ein echter Lauf sie schreibt.
 
     Die Attrappe ``fake`` verknüpft ihre Funde nicht mit Büchern (kein
@@ -53,6 +54,7 @@ def seen(db: Store, book_id: int, *, price: int | None, available: bool) -> None
                 book_id=book_id,
                 price_cents=price,
                 availability=Availability.AVAILABLE if available else Availability.UNAVAILABLE,
+                blurb=blurb,
             )
         ],
         now,
@@ -564,3 +566,18 @@ def test_an_offer_shows_its_judgement_like_everywhere_else(
     body = client.get("/").text
 
     assert "Sieben Schwestern, ein Vermaechtnis" in body
+
+
+def test_an_unjudged_offer_reads_like_a_suggestion(client: TestClient, db: Store) -> None:
+    """Ohne Steckbrief stand die Zeile nackt da, während die Vorschläge
+    darunter Klappentext und den Hammer trugen (28.10.2026). Dieselbe Zeile
+    wie auf der Watchlist: der Klappentext, bis ein Pitch da ist, und der
+    Knopf, der das erste Urteil anfragt."""
+    sisters = next(b for b in db.books() if b.title == "Die sieben Schwestern")
+    seen(db, sisters.id, price=399, available=True,
+         blurb="Maia und ihre Schwestern suchen ihre Herkunft.")
+
+    body = client.get("/").text
+
+    assert "Maia und ihre Schwestern suchen ihre Herkunft." in body
+    assert 'aria-label="jetzt beurteilen"' in body

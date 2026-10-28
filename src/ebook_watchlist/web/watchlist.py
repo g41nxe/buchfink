@@ -196,6 +196,9 @@ class Entry:
     stars: int | None = None
     percent: int | None = None
     pitch: str | None = None
+    #: Der Klappentext, der am Buch festgehalten ist (Ticket 52). Er steht in der
+    #: Zeile, bis ein Pitch da ist — wie im Stapel (28.10.2026).
+    blurb: str | None = None
     #: Steht schon ein Steckbrief? Der Hammer-Knopf fragt dann mit
     #: ``again=1`` neu, statt zum ersten Mal (26.09.2026).
     described: bool = False
@@ -572,6 +575,7 @@ def entries(
                 stars=verdict.stars if verdict else None,
                 percent=verdict.percent if verdict else None,
                 pitch=(verdict.pitch or None) if verdict else None,
+                blurb=book.blurb,
                 described=described,
                 series=named.get(book.isbn or ""),
                 owned_as=owned_as.get(book.isbn or ""),

@@ -98,7 +98,7 @@
          pill=pill,
          under_author=under_author,
          figures=figures,
-         pitch=entry.pitch,
+         pitch=entry.pitch or entry.blurb,
          above=entry.availability,
          above_tone="text-accent" if entry.borrowable else "text-soft",
          price=entry.price,
