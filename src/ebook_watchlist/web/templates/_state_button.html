@@ -33,10 +33,10 @@
         class="tap inline-flex h-10 items-center justify-center gap-1.5 rounded border
                px-2 text-xs font-medium transition disabled:opacity-40
                sm:h-9 sm:px-3 sm:text-sm {{ extra }}
-               {% if active %}border-accent bg-accent/10 text-accent
-               {% elif kind in ('dismissed', 'disliked') %}border-rule text-soft hover:border-danger hover:text-danger
-               {% elif kind in ('owned', 'liked') %}border-rule text-ink hover:border-price hover:text-price
-               {% else %}border-rule text-ink hover:border-accent hover:text-accent{% endif %}">
+               {% if active %}border-action-edge bg-action text-on-action
+               {% elif kind in ('dismissed', 'disliked') %}border-rule bg-button text-soft hover:border-danger hover:text-danger
+               {% elif kind in ('owned', 'liked') %}border-rule bg-button text-ink hover:border-price hover:text-price
+               {% else %}border-rule bg-button text-ink hover:border-accent hover:text-accent{% endif %}">
   {% if icon %}<svg class="i"><use href="#{{ icon }}"/></svg>{% endif %}{{ label }}
 </button>
 {% endmacro %}

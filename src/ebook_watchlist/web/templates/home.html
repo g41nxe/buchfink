@@ -38,8 +38,8 @@
      was sich geändert hat.</p>
   <div class="mt-4 flex flex-wrap items-center gap-4">
     <a href="/watchlist"
-       class="tap inline-flex h-9 items-center justify-center rounded border border-accent
-              bg-accent/10 px-3 text-sm font-medium text-accent hover:bg-accent/25">Zur Watchlist</a>
+       class="tap inline-flex h-9 items-center justify-center rounded border border-action-edge
+              bg-action px-3 text-sm font-medium text-on-action hover:bg-action-hover">Zur Watchlist</a>
     <a href="/overview" class="text-sm text-accent underline decoration-accent/30
        underline-offset-2 hover:decoration-accent">Zur Übersicht</a>
   </div>
@@ -93,7 +93,7 @@
        derselbe Stil wie der "Beobachten"-Knopf im Stapel. #}
     <a href="/watchlist"
        class="tap ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
-              border border-rule px-2 text-xs font-medium text-ink
+              border border-rule bg-button px-2 text-xs font-medium text-ink
               hover:border-accent hover:text-accent">
       Ganze Watchlist <span class="text-soft">({{ view.watchlist_total }})</span></a>
   {% endcall %}
@@ -141,7 +141,7 @@
                   ~ " zu entscheiden", "ic-binoculars", margin="mb-2") %}
     <a href="/suggestions"
        class="tap ml-auto inline-flex h-7 shrink-0 items-center gap-1 rounded
-              border border-rule px-2 text-xs font-medium text-ink
+              border border-rule bg-button px-2 text-xs font-medium text-ink
               hover:border-accent hover:text-accent">
       Alle Vorschläge <span class="text-soft">({{ view.suggestions_total }})</span></a>
   {% endcall %}

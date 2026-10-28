@@ -48,7 +48,7 @@
   text-xs text-soft transition
   {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
      if gone else
-     'has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:text-accent hover:border-accent hover:text-accent' }}
+     'has-[:checked]:border-accent has-[:checked]:font-medium has-[:checked]:text-accent hover:border-accent hover:text-accent' }}
   {%- endmacro %}
   {% set field = "h-7 rounded-full border border-dashed border-rule bg-card px-3 text-xs text-soft outline-none focus:border-accent focus:text-ink" %}
 
@@ -123,8 +123,8 @@
        class="text-soft hover:text-ink">← Zurück</a>
     {% if liked_count or against_count %}
     <button type="submit"
-            class="tap inline-flex h-9 items-center rounded border border-accent bg-accent/10 px-4
-                   font-medium text-accent hover:bg-accent/25">Übernehmen</button>
+            class="tap inline-flex h-9 items-center rounded border border-action-edge bg-action px-4
+                   font-medium text-on-action hover:bg-action-hover">Übernehmen</button>
     {% else %}
     <button type="submit"
             class="tap inline-flex h-9 items-center rounded border border-danger bg-danger/10 px-4

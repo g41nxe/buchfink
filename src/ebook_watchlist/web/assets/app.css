@@ -38,6 +38,17 @@
   /* Autor:in - der Kanal, den die Leserin selbst gewaehlt hat. */
   --color-accent: light-dark(oklch(0.45 0.06 185), oklch(0.75 0.06 185));
   --color-accent-bg: light-dark(oklch(0.95 0.02 185), oklch(0.27 0.03 185));
+  /* Bedienelemente als Rollen: der Hauptknopf und der gewählte Zustand
+     (`action`), der ruhige Knopf (`button`), das Eingabefeld (`field`). Hier
+     zeigen sie auf das bisherige Aussehen, unter A2′ bekommen sie eigene
+     Flächen. */
+  --color-action: color-mix(in oklab, var(--color-accent) 10%, transparent);
+  --color-action-hover: color-mix(in oklab, var(--color-accent) 25%, transparent);
+  --color-action-edge: var(--color-accent);
+  --color-on-action: var(--color-accent);
+  --color-button: var(--color-card);
+  --color-field: var(--color-paper);
+  --color-field-border: var(--color-rule);
   /* Thema - das Regal, dem noch niemand zugestimmt hat. */
   --color-amber: light-dark(oklch(0.52 0.09 75), oklch(0.76 0.08 80));
   --color-amber-bg: light-dark(oklch(0.95 0.03 80), oklch(0.27 0.03 80));
@@ -419,7 +430,20 @@ details[open] > summary > .when-open { display: inline-flex; }
   --color-rule: light-dark(oklch(0.86 0.03 72), oklch(0.35 0.03 215));
   --color-hair: light-dark(oklch(0.92 0.02 72), oklch(0.29 0.028 215));
   --color-accent: light-dark(oklch(0.43 0.07 200), oklch(0.78 0.075 190));
-  --color-accent-bg: light-dark(oklch(0.93 0.035 185), oklch(0.3 0.045 205));
+  /* Petrol mit 10 % über Creme ergab Mint, das sich mit dem warmen Papier
+     biss. Der Hauptknopf ist darum voll gefüllt, dunkel tiefer als `accent`,
+     weil das helle Petrol für Schrift gemacht ist: Creme darauf 7,4:1 hell,
+     5,5:1 dunkel. Der Chip-Grund liegt auf dem Ton des Akzents (200°) statt
+     bei 185°, mit weniger Buntheit. */
+  --color-accent-bg: light-dark(oklch(0.93 0.02 200), oklch(0.3 0.04 205));
+  --color-action: light-dark(oklch(0.43 0.07 200), oklch(0.5 0.07 200));
+  --color-action-hover: light-dark(oklch(0.38 0.07 200), oklch(0.55 0.07 200));
+  --color-action-edge: var(--color-action);
+  --color-on-action: oklch(0.98 0.01 80);
+  /* Felder hell weiß, dunkel eine Stufe unter der Karte: eingelassen statt
+     aufs Papier gemalt. Ihr Rand erreicht 3:1 (hell 3,5, dunkel 3,8). */
+  --color-field: light-dark(oklch(1 0 0), oklch(0.2 0.028 215));
+  --color-field-border: light-dark(oklch(0.62 0.03 72), oklch(0.55 0.03 215));
   --color-danger: light-dark(oklch(0.5 0.15 25), oklch(0.74 0.12 25));
   --color-gold: light-dark(oklch(0.64 0.12 70), oklch(0.82 0.13 78));
   /* Orange heißt Preis — Betrag und Schnäppchen-Abzeichen. */

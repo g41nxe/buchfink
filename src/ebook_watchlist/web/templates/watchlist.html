@@ -55,13 +55,13 @@
   <label class="flex w-full flex-col gap-1 sm:w-auto">
     <span class="text-xs font-medium text-soft">Titel</span>
     <input name="title" required autocomplete="off"
-           class="w-full rounded border border-rule bg-paper h-9 px-2 text-sm text-ink
+           class="w-full rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
                   outline-none focus:border-accent sm:w-52">
   </label>
   <label class="flex w-full flex-col gap-1 sm:w-auto">
     <span class="text-xs font-medium text-soft">Autor:in</span>
     <input name="author" autocomplete="off"
-           class="w-full rounded border border-rule bg-paper h-9 px-2 text-sm text-ink
+           class="w-full rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
                   outline-none focus:border-accent sm:w-52">
   </label>
   {# Knopf und Hinweis in einer eigenen Gruppe: das Formular richtet seine
@@ -69,8 +69,8 @@
      Hinweis auf der Schriftlinie des Knopfes statt auf seiner Mitte. #}
   <div class="flex items-center gap-3">
     <button type="submit"
-            class="rounded border border-accent bg-accent/10 tap inline-flex h-9 items-center justify-center px-3 text-sm font-medium
-                   text-accent hover:bg-accent/20">Anlegen</button>
+            class="rounded border border-action-edge bg-action tap inline-flex h-9 items-center justify-center px-3 text-sm font-medium
+                   text-on-action hover:bg-action-hover">Anlegen</button>
     <span class="text-xs text-soft">wird sofort gesucht</span>
   </div>
 </form>
@@ -117,7 +117,7 @@
     <label class="flex w-full items-center gap-2 sm:w-auto">
       <span class="shrink-0 text-xs text-soft">Reihe</span>
       <select name="series" onchange="this.form.submit()"
-              class="h-10 w-full rounded border border-rule bg-card px-2 text-sm text-ink
+              class="h-10 w-full rounded border border-field-border bg-card px-2 text-sm text-ink
                      outline-none focus:border-accent sm:h-8 sm:w-auto">
         <option value="">alle</option>
         {% for choice in series_choices %}
@@ -128,7 +128,7 @@
     </label>
     <noscript>
       <button type="submit"
-              class="tap inline-flex h-10 items-center rounded border border-rule px-3
+              class="tap inline-flex h-10 items-center rounded border border-rule bg-button px-3
                      text-sm text-soft hover:border-accent hover:text-accent
                      sm:h-8">los</button>
     </noscript>

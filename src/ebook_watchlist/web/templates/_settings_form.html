@@ -28,7 +28,7 @@
              {% elif f.kind == 'languages' %}type="text" placeholder="deutsch, englisch"
              {% else %}inputmode="{{ 'decimal' if f.kind == 'euro' else 'numeric' }}"{% endif %}
              autocomplete="off"
-             class="h-10 {{ width }} rounded border border-rule bg-card px-2 text-base text-ink
+             class="h-10 {{ width }} rounded border border-field-border bg-card px-2 text-base text-ink
                     outline-none focus:border-accent sm:h-9 sm:text-sm">
       {% if f.unit %}<span class="text-soft">{{ f.unit }}</span>{% endif %}
     </span>
@@ -37,8 +37,8 @@
   {% endfor %}
   <div class="sm:col-span-2">
     <button type="submit"
-            class="tap inline-flex h-10 items-center rounded border border-accent bg-accent/10
-                   px-4 text-sm font-medium text-accent hover:bg-accent/25">Speichern</button>
+            class="tap inline-flex h-10 items-center rounded border border-action-edge bg-action
+                   px-4 text-sm font-medium text-on-action hover:bg-action-hover">Speichern</button>
   </div>
 </form>
 </section>

@@ -13,10 +13,10 @@
 {% set base = "/book/" ~ book_id ~ "/sharpen" %}
 {% macro choice_pill(f, name, gone=false, on=false) %}
 <label class="pill tap inline-flex h-7 cursor-pointer items-center gap-1 rounded border
-              border-rule px-3 text-xs text-soft transition sm:rounded-full
+              border-rule bg-button px-3 text-xs text-soft transition sm:rounded-full
               {{ 'has-[:checked]:border-danger has-[:checked]:bg-danger/10 has-[:checked]:text-danger hover:border-danger hover:text-danger'
                  if gone else
-                 'has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:text-accent hover:border-accent hover:text-accent' }}">
+                 'has-[:checked]:border-accent has-[:checked]:font-medium has-[:checked]:text-accent hover:border-accent hover:text-accent' }}">
   <input type="checkbox" name="{{ name }}" value="{{ f.family_id }}" class="sr-only"
          {% if on %}checked{% endif %}>
   {{ f.name }}{% if f.pattern %}<span class="opacity-70">· Erzählmuster</span>{% endif %}
@@ -86,7 +86,7 @@
         {% if f.also_in %}
         <span class="text-xs text-soft">steckt auch in {{ title_row(f.also_in) }} —</span>
         <select name="scope-{{ f.family_id }}" aria-label="Wie weit es gilt"
-                class="h-7 rounded border border-rule bg-paper px-1 text-xs text-ink">
+                class="h-7 rounded border border-field-border bg-field px-1 text-xs text-ink">
           <option value="here">nur bei diesem Buch</option>
           <option value="general">auch bei anderen</option>
           {% if n.genre %}<option value="genre">nur bei {{ n.genre | genre_label }}</option>{% endif %}
@@ -125,7 +125,7 @@
     <div class="flex flex-wrap items-center gap-2">
       {% for f in n.added %}{{ choice_pill(f, "add", gone=disliked, on=true) }}{% endfor %}
       <select name="add" aria-label="Ergänzen"
-              class="h-7 rounded border border-rule bg-paper px-1 text-xs text-ink">
+              class="h-7 rounded border border-field-border bg-field px-1 text-xs text-ink">
         <option value="">ergänzen …</option>
         {% for dimension, families in n.choices %}
         <optgroup label="{{ dimension }}">
@@ -139,7 +139,7 @@
       </select>
     </div>
     <button type="submit"
-            class="tap inline-flex h-8 items-center gap-1 rounded border border-rule px-3
+            class="tap inline-flex h-8 items-center gap-1 rounded border border-rule bg-button px-3
                    font-medium text-ink hover:border-accent hover:text-accent">
       <svg class="i"><use href="#ic-check"/></svg>Übernehmen</button>
   </form>

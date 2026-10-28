@@ -9,7 +9,7 @@
 
 {% macro genre_select(name, options, label) %}
 <select name="{{ name }}" aria-label="{{ label }}"
-        class="h-9 min-w-0 flex-1 rounded border border-rule bg-card px-2 text-sm text-ink
+        class="h-9 min-w-0 flex-1 rounded border border-field-border bg-card px-2 text-sm text-ink
                outline-none focus:border-accent sm:flex-none">
   <option value="">{{ label }}</option>
   {% for code, gname, sub in options %}
@@ -47,7 +47,7 @@
     <input type="hidden" name="action" value="add">
     {{ adder }}
     <button type="submit"
-            class="tap inline-flex h-9 items-center rounded border border-rule px-3 text-sm
+            class="tap inline-flex h-9 items-center rounded border border-rule bg-button px-3 text-sm
                    text-soft hover:border-accent hover:text-accent">Hinzufügen</button>
   </form>
 </div>
@@ -55,7 +55,7 @@
 
 {% macro author_input(name, placeholder) %}
 <input type="text" name="{{ name }}" placeholder="{{ placeholder }}" autocomplete="off"
-       class="h-9 min-w-0 flex-1 rounded border border-rule bg-card px-2 text-sm text-ink
+       class="h-9 min-w-0 flex-1 rounded border border-field-border bg-card px-2 text-sm text-ink
               outline-none focus:border-accent sm:flex-none">
 {% endmacro %}
 

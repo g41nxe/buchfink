@@ -28,19 +28,19 @@
     <label class="flex w-full flex-col gap-1 sm:w-auto">
       <span class="text-xs font-medium text-soft">Titel</span>
       <input name="title" required autocomplete="off" {% if oob %}autofocus{% endif %}
-             class="h-9 w-full rounded border border-rule bg-paper px-2 font-serif text-sm
+             class="h-9 w-full rounded border border-field-border bg-field px-2 font-serif text-sm
                     text-ink outline-none focus:border-accent sm:w-64">
     </label>
     <label class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-none">
       <span class="text-xs font-medium text-soft">Autor:in</span>
       <input name="author" autocomplete="off" placeholder="falls du sie weißt"
-             class="h-9 w-full rounded border border-rule bg-paper px-2 text-sm text-ink
+             class="h-9 w-full rounded border border-field-border bg-field px-2 text-sm text-ink
                     outline-none focus:border-accent sm:w-48">
     </label>
     <button type="submit"
             class="tap inline-flex h-9 items-center justify-center rounded border
-                   border-accent bg-accent/10 px-3 text-sm font-medium text-accent
-                   hover:bg-accent/25">Hinzufügen</button>
+                   border-action-edge bg-action px-3 text-sm font-medium text-on-action
+                   hover:bg-action-hover">Hinzufügen</button>
   </form>
   {% endif %}
 </div>

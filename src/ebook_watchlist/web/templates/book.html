@@ -128,18 +128,18 @@
     <label class="flex flex-col gap-1">
       <span class="text-xs font-medium text-soft">Titel</span>
       <input name="title" required autocomplete="off" value="{{ page.title }}"
-             class="w-56 rounded border border-rule bg-paper h-9 px-2 text-sm text-ink
+             class="w-56 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
                     outline-none focus:border-accent">
     </label>
     <label class="flex flex-col gap-1">
       <span class="text-xs font-medium text-soft">Autor:in</span>
       <input name="author" autocomplete="off" value="{{ page.author or '' }}"
-             class="w-48 rounded border border-rule bg-paper h-9 px-2 text-sm text-ink
+             class="w-48 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
                     outline-none focus:border-accent">
     </label>
     <button type="submit"
-            class="tap rounded border border-accent bg-accent/10 tap inline-flex h-9 items-center justify-center px-3 text-sm
-                   font-medium text-accent hover:bg-accent/25">Speichern</button>
+            class="tap rounded border border-action-edge bg-action tap inline-flex h-9 items-center justify-center px-3 text-sm
+                   font-medium text-on-action hover:bg-action-hover">Speichern</button>
     <p class="w-full text-xs text-soft">
       Ein geänderter Titel wirft die Zuordnungen weg und wird sofort neu gesucht.</p>
   </form>

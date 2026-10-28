@@ -50,8 +50,8 @@
                 hx-post="/run"
                 hx-target="#run-panel"
                 hx-swap="outerHTML"
-                class="rounded-md border border-accent/40 bg-accent-bg tap inline-flex h-9 items-center justify-center px-3 text-sm
-                       font-medium text-accent hover:border-accent
+                class="rounded-md border border-action-edge bg-action tap inline-flex h-9 items-center justify-center px-3 text-sm
+                       font-medium text-on-action hover:bg-action-hover
                        focus-visible:outline-2 focus-visible:outline-offset-2
                        focus-visible:outline-accent">
           Jetzt prüfen
@@ -68,7 +68,7 @@
                 class="rounded-md border tap inline-flex h-9 items-center justify-center px-3 text-sm
                        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
                        {% if only_watchlist_button %}
-                       border-accent/40 bg-accent-bg font-medium text-accent hover:border-accent
+                       border-action-edge bg-action font-medium text-on-action hover:bg-action-hover
                        {% else %}
                        border-rule bg-card text-soft hover:border-accent hover:text-accent
                        {% endif %}">

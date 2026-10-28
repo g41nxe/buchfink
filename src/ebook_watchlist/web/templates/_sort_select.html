@@ -56,7 +56,7 @@
     <span class="shrink-0 text-xs text-soft">Sortiert nach</span>
     <select name="sort"
             onchange="try { localStorage.setItem('sort:{{ target }}', this.value) } catch (e) {}; this.form.submit()"
-            class="h-10 w-full rounded border border-rule bg-card px-2 text-sm text-ink
+            class="h-10 w-full rounded border border-field-border bg-card px-2 text-sm text-ink
                    outline-none focus:border-accent sm:h-8 sm:w-auto">
       {% for order in orders %}
       <option value="{{ order.slug }}"{% if order.slug == active %} selected{% endif %}>
@@ -68,7 +68,7 @@
      sobald welches da ist — er ist der Rückfall, nicht das Bedienelement. #}
   <noscript>
     <button type="submit"
-            class="tap inline-flex h-10 items-center rounded border border-rule px-3
+            class="tap inline-flex h-10 items-center rounded border border-rule bg-button px-3
                    text-sm text-soft hover:border-accent hover:text-accent
                    sm:h-8">los</button>
   </noscript>

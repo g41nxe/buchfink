@@ -64,3 +64,36 @@ def test_every_colour_carries_both_values() -> None:
         if row.strip().startswith("--color-") and "light-dark(" not in row and not inherits(row)
     ]
     assert without_dark == []
+
+
+# --- Knöpfe und Felder auf dem Papier -----------------------------------------
+
+TEMPLATES = ASSETS.parent / "templates"
+
+
+def _template_text() -> dict[str, str]:
+    return {p.name: p.read_text(encoding="utf-8") for p in sorted(TEMPLATES.glob("*.html"))}
+
+
+def test_no_template_tints_the_accent_over_the_paper() -> None:
+    """Petrol mit 10 % Deckkraft über Creme ergibt Mint, und das biss sich mit
+    dem warmen Papier. Ein Hauptknopf trägt die volle Fläche (`bg-action`), eine
+    gewählte Pille nur Rand und Schrift, ein Chip `bg-accent-bg`."""
+    tinted = {name: re.findall(r"bg-accent/\d+", text) for name, text in _template_text().items()}
+
+    assert {name: hits for name, hits in tinted.items() if hits} == {}
+
+
+def test_fields_do_not_wear_the_paper() -> None:
+    """Ein Eingabefeld auf Papierton sah aus wie aufs Papier gemalt; es liegt
+    auf eigener Fläche mit einem Rand, der 3:1 erreicht."""
+    fields = [
+        (name, tag)
+        for name, text in _template_text().items()
+        for tag in re.findall(r"<(?:input|select|textarea)\b[^>]*>", text, flags=re.S)
+        if 'type="hidden"' not in tag and "sr-only" not in tag and "class=" in tag
+    ]
+    on_paper = [(name, tag) for name, tag in fields if "bg-paper" in tag]
+
+    assert fields
+    assert on_paper == []
