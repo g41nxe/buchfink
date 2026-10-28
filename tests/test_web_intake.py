@@ -539,6 +539,12 @@ def test_a_confirmed_book_can_be_removed_again(client, db, books) -> None:
     assert 'data-family="flawed"' not in client.get("/intake/common").text
 
 
+def test_the_remove_button_names_its_book(client, books) -> None:
+    """Sechsmal „entfernen“ hintereinander sagt dem Screenreader nicht, welches
+    Buch gemeint ist (Review 28.10., #118)."""
+    assert 'aria-label="Kruzifix Killer entfernen"' in client.get("/intake").text
+
+
 # --- Review ---------------------------------------------------------------------
 
 

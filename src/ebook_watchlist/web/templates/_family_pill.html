@@ -80,6 +80,7 @@
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
     <button type="button" @click="showEvidence = !showEvidence"
+            aria-expanded="false" :aria-expanded="showEvidence ? 'true' : 'false'"
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
     {% if p.on %}
@@ -144,6 +145,7 @@
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
     <button type="button" @click="showEvidence = !showEvidence"
+            aria-expanded="false" :aria-expanded="showEvidence ? 'true' : 'false'"
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
     {% if p.on %}
@@ -202,6 +204,7 @@
   </form>
   <div class="mx-4 mb-2 flex flex-wrap items-center gap-3">
     <button type="button" @click="showEvidence = !showEvidence"
+            aria-expanded="false" :aria-expanded="showEvidence ? 'true' : 'false'"
             class="text-xs text-soft underline decoration-rule underline-offset-2
                    hover:text-ink">Belege</button>
   </div>

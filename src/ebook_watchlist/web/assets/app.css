@@ -106,6 +106,17 @@
 @layer base {
   html {
     color-scheme: light dark;
+    /* Die Kopfzeile steht fest oben; ohne diesen Abstand landete ein
+       Sprungziel oder ein Fokus darunter. 5rem, weil sie bei 360 Pixeln
+       umbrechen kann (#118). */
+    scroll-padding-top: 5rem;
+  }
+  /* Beim Wechsel von Hell und Dunkel liefen sonst alle Farbübergänge auf
+     einmal an, und die Seite verschmierte (#118). `_color_scheme.html` setzt
+     die Klasse für zwei Bilder. */
+  .theme-switching,
+  .theme-switching * {
+    transition: none !important;
   }
   body {
     background-color: var(--color-paper);

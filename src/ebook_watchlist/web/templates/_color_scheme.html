@@ -24,8 +24,12 @@
            if (chosen === 'system') localStorage.removeItem('theme');
            else localStorage.setItem('theme', chosen);
          } catch (e) {}
+         root.classList.add('theme-switching');
          if (chosen === 'system') delete root.dataset.theme;
          else root.dataset.theme = chosen;
+         getComputedStyle(root).color;
+         requestAnimationFrame(() => requestAnimationFrame(
+           () => root.classList.remove('theme-switching')));
        }
      }"
      role="group" aria-label="Farbschema"

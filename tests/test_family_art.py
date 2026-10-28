@@ -105,3 +105,13 @@ def test_the_pictures_are_served_and_the_sprite_is_on_every_page(art, data_dir) 
     assert picture.status_code == 200
     assert picture.headers["content-type"] == "image/jpeg"
     assert 'id="fz-harsh"' in page.text
+
+
+def test_the_evidence_toggle_says_whether_it_is_open(art, data_dir) -> None:
+    """„Belege“ klappt auf und zu; das muss auch vorgelesen werden (#118)."""
+    create_app()
+
+    card = _card("harsh")
+
+    assert 'aria-expanded="false"' in card
+    assert ":aria-expanded=" in card

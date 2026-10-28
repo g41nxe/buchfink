@@ -31,7 +31,7 @@
        nichts mehr bei. #}
     <form method="post" action="{{ base }}/remove" class="ml-auto self-center"
           hx-post="{{ base }}/remove" hx-target="{{ target }}" hx-swap="outerHTML">
-      <button type="submit" title="entfernen" aria-label="entfernen"
+      <button type="submit" title="entfernen" aria-label="{{ e.title or e.typed_title }} entfernen"
               class="flex rounded p-1 text-soft hover:bg-hair hover:text-danger">
         <svg class="i"><use href="#ic-x"/></svg></button>
     </form>
@@ -87,7 +87,7 @@
       {{ "Anderes Buch" if e.state == "proposed" else "Anders eingeben" }}</button>
     <form method="post" action="{{ base }}/remove" class="ml-auto"
           hx-post="{{ base }}/remove" hx-target="{{ target }}" hx-swap="outerHTML">
-      <button type="submit" title="entfernen" aria-label="entfernen"
+      <button type="submit" title="entfernen" aria-label="{{ e.title or e.typed_title }} entfernen"
               class="flex rounded p-1 text-soft hover:bg-hair hover:text-danger">
         <svg class="i"><use href="#ic-x"/></svg></button>
     </form>
