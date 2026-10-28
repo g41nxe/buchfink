@@ -97,3 +97,17 @@ def test_fields_do_not_wear_the_paper() -> None:
 
     assert fields
     assert on_paper == []
+
+
+def test_bordered_buttons_carry_their_own_surface() -> None:
+    """Ein Knopf mit Rand und ohne Fläche zeigt das Papier durch und sieht
+    aus wie aufs Papier gezeichnet; ruhige Knöpfe liegen auf `bg-button`."""
+    bare = [
+        (name, " ".join(tag.split())[:90])
+        for name, text in _template_text().items()
+        for tag in re.findall(r"<button\b[^>]*>", text, flags=re.S)
+        if re.search(r"\bborder-rule\b", tag) and not re.search(r"\bbg-(?!opacity)", tag)
+        and "rounded border" in " ".join(tag.split())
+    ]
+
+    assert bare == []

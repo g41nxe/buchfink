@@ -54,7 +54,7 @@
 {% macro family_card(k, step, can_boost) %}
 {% set p = k.pill %}
 <li class="flex flex-col rounded-lg border transition
-           {{ 'border-accent bg-accent-bg' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
+           {{ 'border-accent bg-card ring-1 ring-accent' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
     x-data="{ showEvidence: false }" data-card="{{ p.family_id }}">
   <form method="post" action="/intake/choice" class="flex-1"
         hx-post="/intake/choice" hx-target="#choice" hx-swap="outerHTML">
@@ -121,7 +121,7 @@
 {% set p = k.pill %}
 {% set base = "/book/" ~ book_id ~ "/sharpen" %}
 <li class="flex flex-col rounded-lg border transition
-           {{ 'border-accent bg-accent-bg' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
+           {{ 'border-accent bg-card ring-1 ring-accent' if p.on else 'border-rule bg-card hover:border-accent/60' }}"
     x-data="{ showEvidence: false }" data-card="{{ p.family_id }}">
   <form method="post" action="{{ base }}/liked" class="flex-1">
     <input type="hidden" name="family" value="{{ p.family_id }}">

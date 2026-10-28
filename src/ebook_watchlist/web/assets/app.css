@@ -433,9 +433,10 @@ details[open] > summary > .when-open { display: inline-flex; }
   /* Petrol mit 10 % über Creme ergab Mint, das sich mit dem warmen Papier
      biss. Der Hauptknopf ist darum voll gefüllt, dunkel tiefer als `accent`,
      weil das helle Petrol für Schrift gemacht ist: Creme darauf 7,4:1 hell,
-     5,5:1 dunkel. Der Chip-Grund liegt auf dem Ton des Akzents (200°) statt
-     bei 185°, mit weniger Buntheit. */
-  --color-accent-bg: light-dark(oklch(0.93 0.02 200), oklch(0.3 0.04 205));
+     5,5:1 dunkel. Auch ein blasses Petrol als Fläche blieb hell ein kühler
+     Fleck auf Creme; der Chip-Grund ist hell darum warm wie das Papier, das
+     Petrol trägt die Schrift. Gewählte Karten zeigen sich über den Rand. */
+  --color-accent-bg: light-dark(oklch(0.925 0.015 75), oklch(0.3 0.04 205));
   --color-action: light-dark(oklch(0.43 0.07 200), oklch(0.5 0.07 200));
   --color-action-hover: light-dark(oklch(0.38 0.07 200), oklch(0.55 0.07 200));
   --color-action-edge: var(--color-action);
