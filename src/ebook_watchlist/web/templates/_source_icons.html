@@ -2,7 +2,10 @@
 
    Eine Stelle für Watchlist und Startseite (Issue #9). Farbig heißt: mindestens
    eine Quelle dieser Art führt das Buch — grün für die Bibliothek, bernstein
-   für den Shop. Was keine führt, bleibt stumpf.
+   für den Shop. Was keine führt, ist durchgestrichen und in `soft`: vorher
+   stand es stumpf in `text-rule` (1,35:1), und den Unterschied trug allein
+   die Farbe — wer Farben schlecht trennt, sah zwei gleiche Zeichen (#118).
+   Vorgelesen wird „nicht verfügbar“; den Grund nennt der Hinweis.
 
    **Ein Zeichen je Art, nicht je Quelle.** Vorher wuchs die Reihe mit jeder
    Quelle; bei acht wären es acht Zeichen, die niemand auseinanderhält — welche
@@ -20,14 +23,16 @@
 {% macro source_icons(groups, unresolved=false, stop=false) %}
 {% for group in groups %}
 {% set symbol = "ic-lib" if group.library else "ic-shop" %}
-{% set tone = ("text-accent" if group.library else "text-price") if group.found else "text-rule" %}
+{% set tone = ("text-accent" if group.library else "text-price") if group.found else "text-soft" %}
 <{{ "a" if group.url else "span" }}
    {% if group.url %}href="{{ group.url }}" target="_blank" rel="noopener"
    {% if stop %}onclick="event.stopPropagation()"{% endif %}
    class="hover:opacity-70 {% else %}class="{% endif %}
           inline-flex items-center gap-0.5 {{ tone }}"
    title="{{ group.hint }}">
-  <svg class="i"><use href="#{{ symbol }}"/></svg>
+  {% if group.found %}<svg class="i"><use href="#{{ symbol }}"/></svg>
+  {%- else %}<svg class="i" viewBox="0 0 24 24" data-missing><use href="#{{ symbol }}"/>
+    <path d="M3 3l18 18"/></svg><span class="sr-only">nicht verfügbar</span>{% endif %}
   {%- if group.count > 1 %}<span class="text-[0.7rem] tabular-nums"
     >{{ group.count }}</span>{% endif %}
 </{{ "a" if group.url else "span" }}>
