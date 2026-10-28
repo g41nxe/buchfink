@@ -167,9 +167,9 @@
           <{{ 'a' if g.book_id else 'span' }}
              {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening" title="beim Buch ändern"{% endif %}
              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1
-                    ring-inset {{ 'pill-boosted text-choice ring-gold/55' if g.boosted
+                    ring-inset {{ 'pill-boosted ring-(--boost-ring)' if g.boosted
                                   else 'bg-accent-bg text-accent ring-accent/20' }}
-                    {{ ('hover:ring-choice/60' if g.boosted else 'hover:ring-accent/50') if g.book_id }}">
+                    {{ 'transition-[filter] duration-150 hover:brightness-110' if g.book_id }}">
             {{ family_art.sign(g.family_id, "fz-inline") if family_art is defined }}
             {{ g.name }}</{{ 'a' if g.book_id else 'span' }}>
         </li>
@@ -188,7 +188,7 @@
            {% if c.book_id %}href="/book/{{ c.book_id }}#sharpening" title="beim Buch zurücknehmen"{% endif %}
            class="inline-flex h-8 items-center gap-1.5 rounded-full bg-danger/10 px-3 text-xs
                   font-medium text-danger ring-1 ring-danger/20 ring-inset
-                  {{ 'hover:ring-danger/50' if c.book_id }}">
+                  {{ 'transition-[filter] duration-150 hover:brightness-110' if c.book_id }}">
           {{ family_art.sign(c.family_id, "fz-inline") if family_art is defined and c.family_id }}
           {{ c.name }}
           {% if c.genre %}<span class="rounded-full bg-card/70 px-1.5 py-px font-normal text-soft">nur bei {{ c.genre | genre_label }}</span>{% endif %}
