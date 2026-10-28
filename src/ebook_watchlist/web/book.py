@@ -790,7 +790,8 @@ def _stored_portrait(store: Store, book, vocabulary_fingerprint: str) -> Portrai
 
 
 def portray(
-    store: Store, settings: Settings, book_id: int, *, now: datetime, again: bool = False
+    store: Store, settings: Settings, book_id: int, *, now: datetime, again: bool = False,
+    portrayer=None,
 ) -> str:
     """Den Steckbrief dieses Buchs anlegen, falls es noch keinen gibt (#45).
 
@@ -807,6 +808,9 @@ def portray(
 
     Zurück kommt der Grund, warum es nicht ging — leer heißt: der Steckbrief
     steht.
+
+    ``portrayer``: der Lauf reicht seinen eigenen Weg zum Modell herein, damit
+    er nicht ein zweites Mal gebaut wird (und Tests ihn ersetzen können).
     """
     book = store.book(book_id)
     if book is None:  # pragma: no cover - nur bei geloeschtem Buch
@@ -824,7 +828,7 @@ def portray(
     ):
         return ""
 
-    portrayer = build_portrayer(settings.rating_model, vocabulary)
+    portrayer = portrayer or build_portrayer(settings.rating_model, vocabulary)
     if portrayer is None:
         return (
             "Kein Weg zum Modell: weder ein API-Schlüssel in der Umgebung "

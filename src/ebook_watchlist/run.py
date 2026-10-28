@@ -515,10 +515,49 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         if reworked:
             print(f"Bewertungstor: {reworked} Steckbriefe mit Regelverstößen neu beschrieben",
                   file=sys.stderr)
+        offered = describe_offers(
+            store, settings,
+            budget=settings.rating_budget - report.rated - reworked, now=now,
+            portrayer=portrayer,
+        )
+        if offered:
+            print(f"Bewertungstor: {offered} Angebote der Watchlist beschrieben",
+                  file=sys.stderr)
     # ``getattr``: nicht jeder Ersteller führt Buch über seine Gründe.
     if trouble := getattr(portrayer, "trouble", None):
         report.unrated_reason = trouble
     return kept, report
+
+
+def describe_offers(store: Store, settings: Settings, *, budget: int, now: datetime,
+                    portray=None, portrayer=None) -> int:
+    """Was die Startseite „jetzt zu haben“ nennt, bekommt seinen Steckbrief.
+
+    Der Lauf beschrieb nur Funde; ein Titel der Watchlist bekam Sterne erst
+    über den Hammer. Gerade beim Schnäppchen will man aber wissen, ob es sich
+    lohnt (28.10.2026). Derselbe Weg wie der Hammer (`book.portray`), höchstens
+    so viele, wie die Startseite zeigt, und nur aus dem übrigen Budget. Ohne
+    Leseprofil nichts: es gäbe nichts, wogegen sich rechnen ließe (ADR 33).
+
+    Zurück kommt, wie viele beschrieben wurden.
+    """
+    from .web import book, watchlist
+
+    if budget <= 0 or store.reading_profile(settings.slug) is None:
+        return 0
+    def by_book(store, settings, book_id, *, now):
+        return book.portray(store, settings, book_id, now=now, portrayer=portrayer)
+
+    describe = portray or by_book
+    offers = [
+        entry for entry in watchlist.entries(store, settings, include_paused=False)
+        if (entry.deal or entry.borrowable) and not entry.described
+    ]
+    described = 0
+    for entry in offers[: min(budget, settings.home_offers)]:
+        if not describe(store, settings, entry.book_id, now=now):
+            described += 1
+    return described
 
 
 def _rework_flawed(store: Store, settings: Settings, portrayer, vocabulary, budget: int,
