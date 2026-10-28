@@ -234,14 +234,8 @@
   .pill-boosted {
     position: relative;
     isolation: isolate;
-    /* Hell: goldene Tönung. Dunkel wurde mattes Gold auf Petrol zu Oliv —
-       „dreckig“; dort steht klares Gold auf der neutralen Karte, auch die
-       Schrift. Der Rand kommt als Ringfarbe ins Template (`ring-(--boost-ring)`). */
-    --boost-ring: light-dark(color-mix(in oklab, var(--color-gold) 55%, transparent),
-      color-mix(in oklab, var(--color-gold) 80%, transparent));
-    background-color: light-dark(color-mix(in oklab, var(--color-gold) 12%, var(--color-card)),
-      var(--color-card));
-    color: light-dark(var(--color-choice), oklch(0.9 0.08 85));
+    /* Farbe, Grund und Rand wie jede andere Pille: eine goldene Tönung war
+       zu laut, und auf Petrol wurde sie Oliv. Verstärkt sagen nur die Sterne. */
   }
   .pill-boosted::before {
     content: "";
@@ -251,16 +245,15 @@
     border-radius: inherit;
     mask-repeat: repeat;
     mask-position: 0 0;
-    background-color: light-dark(var(--color-gold),
-      color-mix(in oklab, var(--color-gold) 90%, transparent));
+    background-color: color-mix(in oklab, var(--color-gold) 45%, transparent);
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='24'%3E%3Cpath fill-opacity='0.6' transform='translate%286 6%29 scale%280.417%29 translate%28-12 -12%29' d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z'/%3E%3Cpath fill-opacity='0.5' transform='translate%2821 17%29 scale%280.333%29 translate%28-12 -12%29' d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z'/%3E%3Cpath fill-opacity='0.45' transform='translate%2826 5%29 scale%280.217%29 translate%28-12 -12%29' d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z'/%3E%3Cpath fill-opacity='0.45' transform='translate%2811 19%29 scale%280.200%29 translate%28-12 -12%29' d='M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z'/%3E%3C/svg%3E");
-    transition: mask-position 1.2s ease-out;
+    transition: mask-position 1.6s ease-out;
   }
-  /* Unter der Maus funkeln die Sterne: sie wandern ein Stück. Selten genug
+  /* Unter der Maus funkeln die Sterne: sie rücken ein wenig. Selten genug
      für Bewegung, und nur ohne reduzierte Bewegung. */
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
     .pill-boosted:hover::before {
-      mask-position: -30px 6px;
+      mask-position: -10px 3px;
     }
   }
 
