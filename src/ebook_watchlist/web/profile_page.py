@@ -141,6 +141,8 @@ class FacetLine:
     book_id: int | None = None
     #: Nur bei Gegengewichten aus einer einzigen Familie: ihr Zeichen (#117).
     family_id: str = ""
+    #: Nur bei Facetten: die Familien, deren Stimmungsbilder davor stehen.
+    family_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -298,6 +300,7 @@ def _facet_profile(store: Store, settings: Settings):
         word = strength(len(titles), defining_in(f.families, carriers))
         return FacetLine(
             family_names(f.families, vocabulary), titles, strength=word,
+            family_ids=tuple(f.families),
             level=STRENGTHS.index(word) + 1,
             parts=tuple(
                 (family_name(x, vocabulary), family_description(x, vocabulary))

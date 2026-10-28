@@ -125,7 +125,26 @@
     <ul class="divide-y divide-hair">
       {% for f in view.facets %}
       <li class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
-        <div class="min-w-0">
+        {# Die Stimmungsbilder der Familien, leicht übereinander gelegt wie zwei
+           Karten der Erstaufnahme, aus denen die Kombination stammt. Nur wenn
+           jede ihr Bild hat — eins allein sähe aus wie die ganze Kombination. #}
+        {% if family_art is defined %}
+        {% set pictures = [] %}
+        {% for fid in f.family_ids %}{% set _ = pictures.append(family_art.picture(fid)) %}{% endfor %}
+        {% if pictures and pictures | select | list | length == pictures | length %}
+        <span class="flex flex-none items-center pr-1" data-facet-pictures>
+          {% for url in pictures %}
+          {# Auf dem Telefon kleiner: bei 56 px blieben dem Text dort kaum vier
+             Wörter je Zeile. #}
+          <span class="family-pic-frame h-10 w-10 flex-none rounded-md sm:h-14 sm:w-14
+                       {{ '-ml-3 rotate-[4deg] sm:-ml-4' if not loop.first }}">
+            <img src="{{ url }}" alt="" width="56" height="56" loading="lazy"
+                 class="family-pic h-full w-full rounded-md object-cover"></span>
+          {% endfor %}
+        </span>
+        {% endif %}
+        {% endif %}
+        <div class="min-w-0 flex-1">
           <p class="flex flex-wrap items-center gap-x-1.5 text-sm font-medium">
             {% for name, sentence in f.parts %}{% if not loop.first %}<span class="text-soft">+</span>{% endif %}<span>{{ name }}</span>{% endfor %}</p>
           <ul class="mt-0.5 space-y-0.5">

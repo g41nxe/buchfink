@@ -187,7 +187,7 @@ def test_the_profile_names_what_you_like_with_its_sign(art, data_dir) -> None:
     assert "#fz-harsh" in liked
 
 
-def _profile_page(liked, counterweights) -> str:
+def _profile_page(liked, counterweights, facets=()) -> str:
     from conftest import give_profile
     from ebook_watchlist import paths
     from ebook_watchlist.judging.facets import ReadingProfile
@@ -195,7 +195,8 @@ def _profile_page(liked, counterweights) -> str:
 
     client = TestClient(create_app())
     give_profile(Store(paths.db_path()),
-                 profile=ReadingProfile(facets=(), counterweights=counterweights, liked=liked))
+                 profile=ReadingProfile(facets=facets, counterweights=counterweights,
+                                         liked=liked))
     return client.get("/profile").text
 
 
@@ -222,3 +223,26 @@ def test_a_counterweight_carries_its_sign_instead_of_the_ban_icon(art, data_dir)
 
     assert "#ic-ban" not in against
     assert "#fz-harsh" in against
+
+
+def test_a_combination_shows_its_two_pictures(art, data_dir) -> None:
+    """Zwei Stimmungsbilder, leicht übereinander gelegt, vor der Kombination —
+    wie die Karten der Erstaufnahme, aus denen sie stammt (28.10.2026)."""
+    from ebook_watchlist.judging.facets import Facet
+
+    (art / "bilder" / "brooding.jpg").write_bytes(b"\xff\xd8\xff\xe0jpeg")
+    page = _profile_page((), (), facets=(Facet(("brooding", "harsh"), ("A", "B")),))
+    combos = page.split("Erkannte Kombinationen", 1)[1].split("</section>", 1)[0]
+
+    assert "/familien/brooding.jpg" in combos
+    assert "/familien/harsh.jpg" in combos
+    assert "data-facet-pictures" in combos
+
+
+def test_a_combination_without_all_pictures_shows_none(art, data_dir) -> None:
+    from ebook_watchlist.judging.facets import Facet
+
+    page = _profile_page((), (), facets=(Facet(("brooding", "harsh"), ("A", "B")),))
+    combos = page.split("Erkannte Kombinationen", 1)[1].split("</section>", 1)[0]
+
+    assert "/familien/" not in combos
