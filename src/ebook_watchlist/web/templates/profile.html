@@ -155,7 +155,7 @@
     {% set traits = view.liked | rejectattr("pattern") | list %}
     {% set patterns = view.liked | selectattr("pattern") | list %}
     {% call card("Das magst du", "ic-heart",
-                 sub="★ verstärkt · was an einem Buch hängt, änderst du dort") %}
+                 sub="Sterne: verstärkt · was an einem Buch hängt, änderst du dort") %}
       {% for group, title in ((traits, "Merkmale"), (patterns, "Erzählmuster")) if group %}
       <p class="mb-2 text-xs font-medium tracking-wider text-soft uppercase
                 {{ '' if loop.first else 'mt-4' }}">{{ title }}</p>
@@ -167,10 +167,9 @@
           <{{ 'a' if g.book_id else 'span' }}
              {% if g.book_id %}href="/book/{{ g.book_id }}#sharpening" title="beim Buch ändern"{% endif %}
              class="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1
-                    ring-inset {{ 'bg-card text-choice ring-choice/50' if g.boosted
+                    ring-inset {{ 'pill-boosted text-choice ring-gold/55' if g.boosted
                                   else 'bg-accent-bg text-accent ring-accent/20' }}
                     {{ ('hover:ring-choice/60' if g.boosted else 'hover:ring-accent/50') if g.book_id }}">
-            {% if g.boosted %}<svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>{% endif %}
             {{ family_art.sign(g.family_id, "fz-inline") if family_art is defined }}
             {{ g.name }}</{{ 'a' if g.book_id else 'span' }}>
         </li>
@@ -190,7 +189,8 @@
            class="inline-flex h-8 items-center gap-1.5 rounded-full bg-danger/10 px-3 text-xs
                   font-medium text-danger ring-1 ring-danger/20 ring-inset
                   {{ 'hover:ring-danger/50' if c.book_id }}">
-          <svg class="i"><use href="#ic-ban"/></svg>{{ c.name }}
+          {{ family_art.sign(c.family_id, "fz-inline") if family_art is defined and c.family_id }}
+          {{ c.name }}
           {% if c.genre %}<span class="rounded-full bg-card/70 px-1.5 py-px font-normal text-soft">nur bei {{ c.genre | genre_label }}</span>{% endif %}
         </{{ 'a' if c.book_id else 'span' }}>
       </li>

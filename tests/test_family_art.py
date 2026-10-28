@@ -185,3 +185,40 @@ def test_the_profile_names_what_you_like_with_its_sign(art, data_dir) -> None:
     liked = client.get("/profile").text.split("Das magst du", 1)[1].split("</section>", 1)[0]
 
     assert "#fz-harsh" in liked
+
+
+def _profile_page(liked, counterweights) -> str:
+    from conftest import give_profile
+    from ebook_watchlist import paths
+    from ebook_watchlist.judging.facets import ReadingProfile
+    from ebook_watchlist.store import Store
+
+    client = TestClient(create_app())
+    give_profile(Store(paths.db_path()),
+                 profile=ReadingProfile(facets=(), counterweights=counterweights, liked=liked))
+    return client.get("/profile").text
+
+
+def test_a_boosted_family_wears_a_shower_of_stars(art, data_dir) -> None:
+    """Der Stern vor dem Namen stand neben dem Familienzeichen — zwei Symbole
+    hintereinander. Verstärkt heißt jetzt: Sterne im Hintergrund der Pille."""
+    from ebook_watchlist.judging.facets import Liked
+
+    page = _profile_page((Liked("harsh", True),), ())
+    liked = page.split("Das magst du", 1)[1].split("</section>", 1)[0]
+
+    assert "pill-boosted" in liked
+    assert "#ic-star" not in liked
+    assert "#fz-harsh" in liked
+
+
+def test_a_counterweight_carries_its_sign_instead_of_the_ban_icon(art, data_dir) -> None:
+    """Die Karte heißt schon „Zählt gegen ein Buch“; das Verbotszeichen vor
+    jedem Namen sagte es ein zweites Mal. Dort steht jetzt die Familie."""
+    from ebook_watchlist.judging.facets import Counterweight
+
+    page = _profile_page((), (Counterweight(("harsh",)),))
+    against = page.split("Zählt gegen ein Buch", 1)[1].split("</section>", 1)[0]
+
+    assert "#ic-ban" not in against
+    assert "#fz-harsh" in against

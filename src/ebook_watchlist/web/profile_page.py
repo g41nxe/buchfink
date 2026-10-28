@@ -139,6 +139,8 @@ class FacetLine:
     parts: tuple[tuple[str, str], ...] = ()
     #: Nur bei Gegengewichten: das Buch, an dem es sich zurücknehmen lässt (#51).
     book_id: int | None = None
+    #: Nur bei Gegengewichten aus einer einzigen Familie: ihr Zeichen (#117).
+    family_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,6 +315,7 @@ def _facet_profile(store: Store, settings: Settings):
     counterweights = merge_genres(tuple(
         FacetLine(
             family_names(c.families, vocabulary), c.books, genre=c.genre,
+            family_id=c.families[0] if len(c.families) == 1 else "",
             book_id=next((disliked_by_title[t] for t in c.books if t in disliked_by_title),
                          None),
         )
