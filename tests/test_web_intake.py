@@ -703,3 +703,22 @@ def test_screen_5_lets_a_new_like_win_over_an_old_dislike(client, db, books) -> 
     assert profile.disliked_authors == ("Blake Crouch",)
     followed = [r.value for r in db.interests(slug, key="author")]
     assert "Stephen King" in followed and "Blake Crouch" not in followed
+
+
+# --- Der Moment „geschafft“ (29.10.2026) --------------------------------------------
+
+
+def test_the_ready_block_says_so_for_the_page_to_notice(client, books) -> None:
+    """Die Seite blendet die Erfolgszeile nur beim Übergang ein: dafür muss der
+    Block sagen, ob er fertig ist, und die Seite den Stand beim Laden kennen."""
+    body = client.get("/intake").text
+
+    assert 'id="intake-next" data-ready' in body
+    assert "data-done" in body
+    assert "htmx:afterSettle" in body
+
+
+def test_an_unfinished_intake_is_not_marked_ready(client) -> None:
+    body = client.get("/intake").text
+
+    assert "data-ready" not in body.split('id="intake-next"', 1)[1][:40]

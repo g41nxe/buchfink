@@ -37,5 +37,24 @@
 
 {% with oob=false %}
 {% include "_intake_next.html" %}
+{# Der eine Moment, in dem das Werkzeug „geschafft“ sagt, blendet ein — aber
+   nur beim Übergang: der Block kommt nach jeder Handlung neu (`hx-swap-oob`),
+   und schon beim Laden fertig heißt, man hat ihn gesehen. Die Seite merkt
+   sich darum, ob er vorher fertig war. #}
+<script>
+  (function () {
+    var wasReady = !!document.querySelector("#intake-next[data-ready]");
+    document.addEventListener("htmx:afterSettle", function () {
+      var block = document.getElementById("intake-next");
+      if (!block) return;
+      var ready = block.hasAttribute("data-ready");
+      if (ready && !wasReady) {
+        var done = block.querySelector("[data-done]");
+        if (done) done.classList.add("enter");
+      }
+      wasReady = ready;
+    });
+  })();
+</script>
 {% endwith %}
 {% endblock %}

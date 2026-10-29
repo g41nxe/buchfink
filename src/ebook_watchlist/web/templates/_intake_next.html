@@ -6,10 +6,10 @@
 
    Erwartet: `page`, `oob`. #}
 {% set lacking = page.liked.fewest - page.liked.confirmed %}
-<div id="intake-next" {% if oob %}hx-swap-oob="true"{% endif %}
+<div id="intake-next"{% if page.ready %} data-ready{% endif %} {% if oob %}hx-swap-oob="true"{% endif %}
      class="mt-8 rounded-lg border border-rule bg-card px-5 py-4 text-sm">
   {% if page.ready %}
-  <p class="flex items-center gap-2 text-ink">
+  <p class="flex items-center gap-2 text-ink" data-done>
     <svg class="i text-accent"><use href="#ic-check"/></svg>
     {{ page.liked.confirmed }} geliebte{% if page.disliked.confirmed %} und
     {{ page.disliked.confirmed }} enttäuschende{% endif %} Bücher stehen in deinen Regalen.
