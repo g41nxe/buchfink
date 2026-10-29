@@ -46,6 +46,10 @@ DEFAULT_VOCABULARY_DIR = Path(__file__).resolve().parents[3] / "vocabulary"
 VOCABULARY_DIR = Path(os.environ.get("EBW_VOCABULARY_DIR") or DEFAULT_VOCABULARY_DIR)
 VOCABULARY_PATH = VOCABULARY_DIR / "merkmale.yaml"
 PATTERNS_PATH = VOCABULARY_DIR / "erzaehlmuster.yaml"
+#: Welche alten Ids eine Fassung ersetzt, wenn das nicht in ihren Einträgen
+#: steht: in der Datei der Erzählmuster stünden sonst alle alten Ids, und
+#: die sind die Auswahl, um die es in #59 geht. Bleibt lokal wie die alte.
+REPLACEMENTS_PATH = VOCABULARY_DIR / "ersetzt.yaml"
 #: Die Dimension, in der die Erzählmuster stehen.
 PATTERN_DIMENSION = "Erzählmuster"
 
@@ -268,14 +272,21 @@ def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> V
     """
     file = path or VOCABULARY_PATH
     patterns_path = patterns or PATTERNS_PATH
+    replacements_path = file.parent / REPLACEMENTS_PATH.name
     try:
         text = file.read_text(encoding="utf-8")
         patterns_text = (
             patterns_path.read_text(encoding="utf-8") if patterns_path.exists() else None
         )
+        replacements_text = (
+            replacements_path.read_text(encoding="utf-8")
+            if replacements_path.exists() else None
+        )
     except OSError as exc:
         raise VocabularyError(f"{exc.filename} ist nicht lesbar: {exc}") from exc
-    return _parse_vocabulary(text, file.name, patterns_text, patterns_path.name)
+    return _parse_vocabulary(
+        text, file.name, patterns_text, patterns_path.name, replacements_text
+    )
 
 
 def _active() -> Vocabulary | None:
@@ -320,7 +331,11 @@ def stored_ids(ids: Iterable[str]) -> tuple[str, ...]:
 
 @lru_cache(maxsize=8)
 def _parse_vocabulary(
-    text: str, name: str, patterns_text: str | None, patterns_name: str
+    text: str,
+    name: str,
+    patterns_text: str | None,
+    patterns_name: str,
+    replacements_text: str | None = None,
 ) -> Vocabulary:
     """Geparst wird nur, wenn sich der Inhalt ändert.
 
@@ -370,6 +385,18 @@ def _parse_vocabulary(
 
     if patterns_text is not None:
         _load_patterns(patterns_text, patterns_name, terms, families, dimensions, replaced)
+    if replacements_text is not None:
+        try:
+            side = yaml.safe_load(replacements_text) or {}
+        except yaml.YAMLError as exc:
+            raise VocabularyError(f"{REPLACEMENTS_PATH.name} ist nicht lesbar: {exc}") from exc
+        known_now = set(terms) | {family.id for family in families}
+        for new_id, olds in side.items():
+            if str(new_id) not in known_now:
+                raise VocabularyError(
+                    f"{REPLACEMENTS_PATH.name} nennt {new_id}, das es nicht gibt"
+                )
+            replaced.append((str(new_id), olds))
     aliases, originals = _replacements(
         replaced, set(terms) | {family.id for family in families}
     )

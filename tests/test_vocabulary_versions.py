@@ -164,3 +164,16 @@ def test_a_replacing_family_wears_the_picture_and_sign_of_the_one_it_replaces(
     assert 'href="#fz-bleak"' in art.sign("grim")
     assert art.picture("grim") == f"{family_art.PICTURES_URL}/bleak.jpg"
     assert art.sign("cosy") == ""
+
+
+def test_replacements_can_live_beside_the_version(tmp_path: Path) -> None:
+    """In der Datei selbst stünden sonst alle alten Ids — die Auswahl, um die
+    es in #59 geht. ``ersetzt.yaml`` daneben bleibt lokal."""
+    file = tmp_path / "merkmale.yaml"
+    file.write_text(NEW.replace("        ersetzt: [bleak, gloomy]\n", ""), encoding="utf-8")
+    (tmp_path / "ersetzt.yaml").write_text("grim: [bleak, gloomy]\n", encoding="utf-8")
+
+    vocabulary = load_vocabulary(file, tmp_path / "keine-muster.yaml")
+
+    assert vocabulary.current("gloomy") == "grim"
+    assert vocabulary.stored("grim") == "bleak"
