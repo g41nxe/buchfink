@@ -105,7 +105,7 @@ class _Clock:
         self.headers: dict[str, str] = {}
 
     def get(self, url, params=None, timeout=None):
-        self.at.append(time.monotonic())
+        self.at.append(time.perf_counter())
         response = requests.Response()
         response.status_code = 200
         response._content = b"ok"
@@ -126,3 +126,25 @@ def test_one_client_still_asks_one_at_a_time_from_two_threads() -> None:
     gaps = [b - a for a, b in zip(clock.at, clock.at[1:], strict=False)]
     assert len(clock.at) == 3
     assert all(gap >= 0.19 for gap in gaps), gaps
+
+
+class _SlowFirstClock(_Clock):
+    """Die erste Anfrage trödelt, bevor sie ankommt — wie ein Faden, der unter
+    Last zwischen Zeitstempel und Absenden ins Stocken gerät."""
+
+    def get(self, url, params=None, timeout=None):
+        if not self.at:
+            time.sleep(0.05)
+        return super().get(url, params=params, timeout=timeout)
+
+
+def test_the_pause_counts_from_the_end_of_the_last_request() -> None:
+    """Gemessen ab dem Zeitstempel *vor* der Anfrage lagen zwei echte Anfragen
+    unter Last enger als die Pause (der Test darüber flackerte, 29.10.2026)."""
+    clock = _SlowFirstClock()
+    client = HttpClient(session=clock, min_delay=0.2, max_delay=0.2)  # type: ignore[arg-type]
+
+    client.get("http://x.invalid")
+    client.get("http://x.invalid")
+
+    assert clock.at[1] - clock.at[0] >= 0.19, clock.at

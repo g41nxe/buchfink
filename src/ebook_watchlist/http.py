@@ -95,13 +95,19 @@ class HttpClient:
         )
 
     def _wait_turn(self) -> None:
-        """Hold the floor: never two requests closer together than the delay."""
+        """Hold the floor: never two requests closer together than the delay.
+
+        Gezählt ab dem *Ende* der letzten Anfrage (``_fetch_in_turn``): ab
+        ihrem Zeitstempel davor gemessen, lagen zwei echte Anfragen enger, wenn
+        ein Faden zwischen Stempel und Absenden ins Stocken geriet (29.10.2026).
+        ``perf_counter`` statt ``monotonic``: unter Windows tickt dieses nur alle
+        15,6 ms, und 0,2 s Pause sahen dann aus wie 0,188.
+        """
         delay = random.uniform(self.min_delay, self.max_delay)
         if self._last_request_at is not None:
-            elapsed = time.monotonic() - self._last_request_at
+            elapsed = time.perf_counter() - self._last_request_at
             if elapsed < delay:
                 time.sleep(delay - elapsed)
-        self._last_request_at = time.monotonic()
 
     def get(self, url: str, params: dict[str, str] | None = None) -> str:
         """Fetch one page as text. Raises rather than returning something empty."""
@@ -135,7 +141,9 @@ class HttpClient:
                 response = self.session.get(url, params=params, timeout=self.timeout)
             except requests.RequestException as exc:
                 last_error = exc
+                self._last_request_at = time.perf_counter()
             else:
+                self._last_request_at = time.perf_counter()
                 if response.status_code == 429:
                     raise RateLimited(f"{url} answered 429 — stopping, not retrying")
                 if response.status_code in (404, 410):
