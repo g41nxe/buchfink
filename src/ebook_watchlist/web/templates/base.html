@@ -253,5 +253,48 @@
   </div>
 </footer>
 
+{# Rückfragen vor einer Aktion (`hx-confirm`) stellt die App selbst, nicht der
+   Browser: dessen Fenster trägt die Adresse als Überschrift, kennt weder die
+   Farben noch dunkel, und in manchen Ansichten erscheint es gar nicht — der
+   Klick bliebe dann stumm (29.10.2026). Die Frage bis zum ersten „?“ wird
+   Überschrift, der Rest Erklärung; `data-confirm-yes` am Knopf benennt, was
+   „Ja“ tut. Escape und „Abbrechen“ lassen alles, wie es war. #}
+<dialog id="confirm-dialog" aria-labelledby="confirm-title"
+        class="confirm-dialog m-auto w-[min(26rem,calc(100%-2rem))] rounded-lg border border-rule
+               bg-card p-5 text-ink shadow-lg">
+  <form method="dialog">
+    <h2 id="confirm-title" class="font-serif text-lg text-heading"></h2>
+    <p id="confirm-body" class="mt-2 text-sm text-soft"></p>
+    <div class="mt-5 flex justify-end gap-3">
+      <button value="no"
+              class="tap inline-flex h-9 items-center rounded border border-rule bg-button px-3 text-sm
+                     text-soft hover:border-accent hover:text-accent">Abbrechen</button>
+      <button value="yes" id="confirm-yes" autofocus
+              class="tap inline-flex h-9 items-center rounded border border-action-edge bg-action px-3
+                     text-sm font-medium text-on-action hover:bg-action-hover">Ja</button>
+    </div>
+  </form>
+</dialog>
+<script>
+  document.addEventListener("htmx:confirm", function (event) {
+    var question = event.detail.question;
+    if (!question) return;
+    event.preventDefault();
+    var dialog = document.getElementById("confirm-dialog");
+    var cut = question.indexOf("?");
+    var title = cut < 0 ? question : question.slice(0, cut + 1);
+    var body = cut < 0 ? "" : question.slice(cut + 1);
+    document.getElementById("confirm-title").textContent = title.trim();
+    document.getElementById("confirm-body").textContent = body.replace(/\s+/g, " ").trim();
+    document.getElementById("confirm-yes").textContent =
+      event.detail.elt.getAttribute("data-confirm-yes") || "Ja";
+    dialog.returnValue = "";
+    dialog.addEventListener("close", function () {
+      if (dialog.returnValue === "yes") event.detail.issueRequest(true);
+    }, { once: true });
+    dialog.showModal();
+  });
+</script>
+
 </body>
 </html>

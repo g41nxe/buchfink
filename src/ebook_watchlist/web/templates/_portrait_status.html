@@ -33,6 +33,7 @@
   <button type="button" hx-post="{{ url }}?again=1" hx-target="#portrait-status"
           hx-swap="outerHTML"
           hx-confirm="Den Steckbrief neu beschreiben lassen? Das fragt das Modell noch einmal; der neue ersetzt den alten in der Anzeige."
+          data-confirm-yes="Neu beschreiben"
           title="Neu beschreiben (fragt das Modell noch einmal)" aria-label="Neu beschreiben"
           class="tap flex items-center gap-1 rounded p-1 hover:bg-hair hover:text-accent">
     <svg class="i"><use href="#ic-refresh"/></svg>

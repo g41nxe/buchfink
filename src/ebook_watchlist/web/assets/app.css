@@ -583,3 +583,20 @@ details[open] > summary > .when-open { display: inline-flex; }
     filter: blur(4px);
   }
 }
+
+/* Die eigene Rückfrage (`#confirm-dialog`): der Hintergrund tritt zurück,
+   der Dialog blendet in 200 ms ein — selten genug, um sich zu bewegen. */
+.confirm-dialog::backdrop {
+  background: light-dark(oklch(0.2 0.02 215 / 0.45), oklch(0.05 0.01 215 / 0.7));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .confirm-dialog[open] {
+    transition-property: opacity, scale;
+    transition-duration: 200ms;
+    transition-timing-function: ease-out;
+    @starting-style {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+}

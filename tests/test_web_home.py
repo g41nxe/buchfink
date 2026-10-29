@@ -581,3 +581,13 @@ def test_an_unjudged_offer_reads_like_a_suggestion(client: TestClient, db: Store
 
     assert "Maia und ihre Schwestern suchen ihre Herkunft." in body
     assert 'aria-label="jetzt beurteilen"' in body
+
+
+def test_a_question_before_an_action_is_the_apps_own_dialog(client: TestClient) -> None:
+    """„Neu beurteilen?“ kam als Fenster des Browsers — grau, fremd, und in
+    eingebetteten Browsern gar nicht (29.10.2026). Die Seite fängt die Rückfrage
+    von htmx ab und zeigt ihren eigenen Dialog."""
+    body = client.get("/").text
+
+    assert '<dialog id="confirm-dialog"' in body
+    assert "htmx:confirm" in body
