@@ -219,6 +219,71 @@ def test_a_run_that_hung_for_hours_is_given_up_on(
     assert "abgebrochen" in client.get("/run/status").text
 
 
+#: Ein Lauf, der hängt, bevor er etwas tut — wie am 29.10.2026, als ein Lauf
+#: fünf Stunden beim Laden von ``_ssl`` stand. Wie unter Windows der Shim des
+#: venv: ein Prozess, der den eigentlichen als Kind startet. Das Kind schreibt
+#: seine Nummer, damit der Test sieht, ob es mit beendet wurde.
+HANGING_RUN = """
+import subprocess, sys, time
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
+open(sys.argv[1], "w").write(str(child.pid))
+time.sleep(600)
+"""
+
+
+def _alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        import subprocess
+
+        # Bytes: die Meldung „keine Aufgaben“ trägt einen Umlaut in der
+        # Konsolenkodierung, und mit ``text=True`` bliebe ``stdout`` leer.
+        listed = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True
+        ).stdout
+        return f" {pid} ".encode() in listed
+    import os
+
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def test_a_run_that_hangs_at_start_is_ended_and_reported(
+    store: Store, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Schreibt ein Lauf nach der Frist noch keine Zeile ins Journal, hängt er:
+    der Dienst beendet ihn samt Kind und sagt es, statt ewig „wird gestartet“."""
+    import subprocess
+
+    from ebook_watchlist import jobs
+    from ebook_watchlist.web import runs
+
+    child_pid_file = data_dir / "child.pid"
+    started: list[subprocess.Popen] = []
+
+    def spawn(**_):
+        process = subprocess.Popen(
+            [sys.executable, "-c", HANGING_RUN, str(child_pid_file)],
+            start_new_session=sys.platform != "win32",
+        )
+        started.append(process)
+        return process
+
+    monkeypatch.setattr(runs, "_spawn", spawn)
+    monkeypatch.setattr(runs, "START_DEADLINE", timedelta(seconds=3))
+    jobs.put(runs.LAUNCH_KEY, runs.Launch(datetime.now()))
+
+    runs.execute(only_watchlist=False, trigger="ui")
+
+    state = RunLauncher().state(store, "test")
+    assert state.kind == "failed"
+    assert "hing beim Start" in state.headline
+    assert started[0].poll() is not None
+    wait_until(lambda: not _alive(int(child_pid_file.read_text())), "das Kind ist beendet")
+
+
 def test_a_failing_run_says_so_rather_than_looking_finished(
     client: TestClient, store: Store, data_dir: Path
 ) -> None:

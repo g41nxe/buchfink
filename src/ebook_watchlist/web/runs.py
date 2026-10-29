@@ -50,6 +50,15 @@ LAUNCH_KEY = "run:launch"
 #: service (Huey delivers at most once). The button may then offer itself again.
 LAUNCH_LOST_AFTER = timedelta(minutes=10)
 
+#: So lange darf ein Lauf brauchen, bis er seine Zeile ins Journal schreibt.
+#: Ein gesunder braucht Sekunden; am 29.10.2026 stand einer fünf Stunden beim
+#: Laden von ``_ssl``, bevor er überhaupt etwas tat. Danach wartet der Dienst
+#: ohne Frist: ein Lauf darf eine halbe Stunde brauchen.
+START_DEADLINE = timedelta(minutes=3)
+
+#: Wie oft der Dienst bis dahin nachsieht.
+START_POLL_SECONDS = 1.0
+
 NO_SERVICE_DETAIL = (
     "Der Hintergrunddienst läuft nicht — Läufe, enge Läufe und Steckbriefe "
     "bleiben liegen. Starten mit `ebw serve` (Oberfläche und Dienst) oder "
@@ -228,12 +237,25 @@ def execute(*, only_watchlist: bool, trigger: str) -> None:
         slug = None
     launch = queue.get(LAUNCH_KEY, peek=True)
     at = launch.at if isinstance(launch, Launch) else datetime.now()
-    code = _spawn(only_watchlist=only_watchlist, trigger=trigger).wait()
 
-    latest = Store(db).latest_run(slug) if slug else None
-    if latest is not None and latest.started_at >= at:
+    def journaled() -> bool:
+        latest = Store(db).latest_run(slug) if slug else None
+        return latest is not None and latest.started_at >= at
+
+    process = _spawn(only_watchlist=only_watchlist, trigger=trigger)
+    code = _await_start(process, journaled if slug else None)
+
+    if journaled():
         return  # the journal tells the rest
-    if code == 0:
+    if code is None:
+        outcome = RunState(
+            "failed",
+            "Der Lauf hing beim Start",
+            f"Er hat sich nach {START_DEADLINE.seconds // 60} Minuten noch nicht "
+            "gemeldet und wurde beendet. Einfach noch einmal starten.",
+            trace=_log_tail() or None,
+        )
+    elif code == 0:
         # Exited cleanly without ever writing a run row: bouncing off the lock
         # (run.EXIT_ALREADY_RUNNING), or the cadence said not yet.
         outcome = RunState(
@@ -251,6 +273,51 @@ def execute(*, only_watchlist: bool, trigger: str) -> None:
         )
     if isinstance(launch, Launch):
         queue.put(LAUNCH_KEY, replace(launch, outcome=outcome))
+
+
+def _await_start(process: subprocess.Popen, journaled) -> int | None:
+    """Der Rückgabecode des Laufs — oder ``None``, wenn er beim Start hing
+    und beendet wurde.
+
+    Bis zur Frist sieht der Dienst nach, ob der Lauf seine Zeile geschrieben
+    hat; danach wartet er ohne Frist. Ohne Profil (``journaled`` ist ``None``)
+    lässt sich das nicht sehen, und es wird nur gewartet.
+    """
+    if journaled is None:
+        return process.wait()
+    deadline = datetime.now() + START_DEADLINE
+    while datetime.now() < deadline:
+        try:
+            return process.wait(timeout=START_POLL_SECONDS)
+        except subprocess.TimeoutExpired:
+            if journaled():
+                return process.wait()
+    _end_tree(process)
+    return None
+
+
+def _end_tree(process: subprocess.Popen) -> None:
+    """Den Lauf samt Kindern beenden.
+
+    Unter Windows ist ``sys.executable`` im venv ein Shim, der den
+    eigentlichen Python-Prozess als Kind startet: ``kill`` träfe nur den Shim,
+    und der hängende Lauf bliebe als Waise (29.10.2026). ``taskkill /T``
+    nimmt den Baum; anderswo die eigene Sitzung, die ``_spawn`` ihm gibt.
+    """
+    if sys.platform == "win32":  # pragma: no cover - the other branch on Linux
+        subprocess.run(  # noqa: S603 - fixed argv
+            ["taskkill", "/T", "/F", "/PID", str(process.pid)],  # noqa: S607
+            capture_output=True,
+            check=False,
+        )
+    else:
+        import signal
+
+        try:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    process.wait()
 
 
 def _spawn(*, only_watchlist: bool = False, trigger: str = "ui") -> subprocess.Popen:
