@@ -96,6 +96,38 @@
   Nichts offen — <a href="{{ links.all }}" class="text-accent underline">alle zeigen</a>.</p>
 {% endif %}
 
+{# Die Reihen, denen sie folgt — auch die, von denen sie alles hat: die
+   Beobachtung wirkt weiter, ein neuer Band kommt auf die Liste. Vorher zeigte
+   sich eine Reihe nur über ihre offenen Bände und war mit dem letzten
+   gekauften verschwunden (29.10.2026). Dieselben Pillen wie „Autor:innen,
+   denen du folgst“ auf dem Profil. #}
+{% if followed_series %}
+<section data-followed-series class="mb-4">
+  <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-soft">Reihen, denen du folgst</p>
+  <ul class="flex flex-wrap gap-1.5">
+    {% for f in followed_series %}
+    <li class="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent-bg pl-3 pr-1 text-xs
+               font-medium text-accent ring-1 ring-accent/20 ring-inset">
+      {% if f.known > f.owned %}
+      <a href="/watchlist?series={{ f.id }}" class="hover:underline"
+         title="nur diese Reihe zeigen">{{ f.name }}</a>
+      {% else %}{{ f.name }}{% endif %}
+      <span class="font-normal text-soft tabular-nums"
+            title="{{ f.owned }} von {{ f.known }} bekannten Bänden hast du">{{ f.owned }} von {{ f.known }}</span>
+      <form method="post" action="/series/{{ f.id }}/watch" class="inline">
+        <input type="hidden" name="watch" value="0">
+        <input type="hidden" name="back" value="/watchlist">
+        <button type="submit" aria-label="{{ f.name }} nicht mehr beobachten"
+                title="nicht mehr beobachten"
+                class="tap inline-flex size-6 items-center justify-center rounded-full
+                       hover:bg-ink/10"><svg class="i"><use href="#ic-x"/></svg></button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {% if not entries and not series %}
 <p class="py-3 text-sm text-soft italic">Noch nichts auf der Watchlist.</p>
 {% else %}

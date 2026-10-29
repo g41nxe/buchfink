@@ -106,6 +106,27 @@ def test_unwatching_from_the_book_page(client: TestClient, db: Store) -> None:
     assert "Red Rising Saga · Band 1" in body
 
 
+def test_the_watchlist_lists_the_series_she_follows_even_when_she_has_them_all(
+    client: TestClient, db: Store
+) -> None:
+    """Eine beobachtete Reihe zeigte sich nur über ihre offenen Bände. Hatte sie
+    alle, war die Beobachtung unsichtbar, obwohl sie weiter wirkt (29.10.2026)."""
+    series_id = red_rising(db)
+    slug = load_settings().slug
+    client.post(f"/series/{series_id}/watch", data={"watch": "1", "back": "/watchlist"})
+    for isbn, title in (("9783000000101", "Red Rising"), ("9783000000102", "Golden Son"),
+                        ("9783000000103", "Morning Star")):
+        book = db.find_or_create_book(isbn=isbn, title=title, author="Pierce Brown", now=NOW)
+        db.put_relation(slug, book.id, str(RelationKind.OWNED), now=NOW)
+
+    body = client.get("/watchlist").text
+
+    followed = body.split("data-followed-series", 1)[1].split("</section>", 1)[0]
+    assert "Red Rising Saga" in followed
+    assert "3 von 3" in followed
+    assert f'action="/series/{series_id}/watch"' in followed
+
+
 def test_the_suggestion_pile_names_the_series(client: TestClient, db: Store) -> None:
     red_rising(db)
 

@@ -178,3 +178,41 @@ def view(store: Store, profile_slug: str, isbn: str | None) -> SeriesView | None
     if named is None:
         return None
     return SeriesView(named.id, named.label, named.id in store.watched_series(profile_slug))
+
+
+@dataclass(frozen=True, slots=True)
+class Followed:
+    """Eine Reihe, die sie beobachtet, mit ihrem Stand — für die Watchlist."""
+
+    id: int
+    name: str
+    #: Wie viele Bände bekannt sind, und wie viele davon sie hat.
+    known: int
+    owned: int
+
+
+def followed(store: Store, profile_slug: str) -> list[Followed]:
+    """Die beobachteten Reihen, nach Name.
+
+    Auch die, von denen sie alles hat: die Beobachtung wirkt weiter (ein neuer
+    Band kommt auf die Watchlist), war aber unsichtbar, solange sich eine
+    Reihe nur über ihre offenen Bände zeigte (29.10.2026).
+    """
+    ids = store.watched_series(profile_slug)
+    if not ids:
+        return []
+    owned_books = {
+        row.book_id for row in store.relations(profile_slug, kind=str(RelationKind.OWNED))
+    }
+    book_of = store.books_with_relations(profile_slug)
+    out = []
+    for series_id in ids:
+        row = store.series_row(series_id)
+        isbns = [isbn for isbn, *_ in store.series_volumes(series_id)]
+        out.append(Followed(
+            series_id,
+            row.name if row is not None else "Reihe",
+            len(isbns),
+            sum(1 for isbn in isbns if book_of.get(isbn) in owned_books),
+        ))
+    return sorted(out, key=lambda f: f.name.casefold())

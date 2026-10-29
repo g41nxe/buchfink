@@ -559,6 +559,7 @@ def create_app() -> FastAPI:
                 "sort": order.slug,
                 "series_choices": series_choices,
                 "series": series,
+                "followed_series": series_watch.followed(store, settings.slug),
                 "links": {
                     "all": _link("/watchlist", sort=chosen),
                     "unsure": _link("/watchlist", only=UNSURE, sort=chosen),
