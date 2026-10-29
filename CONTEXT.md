@@ -650,6 +650,25 @@ across genres.
 **Reader-facing name: *Grundhandlung*** — where the reader sees it at all; on
 the book page it simply heads its patterns.
 
+### Vocabulary Version
+*deutsch: Fassung des Vokabulars*
+
+One complete set of Appeal Terms, Appeal Families and Story Patterns, in its
+own directory. The current one lives in `vocabulary/` and rests on NoveList
+(#59); an own one is built beside it, and `EBW_VOCABULARY_DIR` switches
+between them.
+
+A new version names, for each entry, the old ids it replaces (`ersetzt`).
+The reader's data — Reading Profile, Intake choices, her reasons at a book —
+is always stored in the old ids and read in those of the active version, so
+the same profile holds under both and switching back loses nothing. Portraits
+are kept per version (by their fingerprint), so a book described under one
+version need not be described again when switching back. Pictures and Family
+Signs fall back to the replaced family's.
+
+In the code `Vocabulary.aliases` / `Vocabulary.originals`, `to_current` and
+`to_stored`.
+
 ### Fit
 *deutsch: Übereinstimmung*
 

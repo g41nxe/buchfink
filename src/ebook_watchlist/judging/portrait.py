@@ -28,7 +28,8 @@ import hashlib
 import json
 import os
 from collections import Counter
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -39,9 +40,10 @@ from ..junk import SHORT_STORY_FORM
 #: Wo das Vokabular liegt. Nicht in Git: es beruht auf NoveList, und ob es
 #: veröffentlicht werden darf, ist ungeklärt (#59). Ein anderes Verzeichnis
 #: lässt sich mit ``EBW_VOCABULARY_DIR`` angeben.
-VOCABULARY_DIR = Path(
-    os.environ.get("EBW_VOCABULARY_DIR") or Path(__file__).resolve().parents[3] / "vocabulary"
-)
+#: Die bisherige Fassung liegt in ``vocabulary/``; eine eigene (#59) daneben,
+#: und ``EBW_VOCABULARY_DIR`` schaltet zwischen ihnen (Neustart nötig).
+DEFAULT_VOCABULARY_DIR = Path(__file__).resolve().parents[3] / "vocabulary"
+VOCABULARY_DIR = Path(os.environ.get("EBW_VOCABULARY_DIR") or DEFAULT_VOCABULARY_DIR)
 VOCABULARY_PATH = VOCABULARY_DIR / "merkmale.yaml"
 PATTERNS_PATH = VOCABULARY_DIR / "erzaehlmuster.yaml"
 #: Die Dimension, in der die Erzählmuster stehen.
@@ -115,6 +117,20 @@ class Vocabulary:
     families: tuple[Family, ...]
     #: Name und Frage je Dimension, in der Reihenfolge der Datei.
     dimensions: tuple[tuple[str, str], ...]
+    #: Eine neue Fassung nennt je Eintrag, welche alten Ids er ersetzt
+    #: (``ersetzt``, #59): alte Id -> neue, und neue -> die erste der alten.
+    #: Gespeichert wird in den alten, gelesen in den neuen; so gilt dasselbe
+    #: Leseprofil unter beiden Fassungen. Leer in einer Fassung ohne Vorgängerin.
+    aliases: dict[str, str] = field(default_factory=dict)
+    originals: dict[str, str] = field(default_factory=dict)
+
+    def current(self, some_id: str) -> str:
+        """Die Id in dieser Fassung — eine ersetzte wird zu ihrer neuen."""
+        return self.aliases.get(some_id, some_id)
+
+    def stored(self, some_id: str) -> str:
+        """Die Id, unter der gespeichert wird: die erste, die sie ersetzt."""
+        return self.originals.get(some_id, some_id)
 
     def family_of(self, term_id: str) -> Family:
         """Die Familie eines Merkmals; eines, das in keiner steht, ist seine eigene."""
@@ -262,6 +278,46 @@ def load_vocabulary(path: Path | None = None, patterns: Path | None = None) -> V
     return _parse_vocabulary(text, file.name, patterns_text, patterns_path.name)
 
 
+def _active() -> Vocabulary | None:
+    """Die geltende Fassung — oder keine, wo es kein Vokabular gibt (Tests, #59)."""
+    try:
+        return load_vocabulary()
+    except VocabularyError:
+        return None
+
+
+def to_current() -> Callable[[str], str]:
+    """Wie eine gespeicherte Id in der geltenden Fassung heißt (#59).
+
+    Einmal holen und auf viele Ids anwenden: das Vokabular zu laden liest
+    zwei Dateien von der Platte.
+    """
+    vocabulary = _active()
+    return vocabulary.current if vocabulary is not None and vocabulary.aliases else _same
+
+
+def to_stored() -> Callable[[str], str]:
+    """Wie eine Id der geltenden Fassung gespeichert wird (#59)."""
+    vocabulary = _active()
+    return vocabulary.stored if vocabulary is not None and vocabulary.originals else _same
+
+
+def _same(some_id: str) -> str:
+    return some_id
+
+
+def current_ids(ids: Iterable[str]) -> tuple[str, ...]:
+    """Gespeicherte Ids in der geltenden Fassung, ohne Doppelte."""
+    current = to_current()
+    return tuple(dict.fromkeys(current(some_id) for some_id in ids))
+
+
+def stored_ids(ids: Iterable[str]) -> tuple[str, ...]:
+    """Ids der geltenden Fassung so, wie sie gespeichert werden, ohne Doppelte."""
+    stored = to_stored()
+    return tuple(dict.fromkeys(stored(some_id) for some_id in ids))
+
+
 @lru_cache(maxsize=8)
 def _parse_vocabulary(
     text: str, name: str, patterns_text: str | None, patterns_name: str
@@ -280,6 +336,7 @@ def _parse_vocabulary(
 
     terms: dict[str, Term] = {}
     dimensions: list[tuple[str, str]] = []
+    replaced: list[tuple[str, object]] = []
     for dimension in data.get("dimensionen") or []:
         name = str(dimension["name"])
         dimensions.append((name, str(dimension.get("frage", ""))))
@@ -290,6 +347,7 @@ def _parse_vocabulary(
             terms[term_id] = Term(
                 term_id, str(entry["name"]), str(entry.get("beschreibung", "")).strip(), name
             )
+            replaced.append((term_id, entry.get("ersetzt")))
 
     families: list[Family] = []
     assigned: dict[str, str] = {}
@@ -308,10 +366,42 @@ def _parse_vocabulary(
         opposite = entry.get("gegenteil")
         families.append(Family(str(entry["id"]), name, members, description,
                                str(opposite).strip() if opposite else None))
+        replaced.append((str(entry["id"]), entry.get("ersetzt")))
 
     if patterns_text is not None:
-        _load_patterns(patterns_text, patterns_name, terms, families, dimensions)
-    return Vocabulary(terms, tuple(families), tuple(dimensions))
+        _load_patterns(patterns_text, patterns_name, terms, families, dimensions, replaced)
+    aliases, originals = _replacements(
+        replaced, set(terms) | {family.id for family in families}
+    )
+    return Vocabulary(terms, tuple(families), tuple(dimensions), aliases, originals)
+
+
+def _replacements(
+    replaced: Iterable[tuple[str, object]], known: set[str]
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Alte Id -> neue und neue -> erste alte, aus den ``ersetzt``-Angaben.
+
+    Eine alte Id darf nur einmal ersetzt werden und nicht zugleich selbst im
+    Vokabular stehen: sonst wüsste man nicht, wohin sie beim Lesen gehört.
+    """
+    aliases: dict[str, str] = {}
+    originals: dict[str, str] = {}
+    for new_id, olds in replaced:
+        if not olds:
+            continue
+        old_ids = [str(old) for old in (olds if isinstance(olds, list) else [olds])]
+        originals[new_id] = old_ids[0]
+        for old in old_ids:
+            if old == new_id:
+                continue
+            if old in aliases:
+                raise VocabularyError(
+                    f"{old} wird zweimal ersetzt: von {aliases[old]} und von {new_id}"
+                )
+            if old in known:
+                raise VocabularyError(f"{old} ist ersetzt und steht zugleich im Vokabular")
+            aliases[old] = new_id
+    return aliases, originals
 
 
 def _load_patterns(
@@ -320,6 +410,7 @@ def _load_patterns(
     terms: dict[str, Term],
     families: list[Family],
     dimensions: list[tuple[str, str]],
+    replaced: list[tuple[str, object]],
 ) -> None:
     """Die Erzählmuster dazuladen: jede Grundhandlung ist Familie und Wort zugleich."""
     try:
@@ -339,6 +430,7 @@ def _load_patterns(
     for entry in data.get("familien") or []:
         family_id, name = str(entry["id"]), str(entry["name"])
         new(family_id, name, str(entry.get("beschreibung", "")))
+        replaced.append((family_id, entry.get("ersetzt")))
         base[family_id] = [family_id]
         names[family_id] = name
     for entry in data.get("muster") or []:
@@ -346,6 +438,7 @@ def _load_patterns(
         if parent not in base:
             raise VocabularyError(f"das Erzählmuster {term_id} nennt keine Grundhandlung")
         new(term_id, str(entry["name"]), str(entry.get("beschreibung", "")))
+        replaced.append((term_id, entry.get("ersetzt")))
         base[parent].append(term_id)
 
     if base:

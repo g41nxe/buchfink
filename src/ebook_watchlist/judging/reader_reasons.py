@@ -21,6 +21,7 @@ from datetime import datetime
 
 from ..relations import REASON_KINDS
 from ..store import Store
+from .portrait import current_ids, stored_ids
 
 
 def parse(details: str | None) -> tuple[dict, dict[str, list[str]]]:
@@ -34,8 +35,9 @@ def parse(details: str | None) -> tuple[dict, dict[str, list[str]]]:
     reasons = bag.get("reasons")
     if not isinstance(reasons, dict):
         return bag, {}
+    # In der geltenden Fassung des Vokabulars gelesen (#59).
     return bag, {
-        k: [f for f in v if isinstance(f, str)]
+        k: list(current_ids(f for f in v if isinstance(f, str)))
         for k, v in reasons.items()
         if k in REASON_KINDS and isinstance(v, list)
     }
@@ -64,7 +66,8 @@ def keep(
     now: datetime,
 ) -> None:
     """Die Gründe in den Beutel schreiben; leere Listen fallen weg."""
-    kept = {k: list(dict.fromkeys(reasons[k])) for k in REASON_KINDS if reasons.get(k)}
+    # Gespeichert in den Ids, unter denen die erste Fassung sie kennt (#59).
+    kept = {k: list(stored_ids(reasons[k])) for k in REASON_KINDS if reasons.get(k)}
     if kept:
         bag["reasons"] = kept
     else:

@@ -15,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError
 
 from ..judging.facets import Counterweight, Facet, Liked, ReadingProfile
-from ..judging.portrait import Portrait
+from ..judging.portrait import Portrait, to_current, to_stored
 from ..judging.ratings import RATING_ORIGINS
 from ..relations import check_details, check_interest_key, check_relation_kind
 from .catalog import CatalogMixin
@@ -311,16 +311,26 @@ class ProfileMixin(CatalogMixin):
     def put_reading_profile(
         self, profile_slug: str, profile: ReadingProfile, *, cause: str, now: datetime
     ) -> int:
-        """Eine neue Fassung des Leseprofils festhalten; gibt ihre Nummer zurück."""
+        """Eine neue Fassung des Leseprofils festhalten; gibt ihre Nummer zurück.
+
+        Die Familien in den Ids, unter denen gespeichert wird: eine neue Fassung
+        des Vokabulars schreibt in die alten zurück (#59).
+        """
+        stored = to_stored()
+
+        def families(ids: Iterable[str]) -> list[str]:
+            return list(dict.fromkeys(stored(f) for f in ids))
+
         body = {
             "facets": [
-                {"families": list(f.families), "books": list(f.books)} for f in profile.facets
+                {"families": families(f.families), "books": list(f.books)}
+                for f in profile.facets
             ],
             "counterweights": [
-                {"families": list(c.families), "genre": c.genre, "books": list(c.books)}
+                {"families": families(c.families), "genre": c.genre, "books": list(c.books)}
                 for c in profile.counterweights
             ],
-            "liked": [{"family": g.family, "boosted": g.boosted} for g in profile.liked],
+            "liked": [{"family": stored(g.family), "boosted": g.boosted} for g in profile.liked],
             "liked_genres": list(profile.liked_genres),
             "disliked_genres": list(profile.disliked_genres),
             "disliked_authors": list(profile.disliked_authors),
@@ -365,20 +375,29 @@ class ProfileMixin(CatalogMixin):
             if row is None:
                 return None
             body = json.loads(row.body)
+            # Gelesen in der geltenden Fassung des Vokabulars (#59); zwei alte,
+            # die eins wurden, stehen einmal da, verstärkt, wenn eins es war.
+            current = to_current()
+
+            def families(ids: Iterable[str]) -> tuple[str, ...]:
+                return tuple(dict.fromkeys(current(f) for f in ids))
+
+            liked: dict[str, bool] = {}
+            for g in body.get("liked") or ():
+                family = current(g["family"])
+                liked[family] = liked.get(family, False) or bool(g.get("boosted"))
             return ReadingProfile(
                 facets=tuple(
-                    Facet(tuple(f["families"]), tuple(f.get("books") or ()))
+                    Facet(families(f["families"]), tuple(f.get("books") or ()))
                     for f in body.get("facets") or ()
                 ),
                 counterweights=tuple(
                     Counterweight(
-                        tuple(c["families"]), c.get("genre"), tuple(c.get("books") or ())
+                        families(c["families"]), c.get("genre"), tuple(c.get("books") or ())
                     )
                     for c in body.get("counterweights") or ()
                 ),
-                liked=tuple(
-                    Liked(g["family"], bool(g.get("boosted"))) for g in body.get("liked") or ()
-                ),
+                liked=tuple(Liked(family, boosted) for family, boosted in liked.items()),
                 version=row.version,
                 liked_genres=tuple(body.get("liked_genres") or ()),
                 disliked_genres=tuple(body.get("disliked_genres") or ()),
@@ -452,6 +471,7 @@ class ProfileMixin(CatalogMixin):
         scope: str | None = None,
     ) -> None:
         """Eine Familie an- oder abwählen; der Umfang bleibt, wenn keiner kommt."""
+        family_id = to_stored()(family_id)
         with self.session() as session:
             row = session.scalars(
                 select(IntakeChoiceRow).where(
@@ -486,8 +506,12 @@ class ProfileMixin(CatalogMixin):
                     .order_by(IntakeChoiceRow.id)
                 )
             )
+            current = to_current()
             for row in rows:
                 session.expunge(row)
+                # Losgelöst: die Übersetzung in die geltende Fassung (#59)
+                # bleibt im Gedächtnis und wird nicht zurückgeschrieben.
+                row.family_id = current(row.family_id)
             return rows
 
     def reset_intake(self, profile_slug: str) -> None:
