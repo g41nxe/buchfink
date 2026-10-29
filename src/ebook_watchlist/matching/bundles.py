@@ -24,6 +24,7 @@ auftauchen — und damit ist es keine Sammelausgabe.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 #: Namen, die eine Sammelausgabe ausdrücklich benennen. Deckungsgleich mit dem
 #: Muster in ``junk.py``, das dieselben Formen für den Müllfilter braucht —
@@ -49,6 +50,9 @@ _COUNT_PREFIX = re.compile(r"^\s*\d+\s+\w+(?:[-\s]\w+)?\s*:\s*")
 _MIN_PART = 3
 
 
+#: Gemerkt: der Titelindex fragt bei jedem Aufruf des Stapels dieselben rund
+#: 13 000 Titel (29.10.2026).
+@lru_cache(maxsize=65536)
 def looks_like_bundle(title: str | None) -> bool:
     """Sieht der Name nach einer Sammelausgabe aus?
 

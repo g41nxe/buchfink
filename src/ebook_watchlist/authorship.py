@@ -22,6 +22,7 @@ die schon dasteht.
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 from .models import MatchReason, Observation
 from .store import Store
@@ -41,6 +42,9 @@ _MADE_BY_AI = re.compile(
 )
 
 
+#: Gemerkt: jeder Aufruf des Stapels prüft dieselben rund 1 200 Klappentexte
+#: (29.10.2026).
+@lru_cache(maxsize=8192)
 def declares_ai(text: str | None) -> bool:
     """Ob dieser Text die Herstellung durch eine KI angibt."""
     return bool(text and _MADE_BY_AI.search(text))
