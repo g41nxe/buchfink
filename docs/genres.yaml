@@ -91,3 +91,15 @@ genres:
   - code: BIO000000
     name: Biografie & Erinnerungen
     bisac: Biography & Autobiography / General
+
+  # Die Zielgruppe, nicht das Erzählgenre (29.10.2026): ein Kinderkrimi ist für
+  # sie zuerst ein Kinderbuch. „Doktor Proktor“ kam über einen Autoren-Feed in
+  # den Stapel, weil die Liste das Wort nicht kannte. Ein Code der Quelle unter
+  # JUV oder YAF zählt als dieser Eintrag (`preferences.book_codes`).
+  - code: JUV000000
+    name: Kinderbuch
+    bisac: Juvenile Fiction / General
+
+  - code: YAF000000
+    name: Jugendbuch
+    bisac: Young Adult Fiction / General

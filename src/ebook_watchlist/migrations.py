@@ -728,6 +728,36 @@ def _a_split_volume_is_its_own_work(connection: Connection) -> None:
         )
 
 
+#: Was ein Steckbrief als Genre schrieb, bevor die Liste Kinder- und
+#: Jugendbücher kannte (29.10.2026).
+_CHILDRENS = ("kinderbuch", "kinderroman", "kinderkrimi", "für junge leser",
+              "für kinder", "erstleser")
+_YOUNG_ADULT = ("jugendbuch", "jugendroman", "young adult", "für jugendliche")
+
+
+def _childrens_books_get_their_genre(connection: Connection) -> None:
+    """Steckbriefe, deren Genre ein Kinder- oder Jugendbuch nennt, bekommen
+    dessen Code — vorher stand dort ein Erzählgenre („Abenteuer“, „Humor“),
+    und ein Kinderbuch ließ sich nicht ausschließen."""
+    if not _has_table(connection, "portrait"):
+        return
+    rows = connection.exec_driver_sql(
+        "SELECT id, genre, subgenre FROM portrait WHERE genre IS NOT NULL"
+    ).all()
+    for row_id, genre, subgenre in rows:
+        text = f"{genre} {subgenre or ''}".casefold()
+        if any(word in text for word in _CHILDRENS):
+            code, name = "JUV000000", "Kinderbuch"
+        elif any(word in text for word in _YOUNG_ADULT):
+            code, name = "YAF000000", "Jugendbuch"
+        else:
+            continue
+        connection.exec_driver_sql(
+            "UPDATE portrait SET genre_code = ?, genre_name = ? WHERE id = ?",
+            (code, name, row_id),
+        )
+
+
 def _genres_become_codes(connection: Connection) -> None:
     """Steckbriefe und Gegengewichte bekommen den Code der Genre-Liste (#89).
 
@@ -847,6 +877,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _genres_become_codes,
     _a_portrait_names_its_form,
     _a_split_volume_is_its_own_work,
+    _childrens_books_get_their_genre,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

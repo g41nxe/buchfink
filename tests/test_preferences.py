@@ -299,3 +299,58 @@ def test_a_sort_form_with_a_long_given_name_is_excluded() -> None:
     profile = replace(EMPTY, disliked_authors=("George R. R. Martin",))
 
     assert excluded_by(profile, find(author="Martin, George R. R."), ()) is not None
+
+
+# --- Kinder- und Jugendbücher (29.10.2026) -----------------------------------------
+# „Doktor Proktor“ kam über den Nesbø-Feed in den Stapel: ein Kinderbuch, das der
+# Steckbrief zwar „Kinderbuch“ nannte, die Genre-Liste aber nicht kannte.
+
+
+def test_childrens_and_young_adult_books_are_genres() -> None:
+    from ebook_watchlist.genres import load_genres
+
+    genres = load_genres()
+    assert genres.name("JUV000000") == "Kinderbuch"
+    assert genres.name("YAF000000") == "Jugendbuch"
+
+
+def test_any_juvenile_code_of_a_source_counts_as_childrens_book() -> None:
+    assert book_codes(("JUV044000",), None) == ("JUV000000",)
+    assert book_codes(("YAF062010",), None) == ("YAF000000",)
+
+
+def test_the_age_of_the_readers_counts_beside_the_sources_genre() -> None:
+    """Der Verlag sagt „Abenteuer“, der Steckbrief „Kinderbuch“: beides gilt.
+    Die Zielgruppe ist kein zweites Genre, das mit dem ersten streitet."""
+    assert book_codes(("FIC002000",), "JUV000000") == ("FIC002000", "JUV000000")
+
+
+def test_a_disliked_childrens_book_stays_off_the_pile_even_from_a_followed_author() -> None:
+    profile = replace(EMPTY, disliked_genres=("JUV000000",))
+
+    reason = excluded_by(profile, find(author="Jo Nesbø", reason=MatchReason.PROFILE_AUTHOR),
+                         book_codes((), "JUV000000"))
+
+    assert reason == "Genre Kinderbuch"
+
+
+def test_old_portraits_that_name_a_childrens_book_get_its_code(store: Store) -> None:
+    from ebook_watchlist.judging.portrait import Portrait
+    from ebook_watchlist.migrations import _childrens_books_get_their_genre
+
+    store.put_portrait("isbn:9783401800813", Portrait(
+        fingerprint="fp", known=True, genre="Kinderbuch", subgenre="Fantastisches Abenteuer",
+        genre_code="FIC002000"), now=NOW)
+    store.put_portrait("isbn:1", Portrait(
+        fingerprint="fp", known=True, genre="Fantasy für junge Leser", genre_code="FIC009020"),
+        now=NOW)
+    store.put_portrait("isbn:2", Portrait(
+        fingerprint="fp", known=True, genre="Thriller", genre_code="FIC031000"), now=NOW)
+
+    with store._engine.begin() as connection:
+        _childrens_books_get_their_genre(connection)
+        rows = connection.exec_driver_sql("SELECT subject, genre_code FROM portrait").all()
+        codes = {subject: code for subject, code in rows}
+
+    assert codes == {"isbn:9783401800813": "JUV000000", "isbn:1": "JUV000000",
+                     "isbn:2": "FIC031000"}

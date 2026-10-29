@@ -34,16 +34,30 @@ def book_codes(source_codes: Iterable[str], portrait_code: str | None) -> tuple[
     Ein BISAC-Code, der nicht auf der Liste steht, zählt mit dem „General"
     seiner Gruppe (FIC031020 → FIC031000), wo es den gibt. Nennt eine Quelle
     Codes, gilt der Code des Steckbriefs nicht mehr: der Verlag weiß es.
+
+    Ausgenommen ist die Zielgruppe (29.10.2026): jeder JUV- oder YAF-Code
+    zählt als Kinder- oder Jugendbuch, und nennt der Steckbrief eines davon,
+    gilt es neben den Codes der Quelle — der Verlag sagt „Abenteuer“, das
+    Modell „Kinderbuch“, und beides stimmt.
     """
     genres = load_genres()
     found: list[str] = []
     for code in source_codes:
-        listed = code if code in genres else f"{code[:6]}000"
+        listed = (
+            code if code in genres
+            else _AUDIENCE.get(code[:3]) or f"{code[:6]}000"
+        )
         if listed in genres and listed not in found:
             found.append(listed)
+    if portrait_code and portrait_code in _AUDIENCE.values() and portrait_code not in found:
+        found.append(portrait_code)
     if found:
         return tuple(found)
     return (portrait_code,) if portrait_code and portrait_code in genres else ()
+
+
+#: Die Zielgruppen der Genre-Liste, nach dem Präfix ihrer BISAC-Gruppe.
+_AUDIENCE = {"JUV": "JUV000000", "YAF": "YAF000000"}
 
 
 def excluded_by(

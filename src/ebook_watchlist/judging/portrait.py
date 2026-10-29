@@ -467,7 +467,9 @@ def genre_section() -> str:
         "\nZusätzlich: Ordne das Buch genau einem Eintrag dieser Genre-Liste zu und gib "
         'dessen Code im Feld "genre_code" an, neben den Feldern oben. Nimm das genaueste '
         "Untergenre, das zutrifft (eingerückt unter seinem Genre); passt keines, den Code "
-        "des Genres; passt gar nichts, null. Erfinde keinen Code.\n"
+        "des Genres; passt gar nichts, null. Erfinde keinen Code. Ist es ein Buch für "
+        "Kinder oder Jugendliche, nimm JUV000000 oder YAF000000, auch wenn ein "
+        "Erzählgenre passt: die Zielgruppe geht vor.\n"
         "--- GENRES ---\n" + "\n".join(lines) + "\n--- ENDE GENRES ---\n"
     )
 
