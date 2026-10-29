@@ -31,7 +31,8 @@
   </span>
   {% else %}
   {% set label = "neu beurteilen" if present else "jetzt beurteilen" %}
-  <button type="button" aria-label="{{ label }}"
+  {% set failed = job and job.trouble %}
+  <button type="button" aria-label="{{ label }}{{ ' – ' ~ job.trouble if failed }}"
           hx-post="{{ url }}{{ '?again=1&' if present else '?' }}dom_id={{ dom_id }}&compact=true"
           hx-target="#{{ dom_id }}" hx-swap="outerHTML"
           {% if present %}
@@ -39,21 +40,21 @@
                      die Sterne rechnen sich danach neu."
           {% endif %}
           class="tap inline-flex h-10 w-full items-center justify-center rounded border
-                 border-rule bg-button text-soft transition hover:border-accent hover:text-accent
-                 sm:h-9 sm:w-9">
+                 bg-button transition hover:border-accent hover:text-accent sm:h-9 sm:w-9
+                 {{ 'border-danger text-danger' if failed else 'border-rule text-soft' }}">
     <svg class="i"><use href="#ic-gavel"/></svg>
   </button>
-  <span class="pointer-events-none absolute top-full left-1/2 z-30 mt-1 hidden
-               -translate-x-1/2 rounded bg-ink px-1.5 py-0.5 text-xs whitespace-nowrap
-               text-paper opacity-0 transition group-hover:opacity-100
-               group-focus-within:opacity-100 sm:block">{{ label }}</span>
-  {% if job and job.trouble %}
-  {# Der Grund kann ein langer Pfad sein (CI, 26.10.2026: 355 px über den Rand):
-     umbrechen und rechtsbündig am Knopf, der rechts in der Zeile sitzt. #}
-  <span class="pointer-events-none absolute top-full right-0 z-30 mt-6 hidden w-64
-               rounded bg-danger px-1.5 py-0.5 text-xs wrap-anywhere
-               text-paper opacity-0 transition group-hover:opacity-100 sm:block"
-        >{{ job.trouble }}</span>
-  {% endif %}
+  {# Die Blase sagt, was der Knopf tut — oder, wenn der letzte Auftrag
+     scheiterte, warum: ein deutscher Satz in derselben dunklen Blase. Vorher
+     stand darunter ein zweiter, roter Kasten mit der englischen Ausnahme
+     (29.10.2026); rot ist jetzt nur der Hammer selbst. Rechtsbündig, weil
+     der Knopf rechts in der Zeile sitzt und ein Satz breiter ist als ein
+     Wort. #}
+  <span class="pointer-events-none absolute top-full z-30 mt-1 hidden rounded bg-ink
+               px-1.5 py-0.5 text-xs text-paper opacity-0 transition group-hover:opacity-100
+               group-focus-within:opacity-100 sm:block
+               {{ 'right-0 w-56 whitespace-normal' if failed
+                  else 'left-1/2 -translate-x-1/2 whitespace-nowrap' }}"
+        >{{ job.trouble if failed else label }}</span>
   {% endif %}
 </span>

@@ -174,3 +174,44 @@ def test_tests_never_queue_into_the_real_data_dir(monkeypatch) -> None:
 
     assert where.parent != paths.data_dir()
     assert where.name == "jobs.db"
+
+
+# --- Was ein gescheiterter Auftrag sagt (29.10.2026) -------------------------------
+# Am Hammer stand „SchemaTooNew: snapshots.db is at schema version 40, this
+# program knows 38 …“ in einem roten Kasten — englisch, für niemanden lesbar.
+
+
+def _failing(exc: Exception):
+    def work(key, **options):
+        raise exc
+    return work
+
+
+def test_a_service_older_than_the_database_says_what_to_do(data_dir: Path, monkeypatch) -> None:
+    from ebook_watchlist.migrations import SchemaTooNew
+    from ebook_watchlist.web import work
+
+    monkeypatch.setitem(work.WORK, "probe", _failing(SchemaTooNew("snapshots.db is at 40")))
+    jobs._job("probe", ("item", "x"), {})
+
+    state = jobs.job_state("probe", ("item", "x"))
+    assert state is not None
+    trouble = state["trouble"]
+    assert "SchemaTooNew" not in trouble and "snapshots.db" not in trouble
+    assert "ebw serve" in trouble
+
+
+def test_any_other_failure_speaks_german_and_points_to_the_log(
+    data_dir: Path, monkeypatch, caplog
+) -> None:
+    from ebook_watchlist.web import work
+
+    monkeypatch.setitem(work.WORK, "probe", _failing(KeyError("isbn")))
+    jobs._job("probe", ("item", "y"), {})
+
+    state = jobs.job_state("probe", ("item", "y"))
+    assert state is not None
+    trouble = state["trouble"]
+    assert "KeyError" not in trouble
+    assert "Log" in trouble
+    assert "KeyError" in caplog.text

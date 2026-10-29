@@ -113,7 +113,9 @@ def test_a_check_that_blew_up_does_not_stay_busy(monkeypatch: pytest.MonkeyPatch
         threading.Event().wait(0.02)
 
     assert not rechecker.state(7).busy
-    assert "Zonk" in rechecker.state(7).trouble
+    # Der Satz für die Leserin, nicht die Ausnahme: die steht im Log (29.10.2026).
+    state = rechecker.state(7)
+    assert state is not None and "Log" in (state.trouble or "")
 
 
 # --- die Zeile -------------------------------------------------------------

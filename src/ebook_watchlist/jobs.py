@@ -189,9 +189,23 @@ def _job(kind: str, key: Hashable, options: dict) -> None:
         report = work.WORK[kind](key, **options)
         trouble = report.trouble
     except Exception as exc:  # noqa: BLE001 - ein Auftrag darf den Dienst nicht mitreißen
-        trouble = f"{type(exc).__name__}: {exc}"
+        # Der Satz steht am Knopf, die Ausnahme im Log: am Hammer stand vorher
+        # „SchemaTooNew: snapshots.db is at schema version 40 …“ (29.10.2026).
+        log.exception("Auftrag %s %r gescheitert", kind, key)
+        trouble = _in_words(exc)
     state = huey.get(_state_key(kind, key), peek=True) or {"started_at": datetime.now()}
     huey.put(_state_key(kind, key), {**state, "finished_at": datetime.now(), "trouble": trouble})
+
+
+def _in_words(exc: Exception) -> str:
+    """Was ein gescheiterter Auftrag der Leserin sagt — deutsch, mit dem, was
+    zu tun ist. Die Einzelheiten stehen im Log des Dienstes."""
+    from .migrations import SchemaTooNew
+
+    if isinstance(exc, SchemaTooNew):
+        return ("Der Hintergrunddienst ist älter als die Datenbank – "
+                "„ebw serve“ neu starten.")
+    return "Ging nicht. Die Einzelheiten stehen im Log des Hintergrunddienstes."
 
 
 def _run(only_watchlist: bool, trigger: str) -> None:
