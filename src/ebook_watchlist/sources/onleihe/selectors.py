@@ -104,6 +104,12 @@ LABEL_PAGES = "Umfang:"
 LABEL_CATEGORY = "Kategorie:"
 #: Die Liste einer Reihe, wie der Link „Reihe:" sie nennt (#85).
 SERIES_LIST_PATH = "simpleMediaList,0-0-0-109-0-0-0-0-0-{series_id}-0.html"
+#: Eine Folgeseite der Reihenliste (#86): die Seite im siebten Feld, sortiert
+#: nach „Im Bestand seit“ — so blättert die Kategorienliste (gemessen am
+#: 28.10.2026). An einer langen Reihe ungeprüft: die VÖBB-Onleihe führte keine.
+SERIES_PAGE_PATH = "simpleMediaList,0-0-0-109-0-0-{page}-2004-0-{series_id}-0.html"
+#: Höchstens so viele Seiten je Reihe, also 100 Titel.
+MAX_SERIES_PAGES = 5
 
 #: Die Liste einer Kategorie, nach „Im Bestand seit“ (2004): die neuesten
 #: Zugänge zuerst — so ist sie auch voreingestellt (gemessen am 28.10.2026 an

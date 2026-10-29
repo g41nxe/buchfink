@@ -80,14 +80,34 @@ class OnleiheSource(LibrarySource):
         if ref is None:
             return []
         html = self.client.get(urljoin(self.base, sel.SERIES_LIST_PATH.format(series_id=ref)))
+        volumes = parse.series_volumes(html, name, media=self.media, base=self.base,
+                                       source=self.name)
         shown, total = parse.title_range(html)
-        if total is not None and shown is not None and shown < total:
-            # Wie die Liste blättert, ist nicht geprüft (#86): lieber laut als
-            # still abgeschnitten.
-            print(f"Onleihe-Reihe {name}: nur {shown} von {total} Bänden gelesen (#86)",
-                  file=sys.stderr)
-        return parse.series_volumes(html, name, media=self.media, base=self.base,
-                                    source=self.name)
+        if total is None or not shown or shown >= total:
+            return volumes
+        # Mehr Titel, als eine Seite zeigt: weiterblättern wie die
+        # Kategorienliste (#86). Liefert eine Folgeseite keine Karten, wird
+        # nicht geraten — lieber laut als still abgeschnitten.
+        seen = {v.source_item_id for v in volumes}
+        pages = min(-(-total // shown), sel.MAX_SERIES_PAGES)
+        for page in range(1, pages):
+            path = sel.SERIES_PAGE_PATH.format(page=page, series_id=ref)
+            try:
+                more = parse.series_volumes(self.client.get(urljoin(self.base, path)), name,
+                                            media=self.media, base=self.base,
+                                            source=self.name)
+            except SourceStructureError:
+                more = []
+            new = [v for v in more if v.source_item_id not in seen]
+            # Keine Karten, oder nur schon gelesene: die Seite blättert nicht so,
+            # wie angenommen. Dann nicht weiter fragen, sondern es sagen.
+            if not new:
+                print(f"Onleihe-Reihe {name}: Seite {page + 1} ohne neue Titel, nur "
+                      f"{shown * page} von {total} Titeln gelesen (#86)", file=sys.stderr)
+                break
+            volumes += new
+            seen.update(v.source_item_id for v in new)
+        return volumes
 
     def by_category(self, category_path: str) -> list[Observation]:
         """Die Neuzugänge einer Kategorie, frei und als E-Book (#93).

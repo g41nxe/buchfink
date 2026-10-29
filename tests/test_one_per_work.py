@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -16,7 +16,10 @@ from ebook_watchlist.models import Availability, MatchReason, Observation
 from ebook_watchlist.store import Store
 from ebook_watchlist.web import create_app, triage
 
-NOW = datetime(2026, 10, 26, 7, 0)
+#: Relativ zu jetzt: eine Bibliotheks-Verfügbarkeit gilt im Stapel nur drei Tage
+#: (`triage.LIBRARY_FRESH_DAYS`); ein festes Datum ließ den Test nach drei Tagen
+#: kippen (29.10.2026).
+NOW = datetime.now().replace(microsecond=0) - timedelta(hours=1)
 GERMAN = "9783641253486"
 ENGLISH = "9781524759803"
 

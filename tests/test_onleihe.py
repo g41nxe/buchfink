@@ -609,3 +609,72 @@ def test_a_genre_without_a_shelf_is_not_swept() -> None:
 
     assert _onleihe(client).by_category("FIC002000") == []
     assert client.requests == []
+
+
+# --- Reihenliste über die erste Seite hinaus (#86) ---------------------------------
+# Eine lange Reihe ließ sich in der VÖBB-Onleihe nicht finden. Die Kategorienliste
+# blättert über das siebte Feld; die Reihenliste trägt dasselbe Muster. Als lange
+# Liste dient deshalb die Kategorienseite (20 von 912 Titeln).
+
+
+class PagedClient:
+    """Seite 1 aus der Testseite, Folgeseiten nach Wunsch."""
+
+    def __init__(self, first: str, later: str) -> None:
+        self.first, self.later = first, later
+        self.requests: list[str] = []
+
+    def get(self, url: str, params: dict | None = None) -> str:
+        self.requests.append(url)
+        return self.first if "-0-0-0-0-0-" in url else self.later
+
+
+class NumberedClient(PagedClient):
+    """Jede Seite trägt andere Titelnummern, wie eine echte Folgeseite."""
+
+    def get(self, url: str, params: dict | None = None) -> str:
+        self.requests.append(url)
+        return self.first.replace("mediaInfo,0-0-", f"mediaInfo,0-0-{len(self.requests)}")
+
+
+def test_a_long_series_list_is_read_page_by_page() -> None:
+    page = fixture("category-list.html")
+    client = NumberedClient(page, page)
+
+    volumes = OnleiheSource(client).by_series("Lang", None, "123")  # type: ignore[arg-type]
+
+    assert client.requests[1].endswith("simpleMediaList,0-0-0-109-0-0-1-2004-0-123-0.html")
+    # 912 Titel wären 46 Seiten; gelesen wird höchstens bis zur Obergrenze.
+    from ebook_watchlist.sources.onleihe import selectors as sel
+
+    assert len(client.requests) == sel.MAX_SERIES_PAGES
+    assert len(volumes) == 8 * sel.MAX_SERIES_PAGES
+
+
+def test_a_page_that_repeats_the_first_ends_the_reading(capsys) -> None:
+    """Ignoriert die Onleihe die Seitenzahl, käme fünfmal dasselbe."""
+    page = fixture("category-list.html")
+    client = PagedClient(page, page)
+
+    OnleiheSource(client).by_series("Lang", None, "123")  # type: ignore[arg-type]
+
+    assert len(client.requests) == 2
+    assert "#86" in capsys.readouterr().err
+
+
+def test_a_page_without_cards_ends_the_reading_loudly(capsys) -> None:
+    client = PagedClient(fixture("category-list.html"), "<html></html>")
+
+    volumes = OnleiheSource(client).by_series("Lang", None, "123")  # type: ignore[arg-type]
+
+    assert len(volumes) == 8
+    assert "#86" in capsys.readouterr().err
+
+
+def test_an_empty_next_page_also_ends_the_reading(capsys) -> None:
+    client = PagedClient(fixture("category-list.html"), fixture("search-no-hits.html"))
+
+    OnleiheSource(client).by_series("Lang", None, "123")  # type: ignore[arg-type]
+
+    assert len(client.requests) == 2
+    assert "#86" in capsys.readouterr().err
