@@ -48,6 +48,7 @@ def require_title_id(url: str) -> str:
 
 class OnleiheSource(LibrarySource):
     name = SOURCE_NAME
+    genre_addresses = sel.GENRES
 
     def __init__(
         self,
@@ -87,6 +88,22 @@ class OnleiheSource(LibrarySource):
                   file=sys.stderr)
         return parse.series_volumes(html, name, media=self.media, base=self.base,
                                     source=self.name)
+
+    def by_category(self, category_path: str) -> list[Observation]:
+        """Die Neuzugänge einer Kategorie, frei und als E-Book (#93).
+
+        ``category_path`` ist ein Code der Genre-Liste (ADR 37). Gelesen wird
+        nur die erste Seite: 20 Titel, die neuesten zuerst — der Lauf kommt
+        täglich, und was gestern neu war, hat er gestern gesehen.
+        """
+        category = self.genre_address(category_path)
+        if category is None:
+            return []
+        path = sel.CATEGORY_LIST_PATH.format(category=category)
+        html = self.client.get(urljoin(self.base, path))
+        shelf = OnleiheList(path=path, name=category_path, fiction_only=False)
+        return parse.parse_list(html, shelf, media=self.media, base=self.base,
+                                source=self.name)
 
     def extra_discoveries(self) -> list[Observation]:
         """Die erste Seite jeder Liste, etwa „zuletzt zurückgegeben" oder die

@@ -567,3 +567,45 @@ def test_a_library_sweeps_the_authors_and_seeds_like_the_shop(tmp_path, data_dir
     assert [f.title for f in funde] == ["Der fröhliche Frauenhasser"]
     assert context.origin[("onleihe", funde[0].source_item_id)] == 7
     assert ("onleihe", 7) in context.swept
+
+
+# --- Genres über die Kategorienliste (#93) -----------------------------------------
+# `category-list.html`: die Kategorie Thriller (189), geholt am 28.10.2026 —
+# voreingestellt nach „Im Bestand seit“, also die neuesten Zugänge zuerst.
+
+
+def _onleihe(client: StubClient) -> OnleiheSource:
+    return OnleiheSource(client)  # type: ignore[arg-type]
+
+
+def test_a_genre_is_swept_over_its_category_list() -> None:
+    client = StubClient(fixture("category-list.html"))
+
+    finds = _onleihe(client).by_category("FIC031000")
+
+    assert client.requests[0][0].endswith("mediaList,0-189-0-101-0-0-0-2004-0-0-0.html")
+    assert finds and all(f.category == "FIC031000" for f in finds)
+    assert {f.title for f in finds} >= {"Jackdaw"}
+
+
+def test_only_free_ebooks_come_from_the_category_list() -> None:
+    finds = _onleihe(StubClient(fixture("category-list.html"))).by_category("FIC031000")
+
+    titles = {f.title for f in finds}
+    assert "Grabesstille Nacht: Drei etwas andere Weihnachtsstorys" not in titles  # Hörbuch
+    assert "Die Kälte" not in titles  # verliehen
+
+
+def test_a_subgenre_without_a_shelf_uses_the_one_above() -> None:
+    client = StubClient(fixture("category-list.html"))
+
+    _onleihe(client).by_category("FIC006000")  # Spionage → Thriller
+
+    assert "mediaList,0-189-" in client.requests[0][0]
+
+
+def test_a_genre_without_a_shelf_is_not_swept() -> None:
+    client = StubClient(fixture("category-list.html"))
+
+    assert _onleihe(client).by_category("FIC002000") == []
+    assert client.requests == []

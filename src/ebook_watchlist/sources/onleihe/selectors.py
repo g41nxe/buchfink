@@ -105,6 +105,30 @@ LABEL_CATEGORY = "Kategorie:"
 #: Die Liste einer Reihe, wie der Link „Reihe:" sie nennt (#85).
 SERIES_LIST_PATH = "simpleMediaList,0-0-0-109-0-0-0-0-0-{series_id}-0.html"
 
+#: Die Liste einer Kategorie, nach „Im Bestand seit“ (2004): die neuesten
+#: Zugänge zuerst — so ist sie auch voreingestellt (gemessen am 28.10.2026 an
+#: „Thriller“, 912 Titel, 20 je Seite). Die Seite stünde im siebten Feld.
+CATEGORY_LIST_PATH = "mediaList,0-{category}-0-101-0-0-0-2004-0-0-0.html"
+
+#: Code der Genre-Liste → Kategorie der Onleihe (ADR 37). Die Nummern hat
+#: `ebw categories` aus den Detailseiten gesammelt (#92, #93). Was hier fehlt,
+#: fegt die Onleihe nicht; ein Untergenre ohne eigene Kategorie nimmt die
+#: seines Obergenres (Spionage → Thriller, Regionalkrimi → Krimi).
+GENRES: dict[str, str] = {
+    "FIC031000": "189",  # Thriller
+    "FIC031080": "187",  # Psycho-Thriller
+    "FIC022000": "155",  # Krimi & Thriller — eine eigene Krimi-Kategorie gibt es nicht
+    "FIC028000": "552",  # Science Fiction
+    "FIC055000": "552",  # Dystopien stehen dort unter Science Fiction
+    "FIC009000": "549",  # Fantasy
+    "FIC015000": "550",  # Horror
+    "FIC027000": "623",  # Liebe & Beziehung
+    "FIC016000": "619",  # Humor
+    "FIC014000": "616",  # Historisches
+    "FIC019000": "160",  # Romane & Erzählungen
+    "BIO000000": "149",  # Biografien & Erinnerungen
+}
+
 # --- doctor probe ---------------------------------------------------------
 
 #: A query and a title that must stay parseable. We assert the *fields* parse,

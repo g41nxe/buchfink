@@ -87,8 +87,17 @@ den Baum nebenbei, ohne eine Anfrage mehr.
 
 Umgesetzt mit #92: Die Detailseite nennt unter „Kategorie:" eine **flache
 Liste** (2, 160, 616), keinen Pfad. Das Belegesammeln zählt jede Nummer mit,
-`ebw categories` listet sie und zeigt, welche schon in `GENRES` steht. Das
-Fegen über die Kategorienliste ist #93.
+`ebw categories` listet sie und zeigt, welche schon in `GENRES` steht.
+
+Umgesetzt mit #93 (28.10.2026): Die Kategorienliste ist voreingestellt nach
+„Im Bestand seit“ sortiert (Wert 2004), also die neuesten Zugänge zuerst;
+20 Titel je Seite, die Seite steht im siebten Feld
+(`mediaList,0-189-0-101-0-0-{seite}-2004-0-0-0.html`). Gemischt aus E-Books
+und Hörbüchern, viele verliehen — der Listenleser behält nur freie E-Books.
+Gelesen wird je Genre die erste Seite. Zugeordnet in `onleihe/selectors.GENRES`:
+Thriller 189, Psycho-Thriller 187, Krimi 155, Science-Fiction und Dystopie 552,
+Fantasy 549, Horror 550, Liebesroman 623, Humor 619, Historischer Roman 616,
+Gegenwartsliteratur 160, Biografie 149.
 
 ## Offen
 
