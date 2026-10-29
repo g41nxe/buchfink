@@ -334,8 +334,9 @@ def test_the_phone_has_no_selection_bar(client: TestClient, db: Store) -> None:
     body = client.get("/suggestions").text
 
     bar = _tag_around(body, "sticky bottom-0")
-    assert "hidden" in bar.split('"')[1].split()
-    assert "sm:flex" in bar
+    classes = bar.split('class="', 1)[1].split('"', 1)[0].split()
+    assert "hidden" in classes
+    assert {"sm:block", "sm:flex"} & set(classes)
 
 
 def test_on_the_phone_a_tap_on_the_row_ticks_nothing(client: TestClient, db: Store) -> None:
