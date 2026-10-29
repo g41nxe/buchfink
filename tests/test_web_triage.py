@@ -67,6 +67,26 @@ def found(
 # --- der Stapel -------------------------------------------------------------
 
 
+def test_the_pile_reads_the_settings_once_not_per_find(
+    db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Je Fund las ``why_shown`` die Einstellungen neu von der Platte — bei 180
+    Funden 225-mal, die Hälfte der Ladezeit der Vorschläge (29.10.2026)."""
+    from ebook_watchlist import config
+
+    for i in range(5):
+        found(db, item_id=str(i), title=f"Fund {i}")
+    settings = load_settings()
+    reads = []
+    real = config.load_settings
+    monkeypatch.setattr(config, "load_settings", lambda *a, **k: reads.append(1) or real(*a, **k))
+
+    pile = view.pending(db, settings)
+
+    assert len(pile.items) == 5
+    assert len(reads) <= 1
+
+
 def test_a_discovery_shows_up_with_what_is_known(client: TestClient, db: Store) -> None:
     found(db, title="Der Kannibalenhügel", author="Viktor Sauer")
 

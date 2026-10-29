@@ -942,9 +942,14 @@ def _work_siblings(session: Session, isbns: Iterable[str]) -> dict[str, set[str]
     # Übersetzung, deren eigener Titel zufällig passt, gehört trotzdem zu ihrem
     # Original.
     theirs = _work_keys(session, candidates)
+    # Einmal nach Werk gruppiert: je ISBN alle Kandidaten durchzugehen, kostete
+    # bei einem vollen Stapel eine halbe Sekunde je Seitenaufruf (29.10.2026).
+    by_work: dict[str, set[str]] = {}
+    for other in candidates:
+        if (key := theirs.get(other)) is not None:
+            by_work.setdefault(key, set()).add(other)
     return {
-        isbn: {other for other in candidates if theirs.get(other) == keys[isbn]} | {isbn}
-        if isbn in keys else {isbn}
+        isbn: by_work.get(keys[isbn], set()) | {isbn} if isbn in keys else {isbn}
         for isbn in wanted
     }
 

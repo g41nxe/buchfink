@@ -10,6 +10,7 @@ Buch bei der Onleihe wäre trotzdem wieder aufgetaucht (ADR 18).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
@@ -303,6 +304,7 @@ def _suggestion(
     bundle=None,
     covers: CoverStore | None = None,
     described: bool = False,
+    kinds: Mapping[str, str] | None = None,
 ) -> Suggestion:
     return Suggestion(
         source=observation.source,
@@ -318,7 +320,7 @@ def _suggestion(
         deal=is_strong_deal(observation.price_cents, settings),
         source_label=registry.label(settings, observation.source),
         source_category=registry.category(settings, observation.source),
-        why=why_shown(observation),
+        why=why_shown(observation, kinds),
         why_short=short_why(observation),
         stars=verdict.stars if verdict else None,
         percent=verdict.percent if verdict else None,
@@ -327,7 +329,7 @@ def _suggestion(
         bundle=bundle,
         borrowable=observation.availability is Availability.AVAILABLE,
         observed_at=observation.observed_at,
-        from_list=is_library_list(observation),
+        from_list=is_library_list(observation, kinds),
         borderline=bool(verdict and verdict.borderline),
         described=described,
     )
@@ -357,9 +359,9 @@ def _fresh(observation: Observation, library_sources: set[str], now: datetime) -
 LIBRARY_LIST = "library_list"
 
 
-def _origin(observation: Observation) -> str:
+def _origin(observation: Observation, kinds: Mapping[str, str] | None = None) -> str:
     """Wonach der Stapel filtert: der Anlass, eine Bibliotheksliste eigens."""
-    return LIBRARY_LIST if is_library_list(observation) else str(observation.match_reason)
+    return LIBRARY_LIST if is_library_list(observation, kinds) else str(observation.match_reason)
 
 
 def _one_per_work(
@@ -456,7 +458,10 @@ def pending(
         for why in ("junk", "priced", "weak", "language", "ai", "short", "series", "disliked")
     }
     now = datetime.now()
-    library_sources = {name for name, kind in source_kinds().items() if kind == "library"}
+    # Einmal für den ganzen Stapel: je Fund gelesen, kosteten die Einstellungen
+    # die Hälfte der Ladezeit (29.10.2026).
+    kinds = source_kinds(settings)
+    library_sources = {name for name, kind in kinds.items() if kind == "library"}
     for observation in found:
         if (observation.source, observation.source_item_id) in decided_items:
             continue
@@ -505,11 +510,11 @@ def pending(
         if verdict is not None and verdict.withholds(judge.threshold):
             hidden["weak"].add(subject_of(observation))
             continue
-        if reason and _origin(observation) != reason:
+        if reason and _origin(observation, kinds) != reason:
             continue
         items.append(
             _suggestion(observation, settings, verdict, advantage, covers,
-                       described=subject in portraits)
+                       described=subject in portraits, kinds=kinds)
         )
 
     items = _one_per_work(store, settings, items, language_of)

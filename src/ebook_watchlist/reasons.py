@@ -14,7 +14,13 @@ es sehen kann.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
+
 from .models import Availability, MatchReason, Observation
+
+if TYPE_CHECKING:
+    from .config import Settings
 
 #: Was die Leserin sieht, wo der Code ``genre_category`` sagt. "Regal" war der
 #: Begriff des Shops, nicht ihrer.
@@ -52,28 +58,35 @@ def genre_category_name(category: str | None) -> str | None:
     return _SHELF_NAMES.get(last) or last.replace("-", " ").strip().capitalize() or None
 
 
-def source_kinds() -> dict[str, str]:
+def source_kinds(settings: Settings | None = None) -> dict[str, str]:
     """Quelle → ``library`` oder ``shop``, nach ihrer Art in den Einstellungen:
-    eine Onleihe namens „voebb" ist eine Bibliothek (Review)."""
-    from .config import ConfigError, load_settings
+    eine Onleihe namens „voebb" ist eine Bibliothek (Review).
+
+    Wer die Einstellungen schon hat, reicht sie herein: sie zu laden heißt,
+    die Datei zu lesen und zu prüfen (29.10.2026)."""
+    from . import config
     from .sources.registry import KINDS, category
 
-    try:
-        settings = load_settings()
-    except (ConfigError, OSError):
-        return dict(KINDS)
+    if settings is None:
+        try:
+            settings = config.load_settings()
+        except (config.ConfigError, OSError):
+            return dict(KINDS)
     return {name: category(settings, name) for name in settings.sources} | {
         k: v for k, v in KINDS.items() if k not in settings.sources
     }
 
 
-def _is_library(source: str) -> bool:
-    return source_kinds().get(source) == "library"
+def _is_library(source: str, kinds: Mapping[str, str] | None) -> bool:
+    return (source_kinds() if kinds is None else kinds).get(source) == "library"
 
 
-def is_library_list(observation: Observation) -> bool:
+def is_library_list(observation: Observation, kinds: Mapping[str, str] | None = None) -> bool:
     """Ein Fund aus einer Liste der Bibliothek — „Lucky Day", „Zuletzt
     zurückgegeben" (#74), kein Thema der Leserin.
+
+    ``kinds`` sind die Arten der Quellen (`source_kinds`): wer viele Funde
+    prüft, rechnet sie einmal aus, nicht je Fund.
 
     Gespeichert wird er mit dem Anlass eines Themas; die Liste trägt einen
     Namen, ein Thema einen Shop-Pfad. Gezeigt werden beide getrennt: sonst
@@ -87,11 +100,11 @@ def is_library_list(observation: Observation) -> bool:
         and "/" not in (observation.category or "")
         # Ein Thema ist seit ADR 37 ein Code — auch ohne Schrägstrich keine Liste.
         and observation.category not in load_genres()
-        and _is_library(observation.source)
+        and _is_library(observation.source, kinds)
     )
 
 
-def why_shown(observation: Observation) -> str:
+def why_shown(observation: Observation, kinds: Mapping[str, str] | None = None) -> str:
     """Ein Satzteil, der den Anlass benennt — nicht den Match Reason.
 
     Bei Autor:innen wird die Verbindung zur Leserin genannt, nicht die
@@ -107,9 +120,9 @@ def why_shown(observation: Observation) -> str:
         return f"neu von {author}, der du folgst"
 
     category_name = genre_category_name(observation.category)
-    library = _is_library(observation.source)
+    library = _is_library(observation.source, kinds)
     free = observation.availability is Availability.AVAILABLE
-    if category_name and is_library_list(observation):
+    if category_name and is_library_list(observation, kinds):
         # Eine Sammlung der Bibliothek ist kein Regal im Shop: was darin steht,
         # lässt sich gleich leihen (#74) — wenn ein Exemplar frei ist. Eine
         # Sammlung trägt einen Namen, ein Thema der Leserin einen Shop-Pfad.

@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from functools import lru_cache
 
 _COMBINING = re.compile(r"[̀-ͯ]")
 
@@ -85,6 +86,13 @@ _JOIN_TOKENS = frozenset({"a", "and", "the", "und", "of", "de"})
 _WHITESPACE = re.compile(r"\s+")
 
 
+#: Die Vergleichsformen werden je Seitenaufruf für alle Sichtungen gebraucht —
+#: rund 12 500 Titel und Autor:innen, jedes Mal dieselben, eine Sekunde lang
+#: (29.10.2026). Reine Funktionen von Text, also gemerkt.
+_REMEMBERED = 65536
+
+
+@lru_cache(maxsize=_REMEMBERED)
 def normalize_title(title: str) -> str:
     """The comparable form of a title.
 
@@ -286,6 +294,7 @@ class NormalizedAuthor:
         return bool(self.full)
 
 
+@lru_cache(maxsize=_REMEMBERED)
 def normalize_author(name: str) -> NormalizedAuthor:
     """One name in comparable form, in first-name-first order."""
     text = fold(name)
