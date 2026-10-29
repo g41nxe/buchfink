@@ -678,3 +678,19 @@ def test_an_empty_next_page_also_ends_the_reading(capsys) -> None:
 
     assert len(client.requests) == 2
     assert "#86" in capsys.readouterr().err
+
+
+def test_one_odd_detail_page_skips_its_entry_not_the_library(capsys) -> None:
+    """Lauf 309 (29.10.2026) scheiterte an einer Detailseite ohne „Exemplare“;
+    die Prüfseite war lesbar. Eine Seite ist eine Nachricht über einen Eintrag,
+    nicht über die Bibliothek — die übrigen Einträge müssen geprüft werden."""
+    odd = fixture("detail-available.html").replace("exemplar-count", "etwas-anderes")
+    source = OnleiheSource(client=StubClient(odd))  # type: ignore[arg-type]
+    entry = WatchlistEntry(
+        title="Die sieben Schwestern",
+        resolved_links={"onleihe": "mediaInfo,0-0-373164461-200-0-0-0-0-0-0-0.html"},
+    )
+
+    assert source.check(entry) is None
+    err = capsys.readouterr().err
+    assert "Die sieben Schwestern" in err and "Exemplare" in err

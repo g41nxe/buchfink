@@ -160,7 +160,14 @@ class OnleiheSource(LibrarySource):
             # The title left the catalogue. That is news about one entry, not a
             # broken Source — the other entries must still be checked.
             return None
-        detail = parse.parse_detail(html)
+        try:
+            detail = parse.parse_detail(html)
+        except SourceStructureError as exc:
+            # Eine einzelne Seite, die anders aussieht, ist eine Nachricht über
+            # diesen Eintrag (Lauf 309, 29.10.2026: die Prüfseite war lesbar).
+            # Ob die Bibliothek als Ganzes bricht, sagt die Probe (`ebw doctor`).
+            print(f"{self.name}: {entry.title}: {exc} — übersprungen", file=sys.stderr)
+            return None
 
         return Observation(
             source=self.name,
