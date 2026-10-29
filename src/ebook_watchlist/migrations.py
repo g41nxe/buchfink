@@ -706,6 +706,28 @@ def _a_portrait_names_its_form(connection: Connection) -> None:
         add_column(connection, "portrait", "form", "VARCHAR")
 
 
+def _a_split_volume_is_its_own_work(connection: Connection) -> None:
+    """Die DNB-Zuordnung zum Werk neu rechnen: ein geteilter Band ist je Hälfte
+    ein Werk (`work_title`, 28.10.2026). Wo eine Antwort der DNB einen
+    Originaltitel nennt, die Zuordnung aber fehlt, wird sie nachgetragen."""
+    from .catalog.work import work_key, work_title
+
+    if not (_has_table(connection, "dnb_record") and _has_table(connection, "work_entry")):
+        return
+    for isbn, title, author, original in connection.exec_driver_sql(
+        "SELECT isbn, title, author, original_title FROM dnb_record "
+        "WHERE found = 1 AND original_title IS NOT NULL"
+    ).all():
+        key = work_key(author, work_title(title, original))
+        if key is None:
+            continue
+        connection.exec_driver_sql(
+            "INSERT INTO work_entry (isbn, origin, key) VALUES (?, 'dnb', ?) "
+            "ON CONFLICT (isbn, origin) DO UPDATE SET key = excluded.key",
+            (isbn, key),
+        )
+
+
 def _genres_become_codes(connection: Connection) -> None:
     """Steckbriefe und Gegengewichte bekommen den Code der Genre-Liste (#89).
 
@@ -824,6 +846,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _a_theme_is_seeded_at_an_address,
     _genres_become_codes,
     _a_portrait_names_its_form,
+    _a_split_volume_is_its_own_work,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

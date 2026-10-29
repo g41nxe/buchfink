@@ -163,3 +163,51 @@ def test_new_stars_on_one_edition_hold_for_the_whole_work(store: Store) -> None:
     set_stars(store, Settings(), german.id, None, now=NOW)
 
     assert store.rating(book_subject(english.id), origin=BY_READER) is None
+
+
+# --- Ein Band, zweigeteilt (28.10.2026) -------------------------------------------
+
+PART_ONE, PART_TWO = "9783608122008", "9783608122015"
+
+
+def test_the_two_halves_of_a_split_volume_are_two_works(store: Store) -> None:
+    """Der deutsche Verlag teilt „Into the Narrowdark“ in zwei Bücher; die DNB
+    nennt für beide denselben Originaltitel. Zwei Bücher, die man getrennt
+    kauft und leiht, sind zwei Werke — die Bandnummer des eigenen Titels
+    trennt sie."""
+    seen(store, find(PART_ONE, "Im dunklen Tal 1", "Tad Williams"),
+         find(PART_TWO, "Im dunklen Tal 2", "Tad Williams"))
+    for isbn, title in ((PART_ONE, "Im dunklen Tal 1"), (PART_TWO, "Im dunklen Tal 2")):
+        store.save_dnb(isbn, Record(title=title, author="Tad Williams",
+                                    original_title="Into the Narrowdark"), NOW)
+
+    assert store.work_siblings([PART_ONE])[PART_ONE] == {PART_ONE}
+
+
+def test_a_numbered_translation_still_meets_its_original() -> None:
+    """Die Gegenprobe: trägt das Original dieselbe Nummer, bleibt es ein Werk."""
+    from ebook_watchlist.catalog.work import work_title
+
+    assert work_title("Teil 2", "Part 2") == "Part 2"
+    assert work_title("Im dunklen Tal 1", "Into the Narrowdark") == "Into the Narrowdark 1"
+    assert work_title("Gestohlene Erinnerung", "Recursion") == "Recursion"
+
+
+def test_old_halves_of_a_split_volume_are_parted_on_upgrade(store: Store) -> None:
+    """Was vor der Regel eingetragen wurde, rechnet die Migration neu."""
+    from ebook_watchlist.migrations import _a_split_volume_is_its_own_work
+
+    seen(store, find(PART_ONE, "Im dunklen Tal 1", "Tad Williams"),
+         find(PART_TWO, "Im dunklen Tal 2", "Tad Williams"))
+    for isbn, title in ((PART_ONE, "Im dunklen Tal 1"), (PART_TWO, "Im dunklen Tal 2")):
+        store.save_dnb(isbn, Record(title=title, author="Tad Williams",
+                                    original_title="Into the Narrowdark"), NOW)
+    with store._engine.begin() as connection:
+        connection.exec_driver_sql(
+            "UPDATE work_entry SET key = 'tad williams|into the narrowdark' WHERE origin = 'dnb'")
+    assert store.work_siblings([PART_ONE])[PART_ONE] == {PART_ONE, PART_TWO}
+
+    with store._engine.begin() as connection:
+        _a_split_volume_is_its_own_work(connection)
+
+    assert store.work_siblings([PART_ONE])[PART_ONE] == {PART_ONE}

@@ -16,6 +16,24 @@ from ..cleaning import author_key
 from ..matching.normalize import fold
 
 _NOT_A_WORD = re.compile(r"[^\w]+")
+#: Eine Bandnummer am Ende des Titels: „Im dunklen Tal 1“, „… Teil 2“.
+_VOLUME = re.compile(r"(?:(?:teil|band|bd|part|vol)\.?\s*)?(\d+)\s*$", re.IGNORECASE)
+
+
+def work_title(title: str | None, original_title: str) -> str:
+    """Der Originaltitel, der das Werk bestimmt — bei einem geteilten Band mit
+    der Nummer der eigenen Ausgabe.
+
+    Der deutsche Verlag teilt „Into the Narrowdark“ in „Im dunklen Tal 1“ und
+    „… 2“, und die DNB nennt für beide denselben Originaltitel. Zwei Bücher,
+    die man getrennt kauft und leiht, wären so ein Werk (gemessen am Bestand,
+    28.10.2026: dreimal Tad Williams). Trägt das Original selbst eine Nummer,
+    gilt sie: dann sind Übersetzung und Original dasselbe Buch.
+    """
+    if _VOLUME.search(original_title):
+        return original_title
+    volume = _VOLUME.search(title or "")
+    return f"{original_title} {volume.group(1)}" if volume else original_title
 
 
 def work_key(author: str | None, title: str | None) -> str | None:

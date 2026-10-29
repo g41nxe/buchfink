@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from ..catalog.books import BookLike
 from ..catalog.books import find as find_book
 from ..catalog.series import SeriesOf, series_key, volume_span
+from ..catalog.work import work_title
 from ..cleaning import author_key
 from ..dnb import Record
 from ..matching.bundles import looks_like_bundle, volume_titles
@@ -126,7 +127,8 @@ class CatalogMixin(ObservationsMixin):
                     _file_series(session, isbn, record.series, record.author,
                                  record.series_index, "dnb")
                 if record.original_title:
-                    _file_work(session, isbn, record.author, record.original_title, "dnb")
+                    _file_work(session, isbn, record.author,
+                               work_title(record.title, record.original_title), "dnb")
                 _file_bisac(session, isbn, "dnb", record.bisac)
                 for contained in record.contains:
                     if session.get(DnbContainsRow, (isbn, contained)) is None:
@@ -907,7 +909,9 @@ class CatalogMixin(ObservationsMixin):
                     DnbRecordRow.isbn.not_in(known),
                 )
             ).all():
-                _file_work(session, record.isbn, record.author, record.original_title, "dnb")
+                # Die Abfrage schließt `None` aus; der Typ weiß das nicht.
+                _file_work(session, record.isbn, record.author,
+                           work_title(record.title, record.original_title or ""), "dnb")
             titled = select(WorkEntryRow.isbn).where(WorkEntryRow.origin == "title")
             latest = (
                 select(func.max(ObservationRow.id))

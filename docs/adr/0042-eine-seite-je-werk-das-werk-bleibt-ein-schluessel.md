@@ -79,3 +79,16 @@ stehen als „auch als …“ dabei. Die Watchlist bleibt je Ausgabe (ADR 36).
   Zuordnung stört (eigenes Ticket).
 - Die feste Reihenfolge „erst Deutsch, dann jede Sprache“ der Zuordnung (#77)
   geht in der Rangfolge auf.
+
+## Nachtrag: ein geteilter Band (28.10.2026)
+
+Deutsche Verlage teilen einen Band manchmal in zwei Bücher („Im dunklen Tal 1“
+und „… 2“ aus „Into the Narrowdark“), und die DNB nennt für beide denselben
+Originaltitel. Im Bestand lagen so dreimal zwei Bücher, die man getrennt kauft
+und leiht, unter einem Werk. Trägt der eigene Titel eine Bandnummer, die dem
+Originaltitel fehlt, gehört sie zum Werk (`work_title`); trägt das Original
+selbst eine, gilt seine. Eine Migration rechnet die Einträge der DNB neu.
+
+Die Handkorrektur aus #116 bleibt damit ungebaut: in den 38 Werken mit mehr als
+einem Eintrag war dies der einzige wiederkehrende Fehler, und eine Regel trifft
+auch die künftigen.
