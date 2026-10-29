@@ -230,8 +230,12 @@
    eine Frage an den Text, nicht an die Seite. Sie wird dort beantwortet, wo er
    steht (`max-w-prose`, rund 65 Zeichen) — sonst liefe ein Absatz hier auf 130
    Zeichen je Zeile. Die Kopfzeile traegt dieselbe Breite, damit die linke
-   Kante durchgeht. #}
-<main class="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-24 sm:px-6">
+   Kante durchgeht.
+
+   Unten nur so viel Luft wie oben: den Abstand zum Fußbereich trägt der
+   selbst. Das frühere `pb-24` stammte aus der Zeit vor ihm und ließ unter der
+   Auswahlleiste der Vorschläge 130 px Leere stehen (29.10.2026). #}
+<main class="mx-auto w-full max-w-5xl flex-1 px-4 pt-8 pb-8 sm:px-6">
 {% block content %}{% endblock %}
 </main>
 
