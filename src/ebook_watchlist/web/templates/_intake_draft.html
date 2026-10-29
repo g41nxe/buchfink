@@ -18,23 +18,18 @@
   <p class="text-sm text-soft italic">Noch nichts angetippt.</p>
   {% endif %}
 
-  {% if d.boosted %}
-  <p class="mb-1 text-xs text-soft">Verstärkt</p>
-  <ul class="mb-3 flex flex-wrap gap-1.5">
-    {% for name in d.boosted %}
-    <li class="inline-flex h-7 items-center gap-1 rounded-full border border-choice/60 px-3
-               text-xs text-choice">
-      <svg class="i" style="fill:currentColor"><use href="#ic-star"/></svg>{{ name }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-  {% for title, names in [("Merkmale", d.terms), ("Erzählmuster", d.patterns)] if names %}
+  {# Dieselben Pillen wie im Profil: das Zeichen der Familie vorn, verstärkt
+     mit dem Sternenschauer (29.10.2026). Das Herz bleibt nur, wo eine
+     Familie kein Zeichen hat. #}
+  {% for title, items, boosted in [("Verstärkt", d.boosted, true), ("Merkmale", d.terms, false),
+                                   ("Erzählmuster", d.patterns, false)] if items %}
   <p class="mb-1 text-xs text-soft">{{ title }}</p>
   <ul class="mb-3 flex flex-wrap gap-1.5">
-    {% for name in names %}
-    <li class="inline-flex h-7 items-center gap-1 rounded-full border border-accent/40 px-3
-               text-xs text-accent">
-      <svg class="i"><use href="#ic-heart"/></svg>{{ name }}</li>
+    {% for family_id, name in items %}
+    <li class="inline-flex h-7 items-center gap-1.5 rounded-full bg-accent-bg px-3 text-xs
+               font-medium text-accent ring-1 ring-accent/20 ring-inset {{ 'pill-boosted' if boosted }}">
+      {{ (family_art.sign(family_id, "fz-inline") if family_art is defined)
+         or '<svg class="i"><use href="#ic-heart"/></svg>' | safe }}{{ name }}</li>
     {% endfor %}
   </ul>
   {% endfor %}
@@ -70,9 +65,13 @@
             text-soft">Zählt gegen ein Buch</p>
   <ul class="flex flex-wrap gap-1.5">
     {% for w in d.weights %}
-    <li class="inline-flex h-7 items-center gap-1 rounded-full border border-danger/40 px-3
-               text-xs text-danger">
-      <svg class="i"><use href="#ic-ban"/></svg>{{ w.name }}{% if w.genre %}
+    {# Wie im Profil: ein Gegengewicht aus einer Familie trägt ihr Zeichen,
+       eins aus mehreren das Verbotszeichen. #}
+    <li class="inline-flex h-7 items-center gap-1.5 rounded-full bg-danger/10 px-3 text-xs
+               font-medium text-danger ring-1 ring-danger/20 ring-inset">
+      {{ (family_art.sign(w.families[0], "fz-inline")
+          if family_art is defined and w.families | length == 1)
+         or '<svg class="i"><use href="#ic-ban"/></svg>' | safe }}{{ w.name }}{% if w.genre %}
       <span class="opacity-70">· nur bei {{ w.genre | genre_label }}</span>{% endif %}</li>
     {% endfor %}
   </ul>

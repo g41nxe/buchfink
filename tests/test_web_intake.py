@@ -416,6 +416,21 @@ def test_a_boosted_family_shows_as_boosted(client, books) -> None:
     assert 'data-boost="harsh"' in card and ">Verstärkt<" in card
 
 
+def test_the_draft_shows_family_signs_and_the_boosted_stars(client, books) -> None:
+    """Im entstehenden Profil trägt jede Pille das Zeichen ihrer Familie statt
+    eines Herzens, und eine verstärkte den Sternenschauer wie im Profil
+    (29.10.2026)."""
+    tap(client, "harsh")
+    tap(client, "pursuit")
+    body = tap(client, "harsh", page="boost")
+
+    draft = body.split("data-draft", 1)[1]
+    boosted = draft.split("Verstärkt", 1)[1].split("</ul>", 1)[0]
+    assert "pill-boosted" in boosted and "#fz-harsh" in boosted
+    assert "#fz-pursuit" in draft
+    assert "#ic-heart" not in draft
+
+
 def test_patterns_are_tappable_and_boostable_like_traits(client, books) -> None:
     """„Und vergiss die Erzählmuster nicht": ein Erzählmuster zählt genauso als
     eigener Grund und lässt sich genauso verstärken (24.09.2026)."""

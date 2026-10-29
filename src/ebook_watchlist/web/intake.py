@@ -408,11 +408,11 @@ class WeightCard:
 class Draft:
     """Das Profil, wie es aus den Antworten gerade entsteht — als Übersicht."""
 
-    #: Was verstärkt ist, als Namen.
-    boosted: tuple[str, ...]
-    #: Die übrigen gemochten Merkmale und Erzählmuster, als Namen.
-    terms: tuple[str, ...]
-    patterns: tuple[str, ...]
+    #: Was verstärkt ist, als Familie und Name — die Familie trägt das Zeichen.
+    boosted: tuple[tuple[str, str], ...]
+    #: Die übrigen gemochten Merkmale und Erzählmuster, ebenso.
+    terms: tuple[tuple[str, str], ...]
+    patterns: tuple[tuple[str, str], ...]
     #: Die Kombinationen, die das Werkzeug daraus erkannt hat.
     facets: tuple[FacetCard, ...]
     weights: tuple[WeightCard, ...]
@@ -686,7 +686,7 @@ def _draft(vocabulary, liked, loved_carriers, lost_carriers, lost_scopes) -> Dra
     )
 
     def names(selection):
-        return tuple(family_name(g.family, vocabulary) for g in selection)
+        return tuple((g.family, family_name(g.family, vocabulary)) for g in selection)
 
     return Draft(
         boosted=names(g for g in liked if g.boosted),
