@@ -127,8 +127,12 @@
    dasselbe sind. Der Satz, dass „Ausschließen" nichts löscht, stand daneben und
    erklärte bei jedem Besuch dasselbe; was die Entscheidung bedeutet, steht in
    der Einleitung oben und auf der Buchseite, wo sie sich zurücknehmen lässt. #}
-<div class="sticky bottom-0 mt-4 hidden flex-wrap items-center gap-2 border-t border-rule
-            bg-paper/95 py-3 backdrop-blur sm:flex">
+{# Den Grund trägt die Leiste nur, solange sie über der Liste klebt; am Ende
+   der Seite, an ihrem Platz, stand sie sonst als dunklerer Kasten auf dem
+   Papierkorn (29.10.2026). Ohne `scroll-state` behält sie ihn immer. #}
+<div class="selection-bar sticky bottom-0 mt-4 hidden sm:block">
+<div class="selection-bar-inner flex flex-wrap items-center gap-2 border-t border-rule bg-paper/95
+            py-3 backdrop-blur">
   {# Zaehler und Auswahlknoepfe sind eine Gruppe und stehen mittig in dem
      Platz, der neben den Handlungen bleibt: linksbuendig sassen sie in einer
      Ecke, sobald die Leiste umbrach, und die Reihe sah aus wie zwei Leisten. #}
@@ -162,6 +166,7 @@
                     off_when="chosen === 0") }}
     {% endfor %}
   </span>
+</div>
 </div>
 </form>
 {% endif %}

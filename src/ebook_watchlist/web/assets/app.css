@@ -600,3 +600,22 @@ details[open] > summary > .when-open { display: inline-flex; }
     }
   }
 }
+
+/* Die Auswahlleiste der Vorschläge: Grund (`bg-paper/95`) nur, solange sie
+   klebt. Die Farbe bleibt bei der Klasse; hier wird sie nur weggenommen und
+   beim Kleben mit `revert-layer` zurückgeholt. */
+@supports (container-type: scroll-state) {
+  .selection-bar {
+    container-type: scroll-state;
+  }
+  .selection-bar-inner {
+    background-color: transparent;
+    backdrop-filter: none;
+  }
+  @container scroll-state(stuck: bottom) {
+    .selection-bar-inner {
+      background-color: revert-layer;
+      backdrop-filter: revert-layer;
+    }
+  }
+}
