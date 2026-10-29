@@ -100,7 +100,7 @@
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
               class="tap inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
-                     {{ 'border-choice bg-button font-medium text-choice' if p.boosted
+                     {{ 'pill-boosted border-accent/20 bg-accent-bg font-medium text-accent' if p.boosted
                         else 'border-rule bg-button text-soft hover:border-choice hover:text-choice' }}">
         <svg class="i" {% if p.boosted %}style="fill:currentColor"{% endif %}>
           <use href="#ic-star"/></svg>{{ "Verstärkt" if p.boosted else "Verstärken" }}</button>
@@ -171,7 +171,7 @@
               title="Schon drei verstärkt — nimm erst eins zurück"{% endif %}
               class="tap inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs
                      disabled:cursor-not-allowed disabled:opacity-40
-                     {{ 'border-choice bg-button font-medium text-choice' if p.boosted
+                     {{ 'pill-boosted border-accent/20 bg-accent-bg font-medium text-accent' if p.boosted
                         else 'border-rule bg-button text-soft hover:border-choice hover:text-choice' }}">
         <svg class="i" {% if p.boosted %}style="fill:currentColor"{% endif %}>
           <use href="#ic-star"/></svg>{{ "Verstärkt" if p.boosted else "Verstärken" }}</button>

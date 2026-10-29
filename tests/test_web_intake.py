@@ -414,6 +414,9 @@ def test_a_boosted_family_shows_as_boosted(client, books) -> None:
 
     card = body.split('data-card="harsh"', 1)[1].split("</li>", 1)[0]
     assert 'data-boost="harsh"' in card and ">Verstärkt<" in card
+    # Derselbe Sternenschauer wie an der Pille im Profil (29.10.2026).
+    button = card.split('data-boost="harsh"', 1)[1].split("</button>", 1)[0]
+    assert "pill-boosted" in button
 
 
 def test_the_draft_shows_family_signs_and_the_boosted_stars(client, books) -> None:
