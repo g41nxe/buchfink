@@ -44,12 +44,12 @@ from .portrait import (
     prompt_parts,
 )
 
-#: Voreinstellung: eine beschränkte Aufgabe gegen ein mitgeliefertes Vokabular,
-#: dafür ist das kleinste Modell das richtige. Haiku 5.5 statt 4.5 (#102):
-#: ein Zehntel des Preises (0,10 $ / 0,50 $ je Million Tokens bis 100 000
-#: Tokens Anweisung) und besser im Befolgen von Regeln. Es denkt von selbst;
-#: wie viel, sagt ``EFFORT`` — ein festes Denkbudget lehnt es ab.
-DEFAULT_MODEL = "claude-haiku-5-5"
+#: Voreinstellung: Sonnet statt Haiku (ADR 44). Zwei Steckbriefe desselben
+#: Buchs lagen mit Haiku im Urteil 8,9 Punkte auseinander, mit Sonnet 3,6;
+#: gleiche Muster 0,52 gegen 0,78 (20 Bücher, 31.10.2026). Haiku bleibt über
+#: ``rating_model`` wählbar, wo der Preis zählt. Es denkt von selbst; wie viel,
+#: sagt ``EFFORT`` — ein festes Denkbudget lehnt es ab.
+DEFAULT_MODEL = "claude-sonnet-5-5"
 #: Mittel ist die Voreinstellung des Modells; ausdrücklich gesetzt, damit ein
 #: anderes Modell nicht still anders denkt.
 EFFORT = "medium"
@@ -73,8 +73,8 @@ KEY_ENV = "ANTHROPIC_API_KEY"
 #: Werkzeug auf dem eigenen Rechner der naheliegende Weg.
 CLI_NAME = "claude"
 CLI_TIMEOUT = 300.0
-#: Der Alias, den die CLI auflöst: dasselbe kleine Modell wie auf dem API-Weg.
-CLI_DEFAULT_MODEL = "haiku"
+#: Der Alias, den die CLI auflöst: dasselbe Modell wie auf dem API-Weg (ADR 44).
+CLI_DEFAULT_MODEL = "sonnet"
 #: Wie viel das Modell vor der Antwort nachdenken darf. Gemessen an einem echten
 #: Fund (Haiku): ohne Denken 12 s und fünf Regelverstöße im Steckbrief, mit
 #: bis zu 2048 Tokens 24 s und ein bis zwei, mit unbegrenztem Denken 2 Minuten,

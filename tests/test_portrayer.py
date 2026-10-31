@@ -280,12 +280,13 @@ def test_the_api_caches_the_vocabulary_and_fixes_the_shape() -> None:
 
     assert answer == ANSWER
     params = client.sent[0]
-    assert params["model"] == "claude-haiku-5-5"
+    # Sonnet statt Haiku (ADR 44): streut gemessen weniger als halb so stark.
+    assert params["model"] == "claude-sonnet-5-5"
     assert params["system"] == [{"type": "text", "text": PARTS.stable,
                                  "cache_control": {"type": "ephemeral"}}]
     assert params["messages"] == [{"role": "user", "content": PARTS.variable}]
     assert params["output_config"]["format"] == {"type": "json_schema", "schema": ANSWER_SCHEMA}
-    # Haiku 5.5: Sampling-Parameter sind ein Fehler, ein festes Denkbudget auch.
+    # Sonnet 5.5: Sampling-Parameter sind ein Fehler, ein festes Denkbudget auch.
     assert "temperature" not in params and "thinking" not in params
 
 
@@ -399,7 +400,7 @@ def test_without_a_key_the_local_installation_is_used(monkeypatch) -> None:
 
     assert isinstance(portrayer.channel, CliChannel)
     assert portrayer.channel.executable == "/usr/bin/claude"
-    assert portrayer.channel.model == "haiku"
+    assert portrayer.channel.model == "sonnet"
 
 
 @needs_vocabulary
