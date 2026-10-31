@@ -29,8 +29,6 @@ class GenreError(Exception):
 class Genre:
     code: str
     name: str
-    #: Die BISAC-Bezeichnung zum Nachprüfen; ``None`` bei einer Erweiterung.
-    bisac: str | None
     #: Das Genre über einem Untergenre; ``None`` oben.
     parent: str | None = None
     extension: bool = False
@@ -85,7 +83,7 @@ def parse_genres(text: str) -> GenreList:
             )
         if any(genre.code == code for genre in genres):
             raise GenreError(f"{code} steht zweimal in der Liste")
-        genres.append(Genre(code, name.strip(), entry.get("bisac"), parent, extension))
+        genres.append(Genre(code, name.strip(), parent, extension))
         for child in entry.get("untergenres") or ():
             read(child, code)
 

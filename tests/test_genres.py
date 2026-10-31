@@ -9,11 +9,11 @@ from ebook_watchlist.genres import GenreError, load_genres, parse_genres
 GENRES = load_genres()
 
 
-def test_a_genre_has_a_code_a_name_and_its_bisac_heading() -> None:
+def test_a_genre_has_a_code_a_name_and_a_parent() -> None:
     psycho = GENRES.get("FIC031080")
 
-    assert (psycho.name, psycho.bisac, psycho.parent) == (
-        "Psychothriller", "Thrillers / Psychological", "FIC031000")
+    assert psycho is not None
+    assert (psycho.name, psycho.parent) == ("Psychothriller", "FIC031000")
     assert GENRES.name("FIC031080") == "Psychothriller"
     assert GENRES.name("FIC999999") is None
 
@@ -35,8 +35,28 @@ def test_the_lineage_runs_from_subgenre_to_genre() -> None:
 def test_an_extension_is_marked_and_named() -> None:
     regional = GENRES.get("DE-REGIONALKRIMI")
 
-    assert regional.extension and regional.bisac is None
+    assert regional.extension
     assert regional.parent == "FIC022000"
+
+
+def test_the_list_carries_no_bisac_headings() -> None:
+    """Codes zu benutzen gibt BISG ausdrücklich frei, ihre Bezeichnungen
+    weiterzugeben nicht, auch nicht in Teilen (#119). Die Liste trägt Code und
+    eigenen deutschen Namen; wer die englische Bezeichnung braucht, schlägt sie
+    bei BISG nach."""
+    from pathlib import Path
+
+    import yaml
+
+    text = (Path(__file__).resolve().parents[1] / "docs" / "genres.yaml").read_text(
+        encoding="utf-8")
+
+    def keys(entries):
+        for entry in entries:
+            yield from entry
+            yield from keys(entry.get("untergenres") or ())
+
+    assert "bisac" not in set(keys(yaml.safe_load(text)["genres"]))
 
 
 def test_every_bisac_code_has_the_bisac_shape() -> None:
