@@ -285,7 +285,8 @@ Code.
 > Dimensionen, zweimal ein zu langer Pitch, einmal mit 264 Zeichen). Sonnet
 > brauchte 148 statt 123 Sekunden je Bündel und senkt die Verstöße nur noch um
 > den einen; **Haiku bleibt der Standard**, Sonnet ist eine Einstellung
-> (`rating_model`). Die Gewichte verteilen sich brauchbar: rund ein Drittel der
+> (`rating_model`). *Abgelöst durch ADR 44 (31.10.2026): gemessen an der
+> Streuung beschreibt jetzt Sonnet, Haiku ist die Einstellung.* Die Gewichte verteilen sich brauchbar: rund ein Drittel der
 > Merkmale ist prägend, im Schnitt zwei je Buch.
 
 
