@@ -37,6 +37,13 @@
     {% endif %}
   </div>
 
+  {% if fit.series_note %}
+  {# Die Reihe, die sie mag (ADR 45): sie hält den Band über der Schwelle —
+     die Prozente bleiben die gerechneten, und das steht dabei. #}
+  <p class="mt-1 text-sm text-soft" data-series-note>{{ fit.series_note }}{% if fit.lifted %}
+    — deshalb mindestens {{ fit.stars }} Sterne{% endif %}</p>
+  {% endif %}
+
   {% if fit.pitch %}
   <p class="mt-2 max-w-prose text-base leading-relaxed text-ink text-pretty" data-pitch>{{ fit.pitch }}</p>
   {% endif %}

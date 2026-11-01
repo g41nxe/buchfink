@@ -81,6 +81,21 @@ class CatalogMixin(ObservationsMixin):
             ).all()
         return [(isbn, title, author) for isbn, title, author in rows]
 
+    def same_world(self, series_items: Iterable[str]) -> dict[str, str]:
+        """ISBN -> Reihe bei Wikidata, für Werke dieser Reihen ohne Band:
+        dieselbe Welt, keine Fortsetzung (ADR 45)."""
+        items = set(series_items)
+        if not items:
+            return {}
+        with self.session() as session:
+            rows = session.execute(
+                select(WikidataRecordRow.isbn, WikidataRecordRow.series_item).where(
+                    WikidataRecordRow.series_item.in_(items),
+                    WikidataRecordRow.volume.is_(None),
+                )
+            ).tuples()
+            return {isbn: item for isbn, item in rows if item}
+
     def save_wikidata(self, isbn: str, author: str | None, membership, now: datetime) -> None:
         """Die Antwort festhalten; ein Band mit Nummer wird Teil der Reihe."""
         with self.session() as session:

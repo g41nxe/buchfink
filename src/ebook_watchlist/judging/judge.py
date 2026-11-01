@@ -11,7 +11,8 @@ Modellaufruf auf alles.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING
 
 import yaml
 
@@ -22,6 +23,9 @@ from .facets import ReadingProfile, Reason, Weights, load_weights
 from .portrait import Portrait, Vocabulary, VocabularyError, fingerprint, load_vocabulary
 from .ratings import book_subject
 from .taste_form import RatedBook, TasteForm, book_terms, learn, overlap
+
+if TYPE_CHECKING:
+    from ..catalog.series import LikedSeries
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +42,12 @@ class Verdict:
     #: So nah an der Schwelle, dass ein anderer Steckbrief das Buch auf die
     #: andere Seite legen könnte (#81).
     borderline: bool = False
+    #: Was die Reihe zum Buch sagt: „Fortsetzung von …", „spielt in der Welt
+    #: von …" (ADR 45).
+    series_note: str | None = None
+    #: Die Sterne stehen auf der Untergrenze der gemochten Reihe, nicht auf
+    #: der Rechnung; die Prozente sind die gerechneten.
+    lifted: bool = False
 
     def withholds(self, threshold: int) -> bool:
         return self.stars < threshold
@@ -57,7 +67,8 @@ class Verdict:
         if self.by_reader:
             return "deine Sterne"
         head = f"{self.percent} %"
-        return f"{head} — {', '.join(self.marks)}" if self.marks else head
+        marks = ((self.series_note,) if self.series_note else ()) + self.marks
+        return f"{head} — {', '.join(marks)}" if marks else head
 
     @property
     def text(self) -> str:
@@ -99,6 +110,21 @@ def judge(
     )
 
 
+def with_series(verdict: Verdict, note: tuple[str, bool] | None, threshold: int) -> Verdict:
+    """Die Reihe ins Urteil (ADR 45).
+
+    Ein Band einer gemochten Reihe fällt nie unter die Schwelle; liegt die
+    Rechnung höher, gilt sie. Ein Buch derselben Welt bekommt nur den
+    Vermerk. Die eigenen Sterne der Leserin bleiben, wie sie sind.
+    """
+    if note is None or verdict.by_reader:
+        return verdict
+    text, floor = note
+    lifted = floor and verdict.stars < threshold
+    return replace(verdict, stars=threshold if lifted else verdict.stars,
+                   series_note=text, lifted=lifted)
+
+
 def readers_verdict(stars: int) -> Verdict:
     """Die eigenen Sterne der Leserin: eine Tatsache, sie gehen der Rechnung vor."""
     return Verdict(stars=stars, by_reader=True)
@@ -122,17 +148,24 @@ class Judge:
     slug: str = ""
     #: Die Geschmacksform, aus Profil und bewerteten Büchern gelernt.
     form: TasteForm | None = None
+    #: Die Reihen, die sie mag: ihre Bände fallen nie unter die Schwelle.
+    liked: LikedSeries | None = None
 
     @property
     def threshold(self) -> int:
         """Ab wie vielen Sternen das Tor durchlässt."""
         return self.weights.gate_stars
 
-    def verdict(self, portrait: Portrait | None) -> Verdict | None:
-        return judge(portrait, self.profile, self.vocabulary, self.weights, self.form)
+    def verdict(self, portrait: Portrait | None, isbn: str | None = None) -> Verdict | None:
+        """Mit ``isbn`` gilt die Untergrenze einer gemochten Reihe (ADR 45)."""
+        found = judge(portrait, self.profile, self.vocabulary, self.weights, self.form)
+        if found is None or self.liked is None:
+            return found
+        return with_series(found, self.liked.note(isbn), self.threshold)
 
     def verdict_among(
-        self, portraits: Mapping[str, Portrait], subjects: Sequence[str]
+        self, portraits: Mapping[str, Portrait], subjects: Sequence[str],
+        isbn: str | None = None,
     ) -> Verdict | None:
         """Das Urteil nach dem ersten Schlüssel, zu dem es einen Steckbrief gibt.
 
@@ -141,7 +174,7 @@ class Judge:
         """
         for subject in subjects:
             if subject in portraits:
-                return self.verdict(portraits[subject])
+                return self.verdict(portraits[subject], isbn)
         return None
 
     def portraits(self, store: Store, subjects) -> dict[str, Portrait]:
@@ -166,7 +199,9 @@ def load_judge(store: Store, slug: str) -> Judge | None:
     stamp = fingerprint(vocabulary)
     rated = rated_books(store, slug, vocabulary, weights, stamp)
     form = learn(profile, rated, vocabulary, weights)
-    return Judge(profile, vocabulary, weights, stamp, slug, form)
+    from ..catalog.series import liked_series
+
+    return Judge(profile, vocabulary, weights, stamp, slug, form, liked_series(store, slug))
 
 
 def rated_books(

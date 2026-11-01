@@ -110,6 +110,8 @@ class Suggestion:
     described: bool = False
     #: Zu welcher Reihe der Fund gehört, als welcher Band (#85).
     series: SeriesOf | None = None
+    #: Was eine gemochte Reihe zu ihm sagt: „Fortsetzung von …" (ADR 45).
+    series_note: str | None = None
     #: Was eine Sammelausgabe enthält, und was sie zu jedem Band gesagt hat (ADR 38).
     contains: tuple[ContainedVolume, ...] = ()
     #: Andere Ausgaben desselben Werks im Stapel, als „Titel (Sprache, Quelle)“
@@ -332,6 +334,7 @@ def _suggestion(
         from_list=is_library_list(observation, kinds),
         borderline=bool(verdict and verdict.borderline),
         described=described,
+        series_note=verdict.series_note if verdict else None,
     )
 
 
@@ -506,7 +509,7 @@ def pending(
         # Aufgabe. Ein Fund **ohne** Urteil bleibt — "noch nicht beurteilt" ist
         # etwas anderes als "passt nicht".
         subject = subject_of(observation)
-        verdict = judge.verdict(portraits.get(subject)) if judge else None
+        verdict = judge.verdict(portraits.get(subject), observation.isbn) if judge else None
         if verdict is not None and verdict.withholds(judge.threshold):
             hidden["weak"].add(subject_of(observation))
             continue

@@ -22,6 +22,7 @@ from filelock import FileLock, Timeout
 from . import first_start, gate, notify, paths
 from .catalog import series_watch
 from .catalog.bundle_deal import advantage_finder
+from .catalog.series import liked_series
 from .cleaning import clean_blurb
 from .config import (
     ConfigError,
@@ -526,6 +527,7 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
         budget=settings.rating_budget,
         now=now,
         form=form,
+        liked=liked_series(store, settings.slug),
         evidence=(
             lambda observations: gather_evidence(store, settings, observations, sources)
         )

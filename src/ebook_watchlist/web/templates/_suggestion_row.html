@@ -29,6 +29,10 @@
     {% endif %}
     {% from "_contains.html" import contains %}
     {{ contains(item.contains, tag="span", extra="basis-full text-xs") }}
+    {% if item.series_note %}
+    {# Warum ein schwacher Band trotzdem dasteht: die Reihe, die sie mag (ADR 45). #}
+    <span class="basis-full text-xs text-soft" data-series-note>{{ item.series_note }}</span>
+    {% endif %}
     {% endset %}
 
     {% set under_author %}

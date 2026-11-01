@@ -552,7 +552,8 @@ def entries(
             for link in sources.get(book.id, ())
         )
         subjects = _portrait_subjects(book, latest.get(book.id, ()))
-        verdict = judge.verdict_among(portraits, subjects) if judge is not None else None
+        verdict = (judge.verdict_among(portraits, subjects, book.isbn)
+                   if judge is not None else None)
         described = any(subject in portraits for subject in subjects)
         rows.append(
             Entry(

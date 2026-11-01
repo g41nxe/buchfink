@@ -1199,3 +1199,22 @@ def test_a_bundle_on_the_pile_names_its_volumes(client: TestClient, db: Store) -
 
     assert "Enthält" in page
     assert "Rotkehlchen</span> (im Besitz)" in page.replace("\n", "")
+
+
+@needs_vocabulary
+def test_a_volume_of_a_liked_series_is_not_held_back(client: TestClient, db: Store) -> None:
+    """Ein Band einer gemochten Reihe fällt nie unter die Schwelle (ADR 45, #121);
+    die Zeile sagt, warum er dasteht."""
+    liked = db.find_or_create_book(isbn="9783000000011", title="Kriegsklingen",
+                                   author="Joe Abercrombie", now=NOW)
+    db.put_relation(load_settings().slug, liked.id, str(RelationKind.LIKED), now=NOW)
+    db.assign_series("9783000000011", "Klingen-Saga", "Joe Abercrombie", "1")
+    db.assign_series("9783000000012", "Klingen-Saga", "Joe Abercrombie", "2")
+    weak = found(db, title="Feuerklingen", author="Joe Abercrombie", isbn="9783000000012")
+    verdict(db, weak, stars=2, pitch="Nur Genre-Nähe.")
+
+    pile = view.pending(db, load_settings())
+
+    assert [(i.title, i.stars) for i in pile.items] == [("Feuerklingen", 3)]
+    assert pile.hidden_weak == 0
+    assert "Fortsetzung von „Kriegsklingen“" in client.get("/suggestions").text

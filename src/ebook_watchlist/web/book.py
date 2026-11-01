@@ -346,6 +346,9 @@ class FitView:
     borderline: bool = False
     #: Was das Buch ist, in einem Satz — oben auf der Seite, vor allem Warum (#110).
     pitch: str | None = None
+    #: Was eine gemochte Reihe zum Buch sagt, und ob sie die Sterne hebt (ADR 45).
+    series_note: str | None = None
+    lifted: bool = False
 
     @property
     def for_names(self) -> tuple[str, ...]:
@@ -375,7 +378,9 @@ def one_sentence(text: str | None, limit: int = PITCH_CHARS) -> str | None:
     return cut + "…"
 
 
-def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView | None:
+def _fit_view(
+    store: Store, settings: Settings, portrait: Portrait, isbn: str | None = None
+) -> FitView | None:
     """Ohne Profil in der Datenbank wird nicht geurteilt (ADR 33, Punkt 8).
 
     Über ``load_judge``, damit die Buchseite mit derselben Geschmacksform
@@ -384,7 +389,7 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
     judge = load_judge(store, settings.slug)
     if judge is None:
         return None
-    verdict = judge.verdict(portrait)
+    verdict = judge.verdict(portrait, isbn)
     if verdict is None or verdict.percent is None:
         return None
     spiders = (
@@ -406,6 +411,8 @@ def _fit_view(store: Store, settings: Settings, portrait: Portrait) -> FitView |
         comparison=compare(portrait, judge),
         borderline=verdict.borderline,
         pitch=one_sentence(portrait.pitch),
+        series_note=verdict.series_note,
+        lifted=verdict.lifted,
     )
 
 
@@ -739,7 +746,7 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
         stored = _stored_portrait(store, book, fingerprint(vocabulary))
         if stored is not None:
             portrait = _portrait_view(stored, vocabulary, book)
-            fit_view = _fit_view(store, settings, stored)
+            fit_view = _fit_view(store, settings, stored, book.isbn)
             portrait_retry = worth_asking_again(stored, text_now=bool(book.blurb))
 
     series = series_watch.view(store, settings.slug, book.isbn)

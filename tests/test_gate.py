@@ -597,3 +597,22 @@ def test_a_run_that_cannot_judge_counts_books_not_finds() -> None:
     bibliothek = discovery(isbn="9783104911854", source="onleihe", source_item_id="9")
 
     assert gate.unrated_report([first_seen(shop), first_seen(bibliothek)]).unrated == 1
+
+
+def test_a_volume_of_a_liked_series_passes_however_poor_the_fit(
+    store, vocabulary, weights
+) -> None:
+    """Die Untergrenze (ADR 45): ein Band einer gemochten Reihe erreicht den
+    Stapel, und der Tagesbericht nennt die Reihe als Grund."""
+    from ebook_watchlist.catalog.series import LikedSeries
+
+    found = discovery(isbn="9783104911854")
+    liked = LikedSeries({"9783104911854": ("Fortsetzung von „Kriegsklingen“", True)})
+
+    kept, report = run(store, vocabulary, weights, [first_seen(found)],
+                       Portrayer(vocabulary, POOR), liked=liked)
+
+    assert len(kept) == 1 and report.held_back == 0
+    verdict = report.judgements[found.key]
+    assert verdict.stars == weights.gate_stars and verdict.lifted
+    assert "Fortsetzung von „Kriegsklingen“" in verdict.why

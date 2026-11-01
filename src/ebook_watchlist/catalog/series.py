@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 from ..cleaning import author_key
 from ..matching.normalize import named_volume, volume_of
 from ..models import MatchReason, Observation
-from ..relations import InterestKey
+from ..relations import InterestKey, RelationKind
 
 if TYPE_CHECKING:
     from ..store import Store
@@ -206,3 +206,74 @@ def mid_series_finder(store: Store, profile_slug: str) -> Callable[[Observation]
     )
     return MidSeries(known=store.series_known(), names=store.series_names(),
                      authors=authors, followed=followed)
+
+
+@dataclass(frozen=True, slots=True)
+class LikedSeries:
+    """Die Reihen, die sie mag, und was das für ein Buch heißt (ADR 45).
+
+    Gemocht ist eine Reihe, wenn ein Band *Mag ich* trägt oder sie die Reihe
+    beobachtet; *Hab ich* allein zählt nicht, ein *Doof* an einem Band hebt
+    sie auf. Ein Band einer gemochten Reihe fällt nie unter die Schwelle des
+    Stapels; ein Buch derselben Welt bekommt nur den Hinweis.
+    """
+
+    #: ISBN -> (Vermerk, ob er die Untergrenze trägt).
+    notes: Mapping[str, tuple[str, bool]]
+
+    def note(self, isbn: str | None) -> tuple[str, bool] | None:
+        return self.notes.get(isbn) if isbn else None
+
+
+def _number(volume: str | None) -> float:
+    try:
+        return float(volume) if volume else float("inf")
+    except ValueError:
+        return float("inf")
+
+
+def liked_series(store: Store, profile_slug: str) -> LikedSeries:
+    """Einmal gelesen, für das ganze Tor oder die ganze Seite."""
+
+    def marked(kind: RelationKind) -> dict[str, str]:
+        relations = store.relations(profile_slug, kind=str(kind))
+        books = store.books_by_id([r.book_id for r in relations])
+        return {b.isbn: b.title for b in books.values() if b.isbn}
+
+    known = store.series_known()
+    liked, disliked = marked(RelationKind.LIKED), marked(RelationKind.DISLIKED)
+    # Je Reihe der früheste gemochte Band: „Fortsetzung von …" nennt ihn.
+    favourites: dict[int, tuple[float, str]] = {}
+    for isbn, title in liked.items():
+        if isbn in known:
+            series_id, volume = known[isbn]
+            entry = (_number(volume), title)
+            favourites[series_id] = min(favourites.get(series_id, entry), entry)
+    spoiled = {known[isbn][0] for isbn in disliked if isbn in known}
+    ids = (set(favourites) | store.watched_series(profile_slug)) - spoiled
+    rows = {series_id: store.series_row(series_id) for series_id in ids}
+
+    notes: dict[str, tuple[str, bool]] = {}
+    for isbn, (series_id, volume) in known.items():
+        if series_id not in ids or isbn in liked:
+            continue
+        if series_id in favourites:
+            number, title = favourites[series_id]
+            text = (f"Fortsetzung von „{title}“" if _number(volume) > number
+                    else f"aus derselben Reihe wie „{title}“")
+        else:
+            row = rows[series_id]
+            text = f"aus der Reihe {row.name if row else 'die'}, die du beobachtest"
+        notes[isbn] = (text, True)
+
+    refs = {row.wikidata_ref: series_id for series_id, row in rows.items()
+            if row is not None and row.wikidata_ref}
+    for isbn, ref in store.same_world(refs).items():
+        if isbn in notes or isbn in liked:
+            continue
+        series_id = refs[ref]
+        row = rows[series_id]
+        name = (f"„{favourites[series_id][1]}“" if series_id in favourites
+                else (row.name if row else "der Reihe"))
+        notes[isbn] = (f"spielt in der Welt von {name}", False)
+    return LikedSeries(notes)

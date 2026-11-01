@@ -16,15 +16,19 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from .judging.facets import ReadingProfile, Weights
-from .judging.judge import Verdict, judge, readers_verdict
+from .judging.judge import Verdict, judge, readers_verdict, with_series
 from .judging.portrait import Portrait, PortrayalUnavailable, Vocabulary, fingerprint
 from .judging.ratings import BY_READER, book_subject, subject_of
 from .judging.taste_form import TasteForm
 from .junk import is_short_story
 from .models import Delta, DeltaKind, MatchReason, Observation
 from .store import Store
+
+if TYPE_CHECKING:
+    from .catalog.series import LikedSeries
 
 
 @dataclass(slots=True)
@@ -124,6 +128,7 @@ def apply(
     now: datetime,
     evidence: Callable[[list[Observation]], list[Observation]] | None = None,
     form: TasteForm | None = None,
+    liked: LikedSeries | None = None,
 ) -> tuple[list[Delta], GateReport]:
     """Entdeckungen unter dem Schwellwert aussortieren.
 
@@ -138,7 +143,8 @@ def apply(
     Steckbrief kostet nichts und zählt nicht mit.
 
     ``form`` ist die Geschmacksform aus Profil und bewerteten Büchern; ohne
-    sie wird aus dem Profil allein geurteilt.
+    sie wird aus dem Profil allein geurteilt. ``liked`` sind die Reihen, die
+    sie mag: ihre Bände fallen nie unter die Schwelle (ADR 45).
 
     ``evidence`` holt den ganzen Klappentext für genau die Bücher, die
     gleich beschrieben werden: die Kachel einer Trefferliste ist im Median
@@ -241,6 +247,8 @@ def apply(
             if portrait is None and delta.kind is not DeltaKind.FIRST_SEEN:
                 portrait = store.portrait(subject_of(observation), stamp)
             verdict = judge(portrait, profile, vocabulary, weights, form)
+            if verdict is not None and liked is not None:
+                verdict = with_series(verdict, liked.note(observation.isbn), threshold)
 
         if verdict is None:
             # Ein Bibliotheksfund, der zuerst verliehen war, kommt als
