@@ -508,20 +508,23 @@ def _apply_gate(store: Store, deltas, settings: Settings, now: datetime, sources
             file=sys.stderr,
         )
     if portrayer is not None:
-        reworked = _rework_flawed(
-            store, settings, portrayer, vocabulary,
-            settings.rating_budget - report.rated, now, sources,
-        )
-        if reworked:
-            print(f"Bewertungstor: {reworked} Steckbriefe mit Regelverstößen neu beschrieben",
-                  file=sys.stderr)
-        offered = describe_offers(
-            store, settings,
-            budget=settings.rating_budget - report.rated - reworked, now=now,
-            portrayer=portrayer,
-        )
+        # Was das Tor übrig lässt, in dieser Reihenfolge: Angebote der
+        # Watchlist (höchstens so viele, wie die Startseite zeigt), dann der
+        # Rückstand ohne Urteil, zuletzt Steckbriefe mit Regelverstößen.
+        left = settings.rating_budget - report.rated
+        offered = describe_offers(store, settings, budget=left, now=now, portrayer=portrayer)
         if offered:
             print(f"Bewertungstor: {offered} Angebote der Watchlist beschrieben",
+                  file=sys.stderr)
+        left -= offered
+        caught_up = _describe_backlog(store, settings, portrayer, left, now, sources)
+        if caught_up:
+            print(f"Bewertungstor: {caught_up} liegengebliebene Funde beschrieben",
+                  file=sys.stderr)
+        left -= caught_up
+        reworked = _rework_flawed(store, settings, portrayer, vocabulary, left, now, sources)
+        if reworked:
+            print(f"Bewertungstor: {reworked} Steckbriefe mit Regelverstößen neu beschrieben",
                   file=sys.stderr)
     # ``getattr``: nicht jeder Ersteller führt Buch über seine Gründe.
     if trouble := getattr(portrayer, "trouble", None):
@@ -558,6 +561,65 @@ def describe_offers(store: Store, settings: Settings, *, budget: int, now: datet
         if not describe(store, settings, entry.book_id, now=now):
             described += 1
     return described
+
+
+def backlog(store: Store, settings: Settings, judge) -> list[Observation]:
+    """Funde im Stapel ohne Steckbrief zum heutigen Vokabular — der Rückstand.
+
+    Der ganze Stapel, nicht die erste Seite: er ist bestbewertet-zuerst
+    sortiert, Unbeschriebenes steht hinten. Wer kürzt, kürzt deshalb erst
+    **nach** dem Aussortieren — sonst bekäme er genau die Bücher, die schon
+    einen Steckbrief haben, und nie die offenen. Ein Steckbrief zu einem
+    *älteren* Vokabular gilt nicht mehr und zählt als fehlend (ADR 33).
+    """
+    from .judging.ratings import subject_of
+    from .web import triage
+
+    pile = triage.pending(store, settings, limit=10_000).items
+    keys = {item.key for item in pile}
+    finds = [
+        observation
+        for observation in store.latest_discoveries(settings.slug)
+        if f"{observation.source}:{observation.source_item_id}" in keys
+    ]
+    portraits = judge.portraits(store, [subject_of(o) for o in finds])
+    return [o for o in finds if subject_of(o) not in portraits]
+
+
+def _describe_backlog(store: Store, settings: Settings, portrayer, budget: int,
+                      now: datetime, sources=()) -> int:
+    """Den Rückstand mit dem Budget beschreiben, das der Lauf übrig lässt.
+
+    Das Tor sieht nur Erstsichtungen. Kamen an einem Tag mehr Funde herein,
+    als das Budget beschrieb, blieben die übrigen für immer ohne Urteil —
+    `ebw rate` holte sie nach, lief aber nie von selbst (66 von 182 im
+    Stapel, 01.11.2026). Vor der Nacharbeit (`_rework_flawed`): ein Fund ohne
+    Urteil wiegt schwerer als einer mit einem Regelverstoß.
+    """
+    from .judging.judge import load_judge
+    from .judging.ratings import subject_of
+
+    if budget <= 0:
+        return 0
+    judge = load_judge(store, settings.slug)
+    if judge is None:
+        return 0
+    chosen = backlog(store, settings, judge)[:budget]
+    if not chosen:
+        return 0
+    if sources:
+        chosen = gather_evidence(store, settings, chosen, sources)
+    try:
+        described = portrayer.portray_finds(chosen)
+    except PortrayalUnavailable:
+        return 0
+    written = 0
+    for observation in chosen:
+        portrait = described.get(observation.key)
+        if portrait is not None:
+            store.put_portrait(subject_of(observation), portrait, now=now)
+            written += 1
+    return written
 
 
 def _rework_flawed(store: Store, settings: Settings, portrayer, vocabulary, budget: int,
@@ -902,7 +964,6 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
     """
     from .judging.judge import load_judge
     from .judging.ratings import subject_of
-    from .web import triage
 
     store = Store(paths.db_path())
     judge = load_judge(store, settings.slug)
@@ -922,24 +983,7 @@ def _rate(settings: Settings, how_many: int, sources, client: HttpClient) -> int
         )
         return EXIT_CONFIG_ERROR
 
-    # Der ganze Stapel, nicht die erste Seite: er ist bestbewertet-zuerst
-    # sortiert, Unbeschriebenes steht hinten. Auf ``how_many`` gekürzt wird
-    # deshalb erst **nach** dem Aussortieren — sonst bekäme dieser Weg genau
-    # die Bücher, die schon einen Steckbrief haben, und nie die offenen.
-    pile = triage.pending(store, settings, limit=10_000).items
-    keys = {item.key for item in pile}
-    finds = [
-        observation
-        for observation in store.latest_discoveries(settings.slug)
-        if f"{observation.source}:{observation.source_item_id}" in keys
-    ]
-
-    # Ein Steckbrief zum heutigen Vokabular steht: ihn noch einmal zu holen
-    # kostet eine Detailseite und einen Modellaufruf für dieselbe Antwort. Ein
-    # Steckbrief zu einem *älteren* Vokabular gilt nicht mehr und wird neu
-    # angelegt (ADR 33).
-    portraits = judge.portraits(store, [subject_of(o) for o in finds])
-    finds = [o for o in finds if subject_of(o) not in portraits]
+    finds = backlog(store, settings, judge)
     if not finds:
         print("Nichts offen — jeder Vorschlag im Stapel hat einen Steckbrief.")
         _fetch_suggestion_covers(store, settings, client)

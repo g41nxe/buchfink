@@ -904,3 +904,48 @@ def test_watchlist_only_does_not_mark_the_extended_sweep_done(data_dir: Path) ->
     assert main(["--watchlist"]) == EXIT_OK
 
     assert store.get_state(load_settings().slug, run_module.EXTENDED_SWEEP_KEY) is None
+
+
+@needs_vocabulary
+def test_the_backlog_gets_what_the_budget_leaves(data_dir: Path) -> None:
+    """Kamen an einem Tag mehr Funde herein, als das Budget beschrieb, blieben
+    die übrigen für immer ohne Urteil: der Lauf beschrieb nur Erstsichtungen,
+    und `ebw rate` lief nie (66 von 182 im Stapel, 01.11.2026). Jetzt holt jeder
+    Lauf mit dem übrigen Budget nach — nur, was keinen Steckbrief hat."""
+    from dataclasses import replace
+
+    from ebook_watchlist import run as run_module
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.judging.portrait import load_vocabulary
+    from ebook_watchlist.judging.ratings import subject_of
+    from ebook_watchlist.models import MatchReason, Observation
+
+    store, settings = Store(paths.db_path()), load_settings()
+    _profile(store)
+    vocabulary = load_vocabulary()
+    now = datetime(2026, 11, 1, 12, 0)
+    finds = [
+        Observation(source="beam", source_item_id=n, title=f"Fund {n}", isbn=f"97830000000{n}",
+                    blurb="Ein Klappentext.", price_cents=299,
+                    match_reason=MatchReason.GENRE_CATEGORY, observed_at=now)
+        for n in ("1", "2", "3")
+    ]
+    store.append(store.start_run(settings.slug, "cli", now), settings.slug, finds, now)
+    described = _portraits(vocabulary, {f.title: ("brooding", "gritty") for f in finds})
+    store.put_portrait(subject_of(finds[0]), replace(described(finds[0]), with_text=True),
+                       now=now)
+
+    asked: list[str] = []
+
+    def portray_finds(observations, batch=False):
+        asked.extend(o.title for o in observations)
+        return {o.key: replace(described(o), with_text=True) for o in observations}
+
+    portrayer = SimpleNamespace(portray_finds=portray_finds)
+    later = now.replace(hour=13)
+
+    assert run_module._describe_backlog(store, settings, portrayer, 1, later) == 1
+    assert run_module._describe_backlog(store, settings, portrayer, 5, later) == 1
+    assert sorted(asked) == ["Fund 2", "Fund 3"]
+    assert run_module._describe_backlog(store, settings, portrayer, 5, later) == 0
+    assert run_module._describe_backlog(store, settings, portrayer, 0, later) == 0
