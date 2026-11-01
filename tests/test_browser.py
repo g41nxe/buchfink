@@ -113,7 +113,25 @@ def _no_sideways_scroll(page) -> None:
                 .slice(0, 3)
                 .map(el => `${el.tagName}.${el.className}: ${el.textContent.trim().slice(0, 80)}`);
         }""")
-        raise AssertionError(f"die Seite ragt {overflow} px seitlich heraus — {culprits}")
+        # Nennt der Filter oben niemanden (in CI 6 px ohne Täter, seit dem
+        # 29.10.2026), helfen die Breiten und wer selbst seitlich scrollt.
+        widths = page.evaluate("""() => {
+            const edge = document.documentElement.clientWidth;
+            const wide = [...document.querySelectorAll('body *')]
+                .filter(el => el.scrollWidth > el.clientWidth + 1
+                              && getComputedStyle(el).overflowX !== 'visible')
+                .slice(0, 3).map(el => `${el.tagName}.${el.className}`);
+            const far = [...document.querySelectorAll('body *')]
+                .map(el => [Math.round(el.getBoundingClientRect().right), el])
+                .sort((a, b) => b[0] - a[0]).slice(0, 3)
+                .map(([right, el]) =>
+                     `${right}: ${el.tagName}.${String(el.className).slice(0, 60)}`);
+            return {edge, html: document.documentElement.scrollWidth,
+                    body: document.body.scrollWidth, wide, far};
+        }""")
+        raise AssertionError(
+            f"die Seite ragt {overflow} px seitlich heraus — {culprits} — {widths}"
+        )
 
 
 def _one_line(buttons) -> None:
@@ -283,3 +301,28 @@ def test_a_double_click_decides_only_one_find(server: str, browser) -> None:
 
     assert page.locator("li", has_text="Das zweite Buch").count() >= 1
     context.close()
+
+
+def test_a_new_title_whose_portrait_failed_stays_inside_the_page(
+    server: str, page, monkeypatch
+) -> None:
+    """Nach dem Anlegen startet ein Steckbrief-Auftrag. In CI gibt es kein
+    Modell, er scheitert sofort, und der Hammer zeigt seinen Fehler in einer
+    breiten Blase — die Seite ragte dann 6 px seitlich heraus, lokal nie, weil
+    der Auftrag dort beim Messen noch lief (01.11.2026)."""
+    from ebook_watchlist.single import Report
+    from ebook_watchlist.web import book, recheck
+
+    monkeypatch.setattr(recheck, "check_one", lambda book_id: Report())
+    monkeypatch.setattr(book, "portray", lambda *a, **k: "Kein Modell im Test")
+    page.goto(server + "/watchlist")
+    form = page.locator("form[action='/watchlist/add']")
+    form.locator("input[name=title]").fill("Kugelblitz")
+    if form.locator("input[name=author]").count():
+        form.locator("input[name=author]").fill("Cixin Liu")
+    form.locator("button[type=submit]").click()
+    page.locator("text=Kugelblitz").first.wait_for()
+    page.wait_for_timeout(1500)
+    page.reload()
+    page.locator("button.border-danger").first.wait_for()
+    _no_sideways_scroll(page)
