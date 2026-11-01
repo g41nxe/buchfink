@@ -114,3 +114,26 @@ def test_a_watchlist_title_stays_whatever_its_isbn_says(db: Store) -> None:
     assert not is_foreign(
         discovery("9786155522017", MatchReason.WATCHLIST), load_settings(), language_finder(db)
     )
+
+
+def test_a_find_the_shop_shelves_as_foreign_is_foreign(db: Store) -> None:
+    """beam sortiert die Glagoslav-Ausgaben unter „Fremdsprachige Romane“; ihre
+    ISBN-Gruppe 978-94 steht in keiner Tabelle, und die DNB kennt sie nicht.
+    Schweigen alle anderen, gilt die Einordnung des Shops (01.11.2026)."""
+    from dataclasses import replace
+
+    find = replace(discovery("9789491425479"),
+                   url="https://www.beam-shop.de/belletristik/fremdsprachige-romane/1019771/metro-2034")
+
+    assert is_foreign(find, load_settings(), language_finder(db))
+
+
+def test_the_dnb_outranks_the_shelf(db: Store) -> None:
+    """Hatte die DNB das Buch in der Hand und sagt deutsch, gilt das."""
+    from dataclasses import replace
+
+    db.save_dnb("9789491425479", Record(title="Ein Buch", language="ger"), NOW)
+    find = replace(discovery("9789491425479"),
+                   url="https://www.beam-shop.de/belletristik/fremdsprachige-romane/1019771/x")
+
+    assert not is_foreign(find, load_settings(), language_finder(db))

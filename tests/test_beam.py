@@ -322,3 +322,45 @@ def test_a_bundle_page_has_a_cover_too() -> None:
 def test_the_detail_page_carries_the_page_count() -> None:
     """Der Umfang, für das Erkennen von Kurzgeschichten (#73)."""
     assert beam_detail("product-detail.html").pages == 800
+
+
+def _tile(product_id: str, isbn: str, author: str, path: str) -> parse.Tile:
+    return parse.Tile(
+        product_id=product_id, order_number=f"SW{isbn}450914", title="Metro 2033",
+        author=author, price_cents=999,
+        url=f"https://www.beam-shop.de/belletristik/{path}/{product_id}/metro-2033",
+    )
+
+
+def test_a_watchlist_title_takes_the_edition_in_her_language_first() -> None:
+    """*Metro 2033* steht bei beam zweimal unter demselben Titel: bei Heyne
+    unter Science Fiction und als Glagoslav-Ausgabe unter „fremdsprachige
+    Romane“. Zwei gleiche Treffer machten die Zuordnung unsicher, bei *Metro
+    2034* gewann die fremdsprachige (01.11.2026). Erst die Ausgaben, die der
+    Shop nicht als fremdsprachig einsortiert, wie die Lesesprachen bei OverDrive
+    (ADR 42)."""
+    beam = source(fixture("search-no-results.html"))
+    beam.search = lambda query: [  # type: ignore[method-assign]
+        _tile("1014408", "9789491425400", "Dmitry Glukhovsky", "fremdsprachige-romane"),
+        _tile("389205", "9783641025571", "Glukhovsky, Dmitry",
+              "science-fiction/science-fiction-allgemein"),
+    ]
+
+    resolution = beam.resolve(WatchlistEntry(title="Metro 2033", author="Dmitry Glukhovsky"))
+
+    assert resolution is not None and resolution.accepted is not None, resolution
+    assert "/389205/" in resolution.accepted.payload
+
+
+def test_only_a_foreign_edition_is_still_found() -> None:
+    """Gibt es keine andere, bleibt die fremdsprachige Ausgabe ein Treffer —
+    was sie selbst auf die Liste setzt, darf auch fremdsprachig sein."""
+    beam = source(fixture("search-no-results.html"))
+    beam.search = lambda query: [  # type: ignore[method-assign]
+        _tile("1014408", "9789491425400", "Dmitry Glukhovsky", "fremdsprachige-romane"),
+    ]
+
+    resolution = beam.resolve(WatchlistEntry(title="Metro 2033", author="Dmitry Glukhovsky"))
+
+    assert resolution is not None and resolution.accepted is not None
+    assert "/1014408/" in resolution.accepted.payload

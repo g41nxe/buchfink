@@ -9,6 +9,11 @@ from __future__ import annotations
 
 BASE = "https://www.beam-shop.de/"
 SEARCH_PATH = "search"
+#: Wo beam fremdsprachige Ausgaben einsortiert („Fremdsprachige Romane“). Die
+#: Sprache steht nirgends als Feld; der Pfad der Produktseite ist das einzige
+#: Zeichen, und die ISBN-Gruppe schweigt oft (978-94 bei Glagoslav, 01.11.2026).
+#: Dieselbe Stelle prüft ``language.shelved_as_foreign`` für den Stapel.
+FOREIGN_PATH = "/fremdsprachige-"
 AUTHOR_HUB_PATH = "autor-innenwelt/{slug}/"
 #: The way to a product page when a product id is all we have. The speaking
 #: address carries the category path and the slug, and a bare number says

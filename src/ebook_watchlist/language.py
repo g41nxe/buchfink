@@ -112,6 +112,16 @@ def language_of_isbn(isbn: str) -> str | None:
     return GROUP_LANGUAGES.get(rest[:1]) or GROUP_LANGUAGES.get(rest[:3])
 
 
+#: Wo ein Shop eine Ausgabe selbst als fremdsprachig einsortiert, erkennbar am
+#: Pfad ihrer Produktseite: beam („Fremdsprachige Romane“).
+FOREIGN_SHELVES = ("/fremdsprachige-",)
+
+
+def shelved_as_foreign(url: str | None) -> bool:
+    """Ob die Produktseite in einem fremdsprachigen Regal des Shops steht."""
+    return bool(url) and any(shelf in url for shelf in FOREIGN_SHELVES)
+
+
 def language_finder(store: Store) -> LanguageOf:
     """Einmal gelesen, fuer den ganzen Lauf oder die ganze Seite."""
     languages = store.dnb_languages()
@@ -128,9 +138,16 @@ def is_foreign(observation: Observation, settings: Settings, language_of: Langua
     Ein Watchlist-Titel ist nie fremd: was die Leserin selbst auf die Liste
     setzt, bleibt dort, in welcher Sprache auch immer.
     """
-    if observation.match_reason is MatchReason.WATCHLIST or not observation.isbn:
+    if observation.match_reason is MatchReason.WATCHLIST:
         return False
-    language = language_of(observation.isbn)
+    language = language_of(observation.isbn) if observation.isbn else None
+    if language is None and shelved_as_foreign(observation.url):
+        # Kennt die DNB das Buch nicht, gilt die Einordnung des Shops vor der
+        # ISBN-Gruppe: die Glagoslav-Ausgaben bei beam tragen 978-94, das in
+        # keiner Tabelle steht (01.11.2026).
+        return True
+    if not observation.isbn:
+        return False
     if language is None:
         # Nur wo die DNB den Titel gar nicht kennt, spricht die Nummer selbst
         # (#32). Sagt die DNB "unbestimmt" oder "mehrsprachig", hat sie das

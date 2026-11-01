@@ -85,9 +85,10 @@ class BeamSource(ShopSource):
         # loest keinen offenen Titel — sie entsteht erst aus einer gelungenen
         # Zuordnung —, aber sie deckt Widersprueche auf: zwei verschiedene
         # ISBNs heisst zwei verschiedene Buecher (Ticket 36).
-        resolution = match(
-            Query(title=entry.title, author=entry.author, identifier=entry.isbn),
-            [
+        query = Query(title=entry.title, author=entry.author, identifier=entry.isbn)
+
+        def candidates(chosen: list[parse.Tile]) -> list[Candidate]:
+            return [
                 Candidate(
                     title=tile.title,
                     author=tile.author,
@@ -95,10 +96,20 @@ class BeamSource(ShopSource):
                     cover_url=tile.cover_url,
                     payload=tile.url,
                 )
-                for tile in tiles
-            ],
-        )
-        return resolution
+                for tile in chosen
+            ]
+
+        # Erst die Ausgaben, die beam nicht als fremdsprachig einsortiert — wie
+        # die Lesesprachen bei OverDrive (ADR 42). Sonst stand *Metro 2033*
+        # zweimal gleich gut da, und bei *Metro 2034* gewann die Ausgabe aus
+        # „Fremdsprachige Romane“ (01.11.2026). Gibt es nur sie, bleibt sie ein
+        # Treffer.
+        own = [tile for tile in tiles if sel.FOREIGN_PATH not in tile.url]
+        if own and len(own) < len(tiles):
+            resolution = match(query, candidates(own))
+            if resolution.accepted is not None:
+                return resolution
+        return match(query, candidates(tiles))
 
     # --- author discovery (ticket 06) --------------------------------------
 
