@@ -1028,6 +1028,23 @@ def create_app() -> FastAPI:
             rechecker.start(book_id)
         return RedirectResponse(f"/book/{book_id}", status_code=303)
 
+    @app.post("/book/{book_id}/series")
+    def book_series(
+        book_id: int, name: str = Form(""), volume: str = Form("")
+    ) -> RedirectResponse:
+        """Die Reihe dieses Buchs von Hand setzen oder zurücknehmen (ADR 45).
+
+        Je ISBN wie jede Herkunft; ein Buch ohne ISBN bekommt das Formular
+        nicht, und hier ändert sich dann nichts.
+        """
+        store = _store_for(paths.db_path())
+        book_row = store.book(book_id)
+        if book_row is None:
+            raise HTTPException(status_code=404, detail="kein solches Buch")
+        if book_row.isbn:
+            store.assign_series(book_row.isbn, name, book_row.author, volume)
+        return RedirectResponse(f"/book/{book_id}", status_code=303)
+
     @app.post("/book/{book_id}/recheck")
     def book_recheck(request: Request, book_id: int) -> HTMLResponse:
         """Diesen einen Eintrag jetzt pruefen — von seiner eigenen Seite aus.

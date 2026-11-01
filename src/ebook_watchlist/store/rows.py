@@ -347,7 +347,9 @@ class SeriesEntry:
 #: Wer bei Band und Reihe einer ISBN vorgeht: die DNB spricht über genau diese
 #: ISBN, OverDrive vielleicht über das Werk (ADR 35). Der Titel zuletzt
 #: (ADR 38), und eine Sammelausgabe erbt von ihren Bänden.
-SERIES_ORIGINS = ("dnb", "overdrive", "onleihe", "title", "bundle")
+#: Die Zuordnung von Hand (ADR 45): ihre Angabe geht jeder Quelle vor.
+READER_ORIGIN = "reader"
+SERIES_ORIGINS = (READER_ORIGIN, "dnb", "overdrive", "onleihe", "title", "bundle")
 
 
 class BookSourceRow(Base):
@@ -811,7 +813,9 @@ def _file_series(
     named = session.get(SeriesNameRow, (key, writer)) or _unknown_author_name(
         session, key, writer
     )
-    elsewhere = session.scalars(
+    # Ihre Angabe führt nichts zusammen: gerade wo sie einer Quelle
+    # widerspricht, darf ihre Reihe nicht mit deren verschmelzen (ADR 45).
+    elsewhere = None if origin == READER_ORIGIN else session.scalars(
         select(SeriesEntryRow.series_id).where(
             SeriesEntryRow.isbn == isbn, SeriesEntryRow.origin != origin
         )
@@ -838,7 +842,8 @@ def _file_series(
         session.add(SeriesEntryRow(isbn=isbn, origin=origin, series_id=series_id, volume=volume))
     else:
         entry.series_id = series_id
-        entry.volume = volume or entry.volume
+        # Von Hand gilt genau, was sie schreibt — auch ein gelöschter Band.
+        entry.volume = volume if origin == READER_ORIGIN else (volume or entry.volume)
     if ref and origin in ("overdrive", "onleihe"):
         setattr(session.get(SeriesRow, series_id), f"{origin}_ref", ref)
 

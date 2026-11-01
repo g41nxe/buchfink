@@ -569,6 +569,12 @@ class Page:
         return tuple(odd)
     #: Die Reihe aus der Zuordnung je ISBN, mit dem Knopf zum Beobachten (#85).
     series_view: SeriesView | None = None
+    #: Die Reihen derselben Autor:in — Vorschläge für die Zuordnung von Hand
+    #: (ADR 45).
+    series_choices: tuple[str, ...] = ()
+    #: Was gerade gilt, zum Vorbelegen des Formulars.
+    series_name: str | None = None
+    series_volume: str | None = None
 
 
 def _words(text: str) -> set[str]:
@@ -737,12 +743,16 @@ def build(store: Store, settings: Settings, book_id: int) -> Page | None:
             portrait_retry = worth_asking_again(stored, text_now=bool(book.blurb))
 
     series = series_watch.view(store, settings.slug, book.isbn)
+    named = store.series_of([book.isbn]).get(book.isbn) if book.isbn else None
     return Page(
         book_id=book.id,
         title=book.title,
         author=book.author,
         series=series.label if series else _series_label(book.series, book.series_index),
         series_view=series,
+        series_choices=tuple(store.series_names_by(book.author)),
+        series_name=named.name if named else None,
+        series_volume=named.volume if named else None,
         isbn=book.isbn,
         cover_file=book.cover_file,
         relations=relations,

@@ -140,3 +140,65 @@ def test_the_owned_list_names_series_and_volume(client: TestClient, db: Store) -
     db.put_relation(load_settings().slug, book.id, str(RelationKind.OWNED), now=NOW)
 
     assert "Red Rising Saga · Band 2" in client.get("/owned").text
+
+
+# --- Reihe von Hand (ADR 45) ---------------------------------------------------
+
+
+def klingen(db: Store) -> int:
+    """Ein Buch ohne Reihe: keine Quelle nennt eine (Kriegsklingen, 01.11.2026)."""
+    return watch_book(db, "9783641068813", "Kriegsklingen")
+
+
+def test_a_book_without_a_series_can_be_given_one_by_hand(
+    client: TestClient, db: Store
+) -> None:
+    book_id = klingen(db)
+
+    page = client.get(f"/book/{book_id}").text
+    assert f'action="/book/{book_id}/series"' in page
+    assert "Reihe zuordnen" in page
+
+    after = client.post(f"/book/{book_id}/series",
+                        data={"name": "Klingen-Saga", "volume": "1"}).text
+
+    assert "Klingen-Saga · Band 1" in after
+    assert "Reihe beobachten" in after
+
+
+def test_her_series_outranks_a_source_and_is_not_merged_with_it(
+    client: TestClient, db: Store
+) -> None:
+    """Gerade wo sie einer Quelle widerspricht, darf ihre Reihe nicht mit der
+    der Quelle verschmolzen werden — sie steht nur vorn (ADR 45)."""
+    series_id = red_rising(db)
+    book_id = watch_book(db, "9783000000101", "Red Rising")
+
+    after = client.post(f"/book/{book_id}/series",
+                        data={"name": "Mars-Saga", "volume": "1"}).text
+
+    assert "Mars-Saga · Band 1" in after
+    assert len(db.series_rows()) == 2
+    assert db.series_row(series_id) is not None
+
+
+def test_the_series_of_the_same_author_are_offered(client: TestClient, db: Store) -> None:
+    red_rising(db)
+    book_id = db.find_or_create_book(isbn="9783000000999", title="Light Bringer",
+                                     author="Pierce Brown", now=NOW).id
+
+    page = client.get(f"/book/{book_id}").text
+
+    options = page.split("<datalist", 1)[1].split("</datalist>", 1)[0]
+    assert 'value="Red Rising Saga"' in options
+
+
+def test_an_empty_name_takes_her_series_back(client: TestClient, db: Store) -> None:
+    red_rising(db)
+    book_id = watch_book(db, "9783000000101", "Red Rising")
+    client.post(f"/book/{book_id}/series", data={"name": "Mars-Saga", "volume": "1"})
+
+    after = client.post(f"/book/{book_id}/series", data={"name": "", "volume": ""}).text
+
+    assert "Mars-Saga" not in after.split("<datalist", 1)[0]
+    assert "Red Rising Saga · Band 1" in after

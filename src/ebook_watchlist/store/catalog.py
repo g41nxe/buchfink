@@ -31,6 +31,7 @@ from .observations import ObservationsMixin
 from .rows import (
     BISAC_ORIGINS,
     DNB_READING,
+    READER_ORIGIN,
     SERIES_ORIGINS,
     BisacEntryRow,
     BookRelationRow,
@@ -503,6 +504,34 @@ class CatalogMixin(ObservationsMixin):
                     _file_series(session, obs.isbn, obs.series, obs.author,
                                  obs.series_index, obs.source, obs.series_ref)
             session.commit()
+
+    def assign_series(
+        self, isbn: str, name: str, author: str | None, volume: str | None
+    ) -> None:
+        """Die Reihe von Hand setzen — oder mit leerem Namen zurücknehmen (ADR 45).
+
+        Sie geht jeder Quelle vor, führt aber nichts zusammen; was die Quellen
+        sagen, bleibt gespeichert und gilt wieder, sobald sie ihre Angabe
+        zurücknimmt.
+        """
+        with self.session() as session:
+            if not name.strip():
+                entry = session.get(SeriesEntryRow, (isbn, READER_ORIGIN))
+                if entry is not None:
+                    session.delete(entry)
+            else:
+                _file_series(session, isbn, name.strip(), author,
+                             (volume or "").strip() or None, READER_ORIGIN)
+            session.commit()
+
+    def series_names_by(self, author: str | None) -> list[str]:
+        """Die Namen der Reihen, die diese Autor:in schreibt — als Vorschlag."""
+        if not author:
+            return []
+        with self.session() as session:
+            return sorted(set(session.scalars(
+                select(SeriesRow.name).where(SeriesRow.author_key == author_key(author))
+            )), key=str.casefold)
 
     def series_rows(self) -> list[SeriesRow]:
         with self.session() as session:

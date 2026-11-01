@@ -145,6 +145,47 @@
   </form>
 </details>
 
+{# Die Reihe von Hand (ADR 45): wo keine Quelle eine nennt — oder eine falsche.
+   Je ISBN wie jede Herkunft, darum nur mit ISBN. Vorschläge sind die Reihen
+   derselben Autor:in, damit aus „Klingen-Saga“ nicht eine zweite wird. #}
+{% if page.isbn %}
+<details id="series-by-hand" class="mt-1">
+  <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded py-1
+                  text-xs text-soft hover:text-ink hover:underline underline-offset-2">
+    <span class="when-closed inline-flex items-center gap-1.5">
+      <svg class="i"><use href="#ic-link"/></svg>{{ 'Reihe ändern' if page.series_name
+                                                     else 'Reihe zuordnen' }}</span>
+    <span class="when-open inline-flex items-center gap-1.5">
+      <svg class="i"><use href="#ic-x"/></svg>Abbrechen</span>
+  </summary>
+  <form method="post" action="/book/{{ page.book_id }}/series"
+        class="mt-2 flex flex-wrap items-end gap-3 rounded-lg border border-rule
+               bg-card p-4">
+    <label class="flex w-full flex-col gap-1 sm:w-auto">
+      <span class="text-xs font-medium text-soft">Reihe</span>
+      <input name="name" autocomplete="off" list="series-choices"
+             value="{{ page.series_name or '' }}"
+             class="w-full sm:w-56 rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
+                    outline-none focus:border-accent">
+      <datalist id="series-choices">
+        {% for choice in page.series_choices %}<option value="{{ choice }}">{% endfor %}
+      </datalist>
+    </label>
+    <label class="flex w-24 flex-col gap-1">
+      <span class="text-xs font-medium text-soft">Band</span>
+      <input name="volume" autocomplete="off" value="{{ page.series_volume or '' }}"
+             class="w-full rounded border border-field-border bg-field h-9 px-2 text-sm text-ink
+                    outline-none focus:border-accent">
+    </label>
+    <button type="submit"
+            class="tap rounded border border-action-edge bg-action tap inline-flex h-9 items-center justify-center px-3 text-sm
+                   font-medium text-on-action hover:bg-action-hover">Speichern</button>
+    <p class="w-full text-xs text-soft">
+      Deine Angabe geht jeder Quelle vor. Leer gespeichert, gilt wieder, was die Quellen sagen.</p>
+  </form>
+</details>
+{% endif %}
+
 {# Die erste Frage der Seite, wie auf der Fundseite: was sagst du dazu?
    Sie stand bisher unter dem Preisverlauf, also hinter allem, was das
    Werkzeug zu sagen hat. #}
