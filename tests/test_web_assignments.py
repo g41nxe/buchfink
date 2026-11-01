@@ -319,3 +319,49 @@ def test_while_something_is_open_the_filter_holds(client: TestClient, db: Store)
     )
 
     assert response.headers["location"] == "/watchlist?only=unsure"
+
+
+def test_the_chosen_edition_replaces_a_cover_from_another_one(
+    client: TestClient, db: Store, data_dir: Path
+) -> None:
+    """Ein Buch behielt das Bild mit den meisten Bildpunkten, gleich aus welcher
+    Ausgabe: bei *Metro 2034* blieb das Cover der falsch zugeordneten
+    niederländischen hängen (01.11.2026). Wer eine Ausgabe wählt, wählt ihr Bild."""
+    from ebook_watchlist.covers import CoverStore, file_name
+
+    settings = load_settings()
+    image = "https://beam.invalid/heyne.jpg"
+    covers = CoverStore(paths.covers_dir())
+    covers.directory.mkdir(parents=True, exist_ok=True)
+    covers.path(file_name(image)).write_bytes(b"x" * 5000)
+
+    book = db.find_or_create_book(isbn=None, title="Metro 2034", author="Glukhovsky", now=NOW)
+    db.set_cover(book.id, "von-der-falschen-ausgabe.jpg")
+    db.put_relation(settings.slug, book.id, str(RelationKind.WATCHING), now=NOW)
+    db.put_book_source(
+        book.id, "beam", outcome=str(LinkOutcome.UNSURE), url=None, resolved_at=NOW,
+        reason="unklar",
+        candidates=[{"title": "Metro 2034", "author": "Glukhovsky",
+                     "url": "https://beam.invalid/389732", "cover_url": image}],
+    )
+
+    client.post(
+        f"/watchlist/{book.id}/assign",
+        data={"source": "beam", "url": "https://beam.invalid/389732", "action": "confirm"},
+    )
+
+    after = db.book(book.id)
+    assert after is not None and after.cover_file == file_name(image)
+
+
+def test_renaming_forgets_the_cover_of_the_old_assignment(client: TestClient, db: Store) -> None:
+    """Das Bild gehörte zu den Zuordnungen, die das Umbenennen verwirft; die
+    Suche danach holt ein neues."""
+    book = db.find_or_create_book(isbn=None, title="Metro 2034",
+                                  author="Dmitri Alexejewitsch Gluchowski", now=NOW)
+    db.set_cover(book.id, "von-der-falschen-ausgabe.jpg")
+
+    assert db.rename_book(book.id, title="Metro 2034", author="Dmitry Glukhovsky")
+
+    after = db.book(book.id)
+    assert after is not None and after.cover_file is None

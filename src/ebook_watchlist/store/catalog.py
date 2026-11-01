@@ -976,7 +976,9 @@ class CatalogMixin(ObservationsMixin):
 
         Die Zuordnungen fallen dabei weg — sie galten fuer den alten Titel und
         waeren danach eine Behauptung ueber etwas anderes. Damit sucht der
-        naechste Lauf neu, und genau das ist der Zweck der Uebung.
+        naechste Lauf neu, und genau das ist der Zweck der Uebung. Mit ihnen
+        faellt das Titelbild: es kam von einer dieser Zuordnungen, und das
+        groessere Bild gewinnt sonst fuer immer (*Metro 2034*, 01.11.2026).
         """
         blank = title.strip()
         if not blank:
@@ -990,6 +992,7 @@ class CatalogMixin(ObservationsMixin):
             row.title = blank
             if author is not None:
                 row.author = author.strip() or None
+            row.cover_file = None
             session.execute(
                 delete(BookSourceRow).where(BookSourceRow.book_id == book_id)
             )

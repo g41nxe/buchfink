@@ -172,11 +172,12 @@ def confirm(store: Store, book_id: int, source: str, url: str, now) -> None:
         # auf der Kachel als englisch gekennzeichnet (#77).
         **({"language": chosen["language"]} if chosen and chosen.get("language") else {}),
     )
-    book = store.book(book_id)
-    if book is not None and not book.cover_file and chosen:
-        cover = _cover_file(chosen.get("cover_url"))
-        if cover:
-            store.set_cover(book_id, cover)
+    # Auch über ein vorhandenes Bild hinweg: das gehörte vielleicht zu einer
+    # falsch zugeordneten Ausgabe und blieb nur, weil es größer war (*Metro
+    # 2034*, 01.11.2026). Wer eine Ausgabe wählt, wählt ihr Bild.
+    cover = _cover_file(chosen.get("cover_url")) if chosen else None
+    if cover:
+        store.set_cover(book_id, cover)
 
 
 def reject_all(store: Store, book_id: int, source: str, now) -> None:
