@@ -26,7 +26,9 @@ ohne den Code zu lesen.
   ihn — dann bleiben Läufe und Steckbriefe liegen). Die statischen
   Dateien vorher einmal mit `uv run python -m ebook_watchlist.web.build` bauen.
 - Projekteigene Skills liegen in `.agents/skills/` (`buch-bewerten` ruft
-  `ebw judge` auf; der Code urteilt, der Skill liest vor).
+  `ebw judge` auf; der Code urteilt, der Skill liest vor;
+  `stimmungsbild-und-zeichen` legt Stimmungsbilder und Familienzeichen über
+  Gemini im Browser an, die Ergebnisse bleiben lokal).
 
 ## Agent skills
 
