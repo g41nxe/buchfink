@@ -39,6 +39,7 @@ from .models import Observation
 from .sources import build_sources
 from .sources.base import RunContext
 from .store import ENTRY_TRIGGER, Store
+from .wikidata import Wikidata
 
 #: Wie lange ein enger Lauf auf einen großen wartet, bevor er aufgibt.
 #: Gemessen an sechzehn Läufen: Median 135 s, längster 395 s. Zehn Minuten
@@ -79,6 +80,23 @@ def _entry_for(book_id: int, store: Store, settings: Settings) -> WatchlistEntry
         if (entry.title.strip().casefold(), (entry.author or "").strip().casefold()) == wanted:
             return entry
     return None
+
+
+def _ask_wikidata(store: Store, client: HttpClient, book_id: int, now: datetime) -> None:
+    """Reihe und Band bei Wikidata, für dieses eine Buch (ADR 45).
+
+    Anders als im großen Lauf auch dann, wenn schon einmal gefragt wurde: wer
+    von Hand neu prüft, will den heutigen Stand, und Wikidata wächst. Eine
+    Frage je Prüfung; ein Ausfall kostet die Reihe, nicht die Prüfung.
+    """
+    book = store.book(book_id)
+    if book is None or not book.isbn:
+        return
+    try:
+        membership = Wikidata(client=client).membership(book.title, book.author)
+    except Exception:  # noqa: BLE001 - eine Auskunft, nicht die Prüfung
+        return
+    store.save_wikidata(book.isbn, book.author, membership, now)
 
 
 def check_one(book_id: int, *, now: datetime | None = None) -> Report:
@@ -147,6 +165,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
         for observation in found:
             if observation.book_id and observation.isbn:
                 store.learn_isbn(observation.book_id, observation.isbn)
+        _ask_wikidata(store, client, book_id, now)
         # Erst die Geschichte, dann das Beiwerk — dieselbe Reihenfolge wie im
         # Rundgang. Vorher holte der enge Lauf gar kein Bild, und ein Buch, das
         # ueber "Jetzt pruefen" hereinkam, stand bis zum naechsten Rundgang

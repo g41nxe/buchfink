@@ -46,3 +46,43 @@ def test_the_narrow_run_learns_the_isbn_of_a_book_entered_by_title(
 
     found = store.book(book.id)
     assert found is not None and found.isbn == "9783641164744"
+
+
+def test_the_narrow_run_asks_wikidata_for_the_series(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Wer von Hand neu prüft, will auch die Reihe wissen — nicht erst nach
+    dem nächsten großen Lauf (ADR 45). Eine Frage je Prüfung."""
+    from ebook_watchlist.wikidata import Membership
+
+    store = Store(paths.db_path())
+    book = store.find_or_create_book(isbn="9783641068806", title="Feuerklingen",
+                                     author="Joe Abercrombie", now=NOW)
+    monkeypatch.setattr(single, "_entry_for", lambda *a, **k: WatchlistEntry(
+        title="Feuerklingen", author="Joe Abercrombie", isbn="9783641068806"))
+
+    class Source:
+        name = "beam"
+
+        def watch(self, entries, context):
+            return []
+
+    asked: list[tuple[str, str | None]] = []
+
+    class FakeWikidata:
+        def __init__(self, client):
+            pass
+
+        def membership(self, title, author):
+            asked.append((title, author))
+            return Membership("Q2", "Q9", "Klingenwelt", "2")
+
+    monkeypatch.setattr(single, "build_sources", lambda settings, client: [Source()])
+    monkeypatch.setattr(single, "fetch_for_candidates", lambda *a, **k: None)
+    monkeypatch.setattr(single, "Wikidata", FakeWikidata)
+
+    single.check_one(book.id, now=NOW)
+
+    assert asked == [("Feuerklingen", "Joe Abercrombie")]
+    named = store.series_of(["9783641068806"])["9783641068806"]
+    assert (named.name, named.volume) == ("Klingenwelt", "2")
