@@ -211,6 +211,15 @@
                 {% else %}Sammelausgabe{% endif %}</span>
               {% endif %}
             </span>
+            {# Gleicher Titel, gleiches Bild — unterscheiden lässt sich das oft
+               nur bei der Quelle (Metro 2033 bei beam, 01.11.2026). Ein
+               neuer Tab, damit die Auswahl hier stehen bleibt. #}
+            {% if candidate.url %}
+            <a href="{{ candidate.url }}" target="_blank" rel="noopener noreferrer"
+               class="mt-0.5 inline-flex items-center gap-0.5 text-xs text-accent
+                      underline decoration-accent/30 underline-offset-2 hover:decoration-accent"
+               >ansehen<svg class="i text-[0.85em] opacity-70"><use href="#ic-extern"/></svg></a>
+            {% endif %}
           </label>
           {% endfor %}
         </div>

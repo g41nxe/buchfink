@@ -69,6 +69,20 @@ def test_every_candidate_is_offered_not_just_the_winner(client: TestClient, db: 
     assert body.count('class="pick"') == 2
 
 
+def test_every_candidate_links_to_its_page_at_the_source(client: TestClient, db: Store) -> None:
+    """Zwei gleiche Titel mit gleichem Bild ließen sich nicht unterscheiden,
+    ohne bei der Quelle nachzusehen (Metro 2033 bei beam, 01.11.2026). Der
+    Link öffnet einen neuen Tab, damit die Auswahl stehen bleibt."""
+    unsure(db, ("Metro 2033", "https://beam.invalid/389205"),
+           ("Metro 2033", "https://beam.invalid/1014408"))
+
+    body = client.get("/watchlist?only=unsure").text
+
+    for url in ("https://beam.invalid/389205", "https://beam.invalid/1014408"):
+        link = body.split(f'href="{url}"', 1)[1].split(">", 1)[0]
+        assert 'target="_blank"' in link and "noopener" in link
+
+
 def test_confirming_says_a_human_decided(client: TestClient, db: Store) -> None:
     """`confirmed` statt `linked` — das ist der ganze Unterschied (ADR 9)."""
     book_id = unsure(db, ("Red Rising", "https://beam.invalid/1"))
