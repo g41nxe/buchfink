@@ -228,12 +228,34 @@ trailing „-Reihe", „-Thriller", „ermittelt" and the like — „Die
 Cormoran-Strike-Reihe" is `cormoran strike`. Two names a Source gives for the
 same ISBN are the same series. Membership is kept per ISBN with its
 **volume** (*Band*: text, „2", „6.1", „Sonderband") and where it came from; the
-DNB outranks OverDrive, OverDrive the Onleihe, all of them the title. The title
+reader outranks everything, then the DNB, Wikidata, OverDrive, the Onleihe,
+and last the title (ADR 45). The reader assigns a book to a series on its work
+page when no Source names one; Wikidata is asked once per book, matched by
+German title and author. The title
 is a witness in two fixed forms only (ADR 38): a subtitle ending in „Name n" or
 „Name Band n" („Bobby Dollar 3"), or a title „Name. Band n" („Otherland. Band
 2"); a bare number („Die Hexenholzkrone 1") is a split volume, not a series.
 A Bundle inherits the series of the volumes it contains. A series
-can be watched: its volumes then stand on the Watchlist (see Watchlist Entry).
+can be watched: its volumes then stand on the Watchlist (see Watchlist Entry),
+including the volumes Wikidata names that have a German title.
+
+### Liked Series
+*deutsch: gemochte Reihe*
+
+A Series of which the reader likes a volume (*Mag ich*) or which she watches;
+owning a volume alone does not count (ADR 45). A volume of a liked series never
+falls below the Pile's threshold (3★): a higher verdict of its own stands, and
+the reasons name the series. A single *Doof* on a volume lifts this floor for
+the whole series, without a penalty for the other volumes.
+
+### Series World
+*deutsch: Welt*
+
+The setting several Series share — „Klingenwelt" holds the First-Law trilogy as
+well as *Racheklingen* and *Heldenklingen*; the Metro-2033 universe holds books
+by many authors. Known from Wikidata. A book of the same world but another
+series gets no floor from a Liked Series, only the note „spielt in der …", and
+watching a series never brings in its world (ADR 45).
 
 ### Bundle
 *deutsch: Sammelausgabe*
