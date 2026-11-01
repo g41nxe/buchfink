@@ -86,3 +86,42 @@ def test_the_narrow_run_asks_wikidata_for_the_series(
     assert asked == [("Feuerklingen", "Joe Abercrombie")]
     named = store.series_of(["9783641068806"])["9783641068806"]
     assert (named.name, named.volume) == ("Klingenwelt", "2")
+
+
+def test_the_narrow_run_asks_the_library_for_the_series(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """*Friedensklingen*: weder beam noch Onleihe noch Wikidata nennen die
+    Reihe, die DNB schon — „Die Klingen-Romane“, Band 9. Gefragt wurde sie
+    bisher nur im großen Lauf (01.11.2026)."""
+    from ebook_watchlist.dnb import Record
+
+    store = Store(paths.db_path())
+    book = store.find_or_create_book(isbn="9783641164744", title="Friedensklingen",
+                                     author="Joe Abercrombie", now=NOW)
+    monkeypatch.setattr(single, "_entry_for", lambda *a, **k: WatchlistEntry(
+        title="Friedensklingen", author="Joe Abercrombie", isbn="9783641164744"))
+
+    class Source:
+        name = "beam"
+
+        def watch(self, entries, context):
+            return []
+
+    class FakeDnb:
+        def __init__(self, client):
+            pass
+
+        def about(self, isbn):
+            return Record(title="Friedensklingen - Die Klingen-Saga", author="Abercrombie, Joe",
+                          series="Die Klingen-Romane", series_index="9",
+                          original_title="The Trouble with Peace")
+
+    monkeypatch.setattr(single, "build_sources", lambda settings, client: [Source()])
+    monkeypatch.setattr(single, "fetch_for_candidates", lambda *a, **k: None)
+    monkeypatch.setattr(single, "Dnb", FakeDnb)
+
+    single.check_one(book.id, now=NOW)
+
+    named = store.series_of(["9783641164744"])["9783641164744"]
+    assert (named.name, named.volume) == ("Die Klingen-Romane", "9")

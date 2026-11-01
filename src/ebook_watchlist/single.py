@@ -82,6 +82,25 @@ def _entry_for(book_id: int, store: Store, settings: Settings) -> WatchlistEntry
     return None
 
 
+def _ask_the_library(store: Store, client: HttpClient, book_id: int, now: datetime) -> None:
+    """Die DNB zu diesem einen Buch, frisch (Ticket 42, ADR 45).
+
+    Sie kennt Reihen, die keine Quelle nennt: *Friedensklingen* ist bei ihr
+    Band 9 der „Klingen-Romane“, beam schreibt die Reihe nur ohne Nummer in
+    den Titel (01.11.2026). Im großen Lauf wird jede ISBN einmal gefragt,
+    mit Budget; wer von Hand neu prüft, will den heutigen Stand. Eine Frage
+    je Prüfung, ein Ausfall kostet die Auskunft, nicht die Prüfung.
+    """
+    book = store.book(book_id)
+    if book is None or not book.isbn:
+        return
+    try:
+        record = Dnb(client=client).about(book.isbn)
+    except Exception:  # noqa: BLE001 - eine Auskunft, nicht die Prüfung
+        return
+    store.save_dnb(book.isbn, record, now)
+
+
 def _ask_wikidata(store: Store, client: HttpClient, book_id: int, now: datetime) -> None:
     """Reihe und Band bei Wikidata, für dieses eine Buch (ADR 45).
 
@@ -165,6 +184,7 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
         for observation in found:
             if observation.book_id and observation.isbn:
                 store.learn_isbn(observation.book_id, observation.isbn)
+        _ask_the_library(store, client, book_id, now)
         _ask_wikidata(store, client, book_id, now)
         # Erst die Geschichte, dann das Beiwerk — dieselbe Reihenfolge wie im
         # Rundgang. Vorher holte der enge Lauf gar kein Bild, und ein Buch, das
