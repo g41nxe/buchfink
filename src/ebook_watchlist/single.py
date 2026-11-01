@@ -140,6 +140,13 @@ def check_one(book_id: int, *, now: datetime | None = None) -> Report:
                 # Shop-Preis.
                 stumbles.append(f"{source.name}: {type(exc).__name__}")
         store.append(run_id, settings.slug, found, now)
+        # Die ISBN, die der Eintrag aus Titel und Autor:in nicht mitbrachte,
+        # wie im Rundgang (``run.py``): ohne sie fehlten einem gerade
+        # aufgenommenen Band Reihe, Wikidata und „Reihe von Hand“, bis der
+        # nächste große Lauf kam (Klingen-Saga, 01.11.2026).
+        for observation in found:
+            if observation.book_id and observation.isbn:
+                store.learn_isbn(observation.book_id, observation.isbn)
         # Erst die Geschichte, dann das Beiwerk — dieselbe Reihenfolge wie im
         # Rundgang. Vorher holte der enge Lauf gar kein Bild, und ein Buch, das
         # ueber "Jetzt pruefen" hereinkam, stand bis zum naechsten Rundgang
