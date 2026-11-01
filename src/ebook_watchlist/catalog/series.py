@@ -220,6 +220,9 @@ class LikedSeries:
 
     #: ISBN -> (Vermerk, ob er die Untergrenze trägt).
     notes: Mapping[str, tuple[str, bool]]
+    #: Wer diese Reihen schreibt (``author_key``): ihre Funde fragt der Lauf
+    #: bei Wikidata nach Reihe und Band.
+    authors: frozenset[str] = frozenset()
 
     def note(self, isbn: str | None) -> tuple[str, bool] | None:
         return self.notes.get(isbn) if isbn else None
@@ -276,4 +279,5 @@ def liked_series(store: Store, profile_slug: str) -> LikedSeries:
         name = (f"„{favourites[series_id][1]}“" if series_id in favourites
                 else (row.name if row else "der Reihe"))
         notes[isbn] = (f"spielt in der Welt von {name}", False)
-    return LikedSeries(notes)
+    authors = frozenset(row.author_key for row in rows.values() if row and row.author_key)
+    return LikedSeries(notes, authors)

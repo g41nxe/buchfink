@@ -11,6 +11,7 @@ password in front of it before exposing it anywhere else.
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import re
@@ -1233,6 +1234,26 @@ def create_app() -> FastAPI:
                 "run_in_progress": _run_in_progress(store, settings),
                 "editions": editions.build(store, settings, page.isbn),
             },
+        )
+
+    @app.post("/discovery/{source}/{item_id}/series", response_class=HTMLResponse)
+    def discovery_series(source: str, item_id: str, series_id: int = Form(...)) -> HTMLResponse:
+        """Einen Fund der Reihe zuordnen, deren Autor:in Beobachten folgt (ADR 45).
+
+        Der Knopf zu „vielleicht ein neuer Band der …“: von Hand, wie auf der
+        Buchseite; ohne Band, den kennt nur sie. Zurück kommt die Zeile, die
+        ihn ersetzt.
+        """
+        store = _store_for(paths.db_path())
+        settings = load_settings()
+        seen = store.observations_for_item(settings.slug, source, item_id, limit=1)
+        row = store.series_row(series_id)
+        if not seen or row is None or not seen[0].isbn:
+            raise HTTPException(status_code=404, detail="kein solcher Fund")
+        store.assign_series(seen[0].isbn, row.name, seen[0].author, None)
+        return HTMLResponse(
+            f'<span class="basis-full text-xs text-soft">als Band der {html.escape(row.name)} '
+            "zugeordnet</span>"
         )
 
     @app.post("/discovery/{source}/{item_id}/portrait")

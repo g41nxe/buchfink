@@ -33,6 +33,17 @@
     {# Warum ein schwacher Band trotzdem dasteht: die Reihe, die sie mag (ADR 45). #}
     <span class="basis-full text-xs text-soft" data-series-note>{{ item.series_note }}</span>
     {% endif %}
+    {% if item.maybe_series %}
+    {# Eine Reihe nur von Hand, beobachtet: ein neues Buch der Autor:in ist
+       vielleicht ihr nächster Band. Zugeordnet wird nur auf den Knopf (ADR 45). #}
+    <span class="basis-full text-xs text-soft" data-maybe-series>
+      vielleicht ein neuer Band der {{ item.maybe_series[1] }} ·
+      <button type="button" class="font-medium text-accent hover:underline underline-offset-2"
+              hx-post="/discovery/{{ item.source }}/{{ item.source_item_id }}/series"
+              hx-vals='{"series_id": "{{ item.maybe_series[0] }}"}'
+              hx-target="closest [data-maybe-series]" hx-swap="outerHTML"
+              onclick="event.stopPropagation()">zuordnen</button></span>
+    {% endif %}
     {% endset %}
 
     {% set under_author %}

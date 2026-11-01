@@ -92,3 +92,60 @@ def test_the_floor_lifts_a_weak_verdict_and_leaves_a_strong_one() -> None:
     assert (world.stars, world.lifted) == (1, False)
     assert "Fortsetzung von „Kriegsklingen“" in lifted.why
     assert with_series(weak, None, 3) is weak
+
+
+# --- ohne Bandliste folgt Beobachten der Autor:in -------------------------------
+
+
+def author_interests(db: Store) -> dict[str, dict]:
+    import json
+
+    from ebook_watchlist.relations import InterestKey
+
+    return {row.value: json.loads(row.details or "{}")
+            for row in db.interests("test", key=str(InterestKey.AUTHOR))}
+
+
+def test_watching_a_hand_made_series_follows_its_author(store: Store) -> None:
+    """Ohne Bandliste kennt niemand den nächsten Band — also wird nach der
+    Autor:in gesucht, als gewöhnliches Interesse: der erste Durchgang sät still
+    an, statt die ganze Backlist zu melden (ADR 45)."""
+    from ebook_watchlist.catalog import series_watch
+
+    series_id = saga(store)
+    series_watch.watch(store, "test", series_id, now=NOW)
+
+    assert author_interests(store) == {AUTHOR: {"series": series_id}}
+
+    series_watch.unwatch(store, "test", series_id, now=NOW)
+
+    assert author_interests(store) == {}
+
+
+def test_an_author_she_already_follows_is_left_alone(store: Store) -> None:
+    from ebook_watchlist.catalog import series_watch
+    from ebook_watchlist.relations import InterestKey
+
+    store.put_interest("test", str(InterestKey.AUTHOR), AUTHOR, now=NOW)
+    series_id = saga(store)
+    series_watch.watch(store, "test", series_id, now=NOW)
+    series_watch.unwatch(store, "test", series_id, now=NOW)
+
+    assert author_interests(store) == {AUTHOR: {}}
+
+
+def test_a_series_with_a_volume_list_needs_no_author(store: Store) -> None:
+    from ebook_watchlist.catalog import series_watch
+
+    store.find_or_create_book(isbn=SAGA[0][0], title="Kriegsklingen", author=AUTHOR, now=NOW)
+    store.save_wikidata(SAGA[0][0], AUTHOR, Membership("Q1", "Q9", "Klingenwelt", "1"), NOW)
+    series_id = store.series_of([SAGA[0][0]])[SAGA[0][0]].id
+    series_watch.watch(store, "test", series_id, now=NOW)
+
+    assert author_interests(store) == {}
+
+
+def test_the_authors_of_liked_series_are_known(store: Store) -> None:
+    saga(store, mark={"Kriegsklingen": RelationKind.LIKED})
+
+    assert liked_series(store, "test").authors == frozenset({"joe abercrombie"})

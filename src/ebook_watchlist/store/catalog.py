@@ -81,6 +81,43 @@ class CatalogMixin(ObservationsMixin):
             ).all()
         return [(isbn, title, author) for isbn, title, author in rows]
 
+    def finds_without_wikidata(
+        self, profile_slug: str, author_keys: Iterable[str], limit: int
+    ) -> list[tuple[str, str, str | None]]:
+        """(ISBN, Titel, Autor:in) der Funde dieser Autor:innen, die Wikidata
+        noch nie gefragt wurde — für die Autor:innen gemochter Reihen (ADR 45)."""
+        keys = set(author_keys)
+        if not keys or limit <= 0:
+            return []
+        with self.session() as session:
+            asked = select(WikidataRecordRow.isbn)
+            rows = session.execute(
+                select(ObservationRow.isbn, ObservationRow.title, ObservationRow.author)
+                .where(ObservationRow.profile_slug == profile_slug,
+                       ObservationRow.isbn.is_not(None), ObservationRow.author.is_not(None),
+                       ObservationRow.isbn.not_in(asked))
+                .order_by(ObservationRow.id.desc())
+            ).tuples()
+            out: dict[str, tuple[str, str, str | None]] = {}
+            for isbn, title, author in rows:
+                if isbn and isbn not in out and author and author_key(author) in keys:
+                    out[isbn] = (isbn, title, author)
+                    if len(out) >= limit:
+                        break
+        return list(out.values())
+
+    def hand_made_series(self, series_id: int) -> bool:
+        """Nur von Hand bekannt: keine Quelle nennt einen Band, Wikidata hat
+        keine Nummer — es gibt keine Bandliste (ADR 45)."""
+        with self.session() as session:
+            row = session.get(SeriesRow, series_id)
+            if row is None or row.wikidata_ref or row.overdrive_ref or row.onleihe_ref:
+                return False
+            origins = set(session.scalars(
+                select(SeriesEntryRow.origin).where(SeriesEntryRow.series_id == series_id)
+            ))
+        return origins == {READER_ORIGIN}
+
     def same_world(self, series_items: Iterable[str]) -> dict[str, str]:
         """ISBN -> Reihe bei Wikidata, für Werke dieser Reihen ohne Band:
         dieselbe Welt, keine Fortsetzung (ADR 45)."""

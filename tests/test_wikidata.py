@@ -213,3 +213,44 @@ def test_a_series_nobody_watches_is_not_asked(db: Store) -> None:
 
     assert series_watch.sweep_wikidata(db, "test", wikidata, now=NOW) == 0
     assert wikidata.asked == []
+
+
+def test_the_run_also_asks_about_finds_by_authors_of_liked_series(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Erst die eigenen Bücher, dann Funde von Autor:innen einer gemochten
+    Reihe — so wird ein neuer Band als Band erkannt (ADR 45)."""
+    from typing import cast
+
+    from ebook_watchlist import paths
+    from ebook_watchlist import run as run_module
+    from ebook_watchlist.config import load_settings
+    from ebook_watchlist.http import HttpClient
+    from ebook_watchlist.models import MatchReason, Observation
+    from ebook_watchlist.relations import RelationKind
+
+    store, settings = Store(paths.db_path()), load_settings()
+    book = store.find_or_create_book(isbn="9783641068811", title="Kriegsklingen",
+                                     author="Joe Abercrombie", now=NOW)
+    store.put_relation(settings.slug, book.id, str(RelationKind.LIKED), now=NOW)
+    store.assign_series("9783641068811", "Klingen-Saga", "Joe Abercrombie", "1")
+    finds = [Observation(source="beam", source_item_id=str(n), title=title, author=author,
+                         match_reason=MatchReason.GENRE_CATEGORY, isbn=isbn)
+             for n, (title, author, isbn) in enumerate((
+                 ("Feuerklingen", "Joe Abercrombie", "9783641068812"),
+                 ("Ein Fremder", "Jemand Anderes", "9783000000077")))]
+    store.append(store.start_run(settings.slug, "cli", NOW), settings.slug, finds, NOW)
+    asked: list[str] = []
+
+    class FakeWikidata:
+        def __init__(self, client):
+            pass
+
+        def membership(self, title, author):
+            asked.append(title)
+            return None
+
+    monkeypatch.setattr(run_module, "Wikidata", FakeWikidata)
+    run_module._ask_wikidata(store, cast(HttpClient, None), settings)
+
+    assert asked == ["Kriegsklingen", "Feuerklingen"]

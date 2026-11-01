@@ -20,14 +20,16 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 
 from .. import paths
+from ..cleaning import author_key
 from ..covers import CoverStore, file_name
 from ..junk import is_short_story
 from ..matching.normalize import normalize_title
 from ..models import MatchReason, Observation
-from ..relations import REMOVED, RelationKind
+from ..relations import REMOVED, InterestKey, RelationKind
 from ..store import Store
 
 WATCHING = str(RelationKind.WATCHING)
+AUTHOR = str(InterestKey.AUTHOR)
 #: Vermerk an einem Band, den „Nicht mehr beobachten" entfernt hat — nicht sie.
 SERIES_ENDED = "series_ended"
 
@@ -43,6 +45,8 @@ def watch(store: Store, profile_slug: str, series_id: int, *, now: datetime) -> 
     Gibt zurück, wie viele Bände dazukamen.
     """
     store.set_series_watch(profile_slug, series_id, active=True, now=now)
+    if store.hand_made_series(series_id):
+        _follow_author(store, profile_slug, series_id, now)
     return sum(
         _put_on_watchlist(store, profile_slug, series_id, isbn, title, author, now,
                           cover_url=cover_url, revive=True)
@@ -59,6 +63,10 @@ def unwatch(store: Store, profile_slug: str, series_id: int, *, now: datetime) -
     die Reihe entfernt (``SERIES_ENDED``), holt ein erneutes Beobachten zurück.
     """
     store.set_series_watch(profile_slug, series_id, active=False, now=now)
+    for row in store.interests(profile_slug, key=AUTHOR):
+        if json.loads(row.details or "{}").get("series") == series_id:
+            store.put_interest(profile_slug, AUTHOR, row.value, active=False, now=now,
+                               series=series_id)
     for relation in store.relations(profile_slug, kind=WATCHING, active_only=False):
         details = json.loads(relation.details or "{}")
         if details.get("series") != series_id:
@@ -68,6 +76,38 @@ def unwatch(store: Store, profile_slug: str, series_id: int, *, now: datetime) -
         store.set_relation_details(profile_slug, relation.book_id, WATCHING,
                                    {**details, REMOVED: True, SERIES_ENDED: True}, now=now)
         store.deactivate_relation(profile_slug, relation.book_id, WATCHING, now=now)
+
+
+def _follow_author(store: Store, profile_slug: str, series_id: int, now: datetime) -> None:
+    """Ohne Bandliste folgt Beobachten der Autor:in (ADR 45).
+
+    Als gewöhnliches Interesse mit der Angabe ``series``: der erste Durchgang
+    sät still an, statt die ganze Backlist zu melden, und „Nicht mehr
+    beobachten" nimmt nur dieses Interesse wieder zurück. Eine Autor:in, die
+    sie schon hat — oder einmal entfernt hat —, bleibt, wie sie ist.
+    """
+    authors = [a for _, _, a, _ in store.series_volumes(series_id) if a]
+    if not authors:
+        return
+    mine = {author_key(row.value): row
+            for row in store.interests(profile_slug, key=AUTHOR, active_only=False)}
+    row = mine.get(author_key(authors[0]))
+    if row is None:
+        store.put_interest(profile_slug, AUTHOR, authors[0], now=now, series=series_id)
+    elif not row.active and json.loads(row.details or "{}").get("series") == series_id:
+        store.put_interest(profile_slug, AUTHOR, row.value, now=now, series=series_id)
+
+
+def maybe_volumes(store: Store, profile_slug: str) -> dict[str, tuple[int, str]]:
+    """Autor:in -> (Reihe, Name), wo Beobachten der Autor:in folgt: ihre neuen
+    Bücher sind *vielleicht* ein neuer Band (ADR 45)."""
+    watched = store.watched_series(profile_slug)
+    out: dict[str, tuple[int, str]] = {}
+    for row in store.interests(profile_slug, key=AUTHOR):
+        series_id = json.loads(row.details or "{}").get("series")
+        if series_id in watched and (series := store.series_row(series_id)) is not None:
+            out[author_key(row.value)] = (series_id, series.name)
+    return out
 
 
 def add_volumes(

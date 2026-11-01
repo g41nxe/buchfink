@@ -1218,3 +1218,32 @@ def test_a_volume_of_a_liked_series_is_not_held_back(client: TestClient, db: Sto
     assert [(i.title, i.stars) for i in pile.items] == [("Feuerklingen", 3)]
     assert pile.hidden_weak == 0
     assert "Fortsetzung von „Kriegsklingen“" in client.get("/suggestions").text
+
+
+def test_a_find_of_a_followed_author_may_be_a_new_volume(client: TestClient, db: Store) -> None:
+    """Reihe nur von Hand, beobachtet: ein neues Buch der Autor:in kommt mit
+    „vielleicht ein neuer Band der …“ und einem Knopf zum Zuordnen. Von selbst
+    zugeordnet wird nichts (ADR 45)."""
+    from ebook_watchlist.catalog import series_watch
+
+    slug = load_settings().slug
+    db.find_or_create_book(isbn="9783000000011", title="Kriegsklingen",
+                           author="Joe Abercrombie", now=NOW)
+    db.assign_series("9783000000011", "Klingen-Saga", "Joe Abercrombie", "1")
+    series_id = db.series_of(["9783000000011"])["9783000000011"].id
+    series_watch.watch(db, slug, series_id, now=NOW)
+    new = found(db, item_id="n", title="Schattenklingen", author="Joe Abercrombie",
+                isbn="9783000000019")
+
+    pile = view.pending(db, load_settings())
+    body = client.get("/suggestions").text
+
+    assert pile.items[0].maybe_series == (series_id, "Klingen-Saga")
+    assert "vielleicht ein neuer Band der Klingen-Saga" in body
+    assert "9783000000019" not in db.series_of(["9783000000019"])
+
+    client.post(f"/discovery/{new.source}/{new.source_item_id}/series",
+                data={"series_id": str(series_id)})
+
+    assert db.series_of(["9783000000019"])["9783000000019"].id == series_id
+    assert view.pending(db, load_settings()).items[0].maybe_series is None

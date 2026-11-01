@@ -323,6 +323,12 @@ def _ask_wikidata(store: Store, client: HttpClient, settings: Settings) -> None:
     Hinter dem Snapshot wie die DNB: ein Ausfall kostet nie Geschichte.
     """
     pending = store.isbns_without_wikidata(settings.slug, WIKIDATA_BUDGET)
+    # Dann die Funde von Autor:innen einer gemochten Reihe: so wird ein neuer
+    # Band als Band erkannt und fällt nicht unter die Schwelle.
+    pending += store.finds_without_wikidata(
+        settings.slug, liked_series(store, settings.slug).authors,
+        WIKIDATA_BUDGET - len(pending),
+    )
     if not pending:
         return
     wikidata = Wikidata(client=client)

@@ -16,9 +16,11 @@ from datetime import datetime, timedelta
 
 from .. import paths
 from ..authorship import ai_authors, is_ai_authored
+from ..catalog import series_watch
 from ..catalog.bundle_deal import BundleAdvantage, advantage_finder
 from ..catalog.one_per_work import collapse
 from ..catalog.series import SeriesOf, mid_series_finder
+from ..cleaning import author_key
 from ..config import Settings
 from ..covers import CoverStore, file_name
 from ..deals import is_strong_deal
@@ -112,6 +114,10 @@ class Suggestion:
     series: SeriesOf | None = None
     #: Was eine gemochte Reihe zu ihm sagt: „Fortsetzung von …" (ADR 45).
     series_note: str | None = None
+    #: Vielleicht ein neuer Band dieser Reihe, die nur von Hand bekannt ist und
+    #: deren Autor:in Beobachten folgt: (Reihe, Name) — zugeordnet wird nur
+    #: auf ihren Knopf (ADR 45).
+    maybe_series: tuple[int, str] | None = None
     #: Was eine Sammelausgabe enthält, und was sie zu jedem Band gesagt hat (ADR 38).
     contains: tuple[ContainedVolume, ...] = ()
     #: Andere Ausgaben desselben Werks im Stapel, als „Titel (Sprache, Quelle)“
@@ -522,7 +528,13 @@ def pending(
 
     items = _one_per_work(store, settings, items, language_of)
     named = store.series_of(item.isbn for item in items if item.isbn)
-    items = [replace(item, series=named.get(item.isbn or "")) for item in items]
+    maybe = series_watch.maybe_volumes(store, settings.slug)
+    items = [
+        replace(item, series=named.get(item.isbn or ""),
+                maybe_series=maybe.get(author_key(item.author or ""))
+                if item.isbn and item.isbn not in named else None)
+        for item in items
+    ]
     # Die Bände der Sammelausgaben, mit einem Titelindex für alle (ADR 38).
     if any(item.is_bundle for item in items):
         index = store.title_index(settings.slug)
