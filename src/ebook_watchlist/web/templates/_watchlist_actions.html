@@ -19,7 +19,7 @@
 #}
 {% from "_icon_button.html" import icon_button %}
 
-{% macro watchlist_actions(entry, closings, icons, back="/watchlist", extra="") %}
+{% macro watchlist_actions(entry, closings, icons, back="/watchlist", extra="", busy=none) %}
 {# Fünf Spalten mit dem Hammer, vier ohne — sonst bleibt auf dem Telefon eine
    Spalte leer und die Zeichen füllen die Zeile nicht mehr (26.09.2026). #}
 <span class="grid w-full {{ 'grid-cols-5' if extra else 'grid-cols-4' }} gap-2 sm:flex sm:w-auto sm:items-center sm:gap-1">
@@ -42,7 +42,17 @@
   {% set recheck %}type="button"
     hx-post="/watchlist/{{ entry.book_id }}/recheck?back={{ back }}"
     hx-target="#entry-{{ entry.book_id }}" hx-swap="outerHTML"{% endset %}
+  {# Solange gesucht wird, dreht sich dieser Knopf selbst; wartet die Suche auf
+     den großen Lauf, zeigt er die Sanduhr. Ein Zeichen, an seiner Stelle,
+     ohne zweiten Klick (01.11.2026). #}
+  {% if busy == "sucht" %}
+  {{ icon_button("sucht gerade", "ic-refresh", attrs='type="button" disabled', spin=true) }}
+  {% elif busy == "wartet" %}
+  {{ icon_button("wartet auf den laufenden Lauf", "ic-hourglass",
+                 attrs='type="button" disabled') }}
+  {% else %}
   {{ icon_button("jetzt nachsehen", "ic-refresh", attrs=recheck) }}
+  {% endif %}
 
   {# Ein weiteres Zeichen, das nicht zu den obigen gehoert (etwa der Hammer),
      kommt hier herein — als Kind desselben Grids, nicht als Geschwister

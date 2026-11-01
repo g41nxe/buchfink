@@ -282,3 +282,50 @@ def test_the_same_keeper_carries_other_work(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert done == [("item", "beam", "7")]
     assert rechecker.state(("item", "beam", "7")).trouble == "geurteilt"
+
+
+# --- die Buchseite -----------------------------------------------------------
+
+
+def test_on_the_book_page_the_button_itself_turns_while_it_looks(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Neben dem Pfeil-Knopf drehte sich ein zweiter, gleicher Pfeil — die
+    Anzeige „sucht gerade“ —, der Knopf selbst blieb still (01.11.2026). Jetzt
+    dreht sich der Knopf, und es gibt nur einen Pfeil."""
+    released = threading.Event()
+    monkeypatch.setattr(recheck, "check_one", lambda book_id: released.wait(5) or Report())
+    book_id = entry(db)
+
+    try:
+        busy = client.post(f"/book/{book_id}/recheck").text
+    finally:
+        released.set()
+    idle = client.get(f"/book/{book_id}").text
+
+    assert busy.count("#ic-refresh") == 1
+    assert "animate-spin" in busy
+    assert 'title="jetzt nachsehen"' not in busy  # kein zweiter Klick, solange es sucht
+    status = idle.split(f'id="book-status-{book_id}"', 1)[1].split("</span>\n", 1)[0]
+    assert 'title="jetzt nachsehen"' in status
+    assert idle.count('title="jetzt nachsehen"') == 1
+
+
+def test_in_the_row_the_button_itself_turns_while_it_looks(
+    client: TestClient, db: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Dasselbe in der Watchlist-Zeile: dort drehte sich am Preis ein Ring,
+    der gedrückte Pfeil blieb still und ließ sich ein zweites Mal drücken."""
+    released = threading.Event()
+    monkeypatch.setattr(recheck, "check_one", lambda book_id: released.wait(5) or Report())
+    book_id = entry(db)
+
+    try:
+        busy = client.post(f"/watchlist/{book_id}/recheck").text
+    finally:
+        released.set()
+
+    assert busy.count("animate-spin") == 1
+    spinning = busy.split("animate-spin", 1)[0].rsplit("<button", 1)[1]
+    assert 'aria-label="sucht gerade"' in spinning and "disabled" in spinning
+    assert 'aria-label="jetzt nachsehen"' not in busy

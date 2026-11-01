@@ -52,18 +52,14 @@
     {% set price_body %}
     {% if check and check.busy %}
     {# Der zuletzt bekannte Betrag bleibt lesbar, nur gedaempft — er gilt
-       gerade nicht, wird aber ueberprueft und nicht verworfen. Daneben sagt
-       das Symbol, ob gesucht oder auf einen grossen Lauf gewartet wird
-       (Ticket 51, Entwurf C). #}
+       gerade nicht, wird aber ueberprueft und nicht verworfen (Ticket 51).
+       Ob gesucht oder auf einen grossen Lauf gewartet wird, zeigt der Knopf
+       „jetzt nachsehen“ selbst; hier drehte sich vorher ein zweites Zeichen
+       (01.11.2026). #}
     <span class="flex items-center gap-1.5" title="{{ check.label(now=now) }}">
       {# `text-soft`, kein eigener Ton: gedaempft ist der Betrag schon dadurch,
          dass er nicht mehr in `ink` steht. #}
       <span class="text-lg font-semibold tabular-nums text-soft">{{ entry.price or "—" }}</span>
-      {% if check.label(now=now) == "sucht …" %}
-      <svg class="i animate-spin text-accent"><use href="#ic-spin"/></svg>
-      {% else %}
-      <svg class="i text-soft"><use href="#ic-hourglass"/></svg>
-      {% endif %}
     </span>
     {% endif %}
     {% endset %}
@@ -80,7 +76,10 @@
     {% set judge_button %}{% include "_judge_button.html" %}{% endset %}
 
     {% set actions %}
-    {{ watchlist_actions(entry, closings, icons, back=back | default("/watchlist"), extra=judge_button) }}
+    {% set busy = (("sucht" if check.label(now=now) == "sucht …" else "wartet")
+                   if check and check.busy else none) %}
+    {{ watchlist_actions(entry, closings, icons, back=back | default("/watchlist"),
+                         extra=judge_button, busy=busy) }}
     {% endset %}
 
     {# Dieselbe Spalte wie im Stapel (#16): was das Werkzeug urteilt, steht

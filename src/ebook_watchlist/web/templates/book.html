@@ -319,14 +319,6 @@
    statt eines Wortes — was es tut, sagt der Tooltip (Ticket 51). #}
 {% call section("Beobachtungen", "ic-clock") %}
   <span class="ml-auto">{% include "_book_status.html" %}</span>
-  {% if page.watching %}
-  <form hx-post="/book/{{ page.book_id }}/recheck"
-        hx-target="#book-status-{{ page.book_id }}" hx-swap="outerHTML">
-    <button type="submit" title="jetzt nachsehen"
-            class="flex rounded p-1 text-soft hover:bg-hair hover:text-accent">
-      <svg class="i"><use href="#ic-refresh"/></svg></button>
-  </form>
-  {% endif %}
 {% endcall %}
 {% if not page.has_history %}
 <p class="py-2 text-sm text-soft italic">

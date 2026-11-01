@@ -1,9 +1,14 @@
-{# Ob gerade ein enger Lauf laeuft (Ticket 51). Der Zeitpunkt selbst steht in
-   den Quellenkacheln: er gehoert zu der Quelle, die ihn genannt hat.
+{# Ob gerade ein enger Lauf laeuft (Ticket 51), und der Knopf, der ihn startet.
+   Der Zeitpunkt selbst steht in den Quellenkacheln: er gehoert zu der Quelle,
+   die ihn genannt hat.
 
    Der Trigger steht nur dran, solange etwas laeuft; sobald der Server die
    Zeile ohne ihn zurueckgibt, hoert die Seite von selbst auf zu fragen —
-   dasselbe Muster wie `_run_panel.html`, kein Websocket (ADR 3). #}
+   dasselbe Muster wie `_run_panel.html`, kein Websocket (ADR 3).
+
+   Der Knopf steht hier drin, nicht daneben: solange gesucht wird, dreht sich
+   sein eigener Pfeil an seiner Stelle. Vorher drehte sich daneben ein zweiter,
+   gleicher Pfeil, und der gedrückte blieb still (01.11.2026). #}
 <span id="book-status-{{ page.book_id }}"
       class="flex items-center gap-1.5 text-xs font-normal text-soft"
       {% if check and check.busy %}
@@ -17,13 +22,24 @@
      drehende heisst "fragt gerade", die Sanduhr "steht in der Schlange".
      Was gemeint ist, steht im Hinweis. #}
   {% if check.label(now=now) == "sucht …" %}
-  <svg class="i animate-spin text-accent" role="img" aria-label="sucht gerade"
-       title="sucht gerade"><use href="#ic-refresh"/></svg>
+  <span class="flex p-1" role="img" aria-label="sucht gerade" title="sucht gerade">
+    <svg class="i animate-spin text-accent"><use href="#ic-refresh"/></svg></span>
   {% else %}
-  <svg class="i" role="img" aria-label="wartet auf den laufenden Lauf"
-       title="wartet auf den laufenden Lauf"><use href="#ic-hourglass"/></svg>
+  <span class="flex p-1" role="img" aria-label="wartet auf den laufenden Lauf"
+        title="wartet auf den laufenden Lauf">
+    <svg class="i"><use href="#ic-hourglass"/></svg></span>
   {% endif %}
-  {% elif check and check.trouble %}
+  {% else %}
+  {% if check and check.trouble %}
   <span class="text-danger">{{ check.trouble }}</span>
+  {% endif %}
+  {% if page.watching %}
+  <form hx-post="/book/{{ page.book_id }}/recheck"
+        hx-target="#book-status-{{ page.book_id }}" hx-swap="outerHTML">
+    <button type="submit" title="jetzt nachsehen"
+            class="flex rounded p-1 text-soft hover:bg-hair hover:text-accent">
+      <svg class="i"><use href="#ic-refresh"/></svg></button>
+  </form>
+  {% endif %}
   {% endif %}
 </span>
