@@ -336,6 +336,17 @@ def no_outside_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def no_wikidata(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Der Lauf fragt Wikidata nach Reihen (ADR 45). In Tests kennt es nichts —
+    sonst scheiterte jede Frage erst nach Wiederholung und Pause am gesperrten
+    Netz. Wer es prüfen will, setzt seine eigene Attrappe ein."""
+    from ebook_watchlist import wikidata
+
+    monkeypatch.setattr(wikidata.Wikidata, "membership", lambda self, title, author: None)
+    monkeypatch.setattr(wikidata.Wikidata, "volumes", lambda self, series_item: [])
+
+
+@pytest.fixture(autouse=True)
 def no_notifications(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tests verschicken nie etwas (#98) — auch nicht mit einer Adresse aus der
     echten ``data/secrets.env``, die ein Test ohne eigenes Datenverzeichnis

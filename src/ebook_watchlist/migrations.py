@@ -735,6 +735,13 @@ _CHILDRENS = ("kinderbuch", "kinderroman", "kinderkrimi", "für junge leser",
 _YOUNG_ADULT = ("jugendbuch", "jugendroman", "young adult", "für jugendliche")
 
 
+def _a_series_knows_its_wikidata_item(connection: Connection) -> None:
+    """Die Reihe merkt sich ihre Q-Nummer bei Wikidata — daher kommt ihre
+    Bandliste (ADR 45). Die Tabelle ``wikidata_record`` legt ``create_all`` an."""
+    if _has_table(connection, "series"):
+        add_column(connection, "series", "wikidata_ref", "TEXT")
+
+
 def _childrens_books_get_their_genre(connection: Connection) -> None:
     """Steckbriefe, deren Genre ein Kinder- oder Jugendbuch nennt, bekommen
     dessen Code — vorher stand dort ein Erzählgenre („Abenteuer“, „Humor“),
@@ -878,6 +885,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _a_portrait_names_its_form,
     _a_split_volume_is_its_own_work,
     _childrens_books_get_their_genre,
+    _a_series_knows_its_wikidata_item,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

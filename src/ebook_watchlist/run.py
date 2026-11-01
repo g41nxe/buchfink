@@ -57,6 +57,7 @@ from .seed import sow
 from .sources import build_sources
 from .sources.base import RunContext
 from .store import ENTRY_TRIGGER, Store
+from .wikidata import Wikidata
 
 EXIT_OK = 0
 EXIT_ALREADY_RUNNING = 0
@@ -305,6 +306,39 @@ def _ask_the_library(
         found += 1 if record else 0
     print(f"DNB: {len(pending)} gefragt, {found} beantwortet")
     _series_from_dnb(store, settings.slug)
+
+
+#: Wie viele Bücher je Lauf Wikidata gefragt werden (ADR 45). Wikidata nennt
+#: keine feste Grenze für Abfragen; wie bei der DNB wird ein Rückstand über
+#: mehrere Läufe abgearbeitet, statt an einem Tag.
+WIKIDATA_BUDGET = 20
+
+
+def _ask_wikidata(store: Store, client: HttpClient, settings: Settings) -> None:
+    """Reihe und Band der eigenen Bücher bei Wikidata nachschlagen (ADR 45).
+
+    Einmal je Buch, auch das Schweigen wird gemerkt. Ein Band mit Nummer
+    wird Teil der Reihe; ein Werk ohne Band spielt nur in derselben Welt.
+    Hinter dem Snapshot wie die DNB: ein Ausfall kostet nie Geschichte.
+    """
+    pending = store.isbns_without_wikidata(settings.slug, WIKIDATA_BUDGET)
+    if not pending:
+        return
+    wikidata = Wikidata(client=client)
+    now = datetime.now()
+    volumes = 0
+    for isbn, title, author in pending:
+        try:
+            membership = wikidata.membership(title, author)
+        except RateLimited:
+            print("Wikidata: gedrosselt — Rest übersprungen", file=sys.stderr)
+            break
+        except Exception as exc:  # noqa: BLE001 - eine Auskunft, nicht der Lauf
+            print(f"Wikidata {isbn}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        store.save_wikidata(isbn, author, membership, now)
+        volumes += bool(membership and membership.volume)
+    print(f"Wikidata: {len(pending)} gefragt, {volumes} Bände erkannt")
 
 
 def _series_from_dnb(store: Store, profile_slug: str) -> None:
@@ -1313,15 +1347,18 @@ def _run(
     #
     # Die DNB und die Bildserver sind verschiedene Server: sie warten nicht
     # aufeinander (#101). Ein Fehler der DNB-Seite kommt mit `result()` hier an.
-    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="dnb") as pool:
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="dnb") as pool:
         library = pool.submit(
             _ask_the_library, store, client.for_another_server(), settings,
             spent=context.original_titles.spent if context.original_titles else 0,
         )
+        # Wikidata ist ein dritter Server und wartet auf keinen (ADR 45).
+        works = pool.submit(_ask_wikidata, store, client.for_another_server(), settings)
         fetch_for_books(store, client, observations)
         _record_foreign_ratings(store, observations)
         fetch_for_candidates(store, settings.slug, client)
         library.result()
+        works.result()
 
     # Hinter der DNB-Abfrage, denn erst jetzt ist die Sprache neuer Funde
     # bekannt — und vor dem Tor, damit ein fremdsprachiger Fund kein Urteil

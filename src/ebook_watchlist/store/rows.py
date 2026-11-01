@@ -197,6 +197,25 @@ class DnbRecordRow(Base):
     reading: Mapped[int] = mapped_column(Integer, default=DNB_READING)
 
 
+class WikidataRecordRow(Base):
+    """Was Wikidata zu einer ISBN gesagt hat — auch das Schweigen (ADR 45).
+
+    Gefragt wird über Titel und Autor:in des Buchs, gemerkt an seiner ISBN, wie
+    bei der DNB: einmal je Buch. Ein Werk ohne Band steht hier mit seiner
+    Reihe, wird aber kein Band: es spielt in derselben Welt.
+    """
+
+    __tablename__ = "wikidata_record"
+
+    isbn: Mapped[str] = mapped_column(String, primary_key=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime)
+    found: Mapped[bool] = mapped_column(Boolean, default=False)
+    item: Mapped[str | None] = mapped_column(String, nullable=True)
+    series_item: Mapped[str | None] = mapped_column(String, nullable=True)
+    series_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    volume: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
 class DnbContainsRow(Base):
     """Die ISBNs der Baende einer Sammelausgabe, aus MARC ``770 $i Enthaelt``.
 
@@ -226,6 +245,8 @@ class SeriesRow(Base):
     author_key: Mapped[str] = mapped_column(String, default="")
     overdrive_ref: Mapped[str | None] = mapped_column(String, nullable=True)
     onleihe_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    #: Die Reihe bei Wikidata, als Q-Nummer — daher kommt ihre Bandliste (ADR 45).
+    wikidata_ref: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class SeriesNameRow(Base):
@@ -349,7 +370,8 @@ class SeriesEntry:
 #: (ADR 38), und eine Sammelausgabe erbt von ihren Bänden.
 #: Die Zuordnung von Hand (ADR 45): ihre Angabe geht jeder Quelle vor.
 READER_ORIGIN = "reader"
-SERIES_ORIGINS = (READER_ORIGIN, "dnb", "overdrive", "onleihe", "title", "bundle")
+SERIES_ORIGINS = (READER_ORIGIN, "dnb", "wikidata", "overdrive", "onleihe", "title",
+                  "bundle")
 
 
 class BookSourceRow(Base):
@@ -844,7 +866,7 @@ def _file_series(
         entry.series_id = series_id
         # Von Hand gilt genau, was sie schreibt — auch ein gelöschter Band.
         entry.volume = volume if origin == READER_ORIGIN else (volume or entry.volume)
-    if ref and origin in ("overdrive", "onleihe"):
+    if ref and origin in ("overdrive", "onleihe", "wikidata"):
         setattr(session.get(SeriesRow, series_id), f"{origin}_ref", ref)
 
 

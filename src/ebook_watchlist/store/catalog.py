@@ -46,6 +46,7 @@ from .rows import (
     SeriesRow,
     SeriesWatchRow,
     SourceCategoryRow,
+    WikidataRecordRow,
     WorkEntryRow,
     _better_spelling,
     _file_bisac,
@@ -60,6 +61,41 @@ class CatalogMixin(ObservationsMixin):
     """Bücher, DNB, Reihen, Werke und Kategorien — was es an Büchern gibt (#103)."""
 
     # --- was die DNB weiss (Ticket 42) -------------------------------------
+
+    def isbns_without_wikidata(
+        self, profile_slug: str, limit: int
+    ) -> list[tuple[str, str, str | None]]:
+        """(ISBN, Titel, Autor:in) der Bücher mit Beziehung, die Wikidata noch
+        nie gefragt wurde (ADR 45) — die eigenen zuerst, wie bei der DNB."""
+        with self.session() as session:
+            asked = select(WikidataRecordRow.isbn)
+            related = select(BookRelationRow.book_id).where(
+                BookRelationRow.profile_slug == profile_slug
+            )
+            rows = session.execute(
+                select(BookRow.isbn, BookRow.title, BookRow.author)
+                .where(BookRow.isbn.is_not(None), BookRow.id.in_(related),
+                       BookRow.isbn.not_in(asked))
+                .order_by(BookRow.id)
+                .limit(limit)
+            ).all()
+        return [(isbn, title, author) for isbn, title, author in rows]
+
+    def save_wikidata(self, isbn: str, author: str | None, membership, now: datetime) -> None:
+        """Die Antwort festhalten; ein Band mit Nummer wird Teil der Reihe."""
+        with self.session() as session:
+            row = session.get(WikidataRecordRow, isbn) or WikidataRecordRow(isbn=isbn)
+            row.checked_at = now
+            row.found = membership is not None
+            row.item = membership.item if membership else None
+            row.series_item = membership.series_item if membership else None
+            row.series_name = membership.series_name if membership else None
+            row.volume = membership.volume if membership else None
+            session.merge(row)
+            if membership and membership.series_name and membership.volume:
+                _file_series(session, isbn, membership.series_name, author,
+                             membership.volume, "wikidata", membership.series_item)
+            session.commit()
 
     def isbns_without_dnb(self, profile_slug: str, limit: int) -> list[str]:
         """ISBNs, die wir gesehen, aber noch nie bei der DNB nachgeschlagen haben.
