@@ -22,6 +22,7 @@ from datetime import datetime
 from .. import paths
 from ..covers import CoverStore, file_name
 from ..junk import is_short_story
+from ..matching.normalize import normalize_title
 from ..models import MatchReason, Observation
 from ..relations import REMOVED, RelationKind
 from ..store import Store
@@ -96,7 +97,7 @@ def _put_on_watchlist(
     store: Store,
     profile_slug: str,
     series_id: int,
-    isbn: str,
+    isbn: str | None,
     title: str,
     author: str | None,
     now: datetime,
@@ -115,6 +116,10 @@ def _put_on_watchlist(
     Band, den sie entfernt oder pausiert hat, setzt das Fegen jedes Laufs nicht
     zurück (Review, 04.10.2026). Nur ``revive`` — sie beobachtet die Reihe
     wieder — holt zurück, was die Reihe selbst entfernt hatte.
+
+    Ohne ISBN — ein Band, den nur Wikidata nennt — sucht ``find_or_create_book``
+    über Titel und Autor:in; der Lauf prüft ihn danach wie jeden
+    Watchlist-Eintrag ohne ISBN (ADR 45).
     """
     book = store.find_or_create_book(isbn=isbn, title=title, author=author, now=now)
     relations = store.relations_of(profile_slug, book.id)
@@ -160,6 +165,38 @@ def sweep(store: Store, profile_slug: str, sources, *, now: datetime) -> int:
             found = [replace(o, series=o.series or row.name) for o in found if o.isbn]
             store.file_series(found)
             added += add_volumes(store, profile_slug, series_id, found, now=now)
+    return added
+
+
+def sweep_wikidata(store: Store, profile_slug: str, wikidata, *, now: datetime) -> int:
+    """Die Bandliste jeder beobachteten Reihe, die Wikidata kennt (ADR 45).
+
+    Geholt wird sie im Lauf, nicht beim Klick auf „Reihe beobachten" (ADR 3).
+    Nur Bände mit deutschem Titel nennt Wikidata hier; was die Reihe schon
+    kennt, wird über den Titel erkannt und nicht doppelt angelegt. Eine
+    Nachfrage je beobachteter Reihe und Lauf; ein Ausfall kostet nur die Reihe.
+    """
+    added = 0
+    for series_id in sorted(store.watched_series(profile_slug)):
+        row = store.series_row(series_id)
+        if row is None or not row.wikidata_ref:
+            continue
+        try:
+            listed = wikidata.volumes(row.wikidata_ref)
+        except Exception as exc:  # noqa: BLE001 - eine Reihe, nicht der Lauf
+            print(f"Reihe {row.name}: wikidata {type(exc).__name__}", file=sys.stderr)
+            continue
+        volumes = store.series_volumes(series_id)
+        known = {normalize_title(title) for _, title, _, _ in volumes}
+        authors = [author for _, _, author, _ in volumes if author]
+        if not authors:
+            continue  # ohne Autor:in fände der Lauf den Band nicht
+        for _, title in listed:
+            if normalize_title(title) in known:
+                continue
+            known.add(normalize_title(title))
+            added += _put_on_watchlist(store, profile_slug, series_id, None, title,
+                                       authors[0], now)
     return added
 
 

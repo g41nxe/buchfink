@@ -157,3 +157,59 @@ def test_the_run_asks_wikidata_within_its_budget_and_files_what_it_hears(
     volumes = {isbn: named.volume for isbn, named in store.series_of(
         [f"978364106881{n}" for n in (1, 2, 3)]).items()}
     assert volumes == {"9783641068811": "1", "9783641068812": "2"}
+
+
+# --- beim Beobachten ------------------------------------------------------------
+
+
+class FakeVolumes:
+    """Wikidata, wie das Fegen es fragt: nur nach den Bänden einer Reihe."""
+
+    def __init__(self, volumes: dict[str, list[tuple[str, str]]]) -> None:
+        self.volumes_of, self.asked = volumes, []
+
+    def volumes(self, series_item: str) -> list[tuple[str, str]]:
+        self.asked.append(series_item)
+        return self.volumes_of[series_item]
+
+
+def test_watching_a_series_brings_its_wikidata_volumes_onto_the_watchlist(db: Store) -> None:
+    """Die Klingen-Saga kennt keine Quelle ganz: Wikidata nennt die Bände mit
+    deutschem Titel, und die fehlenden kommen über Titel und Autor:in auf die
+    Watchlist (ADR 45)."""
+    from ebook_watchlist.catalog import series_watch
+    from ebook_watchlist.relations import RelationKind
+
+    db.find_or_create_book(isbn="9783641068813", title="Kriegsklingen",
+                           author="Joe Abercrombie", now=NOW)
+    db.save_wikidata("9783641068813", "Joe Abercrombie",
+                     Membership("Q1", "Q9", "Klingenwelt", "1"), NOW)
+    series_id = db.series_of(["9783641068813"])["9783641068813"].id
+    series_watch.watch(db, "test", series_id, now=NOW)
+    wikidata = FakeVolumes({"Q9": [("1", "Kriegsklingen"), ("2", "Feuerklingen"),
+                                   ("3", "Königsklingen")]})
+
+    assert series_watch.sweep_wikidata(db, "test", wikidata, now=NOW) == 2
+    assert series_watch.sweep_wikidata(db, "test", wikidata, now=NOW) == 0
+
+    watching = {}
+    for r in db.relations("test", kind=str(RelationKind.WATCHING)):
+        book = db.book(r.book_id)
+        assert book is not None
+        watching[book.title] = (book.author, json.loads(r.details or "{}"))
+    assert watching["Feuerklingen"] == ("Joe Abercrombie", {"series": series_id})
+    assert watching["Königsklingen"] == ("Joe Abercrombie", {"series": series_id})
+    assert set(watching) == {"Kriegsklingen", "Feuerklingen", "Königsklingen"}
+
+
+def test_a_series_nobody_watches_is_not_asked(db: Store) -> None:
+    from ebook_watchlist.catalog import series_watch
+
+    db.find_or_create_book(isbn="9783641068813", title="Kriegsklingen",
+                           author="Joe Abercrombie", now=NOW)
+    db.save_wikidata("9783641068813", "Joe Abercrombie",
+                     Membership("Q1", "Q9", "Klingenwelt", "1"), NOW)
+    wikidata = FakeVolumes({})
+
+    assert series_watch.sweep_wikidata(db, "test", wikidata, now=NOW) == 0
+    assert wikidata.asked == []

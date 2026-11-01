@@ -504,6 +504,13 @@ class CatalogMixin(ObservationsMixin):
                 )
             ):
                 named[isbn] = (title, author, None)
+            # Ein Buch, das sie selbst einer Reihe zugeordnet hat, kennt
+            # vielleicht keine Quelle — es ist trotzdem schon ein Buch (ADR 45).
+            for isbn, title, author in session.execute(
+                select(BookRow.isbn, BookRow.title, BookRow.author)
+                .where(BookRow.isbn.in_(isbns - set(named)))
+            ):
+                named[isbn] = (title, author, None)
         return [(isbn, *rest) for isbn, rest in sorted(named.items())]
 
     def set_series_watch(

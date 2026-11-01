@@ -1277,7 +1277,11 @@ def _run(
 
     # Beobachtete Reihen zuerst (#85): ein neuer Band steht danach auf der
     # Watchlist und wird in diesem Lauf geprüft und gemeldet wie jeder andere.
-    if series_watch.sweep(store, settings.slug, sources, now=started_at):
+    swept = series_watch.sweep(store, settings.slug, sources, now=started_at)
+    swept += series_watch.sweep_wikidata(
+        store, settings.slug, Wikidata(client=client.for_another_server()), now=started_at
+    )
+    if swept:
         watchlist = load_configuration(store, settings).watchlist
 
     # Bei --watchlist wird ohnehin nicht gefegt (RunContext.only_watchlist);
