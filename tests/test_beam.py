@@ -364,3 +364,36 @@ def test_only_a_foreign_edition_is_still_found() -> None:
 
     assert resolution is not None and resolution.accepted is not None
     assert "/1014408/" in resolution.accepted.payload
+
+
+# --- eine Seite ohne Produktblock (20.11.2026) ------------------------------
+
+
+def test_a_pinned_page_that_is_no_product_page_costs_only_that_title() -> None:
+    """Der Lauf vom 20.11.2026 brach nach zehn Minuten ab: eine einzige
+    Watchlist-Adresse lieferte eine Seite ohne Produktblock — beam leitet
+    ausgelistete Titel um, statt 404 zu sagen. Ob beam die Seiten wirklich
+    umgebaut hat, sagt die Probe; hier kostet es nur diesen Titel."""
+    beam = source(fixture("search-no-results.html"))
+    entry = WatchlistEntry(
+        title="Verschwunden",
+        resolved_links={"beam": "https://www.beam-shop.de/x/y/z/123456/verschwunden"},
+    )
+
+    assert beam.check(entry) is None
+
+
+def test_the_probe_reads_a_product_page_too() -> None:
+    beam = source(fixture("search-hits.html"), fixture("product-detail.html"))
+
+    beam.probe()
+
+    assert any(sel.DETAIL_PATH.format(product_id=sel.PROBE_DETAIL_PRODUCT) in url
+               for url, _ in beam.client.requests)  # type: ignore[attr-defined]
+
+
+def test_the_probe_says_so_when_the_product_page_changed() -> None:
+    beam = source(fixture("search-hits.html"), fixture("search-no-results.html"))
+
+    with pytest.raises(SourceStructureError):
+        beam.probe()

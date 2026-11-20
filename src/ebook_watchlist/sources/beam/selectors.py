@@ -110,6 +110,9 @@ BADGE_PREORDER = "Vorbestellbar"
 # --- doctor probe ---------------------------------------------------------
 
 PROBE_QUERY = "Krieg der Klone Scalzi"
+#: Dessen Produktseite: ob die Detailseite noch lesbar ist, entscheidet die
+#: Probe, nicht ein einzelner Watchlist-Titel (20.11.2026).
+PROBE_DETAIL_PRODUCT = "606983"
 
 
 #: Code der Genre-Liste → Regal bei beam (ADR 37). Erhoben am 04.10.2026

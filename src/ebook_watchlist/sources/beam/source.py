@@ -7,6 +7,7 @@ tile is re-matched before anything is pinned.
 
 from __future__ import annotations
 
+import sys
 from urllib.parse import urljoin
 
 from ...catalog.series import series_key
@@ -272,6 +273,14 @@ class BeamSource(ShopSource):
         except NotFound:
             # Delisted. One title going away must not blind the rest.
             return None
+        except SourceStructureError as exc:
+            # Ausgelistete Titel leitet beam oft um, statt 404 zu sagen; die
+            # Seite dahinter hat keinen Produktblock. Am 20.11.2026 brach
+            # daran der ganze Lauf ab. Ob beam wirklich umgebaut hat, prüft
+            # ``probe`` an einer bekannten Produktseite — hier kostet es nur
+            # diesen Titel, und das Protokoll sagt, welchen.
+            print(f"beam: {entry.title} ({url}): {exc} — übersprungen", file=sys.stderr)
+            return None
 
         return Observation(
             source=self.name,
@@ -337,6 +346,16 @@ class BeamSource(ShopSource):
             )
         if all(tile.price_cents is None for tile in tiles):
             raise SourceStructureError("beam-shop: no tile carried a parseable price")
+        # Die Produktseite auch: erst damit darf ``check`` eine einzelne
+        # Seite ohne Produktblock als ausgelistet nehmen, statt den Lauf
+        # abzubrechen (20.11.2026).
+        url = urljoin(self.base, sel.DETAIL_PATH.format(product_id=sel.PROBE_DETAIL_PRODUCT))
+        try:
+            parse.parse_detail(self.client.get(url))
+        except NotFound as exc:
+            raise SourceStructureError(
+                f"beam-shop: the probe product {sel.PROBE_DETAIL_PRODUCT} is gone"
+            ) from exc
 
 
 def _product_id_from_url(url: str) -> str:
