@@ -125,12 +125,37 @@ def add_volumes(
     """
     if series_id not in store.watched_series(profile_slug):
         return 0
+    known = store.series_known()
+    held = _volumes_she_holds(store, profile_slug, known)
     return sum(
         _put_on_watchlist(store, profile_slug, series_id, o.isbn, o.title, o.author, now,
                           cover_url=o.cover_url)
         for o in found
         if o.isbn and not is_short_story(replace(o, match_reason=MatchReason.GENRE_CATEGORY))
+        and not _another_edition(known.get(o.isbn) or (series_id, o.series_index), o.isbn, held)
     )
+
+
+def _volumes_she_holds(
+    store: Store, profile_slug: str, known: dict[str, tuple[int, str | None]]
+) -> dict[tuple[int, str], set[str]]:
+    """(Reihe, Band) -> die ISBNs, unter denen sie den Band schon führt —
+    auf der Watchlist, im Regal, gemocht, gleich."""
+    isbns = {isbn for isbn in store.books_with_relations(profile_slug) if isbn}
+    held: dict[tuple[int, str], set[str]] = {}
+    for isbn, (series_id, volume) in known.items():
+        if volume and isbn in isbns:
+            held.setdefault((series_id, volume), set()).add(isbn)
+    return held
+
+
+def _another_edition(entry, isbn: str, held: dict[tuple[int, str], set[str]]) -> bool:
+    """Ein Band ist ein Platz auf der Watchlist, gleich unter welcher Ausgabe:
+    *Koma* stand unter der Hörbuch-ISBN der Onleihe und noch einmal unter der
+    E-Book-ISBN, die das Fegen bei OverDrive fand (20.11.2026)."""
+    if entry is None or not entry[1]:
+        return False
+    return bool(held.get((entry[0], entry[1]), set()) - {isbn})
 
 
 def _put_on_watchlist(

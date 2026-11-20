@@ -240,3 +240,31 @@ def test_a_volume_keeps_the_cover_the_stack_already_fetched(
     covers = {b.title: b.cover_file for b in store.books()}
     assert covers["Red Rising"] == file_name(url)
     assert covers["Golden Son"] is None
+
+
+def test_another_edition_of_a_volume_she_already_has_stays_off(store: Store) -> None:
+    """*Koma* (Harry Hole, Band 10) stand zweimal auf der Watchlist (20.11.2026):
+    einmal unter der ISBN des Hörbuchs, die die Onleihe nennt, und noch einmal
+    unter der E-Book-ISBN, die das Fegen bei OverDrive fand. Ein Band ist ein
+    Platz auf der Watchlist, gleich unter welcher Ausgabe er dort steht."""
+    series_id = red_rising(store)
+    series_watch.watch(store, SLUG, series_id, now=NOW)
+    other_edition = volume("9783000000999", "Golden Son", "2")
+
+    added = series_watch.add_volumes(store, SLUG, series_id, [other_edition], now=NOW)
+
+    assert added == 0
+    assert store.book_by_isbn("9783000000999") is None
+
+
+def test_an_edition_of_an_owned_volume_stays_off_too(store: Store) -> None:
+    series_id = red_rising(store)
+    owned = store.find_or_create_book(isbn="9783000000101", title="Red Rising",
+                                      author="Pierce Brown", now=NOW)
+    store.put_relation(SLUG, owned.id, "owned", now=NOW)
+    series_watch.watch(store, SLUG, series_id, now=NOW)
+
+    added = series_watch.add_volumes(store, SLUG, series_id,
+                                     [volume("9783000000998", "Red Rising", "1")], now=NOW)
+
+    assert added == 0
